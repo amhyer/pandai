@@ -9,18 +9,29 @@ datasource db {
 
 // ===== TENANT / SEKOLAH =====
 model School {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique
-  address     String?
-  logo        String?
-  phone       String?
-  status      String   @default("active") // active, suspended, deleted
-  plan        String   @default("free")  // free, starter, pro
-  maxStudents Int      @default(50)
-  expiresAt   DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  code           String   @unique
+  address        String?
+  logo           String?
+  phone          String?
+  status         String   @default("active") // active, suspended, deleted
+  plan           String   @default("free")  // free, starter, pro
+  maxStudents    Int      @default(50)
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Dapodik fields
+  npsn            String?   @unique   // Nomor Pokok Sekolah Nasional
+  province        String?              // Provinsi
+  city            String?              // Kota/Kabupaten
+  district        String?              // Kecamatan
+  principalName   String?              // Nama Kepala Sekolah
+  accreditation   String?              // Akreditasi (A, B, C)
+  schoolType      String?              // Jenis: SMA, SMK, MA
+  established     String?              // Tahun Berdiri
+  curriculum      String?              // Kurikulum
 
   users          User[]
   classes        Class[]

@@ -160,3 +160,27 @@ Stage Summary:
 - API endpoints: /api/seed, /api/auth/login, /api/schools, /api/questions, /api/exams all return 200
 - Database seeded with complete demo data
 - ESLint: zero errors
+
+---
+Task ID: 3
+Agent: fullstack-developer
+Task: NPSN Dapodik school lookup and Admin Sekolah registration
+
+Work Log:
+- Updated Prisma schema: added 9 Dapodik fields to School model (npsn, province, city, district, principalName, accreditation, schoolType, established, curriculum)
+- Pushed schema to SQLite, regenerated Prisma Client
+- Created `/src/lib/npsn-database.ts` with 27 real Indonesian schools from 13 provinces with lookupSchool() and getSchoolByNpsn() functions
+- Created `/api/schools/lookup` GET route with ?q= parameter, exact NPSN or partial name search, max 10 results
+- Updated RegisterForm: added ADMIN_SCHOOL as 3rd role option with emerald/green Dapodik verification UI
+  - NPSN search input with emerald "Cari Sekolah" button and loading spinner
+  - Green-bordered verification card showing school details (name, address, location, type, accreditation, year, principal, phone)
+  - ShieldCheck verified badge, NPSN badge, conditional school code field
+  - Emerald submit button for admin, amber for siswa/guru
+- Created `/api/auth/register-school` POST route: validates input, checks NPSN uniqueness, creates School + Subscription + User(ADMIN_SCHOOL) in one transaction, generates code from NPSN
+- page.tsx lazy imports unchanged, still works correctly
+
+Stage Summary:
+- ESLint: zero errors
+- 3 new files created, 2 files modified
+- Admin Sekolah registration flow: select role → search NPSN → verify Dapodik data → fill name/email/password → submit
+- School code auto-generated as NPSN-{last 4 digits}
