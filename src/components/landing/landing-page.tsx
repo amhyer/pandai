@@ -132,17 +132,17 @@ function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
         scrolled
-          ? 'bg-white/90 backdrop-blur-md shadow-sm border-b border-gray-100'
-          : 'bg-transparent'
+          ? 'bg-emerald-600/95 backdrop-blur-md shadow-sm border-b border-emerald-500/50'
+          : 'bg-emerald-600'
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <div className="flex items-center gap-2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-navy">
-            <GraduationCap className="h-5 w-5 text-gold" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">
+            <GraduationCap className="h-5 w-5 text-white" />
           </div>
-          <span className={`text-xl font-bold tracking-tight ${scrolled ? 'text-navy' : 'text-navy'}`}>
+          <span className="text-xl font-bold tracking-tight text-white">
             PANDAI
           </span>
         </div>
@@ -153,8 +153,8 @@ function Navbar() {
             <button
               key={link.href}
               onClick={() => handleNavClick(link.href)}
-              className={`text-sm font-medium transition-colors hover:text-gold ${
-                scrolled ? 'text-gray-600' : 'text-navy/80'
+              className={`text-sm font-medium transition-colors hover:text-emerald-200 ${
+                scrolled ? 'text-white/90' : 'text-white/80'
               }`}
             >
               {link.label}
@@ -166,13 +166,13 @@ function Navbar() {
         <div className="hidden md:flex items-center gap-3">
           <Button
             variant="ghost"
-            className="text-navy/80 hover:text-navy hover:bg-navy/5"
+            className="text-white/80 hover:text-white hover:bg-white/10"
             onClick={() => navigateTo('login')}
           >
             Masuk
           </Button>
           <Button
-            className="bg-gold hover:bg-gold-dark text-white font-semibold shadow-md hover:shadow-lg transition-all"
+            className="bg-white hover:bg-white/90 text-emerald-700 font-semibold shadow-md hover:shadow-lg transition-all"
             onClick={() => navigateTo('register')}
           >
             Daftar Sekolah
@@ -183,14 +183,14 @@ function Navbar() {
         <div className="md:hidden">
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-navy">
+              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
             <SheetContent side="right" className="w-72">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2 text-navy">
-                  <GraduationCap className="h-5 w-5 text-gold" />
+                <SheetTitle className="flex items-center gap-2 text-emerald-700">
+                  <GraduationCap className="h-5 w-5 text-emerald-600" />
                   PANDAI
                 </SheetTitle>
               </SheetHeader>
