@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ===== TENANT / SEKOLAH =====
+model School {
+  id          String   @id @default(cuid())
+  name        String
+  code        String   @unique
+  address     String?
+  logo        String?
+  phone       String?
+  status      String   @default("active") // active, suspended, deleted
+  plan        String   @default("free")  // free, starter, pro
+  maxStudents Int      @default(50)
+  expiresAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users          User[]
+  classes        Class[]
+  examAssignments ExamAssignment[]
+  examPackages    ExamPackage[]
+  questions       Question[]
+  subscriptions  Subscription[]
+}
+
+// ===== SUBSCRIPTION =====
+model Subscription {
+  id        String   @id @default(cuid())
+  schoolId  String
+  plan      String   @default("free")
+  status    String   @default("active")
+  startDate DateTime @default(now())
+  endDate   DateTime?
+  amount    Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id])
+}
+
+// ===== USER (4 LEVEL RBAC) =====
+model User {
+  id          String   @id @default(cuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        String   // SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA
+  avatar      String?
+  phone       String?
+  isActive    Boolean  @default(true)
+  schoolId    String?
+  classId     String?
+  lastLogin   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school          School?           @relation(fields: [schoolId], references: [id])
+  class           Class?            @relation(fields: [classId], references: [id])
+  createdQuestions Question[]        @relation("QuestionCreator")
+  studentAttempts StudentAttempt[]
+
+  @@index([schoolId])
+  @@index([role])
+}
+
+// ===== CLASS / ROMBEL =====
+model Class {
+  id           String   @id @default(cuid())
+  name         String
+  grade        Int      // 10, 11, 12
+  academicYear String   // 2024/2025
+  schoolId     String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school  School  @relation(fields: [schoolId], references: [id])
+  users   User[]
+  examAssignments ExamAssignment[]
+}
+
+// ===== SUBJECT (MATA UJI) =====
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  type      String   @default("wajib") // wajib: BIndo, BIng, Mat; pilihan: Fis, Kim, Bio, Eko, Sos, Sej, Geo
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topics    Topic[]
+  questions Question[]
+}
+
+// ===== TOPIC / SUBTOPIK =====
+model Topic {
+  id         String   @id @default(cuid())
+  name       String
+  subjectId  String
+  parentId   String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  parent    Topic?   @relation("TopicHierarchy", fields: [parentId], references: [id])
+  children  Topic[]  @relation("TopicHierarchy")
+  questions Question[]
+}
+
+// ===== QUESTION (BANK SOAL) =====
+model Question {
+  id            String   @id @default(cuid())
+  subjectId     String
+  topicId       String?
+  schoolId      String?  // null = global (NALAR), non-null = privat sekolah
+  type          String   @default("pg") // pg, pg_kompleks, isian, esai
+  content       String   // isi soal (text/markdown)
+  options       String?  // JSON: pilihan jawaban [{label, text, isCorrect}]
+  answer        String?  // jawaban benar
+  explanation   String?  // pembahasan
+  cognitiveLevel String @default("C3") // C1-C6
+  difficulty    String   @default("sedang") // mudah, sedang, sulit
+  status        String   @default("draft") // draft, published, archived
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  topic     Topic?  @relation(fields: [topicId], references: [id])
+  school    School? @relation(fields: [schoolId], references: [id])
+  creator   User    @relation("QuestionCreator", fields: [createdBy], references: [id])
+  examItems ExamItem[]
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([status])
+}
+
+// ===== EXAM PACKAGE (PAKET TRYOUT) =====
+model ExamPackage {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  schoolId    String?  // null = global
+  duration    Int      @default(120) // menit
+  totalQuestions Int   @default(0)
+  status      String   @default("draft")
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school School?  @relation(fields: [schoolId], references: [id])
+  examItems  ExamItem[]
+  examSessions ExamSession[]
+}
+
+// ===== EXAM ITEM (SOAL DALAM PAKET) =====
+model ExamItem {
+  id           String   @id @default(cuid())
+  examPackageId String
+  questionId   String
+  orderNum     Int      @default(0)
+  points       Float    @default(1)
+
+  examPackage ExamPackage @relation(fields: [examPackageId], references: [id])
+  question    Question    @relation(fields: [questionId], references: [id])
+}
+
+// ===== EXAM SESSION (JADWAL TRYOUT) =====
+model ExamSession {
+  id          String   @id @default(cuid())
+  examPackageId String
+  title       String
+  schoolId    String?
+  classId     String?
+  startDate   DateTime
+  endDate     DateTime
+  duration    Int      @default(120)
+  shuffleQuestions Boolean @default(false)
+  status      String   @default("scheduled") // scheduled, active, ended
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  examPackage  ExamPackage    @relation(fields: [examPackageId], references: [id])
+  assignments  ExamAssignment[]
+}
+
+// ===== EXAM ASSIGNMENT (KE KELAS) =====
+model ExamAssignment {
+  id           String   @id @default(cuid())
+  examSessionId String
+  schoolId     String
+  classId      String
+  createdAt    DateTime @default(now())
+
+  examSession ExamSession @relation(fields: [examSessionId], references: [id])
+  school      School     @relation(fields: [schoolId], references: [id])
+  class       Class      @relation(fields: [classId], references: [id])
+}
+
+// ===== STUDENT ATTEMPT (SISWA MENGERJAKAN) =====
+model StudentAttempt {
+  id            String   @id @default(cuid())
+  userId        String
+  examSessionId String?
+  examPackageId String
+  schoolId      String
+  classId       String?
+  score         Float    @default(0)
+  totalCorrect  Int      @default(0)
+  totalWrong    Int      @default(0)
+  totalUnanswered Int    @default(0)
+  percentage    Float    @default(0)
+  tkaPrediction Float?
+  duration      Int      @default(0) // detik yang dipakai
+  status        String   @default("in_progress") // in_progress, submitted, graded
+  startedAt     DateTime @default(now())
+  submittedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id])
+  answers    StudentAnswer[]
+
+  @@index([userId])
+  @@index([schoolId])
+}
+
+// ===== STUDENT ANSWER (JAWABAN PER SOAL) =====
+model StudentAnswer {
+  id               String   @id @default(cuid())
+  studentAttemptId String
+  questionId       String
+  answer           String?  // jawaban siswa
+  isCorrect        Boolean?
+  pointsEarned     Float    @default(0)
+  timeSpent        Int      @default(0) // detik
+  createdAt        DateTime @default(now())
+
+  studentAttempt StudentAttempt @relation(fields: [studentAttemptId], references: [id])
+}
+
+// ===== DIAGNOSTIC RESULT =====
+model DiagnosticResult {
+  id         String   @id @default(cuid())
+  userId     String
+  schoolId   String
+  subjectId  String
+  topicId    String?
+  score      Float
+  level      String   @default("lemah") // kuat, cukup, lemah
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([schoolId])
+}
