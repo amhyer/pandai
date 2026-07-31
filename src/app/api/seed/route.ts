@@ -83,7 +83,7 @@ export async function POST() {
     const pw = await hashPassword('password123');
 
     // Super Admin
-    await db.user.create({
+    const superAdmin = await db.user.create({
       data: { email: 'admin@nalar.id', password: pw, name: 'Admin NALAR', role: 'SUPER_ADMIN', isActive: true },
     });
 
@@ -141,6 +141,7 @@ export async function POST() {
 
     // ===== GLOBAL QUESTIONS (NALAR) =====
     const globalQuestions: any[] = [];
+    const systemUserId = superAdmin.id; // Use super admin as system creator
 
     // Bahasa Indonesia questions
     const qOptions1 = JSON.stringify([
@@ -150,7 +151,7 @@ export async function POST() {
       { label: 'D', text: 'Teks prosedur', isCorrect: false },
       { label: 'E', text: 'Teks deskripsi', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Teks yang bertujuan untuk menjelaskan atau memberitahukan sesuatu agar pembaca mengetahui dan memahami hal yang dibahas disebut...', options: qOptions1, answer: 'B', explanation: 'Teks eksposisi bertujuan untuk memberikan informasi atau penjelasan kepada pembaca.', cognitiveLevel: 'C2', difficulty: 'mudah', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Teks yang bertujuan untuk menjelaskan atau memberitahukan sesuatu agar pembaca mengetahui dan memahami hal yang dibahas disebut...', options: qOptions1, answer: 'B', explanation: 'Teks eksposisi bertujuan untuk memberikan informasi atau penjelasan kepada pembaca.', cognitiveLevel: 'C2', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
 
     const qOptions2 = JSON.stringify([
       { label: 'A', text: 'Amatan langsung', isCorrect: false },
@@ -159,7 +160,7 @@ export async function POST() {
       { label: 'D', text: 'Orientasi, komplikasi, resolusi', isCorrect: false },
       { label: 'E', text: 'Identifikasi, deskripsi bagian, deskripsi kesimpulan', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Struktur teks argumentasi terdiri atas...', options: qOptions2, answer: 'C', explanation: 'Struktur argumentasi: tesis (gagasan pokok), argumentasi (alasan), dan penegasan ulang (kesimpulan).', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Struktur teks argumentasi terdiri atas...', options: qOptions2, answer: 'C', explanation: 'Struktur argumentasi: tesis (gagasan pokok), argumentasi (alasan), dan penegasan ulang (kesimpulan).', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
 
     const qOptions3 = JSON.stringify([
       { label: 'A', text: 'Sinonim', isCorrect: false },
@@ -168,7 +169,7 @@ export async function POST() {
       { label: 'D', text: 'Homonim', isCorrect: false },
       { label: 'E', text: 'Hipernim', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Hubungan kata "panas" dan "dingin" merupakan...', options: qOptions3, answer: 'B', explanation: 'Antonim adalah hubungan kata yang berlawanan makna.', cognitiveLevel: 'C2', difficulty: 'mudah', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Hubungan kata "panas" dan "dingin" merupakan...', options: qOptions3, answer: 'B', explanation: 'Antonim adalah hubungan kata yang berlawanan makna.', cognitiveLevel: 'C2', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
 
     // Bahasa Inggris
     const qOptions4 = JSON.stringify([
@@ -178,7 +179,7 @@ export async function POST() {
       { label: 'D', text: 'were working', isCorrect: false },
       { label: 'E', text: 'is worked', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: bing.id, schoolId: null, type: 'pg', content: 'She ___ in this company for five years.', options: qOptions4, answer: 'A', explanation: 'Present Perfect Continuous: has/have + been + V-ing, digunakan untuk aksi yang dimulai di masa lalu dan masih berlanjut.', cognitiveLevel: 'C3', difficulty: 'sedang', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: bing.id, schoolId: null, type: 'pg', content: 'She ___ in this company for five years.', options: qOptions4, answer: 'A', explanation: 'Present Perfect Continuous: has/have + been + V-ing, digunakan untuk aksi yang dimulai di masa lalu dan masih berlanjut.', cognitiveLevel: 'C3', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
 
     const qOptions5 = JSON.stringify([
       { label: 'A', text: 'beautiful', isCorrect: false },
@@ -187,10 +188,10 @@ export async function POST() {
       { label: 'D', text: 'beautify', isCorrect: false },
       { label: 'E', text: 'beautified', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: bing.id, schoolId: null, type: 'pg', content: 'The ___ of the sunset was breathtaking. (Choose the correct noun form)', options: qOptions5, answer: 'B', explanation: '"Beauty" adalah bentuk noun dari adjective "beautiful".', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: bing.id, schoolId: null, type: 'pg', content: 'The ___ of the sunset was breathtaking. (Choose the correct noun form)', options: qOptions5, answer: 'B', explanation: '"Beauty" adalah bentuk noun dari adjective "beautiful".', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
 
     // Matematika
-    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'isian', content: 'Jika f(x) = 2x + 3, maka f(5) = ...', answer: '13', explanation: 'f(5) = 2(5) + 3 = 10 + 3 = 13', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'isian', content: 'Jika f(x) = 2x + 3, maka f(5) = ...', answer: '13', explanation: 'f(5) = 2(5) + 3 = 10 + 3 = 13', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
 
     const qOptions6 = JSON.stringify([
       { label: 'A', text: '5 dan -5', isCorrect: false },
@@ -199,7 +200,7 @@ export async function POST() {
       { label: 'D', text: '-49', isCorrect: false },
       { label: 'E', text: 'Tidak ada jawaban', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'pg', content: 'Akar-akar persamaan x² - 49 = 0 adalah...', options: qOptions6, answer: 'B', explanation: 'x² - 49 = 0 → x² = 49 → x = ±7', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'pg', content: 'Akar-akar persamaan x² - 49 = 0 adalah...', options: qOptions6, answer: 'B', explanation: 'x² - 49 = 0 → x² = 49 → x = ±7', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
 
     const qOptions7 = JSON.stringify([
       { label: 'A', text: '2x + 3y = 12', isCorrect: false },
@@ -208,10 +209,10 @@ export async function POST() {
       { label: 'D', text: 'x + 2y = 6', isCorrect: false },
       { label: 'E', text: '3x - y = 1', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'pg', content: 'Diketahui sistem persamaan linear: x + y = 3 dan 3x + 2y = 7. Nilai y yang memenuhi adalah...', options: qOptions7, answer: 'C', explanation: 'Dari x + y = 3, x = 3-y. Substitusi: 3(3-y)+2y=7 → 9-3y+2y=7 → -y=-2 → y=2, maka x=1. Jawaban: 2(1)+2=4 ✓', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'pg', content: 'Diketahui sistem persamaan linear: x + y = 3 dan 3x + 2y = 7. Nilai y yang memenuhi adalah...', options: qOptions7, answer: 'C', explanation: 'Dari x + y = 3, x = 3-y. Substitusi: 3(3-y)+2y=7 → 9-3y+2y=7 → -y=-2 → y=2, maka x=1. Jawaban: 2(1)+2=4 ✓', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
 
     // Fisika
-    globalQuestions.push({ subjectId: fis.id, schoolId: null, type: 'isian', content: 'Sebuah benda bermassa 2 kg bergerak dengan kecepatan 4 m/s. Berapa momentum benda tersebut? (dalam kg·m/s)', answer: '8', explanation: 'p = m × v = 2 kg × 4 m/s = 8 kg·m/s', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: fis.id, schoolId: null, type: 'isian', content: 'Sebuah benda bermassa 2 kg bergerak dengan kecepatan 4 m/s. Berapa momentum benda tersebut? (dalam kg·m/s)', answer: '8', explanation: 'p = m × v = 2 kg × 4 m/s = 8 kg·m/s', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
 
     const qOptions8 = JSON.stringify([
       { label: 'A', text: 'Energi kinetik berkurang', isCorrect: false },
@@ -220,7 +221,7 @@ export async function POST() {
       { label: 'D', text: 'Gaya gravitasi berkurang', isCorrect: false },
       { label: 'E', text: 'Massa berubah', isCorrect: false },
     ]);
-    globalQuestions.push({ subjectId: fis.id, schoolId: null, type: 'pg', content: 'Ketika sebuah benda dilempar vertikal ke atas, yang terjadi adalah...', options: qOptions8, answer: 'B', explanation: 'Saat benda naik, ketinggiannya bertambah sehingga energi potensial gravitasi bertambah.', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: 'system', status: 'published' });
+    globalQuestions.push({ subjectId: fis.id, schoolId: null, type: 'pg', content: 'Ketika sebuah benda dilempar vertikal ke atas, yang terjadi adalah...', options: qOptions8, answer: 'B', explanation: 'Saat benda naik, ketinggiannya bertambah sehingga energi potensial gravitasi bertambah.', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
 
     await db.question.createMany({ data: globalQuestions });
 
@@ -252,7 +253,7 @@ export async function POST() {
     const allQuestions = await db.question.findMany();
     const globalQs = allQuestions.filter(q => !q.schoolId);
     const examPkg1 = await db.examPackage.create({
-      data: { title: 'Diagnostic Test TKA - Wajib', description: 'Tes diagnostik untuk mata uji wajib TKA', schoolId: null, duration: 60, totalQuestions: globalQs.length, status: 'published', createdBy: 'system' },
+      data: { title: 'Diagnostic Test TKA - Wajib', description: 'Tes diagnostik untuk mata uji wajib TKA', schoolId: null, duration: 60, totalQuestions: globalQs.length, status: 'published', createdBy: systemUserId },
     });
     // Add items to exam package
     for (let i = 0; i < globalQs.length; i++) {

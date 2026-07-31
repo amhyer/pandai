@@ -1,24 +1,31 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useAppStore } from '@/store/use-store';
-import LandingPage from '@/components/landing/landing-page';
-import { LoginForm } from '@/components/auth/login-form';
-import { RegisterForm } from '@/components/auth/register-form';
-import AppLayout from '@/components/layout/app-layout';
-import { SuperAdminDashboard } from '@/components/dashboard/super-admin/super-admin-dashboard';
-import { AdminSekolahDashboard } from '@/components/dashboard/admin-sekolah/admin-sekolah-dashboard';
-import { GuruDashboard } from '@/components/dashboard/guru/guru-dashboard';
-import { SiswaDashboard } from '@/components/dashboard/siswa/siswa-dashboard';
-import { SchoolManager } from '@/components/dashboard/super-admin/school-manager';
-import { QuestionBank } from '@/components/question/question-bank';
-import { QuestionEditor } from '@/components/question/question-editor';
-import { ExamManager } from '@/components/exam/exam-manager';
-import { ExamRunner } from '@/components/exam/exam-runner';
-import { ResultsView } from '@/components/exam/results-view';
-import { AnalyticsView } from '@/components/analytics/analytics-view';
-import { UserManager } from '@/components/dashboard/admin-sekolah/user-manager';
-import { ClassManager } from '@/components/dashboard/admin-sekolah/class-manager';
-import { ReportsView } from '@/components/analytics/reports-view';
+
+// Lazy load all components to avoid Turbopack compilation crash
+const LandingPage = dynamic(() => import('@/components/landing/landing-page'), { ssr: false });
+const LoginForm = dynamic(() => import('@/components/auth/login-form').then(m => ({ default: m.LoginForm })), { ssr: false });
+const RegisterForm = dynamic(() => import('@/components/auth/register-form').then(m => ({ default: m.RegisterForm })), { ssr: false });
+const AppLayout = dynamic(() => import('@/components/layout/app-layout'), { ssr: false });
+
+const SuperAdminDashboard = dynamic(() => import('@/components/dashboard/super-admin/super-admin-dashboard').then(m => ({ default: m.SuperAdminDashboard })), { ssr: false });
+const AdminSekolahDashboard = dynamic(() => import('@/components/dashboard/admin-sekolah/admin-sekolah-dashboard').then(m => ({ default: m.AdminSekolahDashboard })), { ssr: false });
+const GuruDashboard = dynamic(() => import('@/components/dashboard/guru/guru-dashboard').then(m => ({ default: m.GuruDashboard })), { ssr: false });
+const SiswaDashboard = dynamic(() => import('@/components/dashboard/siswa/siswa-dashboard').then(m => ({ default: m.SiswaDashboard })), { ssr: false });
+const SchoolManager = dynamic(() => import('@/components/dashboard/super-admin/school-manager').then(m => ({ default: m.SchoolManager })), { ssr: false });
+
+const QuestionBank = dynamic(() => import('@/components/question/question-bank').then(m => ({ default: m.QuestionBank })), { ssr: false });
+const QuestionEditor = dynamic(() => import('@/components/question/question-editor').then(m => ({ default: m.QuestionEditor })), { ssr: false });
+
+const ExamManager = dynamic(() => import('@/components/exam/exam-manager').then(m => ({ default: m.ExamManager })), { ssr: false });
+const ExamRunner = dynamic(() => import('@/components/exam/exam-runner').then(m => ({ default: m.ExamRunner })), { ssr: false });
+const ResultsView = dynamic(() => import('@/components/exam/results-view').then(m => ({ default: m.ResultsView })), { ssr: false });
+
+const AnalyticsView = dynamic(() => import('@/components/analytics/analytics-view').then(m => ({ default: m.AnalyticsView })), { ssr: false });
+const UserManager = dynamic(() => import('@/components/dashboard/admin-sekolah/user-manager').then(m => ({ default: m.UserManager })), { ssr: false });
+const ClassManager = dynamic(() => import('@/components/dashboard/admin-sekolah/class-manager').then(m => ({ default: m.ClassManager })), { ssr: false });
+const ReportsView = dynamic(() => import('@/components/analytics/reports-view').then(m => ({ default: m.ReportsView })), { ssr: false });
 
 export default function Home() {
   const { currentView, user, isAuthenticated } = useAppStore();

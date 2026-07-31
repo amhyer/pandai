@@ -138,3 +138,25 @@ Stage Summary:
 - Login: demo accounts work, navigates to correct dashboard
 - Super Admin: dashboard with stats, chart, school table, quick actions
 - All APIs tested and functional
+
+---
+Task ID: 12
+Agent: Main Orchestrator
+Task: Server stability fixes and final verification
+
+Work Log:
+- Diagnosed Turbopack OOM crash: page.tsx imports 21 components simultaneously causing memory spike
+- Fixed page.tsx with `next/dynamic` lazy loading (ssr: false) for all 21 components
+- Fixed dev script: added NODE_OPTIONS='--max-old-space-size=2048' for increased heap
+- Fixed seed API FK constraint: replaced `createdBy: 'system'` with actual user IDs
+- Reset database and re-seeded successfully: 3 schools, 21 users, 13 questions, 1 exam, 8 attempts
+- Verified all API endpoints: seed, login (4 roles), schools, questions, exams
+- Server runs stably at HTTP 200 for 30+ seconds without Chrome overhead
+- Agent-browser verified landing page renders correctly with all sections
+
+Stage Summary:
+- Landing page: Title "PANDAI - Platform Persiapan TKA Multi-Sekolah", all 7 sections visible
+- All 4 demo login accounts verified: Super Admin, Admin Sekolah, Guru, Siswa
+- API endpoints: /api/seed, /api/auth/login, /api/schools, /api/questions, /api/exams all return 200
+- Database seeded with complete demo data
+- ESLint: zero errors
