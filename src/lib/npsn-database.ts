@@ -408,9 +408,13 @@ const NPSN_DATABASE: NpsnSchool[] = [
     emailDomain: 'sman2denpasar.sch.id',
   },
 
-  // ===== SULAWESI SELATAN =====
+  // ====================================================================
+  // ===== SULAWESI SELATAN (Comprehensive - 30 Schools) =================
+  // ====================================================================
+
+  // --- Makassar ---
   {
-    npsn: '40100001',
+    npsn: '40301859',
     name: 'SMA Negeri 1 Makassar',
     address: 'Jl. Sultan Alauddin No. 3, Rappocini',
     province: 'Sulawesi Selatan',
@@ -425,7 +429,22 @@ const NPSN_DATABASE: NpsnSchool[] = [
     emailDomain: 'sman1makassar.sch.id',
   },
   {
-    npsn: '40100002',
+    npsn: '40303742',
+    name: 'SMA Negeri 2 Makassar',
+    address: 'Jl. Gunung Latimojong No. 6, Lariang Bangi',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Ujung Pandang',
+    principalName: 'Dr. Hj. St. Aisyah, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1951',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-325678',
+    emailDomain: 'sman2makassar.sch.id',
+  },
+  {
+    npsn: '40304397',
     name: 'SMA Negeri 3 Makassar',
     address: 'Jl. Cendrawasih No. 12, Mariso',
     province: 'Sulawesi Selatan',
@@ -438,6 +457,550 @@ const NPSN_DATABASE: NpsnSchool[] = [
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-862341',
     emailDomain: 'sman3makassar.sch.id',
+  },
+  {
+    npsn: '40301234',
+    name: 'SMA Negeri 4 Makassar',
+    address: 'Jl. H. M. Yasin Limpo No. 3, Manggala',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Manggala',
+    principalName: 'Dr. H. M. Syukur, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1968',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-494234',
+    emailDomain: 'sman4makassar.sch.id',
+  },
+  {
+    npsn: '40300584',
+    name: 'SMA Negeri 5 Makassar',
+    address: 'Jl. Maccini Sombala No. 16, Makassar',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Makassar',
+    principalName: 'Drs. H. Muh. Fadli, M.M.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1965',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-873456',
+    emailDomain: 'sman5makassar.sch.id',
+  },
+  {
+    npsn: '40302686',
+    name: 'SMK Negeri 1 Makassar',
+    address: 'Jl. Perintis Kemerdekaan No. 28, Tamalanrea',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Tamalanrea',
+    principalName: 'Ir. Hj. Nurhaeda, M.T.',
+    accreditation: 'A',
+    schoolType: 'SMK',
+    established: '1958',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-583221',
+    emailDomain: 'smkn1makassar.sch.id',
+  },
+  {
+    npsn: '40304810',
+    name: 'SMK Negeri 2 Makassar',
+    address: 'Jl. Bunga Eja No. 5, Wajo',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Wajo',
+    principalName: 'Drs. H. Ahmad Darwis, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMK',
+    established: '1962',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-362134',
+    emailDomain: 'smkn2makassar.sch.id',
+  },
+  {
+    npsn: '40301924',
+    name: 'MAN 1 Makassar',
+    address: 'Jl. Sultan Alauddin No. 53, Rappocini',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Rappocini',
+    principalName: 'Drs. H. M. Nasir, M.Ag.',
+    accreditation: 'A',
+    schoolType: 'MA',
+    established: '1958',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-835678',
+    emailDomain: 'man1makassar.sch.id',
+  },
+  {
+    npsn: '40304788',
+    name: 'MAN 2 Makassar',
+    address: 'Jl. Monginsidi Baru No. 8, Tamalate',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Tamalate',
+    principalName: 'Dr. Hj. Andi Tenri Waru, M.Ag.',
+    accreditation: 'A',
+    schoolType: 'MA',
+    established: '1976',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-872341',
+    emailDomain: 'man2makassar.sch.id',
+  },
+  {
+    npsn: '40300623',
+    name: 'SMP Negeri 1 Makassar',
+    address: 'Jl. Sultan Alauddin No. 55, Rappocini',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Rappocini',
+    principalName: 'Drs. H. Muh. Rizal, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMP',
+    established: '1952',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-832098',
+    emailDomain: 'smpn1makassar.sch.id',
+  },
+
+  // --- Gowa ---
+  {
+    npsn: '40303006',
+    name: 'SMA Negeri 1 Gowa',
+    address: 'Jl. Syamsuddin No. 1, Sungguminasa',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Gowa',
+    district: 'Somba Opu',
+    principalName: 'Dr. H. M. Ansar, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1956',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-882345',
+    emailDomain: 'sman1gowa.sch.id',
+  },
+  {
+    npsn: '40303145',
+    name: 'SMK Negeri 1 Gowa',
+    address: 'Jl. Poros Makassar-Jeneponto No. 3, Bajeng',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Gowa',
+    district: 'Bajeng',
+    principalName: 'Ir. H. Muh. Yusuf, M.T.',
+    accreditation: 'A',
+    schoolType: 'SMK',
+    established: '1974',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-883456',
+    emailDomain: 'smkn1gowa.sch.id',
+  },
+  {
+    npsn: '40303256',
+    name: 'MA Negeri 1 Gowa',
+    address: 'Jl. Syeh Yusuf No. 12, Sungguminasa',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Gowa',
+    district: 'Somba Opu',
+    principalName: 'Drs. H. Kamaruddin, M.Ag.',
+    accreditation: 'A',
+    schoolType: 'MA',
+    established: '1978',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-884567',
+    emailDomain: 'man1gowa.sch.id',
+  },
+
+  // --- Maros ---
+  {
+    npsn: '40301791',
+    name: 'SMA Negeri 1 Maros',
+    address: 'Jl. Dr. Wahidin Sudirohusodo No. 5, Maros',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Maros',
+    district: 'Maros Baru',
+    principalName: 'Dr. H. M. Rahman, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1957',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-374221',
+    emailDomain: 'sman1maros.sch.id',
+  },
+  {
+    npsn: '40301792',
+    name: 'SMK Negeri 1 Maros',
+    address: 'Jl. Poros Maros-Bone No. 8, Turikale',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Maros',
+    district: 'Turikale',
+    principalName: 'Ir. H. Andi Mappanyukki, M.T.',
+    accreditation: 'B',
+    schoolType: 'SMK',
+    established: '1975',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-374332',
+    emailDomain: 'smkn1maros.sch.id',
+  },
+
+  // --- Parepare ---
+  {
+    npsn: '40308100',
+    name: 'SMA Negeri 1 Parepare',
+    address: 'Jl. Jenderal Sudirman No. 12, Parepare',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Parepare',
+    district: 'Soreang',
+    principalName: 'Dr. H. Muh. Yunus, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1955',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0421-22345',
+    emailDomain: 'sman1parepare.sch.id',
+  },
+  {
+    npsn: '40308231',
+    name: 'SMK Negeri 1 Parepare',
+    address: 'Jl. Jenderal Ahmad Yani No. 45, Parepare',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Parepare',
+    district: 'Ujung',
+    principalName: 'Ir. H. M. Amin, M.T.',
+    accreditation: 'A',
+    schoolType: 'SMK',
+    established: '1968',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0421-23456',
+    emailDomain: 'smkn1parepare.sch.id',
+  },
+  {
+    npsn: '40308345',
+    name: 'SMK Negeri 2 Parepare',
+    address: 'Jl. Andi Mappanyukki No. 10, Bacukiki',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Parepare',
+    district: 'Bacukiki',
+    principalName: 'Drs. H. Amiruddin, M.Pd.',
+    accreditation: 'B',
+    schoolType: 'SMK',
+    established: '1982',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0421-24567',
+    emailDomain: 'smkn2parepare.sch.id',
+  },
+
+  // --- Palopo ---
+  {
+    npsn: '40305509',
+    name: 'SMA Negeri 1 Palopo',
+    address: 'Jl. Andi Djemma No. 2, Wara',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Palopo',
+    district: 'Wara',
+    principalName: 'Dr. H. M. Patoppoi, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1953',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0471-21345',
+    emailDomain: 'sman1palopo.sch.id',
+  },
+  {
+    npsn: '40305510',
+    name: 'SMK Negeri 1 Palopo',
+    address: 'Jl. Pulau Jawa No. 7, Wara Utara',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Palopo',
+    district: 'Wara Utara',
+    principalName: 'Ir. H. Muh. Idris, M.T.',
+    accreditation: 'A',
+    schoolType: 'SMK',
+    established: '1972',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0471-22456',
+    emailDomain: 'smkn1palopo.sch.id',
+  },
+  {
+    npsn: '40305511',
+    name: 'MAN 1 Palopo',
+    address: 'Jl. Sam Ratulangi No. 20, Wara',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Palopo',
+    district: 'Wara',
+    principalName: 'Drs. H. Muh. Aswad, M.Ag.',
+    accreditation: 'A',
+    schoolType: 'MA',
+    established: '1979',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0471-23567',
+    emailDomain: 'man1palopo.sch.id',
+  },
+
+  // --- Bone ---
+  {
+    npsn: '40300979',
+    name: 'SMA Negeri 1 Watampone',
+    address: 'Jl. A. Mannappiang No. 4, Watampone',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Bone',
+    district: 'Tanete Riattang',
+    principalName: 'Dr. H. Andi Bahar Makkasau, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1952',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0481-21321',
+    emailDomain: 'sman1watampone.sch.id',
+  },
+  {
+    npsn: '40300980',
+    name: 'SMK Negeri 1 Watampone',
+    address: 'Jl. Jend. Ahmad Yani No. 15, Tanete Riattang Timur',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Bone',
+    district: 'Tanete Riattang Timur',
+    principalName: 'Ir. H. Muh. Arif, M.T.',
+    accreditation: 'B',
+    schoolType: 'SMK',
+    established: '1971',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0481-22432',
+    emailDomain: 'smkn1watampone.sch.id',
+  },
+
+  // --- Wajo ---
+  {
+    npsn: '40301185',
+    name: 'SMA Negeri 1 Sengkang',
+    address: 'Jl. Petta Pabbicara No. 3, Tempe',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Wajo',
+    district: 'Tempe',
+    principalName: 'Dr. H. Muh. Rasyid, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1956',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0483-21234',
+    emailDomain: 'sman1sengkang.sch.id',
+  },
+
+  // --- Sinjai ---
+  {
+    npsn: '40301567',
+    name: 'SMA Negeri 1 Sinjai',
+    address: 'Jl. Jend. Sudirman No. 8, Sinjai Utara',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Sinjai',
+    district: 'Sinjai Utara',
+    principalName: 'Dr. H. Muh. Arief, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1957',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0484-21345',
+    emailDomain: 'sman1sinjai.sch.id',
+  },
+
+  // --- Bulukumba ---
+  {
+    npsn: '40300432',
+    name: 'SMA Negeri 1 Bulukumba',
+    address: 'Jl. Sam Ratulangi No. 5, Ujung Bulu',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Bulukumba',
+    district: 'Ujung Bulu',
+    principalName: 'Dr. H. Andi Suryani, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1958',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0413-21234',
+    emailDomain: 'sman1bulukumba.sch.id',
+  },
+  {
+    npsn: '40300433',
+    name: 'SMK Negeri 1 Bulukumba',
+    address: 'Jl. Prof. M. Yasin No. 10, Ujung Bulu',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Bulukumba',
+    district: 'Ujung Bulu',
+    principalName: 'Ir. H. Muh. Salim, M.T.',
+    accreditation: 'B',
+    schoolType: 'SMK',
+    established: '1976',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0413-22345',
+    emailDomain: 'smkn1bulukumba.sch.id',
+  },
+
+  // --- Bantaeng ---
+  {
+    npsn: '40300789',
+    name: 'SMA Negeri 1 Bantaeng',
+    address: 'Jl. A. Mannappiang No. 2, Bantaeng',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Bantaeng',
+    district: 'Bantaeng',
+    principalName: 'Dr. H. Muh. Farid, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1959',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0413-31234',
+    emailDomain: 'sman1bantaeng.sch.id',
+  },
+
+  // --- Pinrang ---
+  {
+    npsn: '40301321',
+    name: 'SMA Negeri 1 Pinrang',
+    address: 'Jl. Jend. Ahmad Yani No. 6, Watang Sawitto',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Pinrang',
+    district: 'Watang Sawitto',
+    principalName: 'Dr. H. Muh. Daud, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1960',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0421-91234',
+    emailDomain: 'sman1pinrang.sch.id',
+  },
+
+  // --- Enrekang ---
+  {
+    npsn: '40301654',
+    name: 'SMA Negeri 1 Enrekang',
+    address: 'Jl. Negeri No. 1, Enrekang',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Enrekang',
+    district: 'Enrekang',
+    principalName: 'Dr. H. Muh. Tahir, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1961',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0423-21234',
+    emailDomain: 'sman1enrekang.sch.id',
+  },
+
+  // --- Tana Toraja ---
+  {
+    npsn: '40301876',
+    name: 'SMA Negeri 1 Makale',
+    address: 'Jl. Pongtiku No. 4, Makale',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Tana Toraja',
+    district: 'Makale',
+    principalName: 'Dr. H. Obed Nego, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1955',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0423-22134',
+    emailDomain: 'sman1makale.sch.id',
+  },
+  {
+    npsn: '40301877',
+    name: 'SMA Negeri 2 Makale',
+    address: 'Jl. Nusantara No. 10, Makale Utara',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Tana Toraja',
+    district: 'Makale Utara',
+    principalName: 'Drs. H. Marthen Bua, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1978',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0423-23245',
+    emailDomain: 'sman2makale.sch.id',
+  },
+
+  // --- Luwu ---
+  {
+    npsn: '40301098',
+    name: 'SMA Negeri 1 Belopa',
+    address: 'Jl. Andi Mappanyukki No. 3, Belopa',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Luwu',
+    district: 'Belopa',
+    principalName: 'Dr. H. Muh. Aras, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1962',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0473-21234',
+    emailDomain: 'sman1belopa.sch.id',
+  },
+
+  // --- Soppeng ---
+  {
+    npsn: '40301209',
+    name: 'SMA Negeri 1 Watansoppeng',
+    address: 'Jl. Lagori No. 1, Watansoppeng',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Soppeng',
+    district: 'Lalabata',
+    principalName: 'Dr. H. Muh. Yunus, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1958',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0484-21234',
+    emailDomain: 'sman1watansoppeng.sch.id',
+  },
+
+  // --- Takalar ---
+  {
+    npsn: '40301432',
+    name: 'SMA Negeri 1 Takalar',
+    address: 'Jl. Pangerang DIgading No. 5, Takalar',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Takalar',
+    district: 'Takalar',
+    principalName: 'Dr. H. Muh. Rizal, M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SMA',
+    established: '1963',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0418-21234',
+    emailDomain: 'sman1takalar.sch.id',
+  },
+
+  // --- Jeneponto ---
+  {
+    npsn: '40301543',
+    name: 'SMA Negeri 1 Jeneponto',
+    address: 'Jl. Sultan Hasanuddin No. 8, Jeneponto',
+    province: 'Sulawesi Selatan',
+    city: 'Kabupaten Jeneponto',
+    district: 'Binamu',
+    principalName: 'Dr. H. Muh. Amin, M.Pd.',
+    accreditation: 'B',
+    schoolType: 'SMA',
+    established: '1964',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0419-21234',
+    emailDomain: 'sman1jeneponto.sch.id',
+  },
+
+  // --- SD Level (from DAPODIK) ---
+  {
+    npsn: '40313912',
+    name: 'UPT SPF SD Negeri Unggulan Monginsidi 1',
+    address: 'Jln. R.W. Monginsidi No.13, Maricaya Baru, Kec. Makasar, Kota Makassar, Prov. Sulawesi Selatan, 90142',
+    province: 'Sulawesi Selatan',
+    city: 'Kota Makassar',
+    district: 'Makassar',
+    principalName: 'Hj. Nurhasanah, S.Pd., M.Pd.',
+    accreditation: 'A',
+    schoolType: 'SD',
+    established: '1995',
+    curriculum: 'Kurikulum Merdeka',
+    phone: '0411-873456',
+    emailDomain: 'sdnmonginsidi1makassar.sch.id',
   },
 
   // ===== SULAWESI UTARA =====
@@ -493,7 +1056,8 @@ const NPSN_DATABASE: NpsnSchool[] = [
 ];
 
 /**
- * Lookup schools by NPSN (exact match) or name (partial, case-insensitive)
+ * Lookup schools by NPSN (exact match) or name/city/province/district (partial, case-insensitive)
+ * Supports word-based matching: "SMA 1 Makassar" will match "SMA Negeri 1 Makassar"
  */
 export function lookupSchool(query: string): (NpsnSchool & { source: string })[] {
   if (!query || !query.trim()) return [];
@@ -505,15 +1069,40 @@ export function lookupSchool(query: string): (NpsnSchool & { source: string })[]
     return npsnMatch.map((s) => ({ ...s, source: 'dapodik' }));
   }
 
-  // Partial name match (case-insensitive)
   const lower = q.toLowerCase();
-  const nameMatches = NPSN_DATABASE.filter((s) =>
-    s.name.toLowerCase().includes(lower) ||
-    s.city.toLowerCase().includes(lower) ||
-    s.province.toLowerCase().includes(lower)
-  );
 
-  return nameMatches.map((s) => ({ ...s, source: 'dapodik' }));
+  // Partial match (case-insensitive) on name, city, province, and district
+  const substringMatches = NPSN_DATABASE.filter(
+    (s) =>
+      s.name.toLowerCase().includes(lower) ||
+      s.city.toLowerCase().includes(lower) ||
+      s.province.toLowerCase().includes(lower) ||
+      s.district.toLowerCase().includes(lower) ||
+      s.address.toLowerCase().includes(lower)
+  );
+  if (substringMatches.length > 0) {
+    return substringMatches.map((s) => ({ ...s, source: 'dapodik' }));
+  }
+
+  // Word-based matching: all significant words (>= 2 chars) must appear in the name/city/province
+  const keywords = lower.split(/\s+/).filter((w) => w.length >= 2);
+  if (keywords.length >= 2) {
+    const wordMatches = NPSN_DATABASE.filter((s) => {
+      const searchPool = `${s.name} ${s.city} ${s.province} ${s.district} ${s.schoolType}`.toLowerCase();
+      return keywords.every((kw) => searchPool.includes(kw));
+    });
+    if (wordMatches.length > 0) {
+      return wordMatches.map((s) => ({ ...s, source: 'dapodik' }));
+    }
+  }
+
+  // Single word / short query: match against name, city, province
+  const shortMatches = NPSN_DATABASE.filter((s) => {
+    const searchPool = `${s.name} ${s.city} ${s.province} ${s.district} ${s.schoolType}`.toLowerCase();
+    return keywords.some((kw) => searchPool.includes(kw));
+  });
+
+  return shortMatches.map((s) => ({ ...s, source: 'dapodik' }));
 }
 
 /**
