@@ -47,6 +47,7 @@ async function fetchFromDapodik(npsn: string): Promise<(NpsnSchool & { source: s
       established: String(data.tahun_berdiri ?? data.tahunBerdiri ?? data.established ?? ''),
       curriculum: String(data.kurikulum ?? data.curriculum ?? ''),
       phone: String(data.telepon ?? data.no_telp ?? data.phone ?? ''),
+      email: String(data.email ?? data.email_sekolah ?? data.emailSekolah ?? ''),
       emailDomain: String(data.email ?? data.emailDomain ?? ''),
       source: 'dapodik-live',
     };

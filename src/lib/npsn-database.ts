@@ -11,6 +11,7 @@ export interface NpsnSchool {
   established: string;
   curriculum: string;
   phone: string;
+  email: string;
   emailDomain: string;
 }
 
@@ -29,6 +30,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1952',
     curriculum: 'Kurikulum Merdeka',
     phone: '021-3457789',
+    email: "",
     emailDomain: 'sman1jakarta.sch.id',
   },
   {
@@ -44,6 +46,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1954',
     curriculum: 'Kurikulum Merdeka',
     phone: '021-4224455',
+    email: "",
     emailDomain: 'sman3jakarta.sch.id',
   },
   {
@@ -59,6 +62,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1958',
     curriculum: 'Kurikulum Merdeka',
     phone: '021-8087788',
+    email: "",
     emailDomain: 'smkn1jakarta.sch.id',
   },
   {
@@ -74,6 +78,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1960',
     curriculum: 'Kurikulum Merdeka',
     phone: '021-85904433',
+    email: "",
     emailDomain: 'smkn2jakarta.sch.id',
   },
   {
@@ -89,6 +94,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1978',
     curriculum: 'Kurikulum Merdeka',
     phone: '021-7245723',
+    email: "",
     emailDomain: 'smaitalazhar1jakarta.sch.id',
   },
   {
@@ -104,6 +110,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1968',
     curriculum: 'Kurikulum Merdeka',
     phone: '021-47861103',
+    email: "",
     emailDomain: 'labschooljakarta.sch.id',
   },
   {
@@ -119,6 +126,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '2005',
     curriculum: 'Kurikulum Merdeka',
     phone: '021-8754321',
+    email: "",
     emailDomain: 'smacendekiaharapan.sch.id',
   },
 
@@ -136,6 +144,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1951',
     curriculum: 'Kurikulum Merdeka',
     phone: '022-4233132',
+    email: "",
     emailDomain: 'sman1bandung.sch.id',
   },
   {
@@ -151,6 +160,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1953',
     curriculum: 'Kurikulum Merdeka',
     phone: '022-4233564',
+    email: "",
     emailDomain: 'sman3bandung.sch.id',
   },
   {
@@ -166,6 +176,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1965',
     curriculum: 'Kurikulum Merdeka',
     phone: '022-4221625',
+    email: "",
     emailDomain: 'smkn2bandung.sch.id',
   },
   {
@@ -181,6 +192,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1990',
     curriculum: 'Kurikulum Merdeka',
     phone: '022-7801324',
+    email: "",
     emailDomain: 'smatarunanusantarabdg.sch.id',
   },
 
@@ -198,6 +210,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1950',
     curriculum: 'Kurikulum Merdeka',
     phone: '031-5342952',
+    email: "",
     emailDomain: 'sman1surabaya.sch.id',
   },
   {
@@ -213,6 +226,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1952',
     curriculum: 'Kurikulum Merdeka',
     phone: '031-5627441',
+    email: "",
     emailDomain: 'sman5surabaya.sch.id',
   },
   {
@@ -228,6 +242,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1956',
     curriculum: 'Kurikulum Merdeka',
     phone: '031-7823445',
+    email: "",
     emailDomain: 'smkn1surabaya.sch.id',
   },
 
@@ -245,6 +260,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1950',
     curriculum: 'Kurikulum Merdeka',
     phone: '061-8451432',
+    email: "",
     emailDomain: 'sman1medan.sch.id',
   },
   {
@@ -260,6 +276,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1954',
     curriculum: 'Kurikulum Merdeka',
     phone: '061-4525443',
+    email: "",
     emailDomain: 'sman3medan.sch.id',
   },
 
@@ -277,6 +294,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1951',
     curriculum: 'Kurikulum Merdeka',
     phone: '0711-355432',
+    email: "",
     emailDomain: 'sman1palembang.sch.id',
   },
 
@@ -294,6 +312,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1951',
     curriculum: 'Kurikulum Merdeka',
     phone: '0751-32544',
+    email: "",
     emailDomain: 'sman1padang.sch.id',
   },
 
@@ -311,6 +330,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1951',
     curriculum: 'Kurikulum Merdeka',
     phone: '024-3541637',
+    email: "",
     emailDomain: 'sman1semarang.sch.id',
   },
   {
@@ -326,6 +346,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1953',
     curriculum: 'Kurikulum Merdeka',
     phone: '024-3552348',
+    email: "",
     emailDomain: 'sman3semarang.sch.id',
   },
 
@@ -343,6 +364,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1950',
     curriculum: 'Kurikulum Merdeka',
     phone: '0274-513632',
+    email: "",
     emailDomain: 'sman1yogyakarta.sch.id',
   },
   {
@@ -358,6 +380,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1953',
     curriculum: 'Kurikulum Merdeka',
     phone: '0274-563421',
+    email: "",
     emailDomain: 'sman3yogyakarta.sch.id',
   },
   {
@@ -373,6 +396,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1955',
     curriculum: 'Kurikulum Merdeka',
     phone: '0274-367156',
+    email: "",
     emailDomain: 'sman1bantul.sch.id',
   },
 
@@ -390,6 +414,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1952',
     curriculum: 'Kurikulum Merdeka',
     phone: '0361-243531',
+    email: "",
     emailDomain: 'sman1denpasar.sch.id',
   },
   {
@@ -405,6 +430,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1954',
     curriculum: 'Kurikulum Merdeka',
     phone: '0361-244781',
+    email: "",
     emailDomain: 'sman2denpasar.sch.id',
   },
 
@@ -426,6 +452,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1950',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-831453',
+    email: "",
     emailDomain: 'sman1makassar.sch.id',
   },
   {
@@ -441,6 +468,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1951',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-325678',
+    email: "",
     emailDomain: 'sman2makassar.sch.id',
   },
   {
@@ -456,6 +484,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1954',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-862341',
+    email: "",
     emailDomain: 'sman3makassar.sch.id',
   },
   {
@@ -471,6 +500,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1968',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-494234',
+    email: "",
     emailDomain: 'sman4makassar.sch.id',
   },
   {
@@ -486,6 +516,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1965',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-873456',
+    email: "",
     emailDomain: 'sman5makassar.sch.id',
   },
   {
@@ -501,6 +532,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1958',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-583221',
+    email: "",
     emailDomain: 'smkn1makassar.sch.id',
   },
   {
@@ -516,6 +548,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1962',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-362134',
+    email: "",
     emailDomain: 'smkn2makassar.sch.id',
   },
   {
@@ -531,6 +564,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1958',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-835678',
+    email: "",
     emailDomain: 'man1makassar.sch.id',
   },
   {
@@ -546,6 +580,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1976',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-872341',
+    email: "",
     emailDomain: 'man2makassar.sch.id',
   },
   {
@@ -561,6 +596,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1952',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-832098',
+    email: "",
     emailDomain: 'smpn1makassar.sch.id',
   },
 
@@ -578,6 +614,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1956',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-882345',
+    email: "",
     emailDomain: 'sman1gowa.sch.id',
   },
   {
@@ -593,6 +630,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1974',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-883456',
+    email: "",
     emailDomain: 'smkn1gowa.sch.id',
   },
   {
@@ -608,6 +646,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1978',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-884567',
+    email: "",
     emailDomain: 'man1gowa.sch.id',
   },
 
@@ -625,6 +664,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1957',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-374221',
+    email: "",
     emailDomain: 'sman1maros.sch.id',
   },
   {
@@ -640,6 +680,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1975',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-374332',
+    email: "",
     emailDomain: 'smkn1maros.sch.id',
   },
 
@@ -657,6 +698,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1955',
     curriculum: 'Kurikulum Merdeka',
     phone: '0421-22345',
+    email: "",
     emailDomain: 'sman1parepare.sch.id',
   },
   {
@@ -672,6 +714,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1968',
     curriculum: 'Kurikulum Merdeka',
     phone: '0421-23456',
+    email: "",
     emailDomain: 'smkn1parepare.sch.id',
   },
   {
@@ -687,6 +730,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1982',
     curriculum: 'Kurikulum Merdeka',
     phone: '0421-24567',
+    email: "",
     emailDomain: 'smkn2parepare.sch.id',
   },
 
@@ -704,6 +748,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1953',
     curriculum: 'Kurikulum Merdeka',
     phone: '0471-21345',
+    email: "",
     emailDomain: 'sman1palopo.sch.id',
   },
   {
@@ -719,6 +764,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1972',
     curriculum: 'Kurikulum Merdeka',
     phone: '0471-22456',
+    email: "",
     emailDomain: 'smkn1palopo.sch.id',
   },
   {
@@ -734,6 +780,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1979',
     curriculum: 'Kurikulum Merdeka',
     phone: '0471-23567',
+    email: "",
     emailDomain: 'man1palopo.sch.id',
   },
 
@@ -751,6 +798,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1952',
     curriculum: 'Kurikulum Merdeka',
     phone: '0481-21321',
+    email: "",
     emailDomain: 'sman1watampone.sch.id',
   },
   {
@@ -766,6 +814,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1971',
     curriculum: 'Kurikulum Merdeka',
     phone: '0481-22432',
+    email: "",
     emailDomain: 'smkn1watampone.sch.id',
   },
 
@@ -783,6 +832,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1956',
     curriculum: 'Kurikulum Merdeka',
     phone: '0483-21234',
+    email: "",
     emailDomain: 'sman1sengkang.sch.id',
   },
 
@@ -800,6 +850,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1957',
     curriculum: 'Kurikulum Merdeka',
     phone: '0484-21345',
+    email: "",
     emailDomain: 'sman1sinjai.sch.id',
   },
 
@@ -817,6 +868,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1958',
     curriculum: 'Kurikulum Merdeka',
     phone: '0413-21234',
+    email: "",
     emailDomain: 'sman1bulukumba.sch.id',
   },
   {
@@ -832,6 +884,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1976',
     curriculum: 'Kurikulum Merdeka',
     phone: '0413-22345',
+    email: "",
     emailDomain: 'smkn1bulukumba.sch.id',
   },
 
@@ -849,6 +902,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1959',
     curriculum: 'Kurikulum Merdeka',
     phone: '0413-31234',
+    email: "",
     emailDomain: 'sman1bantaeng.sch.id',
   },
 
@@ -866,6 +920,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1960',
     curriculum: 'Kurikulum Merdeka',
     phone: '0421-91234',
+    email: "",
     emailDomain: 'sman1pinrang.sch.id',
   },
 
@@ -883,6 +938,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1961',
     curriculum: 'Kurikulum Merdeka',
     phone: '0423-21234',
+    email: "",
     emailDomain: 'sman1enrekang.sch.id',
   },
 
@@ -900,6 +956,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1955',
     curriculum: 'Kurikulum Merdeka',
     phone: '0423-22134',
+    email: "",
     emailDomain: 'sman1makale.sch.id',
   },
   {
@@ -915,6 +972,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1978',
     curriculum: 'Kurikulum Merdeka',
     phone: '0423-23245',
+    email: "",
     emailDomain: 'sman2makale.sch.id',
   },
 
@@ -932,6 +990,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1962',
     curriculum: 'Kurikulum Merdeka',
     phone: '0473-21234',
+    email: "",
     emailDomain: 'sman1belopa.sch.id',
   },
 
@@ -949,6 +1008,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1958',
     curriculum: 'Kurikulum Merdeka',
     phone: '0484-21234',
+    email: "",
     emailDomain: 'sman1watansoppeng.sch.id',
   },
 
@@ -966,6 +1026,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1963',
     curriculum: 'Kurikulum Merdeka',
     phone: '0418-21234',
+    email: "",
     emailDomain: 'sman1takalar.sch.id',
   },
 
@@ -983,6 +1044,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1964',
     curriculum: 'Kurikulum Merdeka',
     phone: '0419-21234',
+    email: "",
     emailDomain: 'sman1jeneponto.sch.id',
   },
 
@@ -1000,6 +1062,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1995',
     curriculum: 'Kurikulum Merdeka',
     phone: '0411-873456',
+    email: "",
     emailDomain: 'sdnmonginsidi1makassar.sch.id',
   },
 
@@ -1017,6 +1080,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1951',
     curriculum: 'Kurikulum Merdeka',
     phone: '0431-862543',
+    email: "",
     emailDomain: 'sman1manado.sch.id',
   },
 
@@ -1034,6 +1098,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1952',
     curriculum: 'Kurikulum Merdeka',
     phone: '0561-736532',
+    email: "",
     emailDomain: 'sman1pontianak.sch.id',
   },
 
@@ -1051,6 +1116,7 @@ const NPSN_DATABASE: NpsnSchool[] = [
     established: '1951',
     curriculum: 'Kurikulum Merdeka',
     phone: '0511-325741',
+    email: "",
     emailDomain: 'sman1banjarmasin.sch.id',
   },
 ];

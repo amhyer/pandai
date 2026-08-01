@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppStore } from '@/store/use-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Mail, Lock, User, School, Eye, EyeOff, GraduationCap,
-  Search, ShieldCheck, MapPin, Award, Calendar, BookOpen, Building2, Phone, Loader2
+  Search, ShieldCheck, MapPin, Award, Calendar, BookOpen, Building2, Phone, Loader2, Sparkles
 } from 'lucide-react';
 
 type RegisterRole = 'SISWA' | 'GURU' | 'ADMIN_SCHOOL';
@@ -29,6 +29,7 @@ interface DapodikSchool {
   established: string;
   curriculum: string;
   phone: string;
+  email: string;
   emailDomain: string;
   source: string;
 }
@@ -51,7 +52,40 @@ export function RegisterForm() {
   const [dapodikSchool, setDapodikSchool] = useState<DapodikSchool | null>(null);
   const [dapodikVerified, setDapodikVerified] = useState(false);
 
+  // Track whether fields were auto-filled from Dapodik
+  const [nameAutoFilled, setNameAutoFilled] = useState(false);
+  const [emailAutoFilled, setEmailAutoFilled] = useState(false);
+
   const isSchoolAdmin = role === 'ADMIN_SCHOOL';
+
+  // Auto-fill nama kepala sekolah & email sekolah when Dapodik data is verified
+  useEffect(() => {
+    if (dapodikVerified && dapodikSchool) {
+      // Auto-fill Nama Lengkap with principal name
+      if (dapodikSchool.principalName) {
+        setName(dapodikSchool.principalName);
+        setNameAutoFilled(true);
+      }
+      // Auto-fill Email: prefer direct email, otherwise construct from emailDomain
+      const schoolEmail = dapodikSchool.email || '';
+      if (schoolEmail) {
+        setEmail(schoolEmail);
+        setEmailAutoFilled(true);
+      } else if (dapodikSchool.emailDomain) {
+        // Construct email from email domain (e.g., info@sman1makassar.sch.id)
+        const constructedEmail = `info@${dapodikSchool.emailDomain}`;
+        setEmail(constructedEmail);
+        setEmailAutoFilled(true);
+      } else {
+        setEmail('');
+        setEmailAutoFilled(false);
+      }
+    } else {
+      // Reset auto-fill flags when verification is cleared
+      setNameAutoFilled(false);
+      setEmailAutoFilled(false);
+    }
+  }, [dapodikVerified, dapodikSchool]);
 
   const validateForm = (): boolean => {
     if (!name.trim()) {
@@ -111,7 +145,12 @@ export function RegisterForm() {
       const school = data[0];
       setDapodikSchool(school);
       setDapodikVerified(true);
-      toast.success('Data sekolah ditemukan dari Dapodik');
+
+      if (school.source === 'dapodik-live') {
+        toast.success(`Data sekolah "${school.name}" ditemukan dari Dapodik`);
+      } else {
+        toast.success(`Data sekolah "${school.name}" ditemukan`);
+      }
     } catch {
       toast.error('Gagal mencari data sekolah. Coba lagi.');
     } finally {
@@ -145,6 +184,8 @@ export function RegisterForm() {
               accreditation: dapodikSchool.accreditation,
               schoolType: dapodikSchool.schoolType,
               phone: dapodikSchool.phone,
+              email: dapodikSchool.email || dapodikSchool.emailDomain || '',
+              curriculum: dapodikSchool.curriculum,
             },
           }),
         });
@@ -196,6 +237,8 @@ export function RegisterForm() {
     if (val === 'ADMIN_SCHOOL') {
       setDapodikSchool(null);
       setDapodikVerified(false);
+      setName('');
+      setEmail('');
     }
   };
 
@@ -236,8 +279,7 @@ export function RegisterForm() {
                     role === 'SISWA'
                       ? 'border-amber-500 bg-amber-50 text-amber-700'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`
-                }
+                  }`}
                 >
                   <RadioGroupItem value="SISWA" id="role-siswa" className="sr-only" />
                   <GraduationCap className="h-4 w-4 shrink-0" />
@@ -249,8 +291,7 @@ export function RegisterForm() {
                     role === 'GURU'
                       ? 'border-amber-500 bg-amber-50 text-amber-700'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`
-                }
+                  }`}
                 >
                   <RadioGroupItem value="GURU" id="role-guru" className="sr-only" />
                   <BookOpen className="h-4 w-4 shrink-0" />
@@ -262,8 +303,7 @@ export function RegisterForm() {
                     role === 'ADMIN_SCHOOL'
                       ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
-                  }`
-                }
+                  }`}
                 >
                   <RadioGroupItem value="ADMIN_SCHOOL" id="role-admin" className="sr-only" />
                   <Building2 className="h-4 w-4 shrink-0" />
@@ -289,7 +329,7 @@ export function RegisterForm() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                     <Input
                       type="text"
-                      placeholder="Masukkan NPSN atau nama sekolah"
+                      placeholder="Masukkan NPSN (8 digit)"
                       value={npsnInput}
                       onChange={(e) => {
                         setNpsnInput(e.target.value);
@@ -351,30 +391,44 @@ export function RegisterForm() {
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 pl-6">
+                      <div className="flex flex-wrap items-center gap-3 pl-6">
                         <Badge variant="outline" className="border-emerald-300 text-emerald-700 text-xs font-medium">
                           {dapodikSchool.schoolType}
                         </Badge>
                         <div className="flex items-center gap-1 text-xs text-slate-600">
                           <Award className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>Akreditasi <strong>{dapodikSchool.accreditation}</strong></span>
+                          <span>Akreditasi <strong>{dapodikSchool.accreditation || '-'}</strong></span>
                         </div>
                         <div className="flex items-center gap-1 text-xs text-slate-600">
                           <Calendar className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>Berdiri {dapodikSchool.established}</span>
+                          <span>Berdiri {dapodikSchool.established || '-'}</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 pl-6 text-xs text-slate-500">
+                      <div className="flex flex-wrap items-center gap-4 pl-6 text-xs text-slate-500">
                         <div className="flex items-center gap-1">
                           <User className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>KS: {dapodikSchool.principalName}</span>
+                          <span>KS: {dapodikSchool.principalName || '-'}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Phone className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>{dapodikSchool.phone}</span>
+                          <span>{dapodikSchool.phone || '-'}</span>
                         </div>
+                        {dapodikSchool.email && (
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-3.5 w-3.5 text-emerald-500" />
+                            <span>{dapodikSchool.email}</span>
+                          </div>
+                        )}
                       </div>
+                    </div>
+
+                    {/* Auto-fill indicator */}
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-200/60">
+                      <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                      <span className="text-xs text-emerald-600 font-medium">
+                        Nama & email telah diisi otomatis dari data Dapodik
+                      </span>
                     </div>
                   </div>
                 )}
@@ -383,9 +437,17 @@ export function RegisterForm() {
 
             {/* Name */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-sm font-medium text-slate-700">
-                Nama Lengkap
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="name" className="text-sm font-medium text-slate-700">
+                  Nama Lengkap
+                </Label>
+                {nameAutoFilled && (
+                  <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5">
+                    <Sparkles className="h-3 w-3" />
+                    Auto-terisi (Kepala Sekolah)
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
@@ -393,8 +455,13 @@ export function RegisterForm() {
                   type="text"
                   placeholder={isSchoolAdmin ? 'Nama Kepala Sekolah / Admin' : 'Masukkan nama lengkap'}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500"
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    setNameAutoFilled(false); // Clear auto-fill flag on manual edit
+                  }}
+                  className={`pl-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500 ${
+                    nameAutoFilled ? 'bg-emerald-50/50 border-emerald-300' : ''
+                  }`}
                   disabled={isLoading}
                 />
               </div>
@@ -402,9 +469,17 @@ export function RegisterForm() {
 
             {/* Email */}
             <div className="space-y-2">
-              <Label htmlFor="reg-email" className="text-sm font-medium text-slate-700">
-                Email
-              </Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="reg-email" className="text-sm font-medium text-slate-700">
+                  Email
+                </Label>
+                {emailAutoFilled && (
+                  <span className="text-[11px] text-emerald-600 font-medium flex items-center gap-0.5">
+                    <Sparkles className="h-3 w-3" />
+                    Auto-terisi (Email Sekolah)
+                  </span>
+                )}
+              </div>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                 <Input
@@ -412,8 +487,13 @@ export function RegisterForm() {
                   type="email"
                   placeholder={isSchoolAdmin && dapodikSchool ? `nama@${dapodikSchool.emailDomain}` : 'nama@sekolah.sch.id'}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500"
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailAutoFilled(false); // Clear auto-fill flag on manual edit
+                  }}
+                  className={`pl-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500 ${
+                    emailAutoFilled ? 'bg-emerald-50/50 border-emerald-300' : ''
+                  }`}
                   disabled={isLoading}
                 />
               </div>

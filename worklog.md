@@ -246,3 +246,27 @@ Stage Summary:
 - Admin can search by NPSN (exact) or school name/city/province/district
 - Word-based search: "SMA 1 Makassar" correctly finds "SMA Negeri 1 Makassar"
 - End-to-end tested: NPSN lookup → school data card → registration flow
+---
+Task ID: 5
+Agent: Main Orchestrator
+Task: Auto-fill Nama Kepala Sekolah & Email Sekolah when NPSN is verified
+
+Work Log:
+- Added `email` field to School model in Prisma schema (pushed to DB)
+- Updated `/api/auth/register-school` to store school email
+- Added `email` field to `NpsnSchool` interface and all 66 local DB entries
+- Updated DAPODIK live API mapping to extract `email` field separately
+- Modified `register-form.tsx` with `useEffect` auto-fill logic:
+  - When DAPODIK data verified → Nama Lengkap auto-fills with `principalName`
+  - When DAPODIK data verified → Email auto-fills with `email` or constructs `info@{emailDomain}`
+- Added visual indicators: "Auto-terisi (Kepala Sekolah)" and "Auto-terisi (Email Sekolah)" badges
+- Added green background highlight on auto-filled fields
+- Added "Nama & email telah diisi otomatis dari data Dapodik" indicator in school card
+- Auto-fill flags clear on manual edit
+- Browser-verified: NPSN 40313912 → Name: "Hj. Nurhasanah, S.Pd., M.Pd." + Email: "info@sdnmonginsidi1makassar.sch.id"
+
+Stage Summary:
+- Auto-fill working end-to-end for Admin Sekolah registration
+- Principal name and school email auto-fill immediately when NPSN matches
+- User can still manually edit auto-filled fields
+- DAPODIK live API blocked by WAF (SafeLine) - gracefully falls back to local NPSN database

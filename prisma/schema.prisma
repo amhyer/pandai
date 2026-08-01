@@ -15,6 +15,7 @@ model School {
   address        String?
   logo           String?
   phone          String?
+  email          String?
   status         String   @default("active") // active, suspended, deleted
   plan           String   @default("free")  // free, starter, pro
   maxStudents    Int      @default(50)

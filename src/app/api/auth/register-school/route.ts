@@ -47,6 +47,7 @@ export async function POST(request: Request) {
         code: finalCode,
         address: schoolData.address || null,
         phone: schoolData.phone || null,
+        email: schoolData.email || null,
         npsn: schoolData.npsn,
         province: schoolData.province || null,
         city: schoolData.city || null,
