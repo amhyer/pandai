@@ -7,26 +7,27 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Mail, Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck } from 'lucide-react';
+import { Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck, Users } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
-  { label: 'Super Admin', email: 'superadmin@pandai.id', icon: Shield },
-  { label: 'Admin Sekolah', email: 'admin.sman1@pandai.id', icon: UserCheck },
-  { label: 'Guru', email: 'guru.sman1@pandai.id', icon: GraduationCap },
-  { label: 'Siswa', email: 'ahmad.sman1@pandai.id', icon: GraduationCap },
+  { label: 'Super Admin', username: 'superadmin@pandai.id', password: 'password123', icon: Shield },
+  { label: 'Admin Sekolah', username: 'admin.sman1@pandai.id', password: 'password123', icon: UserCheck },
+  { label: 'Guru (NIP)', username: '198504152010011001', password: 'password123', icon: GraduationCap },
+  { label: 'Siswa (NISN)', username: '0051234567', password: 'password123', icon: GraduationCap },
+  { label: 'Orang Tua', username: 'ahmad', password: '123', icon: Users },
 ];
 
 export function LoginForm() {
   const { setUser, navigateTo } = useAppStore();
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim() || !password.trim()) {
-      toast.error('Harap isi email dan password');
+    if (!identifier.trim() || !password.trim()) {
+      toast.error('Harap isi username/email dan password');
       return;
     }
 
@@ -35,13 +36,13 @@ export function LoginForm() {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password }),
+        body: JSON.stringify({ username: identifier.trim(), password }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
-        toast.error(data.error || 'Login gagal. Periksa kembali email dan password.');
+        toast.error(data.error || 'Login gagal. Periksa kembali username dan password.');
         return;
       }
 
@@ -55,9 +56,18 @@ export function LoginForm() {
     }
   };
 
-  const handleDemoLogin = (demoEmail: string) => {
-    setEmail(demoEmail);
-    setPassword('password123');
+  const handleDemoLogin = (username: string, pwd: string) => {
+    setIdentifier(username);
+    setPassword(pwd);
+  };
+
+  // Determine placeholder based on input
+  const getPlaceholder = () => {
+    const v = identifier.trim().toLowerCase();
+    if (v.includes('@')) return 'nama@sekolah.sch.id';
+    if (v.length >= 16 && /^\d+$/.test(v)) return 'NIP / NIK (guru)';
+    if (v.length === 10 && /^\d+$/.test(v)) return 'NISN (siswa)';
+    return 'Email, NIP/NIK, NISN, atau nama orang tua';
   };
 
   return (
@@ -80,23 +90,30 @@ export function LoginForm() {
 
         <CardContent className="space-y-5 pt-2">
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email */}
+            {/* Username / Email */}
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-slate-700">
-                Email
+              <Label htmlFor="identifier" className="text-sm font-medium text-slate-700">
+                Username / Email
               </Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                  <circle cx="12" cy="7" r="4" />
+                </svg>
                 <Input
-                  id="email"
-                  type="email"
-                  placeholder="nama@sekolah.sch.id"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  id="identifier"
+                  type="text"
+                  placeholder="Email, NIP/NIK, NISN, atau nama orang tua"
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
                   className="pl-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500"
                   disabled={isLoading}
+                  autoComplete="username"
                 />
               </div>
+              <p className="text-[11px] text-slate-400">
+                Guru: gunakan <span className="font-mono">NIP</span> atau <span className="font-mono">NIK</span> &middot; Siswa: <span className="font-mono">NISN</span> &middot; Orang Tua: <span className="font-mono">nama depan</span> &middot; Admin: <span className="font-mono">email</span>
+              </p>
             </div>
 
             {/* Password */}
@@ -114,6 +131,7 @@ export function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500"
                   disabled={isLoading}
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
@@ -164,9 +182,9 @@ export function LoginForm() {
                 const Icon = account.icon;
                 return (
                   <button
-                    key={account.email}
+                    key={account.username}
                     type="button"
-                    onClick={() => handleDemoLogin(account.email)}
+                    onClick={() => handleDemoLogin(account.username, account.password)}
                     className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 hover:border-amber-400 hover:bg-amber-50 transition-all duration-200 text-left group"
                   >
                     <Icon className="h-3.5 w-3.5 text-slate-400 group-hover:text-amber-600 transition-colors shrink-0" />
@@ -178,7 +196,7 @@ export function LoginForm() {
               })}
             </div>
             <p className="text-[11px] text-slate-400 text-center">
-              Semua akun demo menggunakan password: <span className="font-mono text-slate-500">password123</span>
+              Orang Tua login: nama depan, password: <span className="font-mono text-slate-500">123</span>
             </p>
           </div>
 

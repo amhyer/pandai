@@ -201,10 +201,10 @@ const NAV_CONFIG: RoleNav = {
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // SISWA — Belajar dan mengerjakan tryout
-  // (Setara: SIMANTAP siswa — Belajar + Hasil)
+  // ORANG TUA — Pantau perkembangan belajar anak
+  // (Setara: SIMANTAP ortu — Pantau Anak + 7 Kebiasaan)
   // ────────────────────────────────────────────────────────────────
-  SISWA: [
+  ORANG_TUA: [
     {
       section: 'Utama',
       items: [
@@ -212,19 +212,13 @@ const NAV_CONFIG: RoleNav = {
       ],
     },
     {
-      section: 'Belajar',
+      section: 'Pantau Anak',
       items: [
-        { label: 'Diagnostic Test', view: 'diagnostic', icon: Stethoscope },
-        { label: 'Latihan Soal', view: 'practice', icon: Dumbbell },
-        { label: 'Tryout & Ujian', view: 'exam-runner', icon: ClipboardList },
-      ],
-    },
-    {
-      section: 'Hasil',
-      items: [
-        { label: 'Nilai Saya', view: 'siswa-nilai', icon: Target },
-        { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: CalendarClock },
-        { label: 'Peringkat', view: 'leaderboard', icon: Medal },
+        { label: 'Nilai & Progres', view: 'ortu-nilai', icon: Target },
+        { label: 'Materi Pelajaran', view: 'ortu-materi', icon: FileText },
+        { label: 'Kehadiran', view: 'ortu-kehadiran', icon: UserCheck },
+        { label: 'Riwayat Pengerjaan', view: 'ortu-kuis', icon: ClipboardList },
+        { label: 'Laporan', view: 'ortu-laporan', icon: Printer },
       ],
     },
   ],
@@ -237,6 +231,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   ADMIN_SCHOOL: 'Admin Sekolah',
   GURU: 'Guru',
   SISWA: 'Siswa',
+  ORANG_TUA: 'Orang Tua',
 };
 
 // ─── View → breadcrumb label map ─────────────────────────────────────
@@ -287,6 +282,13 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'siswa-nilai': 'Nilai Saya',
   'siswa-riwayat': 'Riwayat Pengerjaan',
   leaderboard: 'Peringkat',
+
+  // ORANG_TUA
+  'ortu-nilai': 'Nilai & Progres',
+  'ortu-materi': 'Materi Pelajaran',
+  'ortu-kehadiran': 'Kehadiran',
+  'ortu-kuis': 'Riwayat Pengerjaan',
+  'ortu-laporan': 'Laporan',
 
   // Shared
   profile: 'Profil',

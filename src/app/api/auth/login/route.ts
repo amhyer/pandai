@@ -1,22 +1,32 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPassword, verifyPassword } from '@/lib/constants';
+import { verifyPassword } from '@/lib/constants';
 
 export async function POST(request: Request) {
   try {
-    const { email, password } = await request.json();
-    
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Email dan password wajib diisi' }, { status: 400 });
+    const { username, password } = await request.json();
+
+    // Accept either 'username' or 'email' field from client
+    const identifier = (username || '').trim();
+    if (!identifier || !password) {
+      return NextResponse.json({ error: 'Username/email dan password wajib diisi' }, { status: 400 });
     }
 
-    const user = await db.user.findUnique({
-      where: { email: email.toLowerCase() },
+    // Find user by username OR email (case-insensitive)
+    let user = await db.user.findUnique({
+      where: { username: identifier },
       include: { school: true, class: true },
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'Email atau password salah' }, { status: 401 });
+      user = await db.user.findUnique({
+        where: { email: identifier.toLowerCase() },
+        include: { school: true, class: true },
+      });
+    }
+
+    if (!user) {
+      return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
     }
 
     if (!user.isActive) {
@@ -25,7 +35,7 @@ export async function POST(request: Request) {
 
     const isValid = await verifyPassword(password, user.password);
     if (!isValid) {
-      return NextResponse.json({ error: 'Email atau password salah' }, { status: 401 });
+      return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
     }
 
     await db.user.update({
@@ -35,11 +45,18 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       id: user.id,
+      username: user.username,
       email: user.email,
       name: user.name,
       role: user.role,
       avatar: user.avatar,
       phone: user.phone,
+      nisn: user.nisn,
+      nip: user.nip,
+      nik: user.nik,
+      namaOrtu: user.namaOrtu,
+      jk: user.jk,
+      parentId: user.parentId,
       schoolId: user.schoolId,
       schoolName: user.school?.name,
       classId: user.classId,

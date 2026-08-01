@@ -384,4 +384,31 @@ Stage Summary:
 - Menu structure fully redesigned with SIMANTAP-inspired sectioned grouping
 - All menus role-scoped: each role sees only their relevant menu items
 - New views added with PlaceholderPage component for pages under development
-- Key mapping: SIMANTAP "admin" → PANDAI SUPER_ADMIN + ADMIN_SCHOOL; SIMANTAP "ortu" not in PANDAI (future)
+- Key mapping: SIMANTAP "admin" → PANDAI SUPER_ADMIN + ADMIN_SCHOOL; SIMANTAP "ortu" → PANDAI ORANG_TUA
+
+---
+Task ID: 4
+Agent: Main Orchestrator
+Task: Implement NIP/NIK login for guru, NISN login for siswa, auto-create orang tua
+
+Work Log:
+- Updated Prisma schema: added `username` (unique), `email` (optional unique), `nisn`, `nip`, `nik`, `namaOrtu`, `jk`, `parentId` fields; added `ORANG_TUA` as 5th role; added `ParentChild` self-relation
+- Ran `db:push` + `db:generate` to apply schema to SQLite database
+- Rewrote `src/app/api/auth/login/route.ts`: accepts `username` field, looks up by username OR email
+- Rewrote `src/app/api/users/route.ts`: role-specific creation logic — GURU requires NIP/NIK, SISWA requires NISN; auto-creates ORANG_TUA with password `123` and nama depan as username; handles duplicate orang tua (same parent name → link to existing)
+- Updated `src/lib/constants.ts`: added ORANG_TUA to ROLE_LABELS
+- Updated `src/store/use-store.ts`: added ORANG_TUA to UserRole; added ortu-* ViewTypes; expanded User interface with username, nisn, nip, nik, namaOrtu, jk, parentId
+- Updated `src/components/layout/app-layout.tsx`: added ORANG_TUA sidebar with "Pantau Anak" section (5 menu items)
+- Updated `src/app/page.tsx`: added ORANG_TUA dashboard + 5 placeholder views
+- Rewrote `src/components/auth/login-form.tsx`: generic "Username / Email" input field; auto-hint text explaining login method per role; 5 demo buttons (SA, Admin, Guru NIP, Siswa NISN, Orang Tua); shows password 123 for orang tua
+- Updated `prisma/seed.ts`: guru data now has nip/nik instead of email; siswa data now has nisn/namaOrtu/jk; auto-creates ORANG_TUA during seed with unique username generation
+- Reset DB and re-seeded: 25 users total (1 SA + 2 Admin + 2 Guru + 10 Siswa + 10 Orang Tua)
+- Updated `DUMMY_USERS.md` with complete credentials table for all 5 roles
+- Verified via API: Guru NIP login ✅, Orang Tua nama_depan/123 login ✅, Admin email login ✅
+
+Stage Summary:
+- Login mechanism: unified `username` field supports NIP, NIK, NISN, nama depan, or email
+- 5-level RBAC: SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA, ORANG_TUA
+- Auto-create ORANG_TUA: when siswa is added, system checks for existing ortu with same name, creates if not found, links siswa via parentId
+- Orang Tua default password: `123` (different from universal `password123`)
+- User Manager form needs update (pending) — currently still shows email field for all roles

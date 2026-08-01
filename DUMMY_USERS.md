@@ -1,14 +1,18 @@
 # 📋 PANDAI — Akun Dummy untuk Testing
 
-> Semua akun menggunakan password yang sama: **`password123`**
+> Semua akun menggunakan password universal: **`password123`** (kecuali Orang Tua: **`123`**)
 
 ---
 
-## 🔑 Password Universal
+## 🔐 Cara Login Per Role
 
-```
-password123
-```
+| Role | Login Menggunakan | Contoh |
+|------|-------------------|-------|
+| **Super Admin** | Email | `superadmin@pandai.id` |
+| **Admin Sekolah** | Email | `admin.sman1@pandai.id` |
+| **Guru** | **NIP** (PNS) atau **NIK** (Non-PNS) | `198504152010011001` |
+| **Siswa** | **NISN** (10 digit) | `0051234567` |
+| **Orang Tua** | **Nama depan** orang tua | `rahman` |
 
 ---
 
@@ -24,123 +28,104 @@ password123
 
 ## 🏫 2. ADMIN SEKOLAH
 
-### SMA Negeri 1 Makassar
-
-| Email | Nama | Password |
-|-------|------|----------|
-| `admin.sman1@pandai.id` | Hj. Siti Rahmawati, S.Pd. | `password123` |
-
-> NPSN: 40201234 | Akreditasi: A | Plan: **Pro**
-
-### SMK Negeri 2 Surabaya
-
-| Email | Nama | Password |
-|-------|------|----------|
-| `admin.smkn2@pandai.id` | Drs. Budi Prasetyo | `password123` |
-
-> NPSN: 20504567 | Akreditasi: A | Plan: **Starter**
+| Email | Nama | Sekolah | Password |
+|-------|------|---------|----------|
+| `admin.sman1@pandai.id` | Hj. Siti Rahmawati, S.Pd. | SMA Negeri 1 Makassar | `password123` |
+| `admin.smkn2@pandai.id` | Drs. Budi Prasetyo | SMK Negeri 2 Surabaya | `password123` |
 
 ---
 
-## 👩‍🏫 3. GURU
+## 👩‍🏫 3. GURU — Login pakai NIP / NIK
 
-### SMA Negeri 1 Makassar
+| NIP / NIK | Nama | Sekolah | Password |
+|-----------|------|---------|----------|
+| `198504152010011001` | Andi Mustafa, S.Pd., M.Si. | SMA Negeri 1 Makassar | `password123` |
+| `3502155678090002` | Linda Permata, S.Kom., M.Pd. | SMK Negeri 2 Surabaya | `password123` |
 
-| Email | Nama | Password |
-|-------|------|----------|
-| `guru.sman1@pandai.id` | Andi Mustafa, S.Pd., M.Si. | `password123` |
-
-### SMK Negeri 2 Surabaya
-
-| Email | Nama | Password |
-|-------|------|----------|
-| `guru.smkn2@pandai.id` | Linda Permata, S.Kom., M.Pd. | `password123` |
+> ⚡ Guru PNS login pakai **NIP**, guru honorer/Non-PNS login pakai **NIK (KTP)**
 
 ---
 
-## 👨‍🎓 4. SISWA
+## 👨‍🎓 4. SISWA — Login pakai NISN
 
 ### SMA Negeri 1 Makassar — XII IPA 1
 
-| Email | Nama | Password |
-|-------|------|----------|
-| `ahmad.sman1@pandai.id` | Ahmad Fadli Rahman | `password123` |
-| `siti.sman1@pandai.id` | Siti Nurhaliza Putri | `password123` |
-| `rudi.sman1@pandai.id` | Rudi Hartono | `password123` |
+| NISN | Nama | L/P | Orang Tua | Password |
+|------|------|-----|-----------|----------|
+| `0051234567` | Ahmad Fadli Rahman | L | Rahman | `password123` |
+| `0051234568` | Siti Nurhaliza Putri | P | Haji Putri | `password123` |
+| `0051234569` | Rudi Hartono | L | Hartono | `password123` |
 
 ### SMA Negeri 1 Makassar — XII IPA 2
 
-| Email | Nama | Password |
-|-------|------|----------|
-| `dewi.sman1@pandai.id` | Dewi Anggraeni | `password123` |
-| `farhan.sman1@pandai.id` | Farhan Maulana | `password123` |
+| NISN | Nama | L/P | Orang Tua | Password |
+|------|------|-----|-----------|----------|
+| `0051234570` | Dewi Anggraeni | P | Anggraeni | `password123` |
+| `0051234571` | Farhan Maulana | L | Maulana | `password123` |
 
 ### SMK Negeri 2 Surabaya — XII TKJ 1
 
-| Email | Nama | Password |
-|-------|------|----------|
-| `bagus.smkn2@pandai.id` | Bagus Saputra | `password123` |
-| `rina.smkn2@pandai.id` | Rina Wati | `password123` |
-| `joko.smkn2@pandai.id` | Joko Widodo Putra | `password123` |
+| NISN | Nama | L/P | Orang Tua | Password |
+|------|------|-----|-----------|----------|
+| `0060987654` | Bagus Saputra | L | Saputra | `password123` |
+| `0060987655` | Rina Wati | P | Wati | `password123` |
+| `0060987656` | Joko Widodo Putra | L | Widodo | `password123` |
 
 ### SMK Negeri 2 Surabaya — XII RPL 1
 
-| Email | Nama | Password |
-|-------|------|----------|
-| `maya.smkn2@pandai.id` | Maya Indah | `password123` |
-| `dimas.smkn2@pandai.id` | Dimas Prayoga | `password123` |
+| NISN | Nama | L/P | Orang Tua | Password |
+|------|------|-----|-----------|----------|
+| `0060987657` | Maya Indah | P | Indah | `password123` |
+| `0060987658` | Dimas Prayoga | L | Prayoga | `password123` |
+
+---
+
+## 👨‍👩‍👧 5. ORANG TUA — Login pakai Nama Depan, Password: `123`
+
+> ⚠️ Password orang tua berbeda: **`123`** (bukan `password123`)
+
+| Username (Nama Depan) | Nama Lengkap | Anak | Sekolah | Password |
+|----------------------|-------------|-----|---------|----------|
+| `rahman` | Rahman | Ahmad Fadli Rahman | SMA Negeri 1 Makassar | `123` |
+| `haji` | Haji Putri | Siti Nurhaliza Putri | SMA Negeri 1 Makassar | `123` |
+| `hartono` | Hartono | Rudi Hartono | SMA Negeri 1 Makassar | `123` |
+| `anggraeni` | Anggraeni | Dewi Anggraeni | SMA Negeri 1 Makassar | `123` |
+| `maulana` | Maulana | Farhan Maulana | SMA Negeri 1 Makassar | `123` |
+| `saputra` | Saputra | Bagus Saputra | SMK Negeri 2 Surabaya | `123` |
+| `wati` | Wati | Rina Wati | SMK Negeri 2 Surabaya | `123` |
+| `widodo` | Widodo | Joko Widodo Putra | SMK Negeri 2 Surabaya | `123` |
+| `indah` | Indah | Maya Indah | SMK Negeri 2 Surabaya | `123` |
+| `prayoga` | Prayoga | Dimas Prayoga | SMK Negeri 2 Surabaya | `123` |
+
+> 💡 **Catatan**: Akun orang tua dibuat **otomatis** saat admin menambahkan siswa. Username = nama depan orang tua. Jika ada 2 orang tua dengan nama depan sama, otomatis diberi angka (contoh: `ahmad`, `ahmad2`).
 
 ---
 
 ## 🏫 Data Sekolah
 
-| Sekolah | Kode | NPSN | Plan | Akreditasi | Jenjang |
-|---------|------|------|------|------------|---------|
-| SMA Negeri 1 Makassar | SMAN1-MKS | 40201234 | Pro | A | SMA |
-| SMK Negeri 2 Surabaya | SMKN2-SBY | 20504567 | Starter | A | SMK |
+| Sekolah | Kode | NPSN | Plan | Akreditasi |
+|---------|------|------|------|------------|
+| SMA Negeri 1 Makassar | SMAN1-MKS | 40201234 | Pro | A |
+| SMK Negeri 2 Surabaya | SMKN2-SBY | 20504567 | Starter | A |
 
 ---
 
 ## 📋 Data Rombel (Kelas)
 
-| Kelas | Grade | Tahun Ajaran | Sekolah |
-|-------|-------|--------------|---------|
-| XII IPA 1 | 12 | 2024/2025 | SMA Negeri 1 Makassar |
-| XII IPA 2 | 12 | 2024/2025 | SMA Negeri 1 Makassar |
-| XII TKJ 1 | 12 | 2024/2025 | SMK Negeri 2 Surabaya |
-| XII RPL 1 | 12 | 2024/2025 | SMK Negeri 2 Surabaya |
+| Kelas | Grade | Sekolah |
+|-------|-------|---------|
+| XII IPA 1 | 12 | SMA Negeri 1 Makassar |
+| XII IPA 2 | 12 | SMA Negeri 1 Makassar |
+| XII TKJ 1 | 12 | SMK Negeri 2 Surabaya |
+| XII RPL 1 | 12 | SMK Negeri 2 Surabaya |
 
 ---
 
-## 📚 Data Mata Pelajaran
-
-| Kode | Nama | Tipe |
-|------|------|------|
-| bindo | Bahasa Indonesia | Wajib |
-| bing | Bahasa Inggris | Wajib |
-| mat | Matematika | Wajib |
-| fis | Fisika | Pilihan |
-| kim | Kimia | Pilihan |
-| bio | Biologi | Pilihan |
-| eko | Ekonomi | Pilihan |
-| sos | Sosiologi | Pilihan |
-| sej | Sejarah | Pilihan |
-| geo | Geografi | Pilihan |
-
----
-
-## 🔧 Reset & Re-seed
-
-Jika ingin mengosongkan database dan mengisi ulang data dummy:
+## 🔄 Reset & Re-seed
 
 ```bash
-# Hapus database lama
 rm db/custom.db
-
-# Push schema ulang
 bun run db:push
-
-# Jalankan seed
 bun run seed
 ```
 
@@ -152,13 +137,11 @@ bun run seed
 
 | Kategori | Jumlah |
 |----------|--------|
-| Total User | 15 (1 Super Admin + 2 Admin + 2 Guru + 10 Siswa) |
+| Total User | 25 (1 SA + 2 Admin + 2 Guru + 10 Siswa + 10 Orang Tua) |
 | Sekolah | 2 |
 | Rombel | 4 |
 | Mata Pelajaran | 10 |
-| Sub Topik | 30+ |
 
 ---
 
-*File ini dibuat otomatis oleh seed script `prisma/seed.ts`*
-*Diperbarui: Juli 2025*
+*Diperbarui: Juli 2025 — Login pakai NIP/NIK/NISN/nama_depan*

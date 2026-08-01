@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN_SCHOOL' | 'GURU' | 'SISWA';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN_SCHOOL' | 'GURU' | 'SISWA' | 'ORANG_TUA';
 
 // ===== ViewType — semua halaman yang tersedia di sidebar dan content =====
 export type ViewType =
@@ -50,6 +50,13 @@ export type ViewType =
   | 'siswa-riwayat'        // Riwayat Pengerjaan
   | 'leaderboard'          // Peringkat
 
+  // ── ORANG_TUA ──
+  | 'ortu-nilai'           // Nilai & Progres Anak
+  | 'ortu-materi'          // Materi Pelajaran
+  | 'ortu-kehadiran'       // Kehadiran
+  | 'ortu-kuis'            // Riwayat Pengerjaan Anak
+  | 'ortu-laporan'         // Laporan Cetak Anak
+
   // ── Shared ──
   | 'profile'
   | 'notifications'
@@ -57,11 +64,18 @@ export type ViewType =
 
 export interface User {
   id: string;
-  email: string;
+  username?: string;
+  email?: string;
   name: string;
   role: UserRole;
   avatar?: string;
   phone?: string;
+  nisn?: string;
+  nip?: string;
+  nik?: string;
+  namaOrtu?: string;
+  jk?: string;
+  parentId?: string;
   schoolId?: string;
   schoolName?: string;
   classId?: string;

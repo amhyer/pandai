@@ -57,18 +57,32 @@ model Subscription {
   school School @relation(fields: [schoolId], references: [id])
 }
 
-// ===== USER (4 LEVEL RBAC) =====
+// ===== USER (5 LEVEL RBAC) =====
 model User {
   id          String   @id @default(cuid())
-  email       String   @unique
+  username    String?  @unique       // Login: NIP/NIK untuk guru, NISN untuk siswa, nama_depan untuk ortu
+  email       String?  @unique       // Untuk admin/superadmin (opsional untuk guru/siswa/ortu)
   password    String
   name        String
-  role        String   // SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA
+  role        String   // SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA, ORANG_TUA
   avatar      String?
   phone       String?
   isActive    Boolean  @default(true)
   schoolId    String?
   classId     String?
+
+  // Data fields per role
+  nisn        String?  @unique       // NISN siswa ( Nomor Induk Siswa Nasional)
+  nip         String?  @unique       // NIP guru PNS
+  nik         String?                // NIK (KTP) guru non-PNS
+  namaOrtu    String?                // Nama orang tua/wali (untuk siswa)
+  jk          String?                // Jenis kelamin: L, P
+
+  // Relasi orang tua ↔ anak
+  parentId    String?                // Untuk SISWA: link ke akun ORANG_TUA
+  parent      User?    @relation("ParentChild", fields: [parentId], references: [id])
+  children    User[]   @relation("ParentChild")
+
   lastLogin   DateTime?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -80,6 +94,7 @@ model User {
 
   @@index([schoolId])
   @@index([role])
+  @@index([parentId])
 }
 
 // ===== CLASS / ROMBEL =====

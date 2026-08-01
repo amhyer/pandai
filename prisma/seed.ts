@@ -66,8 +66,8 @@ const ADMINS = [
 ];
 
 const GURUS = [
-  { email: 'guru.sman1@pandai.id', name: 'Andi Mustafa, S.Pd., M.Si.', schoolIndex: 0 },
-  { email: 'guru.smkn2@pandai.id', name: 'Linda Permata, S.Kom., M.Pd.', schoolIndex: 1 },
+  { name: 'Andi Mustafa, S.Pd., M.Si.', nip: '198504152010011001', schoolIndex: 0 },
+  { name: 'Linda Permata, S.Kom., M.Pd.', nik: '3502155678090002', schoolIndex: 1 },
 ];
 
 const CLASSES = [
@@ -79,19 +79,19 @@ const CLASSES = [
 
 const SISWAS = [
   // SMA Negeri 1 Makassar - XII IPA 1
-  { email: 'ahmad.sman1@pandai.id', name: 'Ahmad Fadli Rahman', schoolIndex: 0, classIndex: 0 },
-  { email: 'siti.sman1@pandai.id', name: 'Siti Nurhaliza Putri', schoolIndex: 0, classIndex: 0 },
-  { email: 'rudi.sman1@pandai.id', name: 'Rudi Hartono', schoolIndex: 0, classIndex: 0 },
+  { name: 'Ahmad Fadli Rahman', nisn: '0051234567', namaOrtu: 'Rahman', jk: 'L', schoolIndex: 0, classIndex: 0 },
+  { name: 'Siti Nurhaliza Putri', nisn: '0051234568', namaOrtu: 'Haji Putri', jk: 'P', schoolIndex: 0, classIndex: 0 },
+  { name: 'Rudi Hartono', nisn: '0051234569', namaOrtu: 'Hartono', jk: 'L', schoolIndex: 0, classIndex: 0 },
   // SMA Negeri 1 Makassar - XII IPA 2
-  { email: 'dewi.sman1@pandai.id', name: 'Dewi Anggraeni', schoolIndex: 0, classIndex: 1 },
-  { email: 'farhan.sman1@pandai.id', name: 'Farhan Maulana', schoolIndex: 0, classIndex: 1 },
+  { name: 'Dewi Anggraeni', nisn: '0051234570', namaOrtu: 'Anggraeni', jk: 'P', schoolIndex: 0, classIndex: 1 },
+  { name: 'Farhan Maulana', nisn: '0051234571', namaOrtu: 'Maulana', jk: 'L', schoolIndex: 0, classIndex: 1 },
   // SMK Negeri 2 Surabaya - XII TKJ 1
-  { email: 'bagus.smkn2@pandai.id', name: 'Bagus Saputra', schoolIndex: 1, classIndex: 2 },
-  { email: 'rina.smkn2@pandai.id', name: 'Rina Wati', schoolIndex: 1, classIndex: 2 },
-  { email: 'joko.smkn2@pandai.id', name: 'Joko Widodo Putra', schoolIndex: 1, classIndex: 2 },
+  { name: 'Bagus Saputra', nisn: '0060987654', namaOrtu: 'Saputra', jk: 'L', schoolIndex: 1, classIndex: 2 },
+  { name: 'Rina Wati', nisn: '0060987655', namaOrtu: 'Wati', jk: 'P', schoolIndex: 1, classIndex: 2 },
+  { name: 'Joko Widodo Putra', nisn: '0060987656', namaOrtu: 'Widodo', jk: 'L', schoolIndex: 1, classIndex: 2 },
   // SMK Negeri 2 Surabaya - XII RPL 1
-  { email: 'maya.smkn2@pandai.id', name: 'Maya Indah', schoolIndex: 1, classIndex: 3 },
-  { email: 'dimas.smkn2@pandai.id', name: 'Dimas Prayoga', schoolIndex: 1, classIndex: 3 },
+  { name: 'Maya Indah', nisn: '0060987657', namaOrtu: 'Indah', jk: 'P', schoolIndex: 1, classIndex: 3 },
+  { name: 'Dimas Prayoga', nisn: '0060987658', namaOrtu: 'Prayoga', jk: 'L', schoolIndex: 1, classIndex: 3 },
 ];
 
 const SUBJECTS_DATA = [
@@ -247,25 +247,28 @@ async function main() {
     console.log(`   ✅ Created: ${adminData.email} (${SCHOOLS[adminData.schoolIndex].name})`);
   }
 
-  // 6. Buat Guru
+  // 6. Buat Guru (login pakai NIP/NIK)
   console.log('\n👩‍🏫 Membuat Guru...');
   for (const guruData of GURUS) {
-    const existing = await prisma.user.findFirst({ where: { email: guruData.email } });
+    const loginId = guruData.nip || guruData.nik;
+    const existing = await prisma.user.findFirst({ where: { username: loginId } });
     if (existing) {
-      console.log(`   ✅ Skip: ${guruData.email} sudah ada`);
+      console.log(`   ✅ Skip: ${loginId} sudah ada`);
       continue;
     }
     await prisma.user.create({
       data: {
-        email: guruData.email,
+        username: loginId,
         password: hashedPassword,
         name: guruData.name,
         role: 'GURU',
         schoolId: schoolIds[guruData.schoolIndex],
+        nip: guruData.nip || null,
+        nik: guruData.nik || null,
         isActive: true,
       },
     });
-    console.log(`   ✅ Created: ${guruData.email} (${SCHOOLS[guruData.schoolIndex].name})`);
+    console.log(`   ✅ Created: ${guruData.name} (login: ${loginId}, ${SCHOOLS[guruData.schoolIndex].name})`);
   }
 
   // 7. Buat Rombel (Kelas)
@@ -296,26 +299,64 @@ async function main() {
     classIds.push(cls.id);
   }
 
-  // 8. Buat Siswa
-  console.log('\n👨‍🎓 Membuat Siswa...');
+  // 8. Buat Siswa (login pakai NISN) + auto-create Orang Tua
+  console.log('\n👨‍🎓 Membuat Siswa & Orang Tua...');
+  const ortuHash = await hashPassword('123');
   for (const siswaData of SISWAS) {
-    const existing = await prisma.user.findFirst({ where: { email: siswaData.email } });
+    const existing = await prisma.user.findFirst({ where: { nisn: siswaData.nisn } });
     if (existing) {
-      console.log(`   ✅ Skip: ${siswaData.email} sudah ada`);
+      console.log(`   ✅ Skip: NISN ${siswaData.nisn} sudah ada`);
       continue;
     }
+
+    // Auto-create Orang Tua
+    let parentId: string | undefined;
+    if (siswaData.namaOrtu) {
+      const ortuFirstName = siswaData.namaOrtu.trim().split(/\s+/)[0].toLowerCase();
+      // Check if ortu already exists
+      const existingOrtu = await prisma.user.findFirst({
+        where: { role: 'ORANG_TUA', schoolId: schoolIds[siswaData.schoolIndex], name: siswaData.namaOrtu.trim(), isActive: true },
+      });
+      if (existingOrtu) {
+        parentId = existingOrtu.id;
+      } else {
+        // Generate unique username
+        let ortuUsername = ortuFirstName;
+        let counter = 1;
+        while (await prisma.user.findUnique({ where: { username: ortuUsername } })) {
+          ortuUsername = `${ortuFirstName}${counter++}`;
+        }
+        const ortu = await prisma.user.create({
+          data: {
+            username: ortuUsername,
+            password: ortuHash,
+            name: siswaData.namaOrtu.trim(),
+            role: 'ORANG_TUA',
+            schoolId: schoolIds[siswaData.schoolIndex],
+            isActive: true,
+          },
+        });
+        parentId = ortu.id;
+        console.log(`   👨‍👩‍👧 Created Ortu: ${ortu.name} (login: ${ortuUsername}, password: 123)`);
+      }
+    }
+
     await prisma.user.create({
       data: {
-        email: siswaData.email,
+        username: siswaData.nisn,
         password: hashedPassword,
         name: siswaData.name,
         role: 'SISWA',
         schoolId: schoolIds[siswaData.schoolIndex],
         classId: classIds[siswaData.classIndex],
+        nisn: siswaData.nisn,
+        namaOrtu: siswaData.namaOrtu || null,
+        jk: siswaData.jk || null,
+        parentId,
         isActive: true,
       },
     });
-    console.log(`   ✅ Created: ${siswaData.email} (${CLASSES[siswaData.classIndex].name})`);
+    console.log(`   ✅ Created: ${siswaData.name} (NISN: ${siswaData.nisn}, ${CLASSES[siswaData.classIndex].name})`);
   }
 
   // 9. Buat Mata Pelajaran & Topik (global)

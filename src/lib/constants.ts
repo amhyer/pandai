@@ -68,6 +68,7 @@ export const ROLE_LABELS: Record<string, string> = {
   ADMIN_SCHOOL: 'Admin Sekolah',
   GURU: 'Guru',
   SISWA: 'Siswa',
+  ORANG_TUA: 'Orang Tua',
 };
 
 // Status labels

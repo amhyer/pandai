@@ -53,6 +53,7 @@ export default function Home() {
           case 'ADMIN_SCHOOL': return <AdminSekolahDashboard />;
           case 'GURU': return <GuruDashboard />;
           case 'SISWA': return <SiswaDashboard />;
+          case 'ORANG_TUA': return <PlaceholderPage title='Beranda Orang Tua' desc='Pantau perkembangan belajar anak Anda dari sini.' />;
           default: return <SiswaDashboard />;
         }
 
@@ -125,6 +126,20 @@ export default function Home() {
         return <ResultsView />;
       case 'leaderboard':
         return <PlaceholderPage title="Peringkat" desc="Papan peringkat siswa berdasarkan skor tryout dan latihan. Bandingkan pencapaian Anda dengan teman sekelas." />;
+
+      // ══════════════════════════════════════════════════
+      // ORANG_TUA
+      // ══════════════════════════════════════════════════
+      case 'ortu-nilai':
+        return <PlaceholderPage title='Nilai & Progres Anak' desc='Rincian nilai per mata pelajaran anak Anda — rata-rata, status ketuntasan, dan tren.' />;
+      case 'ortu-materi':
+        return <PlaceholderPage title='Materi Pelajaran' desc='Lihat materi yang digunakan guru di kelas anak Anda.' />;
+      case 'ortu-kehadiran':
+        return <PlaceholderPage title='Kehadiran' desc='Pantau kehadiran anak Anda di sekolah.' />;
+      case 'ortu-kuis':
+        return <PlaceholderPage title='Riwayat Pengerjaan' desc='Lihat riwayat tryout dan ujian yang telah dikerjakan anak Anda.' />;
+      case 'ortu-laporan':
+        return <ReportsView />;
 
       // ══════════════════════════════════════════════════
       // SHARED
