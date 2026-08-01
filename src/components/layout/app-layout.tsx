@@ -49,11 +49,27 @@ import {
   Bell,
   Menu,
   ChevronRight,
+  FlaskConical,
+  FileText,
+  PenLine,
+  UserCheck,
+  ListChecks,
+  Target,
+  TrendingUp,
+  ChartColumn,
+  Printer,
+  Database,
+  Activity,
+  CalendarClock,
+  FolderOpen,
+  BrainCircuit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
 
-// ─── Navigation config ──────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Navigation Config — Terinspirasi SIMANTAP, diadaptasi ke domain TKA
+// ═══════════════════════════════════════════════════════════════════════
 
 interface NavItem {
   label: string;
@@ -61,37 +77,156 @@ interface NavItem {
   icon: LucideIcon;
 }
 
-const NAV_CONFIG: Record<UserRole, NavItem[]> = {
+interface NavSection {
+  section: string;
+  items: NavItem[];
+}
+
+type RoleNav = Record<UserRole, NavSection[]>;
+
+const NAV_CONFIG: RoleNav = {
+  // ────────────────────────────────────────────────────────────────
+  // SUPER ADMIN — Mengelola platform lintas sekolah
+  // (Setara: SIMANTAP admin)
+  // ────────────────────────────────────────────────────────────────
   SUPER_ADMIN: [
-    { label: 'Dashboard', view: 'dashboard', icon: LayoutDashboard },
-    { label: 'Kelola Sekolah', view: 'schools', icon: School },
-    { label: 'Bank Soal Global', view: 'questions', icon: BookOpen },
-    { label: 'Pengguna', view: 'users', icon: Users },
-    { label: 'Laporan', view: 'reports', icon: BarChart3 },
-    { label: 'Pengaturan', view: 'settings', icon: Settings },
+    {
+      section: 'Utama',
+      items: [
+        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      section: 'Manajemen',
+      items: [
+        { label: 'Kelola Sekolah', view: 'schools', icon: School },
+        { label: 'Semua Pengguna', view: 'users-global', icon: Users },
+      ],
+    },
+    {
+      section: 'Konten',
+      items: [
+        { label: 'Bank Soal Global', view: 'questions-global', icon: FlaskConical },
+      ],
+    },
+    {
+      section: 'Laporan',
+      items: [
+        { label: 'Analitik Platform', view: 'analytics-global', icon: BarChart3 },
+        { label: 'Laporan Global', view: 'reports-global', icon: Printer },
+      ],
+    },
+    {
+      section: 'Sistem',
+      items: [
+        { label: 'Pengaturan', view: 'settings', icon: Settings },
+      ],
+    },
   ],
+
+  // ────────────────────────────────────────────────────────────────
+  // ADMIN SEKOLAH — Mengelola sekolah sendiri
+  // (Setara: SIMANTAP admin, scope per-sekolah)
+  // ────────────────────────────────────────────────────────────────
   ADMIN_SCHOOL: [
-    { label: 'Dashboard', view: 'dashboard', icon: LayoutDashboard },
-    { label: 'Guru & Siswa', view: 'users', icon: Users },
-    { label: 'Kelas', view: 'classes', icon: GraduationCap },
-    { label: 'Bank Soal', view: 'questions', icon: BookOpen },
-    { label: 'Tryout', view: 'exams', icon: ClipboardList },
-    { label: 'Laporan', view: 'reports', icon: BarChart3 },
+    {
+      section: 'Utama',
+      items: [
+        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      section: 'Manajemen',
+      items: [
+        { label: 'Guru & Siswa', view: 'users', icon: Users },
+        { label: 'Rombel (Kelas)', view: 'classes', icon: GraduationCap },
+      ],
+    },
+    {
+      section: 'Bank Soal',
+      items: [
+        { label: 'Soal Sekolah', view: 'questions', icon: BookOpen },
+        { label: 'Buat Soal', view: 'question-editor', icon: PenLine },
+      ],
+    },
+    {
+      section: 'Tryout & Ujian',
+      items: [
+        { label: 'Kelola Tryout', view: 'exams', icon: ClipboardList },
+        { label: 'Jadwal & Tugaskan', view: 'exam-assignments', icon: CalendarClock },
+      ],
+    },
+    {
+      section: 'Penilaian',
+      items: [
+        { label: 'Hasil & Nilai', view: 'results', icon: Trophy },
+        { label: 'Analisis Butir', view: 'analytics', icon: ChartColumn },
+        { label: 'Laporan', view: 'reports', icon: Printer },
+      ],
+    },
   ],
+
+  // ────────────────────────────────────────────────────────────────
+  // GURU — Mengajar dan menilai siswa
+  // (Setara: SIMANTAP guru — Pembelajaran + Penilaian)
+  // ────────────────────────────────────────────────────────────────
   GURU: [
-    { label: 'Dashboard', view: 'dashboard', icon: LayoutDashboard },
-    { label: 'Bank Soal', view: 'questions', icon: BookOpen },
-    { label: 'Buat Soal', view: 'question-editor', icon: FilePlus },
-    { label: 'Tryout', view: 'exams', icon: ClipboardList },
-    { label: 'Nilai & Analisis', view: 'analytics', icon: BarChart3 },
+    {
+      section: 'Utama',
+      items: [
+        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      section: 'Pembelajaran',
+      items: [
+        { label: 'Materi Ajar', view: 'guru-materi', icon: FileText },
+        { label: 'Bank Soal', view: 'guru-soal', icon: FlaskConical },
+      ],
+    },
+    {
+      section: 'Tryout',
+      items: [
+        { label: 'Kelola Tryout', view: 'guru-tryout', icon: ClipboardList },
+      ],
+    },
+    {
+      section: 'Penilaian',
+      items: [
+        { label: 'Input Nilai', view: 'guru-nilai', icon: ListChecks },
+        { label: 'Analisis Hasil', view: 'guru-analisis', icon: TrendingUp },
+        { label: 'Laporan Siswa', view: 'guru-laporan', icon: Printer },
+      ],
+    },
   ],
+
+  // ────────────────────────────────────────────────────────────────
+  // SISWA — Belajar dan mengerjakan tryout
+  // (Setara: SIMANTAP siswa — Belajar + Hasil)
+  // ────────────────────────────────────────────────────────────────
   SISWA: [
-    { label: 'Dashboard', view: 'dashboard', icon: LayoutDashboard },
-    { label: 'Diagnostic Test', view: 'diagnostic', icon: Stethoscope },
-    { label: 'Latihan', view: 'practice', icon: Dumbbell },
-    { label: 'Tryout', view: 'exams', icon: ClipboardList },
-    { label: 'Hasil Saya', view: 'results', icon: Trophy },
-    { label: 'Leaderboard', view: 'leaderboard', icon: Medal },
+    {
+      section: 'Utama',
+      items: [
+        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      section: 'Belajar',
+      items: [
+        { label: 'Diagnostic Test', view: 'diagnostic', icon: Stethoscope },
+        { label: 'Latihan Soal', view: 'practice', icon: Dumbbell },
+        { label: 'Tryout & Ujian', view: 'exam-runner', icon: ClipboardList },
+      ],
+    },
+    {
+      section: 'Hasil',
+      items: [
+        { label: 'Nilai Saya', view: 'siswa-nilai', icon: Target },
+        { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: CalendarClock },
+        { label: 'Peringkat', view: 'leaderboard', icon: Medal },
+      ],
+    },
   ],
 };
 
@@ -107,41 +242,73 @@ const ROLE_LABELS: Record<UserRole, string> = {
 // ─── View → breadcrumb label map ─────────────────────────────────────
 
 const VIEW_LABELS: Record<ViewType, string> = {
+  // Public
   landing: 'Beranda',
   login: 'Masuk',
   register: 'Daftar',
-  dashboard: 'Dashboard',
+
+  // Dashboard
+  dashboard: 'Beranda',
+
+  // SUPER_ADMIN
   schools: 'Kelola Sekolah',
   'school-detail': 'Detail Sekolah',
-  users: 'Pengguna',
-  classes: 'Kelas',
-  questions: 'Bank Soal',
-  'question-editor': 'Buat Soal',
-  exams: 'Tryout',
-  'exam-editor': 'Editor Tryout',
-  'exam-runner': 'Kerjakan Tryout',
-  results: 'Hasil',
-  'result-detail': 'Detail Hasil',
-  analytics: 'Nilai & Analisis',
-  leaderboard: 'Leaderboard',
-  diagnostic: 'Diagnostic Test',
-  practice: 'Latihan',
-  profile: 'Profil',
-  reports: 'Laporan',
+  'users-global': 'Semua Pengguna',
+  'questions-global': 'Bank Soal Global',
+  'reports-global': 'Laporan Global',
+  'analytics-global': 'Analitik Platform',
   settings: 'Pengaturan',
+
+  // ADMIN_SCHOOL
+  users: 'Guru & Siswa',
+  classes: 'Rombel (Kelas)',
+  questions: 'Soal Sekolah',
+  'question-editor': 'Buat Soal',
+  exams: 'Kelola Tryout',
+  'exam-editor': 'Editor Tryout',
+  'exam-assignments': 'Jadwal & Tugaskan',
+  results: 'Hasil & Nilai',
+  'result-detail': 'Detail Hasil',
+  analytics: 'Analisis Butir',
+  reports: 'Laporan',
+
+  // GURU
+  'guru-materi': 'Materi Ajar',
+  'guru-soal': 'Bank Soal',
+  'guru-tryout': 'Kelola Tryout',
+  'guru-nilai': 'Input Nilai',
+  'guru-analisis': 'Analisis Hasil',
+  'guru-laporan': 'Laporan Siswa',
+
+  // SISWA
+  diagnostic: 'Diagnostic Test',
+  practice: 'Latihan Soal',
+  'exam-runner': 'Tryout & Ujian',
+  'siswa-nilai': 'Nilai Saya',
+  'siswa-riwayat': 'Riwayat Pengerjaan',
+  leaderboard: 'Peringkat',
+
+  // Shared
+  profile: 'Profil',
+  notifications: 'Notifikasi',
   broadcasts: 'Broadcast',
 };
 
 // ─── Breadcrumb builder ─────────────────────────────────────────────
 
 function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] {
-  const roleBased: Record<ViewType, { label: string; view?: ViewType }[]> = {
+  const roleBased: Partial<Record<ViewType, { label: string; view?: ViewType }[]>> = {
     dashboard: [{ label: VIEW_LABELS.dashboard }],
     schools: [{ label: VIEW_LABELS.schools }],
     'school-detail': [
       { label: VIEW_LABELS.schools, view: 'schools' },
       { label: VIEW_LABELS['school-detail'] },
     ],
+    'users-global': [{ label: VIEW_LABELS['users-global'] }],
+    'questions-global': [{ label: VIEW_LABELS['questions-global'] }],
+    'reports-global': [{ label: VIEW_LABELS['reports-global'] }],
+    'analytics-global': [{ label: VIEW_LABELS['analytics-global'] }],
+    settings: [{ label: VIEW_LABELS.settings }],
     users: [{ label: VIEW_LABELS.users }],
     classes: [{ label: VIEW_LABELS.classes }],
     questions: [{ label: VIEW_LABELS.questions }],
@@ -154,74 +321,94 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
       { label: VIEW_LABELS.exams, view: 'exams' },
       { label: VIEW_LABELS['exam-editor'] },
     ],
-    'exam-runner': [
-      { label: VIEW_LABELS.exams, view: 'exams' },
-      { label: VIEW_LABELS['exam-runner'] },
-    ],
+    'exam-assignments': [{ label: VIEW_LABELS['exam-assignments'] }],
     results: [{ label: VIEW_LABELS.results }],
     'result-detail': [
       { label: VIEW_LABELS.results, view: 'results' },
       { label: VIEW_LABELS['result-detail'] },
     ],
     analytics: [{ label: VIEW_LABELS.analytics }],
-    leaderboard: [{ label: VIEW_LABELS.leaderboard }],
+    reports: [{ label: VIEW_LABELS.reports }],
+    'guru-materi': [{ label: VIEW_LABELS['guru-materi'] }],
+    'guru-soal': [{ label: VIEW_LABELS['guru-soal'] }],
+    'guru-tryout': [{ label: VIEW_LABELS['guru-tryout'] }],
+    'guru-nilai': [{ label: VIEW_LABELS['guru-nilai'] }],
+    'guru-analisis': [{ label: VIEW_LABELS['guru-analisis'] }],
+    'guru-laporan': [{ label: VIEW_LABELS['guru-laporan'] }],
     diagnostic: [{ label: VIEW_LABELS.diagnostic }],
     practice: [{ label: VIEW_LABELS.practice }],
+    'exam-runner': [{ label: VIEW_LABELS['exam-runner'] }],
+    'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
+    'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
+    leaderboard: [{ label: VIEW_LABELS.leaderboard }],
     profile: [{ label: VIEW_LABELS.profile }],
-    reports: [{ label: VIEW_LABELS.reports }],
-    settings: [{ label: VIEW_LABELS.settings }],
+    notifications: [{ label: VIEW_LABELS.notifications }],
     broadcasts: [{ label: VIEW_LABELS.broadcasts }],
     landing: [{ label: VIEW_LABELS.landing }],
     login: [{ label: VIEW_LABELS.login }],
     register: [{ label: VIEW_LABELS.register }],
   };
-  return roleBased[view] ?? [{ label: VIEW_LABELS[view] }];
+  return roleBased[view] ?? [{ label: VIEW_LABELS[view] ?? view }];
 }
 
-// ─── Sidebar nav list (shared between desktop & mobile) ─────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Sidebar Navigation — grouped by section (SIMANTAP pattern)
+// ═══════════════════════════════════════════════════════════════════════
 
 interface SidebarNavProps {
-  items: NavItem[];
+  sections: NavSection[];
   currentView: ViewType;
   onNavigate: (view: ViewType) => void;
   onLogout: () => void;
 }
 
-function SidebarNav({ items, currentView, onNavigate, onLogout }: SidebarNavProps) {
+function SidebarNav({ sections, currentView, onNavigate, onLogout }: SidebarNavProps) {
   return (
     <div className="flex h-full flex-col">
       <ScrollArea className="flex-1 px-3 py-4">
         <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation">
-          {items.map((item) => {
-            const Icon = item.icon;
-            const isActive = currentView === item.view;
-            return (
-              <button
-                key={item.view}
-                onClick={() => onNavigate(item.view)}
-                className={cn(
-                  'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors text-left',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
-                  isActive
-                    ? 'bg-white/10 text-amber-400 border-l-[3px] border-amber-400'
-                    : 'text-white/70 hover:bg-white/5 hover:text-white'
-                )}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                <Icon className="h-5 w-5 shrink-0" />
-                <span className="truncate">{item.label}</span>
-              </button>
-            );
-          })}
+          {sections.map((group) => (
+            <React.Fragment key={group.section}>
+              {/* Section label */}
+              <div className="mt-4 mb-1 px-3 first:mt-0">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+                  {group.section}
+                </span>
+              </div>
+              {/* Items */}
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = currentView === item.view;
+                return (
+                  <button
+                    key={item.view}
+                    onClick={() => onNavigate(item.view)}
+                    className={cn(
+                      'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
+                      isActive
+                        ? 'bg-white/10 text-amber-400 shadow-sm shadow-amber-400/10 border-l-[3px] border-amber-400'
+                        : 'text-white/70 hover:bg-white/5 hover:text-white border-l-[3px] border-transparent'
+                    )}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <Icon className="h-4.5 w-4.5 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                );
+              })}
+            </React.Fragment>
+          ))}
         </nav>
       </ScrollArea>
 
+      {/* Logout at bottom */}
       <div className="mt-auto border-t border-white/10 p-3">
         <button
           onClick={onLogout}
           className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 text-left"
         >
-          <LogOut className="h-5 w-5 shrink-0" />
+          <LogOut className="h-4.5 w-4.5 shrink-0" />
           <span>Keluar</span>
         </button>
       </div>
@@ -229,7 +416,9 @@ function SidebarNav({ items, currentView, onNavigate, onLogout }: SidebarNavProp
   );
 }
 
-// ─── Main AppLayout ──────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+// Main AppLayout
+// ═══════════════════════════════════════════════════════════════════════
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const user = useAppStore((s) => s.user);
@@ -240,7 +429,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
 
   const role = user?.role ?? 'SISWA';
-  const navItems = NAV_CONFIG[role];
+  const navSections = NAV_CONFIG[role];
   const breadcrumbs = buildBreadcrumbs(currentView);
   const initials = user?.name
     ?.split(' ')
@@ -254,7 +443,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     toast.success('Berhasil keluar');
   };
 
-  // ── Sidebar content (shared) ──
+  // ── Sidebar content (shared between desktop & mobile) ──
 
   const sidebarBranding = (
     <div className="flex items-center gap-3 px-4 pt-6 pb-2">
@@ -279,7 +468,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const sidebarNav = (
     <SidebarNav
-      items={navItems}
+      sections={navSections}
       currentView={currentView}
       onNavigate={navigateTo}
       onLogout={handleLogout}

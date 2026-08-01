@@ -1,0 +1,1292 @@
+     1→/**
+     2→ * ============================================================================
+     3→ *  SIMANTAP — Situs Mandiri Terintegrasi Aplikasi Pembelajaran
+     4→ *  Backend Google Apps Script
+     5→ *  BBGTK Provinsi Sulawesi Selatan — Tim Kerja 4 (Model dan Media)
+     6→ * ============================================================================
+     7→ *  CARA PASANG:
+     8→ *  1. Buat Google Sheet baru (kosong), beri nama misalnya "Database SIMANTAP".
+     9→ *  2. Menu Extensions > Apps Script. Hapus isi default, tempel SELURUH isi
+    10→ *     file ini ke Code.gs.
+    11→ *  3. Di toolbar Apps Script, pilih fungsi "initDatabase" lalu klik Run.
+    12→ *     (Google akan minta izin akses — setujui). Ini membuat seluruh sheet
+    13→ *     (tab) yang dibutuhkan beserta akun admin default.
+    14→ *  4. Klik Deploy > New deployment > pilih tipe "Web app".
+    15→ *     - Execute as: Me
+    16→ *     - Who has access: Anyone
+    17→ *     Klik Deploy, salin URL yang diberikan (diakhiri /exec).
+    18→ *  5. Tempel URL tersebut ke layar "Pengaturan Awal" pada file index.html
+    19→ *     di SETIAP komputer yang akan memakai aplikasi ini. Karena Google Sheet
+    20→ *     bersifat online (bukan file lokal), seluruh komputer akan membaca dan
+    21→ *     menulis ke SATU Google Sheet yang sama secara real-time.
+    22→ *  6. Login pertama kali: username "admin", password "admin123", lalu SEGERA
+    23→ *     ganti password melalui menu Pengaturan Akun.
+    24→ * ============================================================================
+    25→ */
+    26→
+    27→// ----------------------------------------------------------------------------
+    28→// KONFIGURASI SKEMA
+    29→// ----------------------------------------------------------------------------
+    30→
+    31→const SHEETS = {
+    32→  SETTINGS: 'Settings',
+    33→  USERS: 'Users',
+    34→  SESSIONS: 'Sessions',
+    35→  KELAS: 'Kelas',
+    36→  MAPEL: 'MataPelajaran',
+    37→  PENGAMPU: 'PengampuMapel',
+    38→  SISWA: 'Siswa',
+    39→  NILAI: 'Nilai',
+    40→  MATERI: 'Materi',
+    41→  KEHADIRAN: 'Kehadiran',
+    42→  KEBIASAAN: 'Kebiasaan7',
+    43→  KUIS: 'Kuis',
+    44→  SOAL: 'Soal',
+    45→  HASIL: 'HasilKuis',
+    46→  LOG: 'Log'
+    47→};
+    48→
+    49→const SCHEMA = {
+    50→  Settings: ['key', 'value'],
+    51→  Users: ['id', 'username', 'password', 'role', 'nama', 'ref_id', 'aktif', 'dibuat_pada'],
+    52→  Sessions: ['token', 'user_id', 'username', 'role', 'ref_id', 'nama', 'dibuat_pada', 'kedaluwarsa'],
+    53→  Kelas: ['id', 'nama_kelas', 'wali_kelas_id'],
+    54→  MataPelajaran: ['id', 'nama_mapel', 'kode'],
+    55→  PengampuMapel: ['id', 'guru_id', 'mapel_id', 'kelas_id'],
+    56→  Siswa: ['id', 'nama', 'nisn', 'kelas_id', 'jk', 'tempat_tgl_lahir', 'nama_ortu', 'aktif'],
+    57→  Nilai: ['id', 'siswa_id', 'mapel_id', 'kelas_id', 'jenis', 'nilai', 'bobot', 'tanggal', 'catatan', 'guru_id', 'dibuat_pada'],
+    58→  Materi: ['id', 'judul', 'deskripsi', 'mapel_id', 'kelas_id', 'guru_id', 'tipe', 'url', 'tanggal', 'dibuat_pada'],
+    59→  Kehadiran: ['id', 'siswa_id', 'kelas_id', 'mapel_id', 'tanggal', 'status', 'keterangan', 'guru_id', 'dibuat_pada'],
+    60→  Kebiasaan7: ['id', 'siswa_id', 'tanggal', 'k1', 'k2', 'k3', 'k4', 'k5', 'k6', 'k7', 'catatan', 'dilapor_oleh', 'dibuat_pada'],
+    61→  Kuis: ['id', 'judul', 'deskripsi', 'jenis', 'mapel_id', 'kelas_id', 'guru_id', 'waktu_menit', 'acak_soal', 'kkm', 'status', 'tanggal_mulai', 'tanggal_selesai', 'dibuat_pada'],
+    62→  Soal: ['id', 'kuis_id', 'urutan', 'tipe', 'pertanyaan', 'pilihan_json', 'kunci', 'bobot'],
+    63→  HasilKuis: ['id', 'kuis_id', 'siswa_id', 'jawaban_json', 'skor', 'jumlah_benar', 'jumlah_soal', 'mulai_pada', 'selesai_pada', 'status', 'catatan_guru'],
+    64→  Log: ['id', 'waktu', 'username', 'peran', 'aksi', 'detail']
+    65→};
+    66→
+    67→const SALT_PASSWORD = 'SIMANTAP_BBGTK_SULSEL_2026';
+    68→
+    69→// ----------------------------------------------------------------------------
+    70→// ENTRY POINT WEB APP
+    71→// ----------------------------------------------------------------------------
+    72→
+    73→function doGet(e) {
+    74→  if (e && e.parameter && e.parameter.action) {
+    75→    return handleRequest({
+    76→      action: e.parameter.action,
+    77→      payload: e.parameter.payload ? JSON.parse(e.parameter.payload) : {},
+    78→      token: e.parameter.token || ''
+    79→    });
+    80→  }
+    81→  return ContentService
+    82→    .createTextOutput('SIMANTAP API aktif. Gunakan aplikasi index.html untuk mengakses layanan ini.')
+    83→    .setMimeType(ContentService.MimeType.TEXT);
+    84→}
+    85→
+    86→function doPost(e) {
+    87→  let body = {};
+    88→  try {
+    89→    body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    90→  } catch (err) {
+    91→    return jsonOut({ ok: false, error: 'Format permintaan tidak valid.' });
+    92→  }
+    93→  return handleRequest(body);
+    94→}
+    95→
+    96→function handleRequest(body) {
+    97→  const action = body.action;
+    98→  const payload = body.payload || {};
+    99→  const token = body.token || '';
+   100→  try {
+   101→    const fn = ACTIONS[action];
+   102→    if (!fn) throw new Error('Aksi tidak dikenal: ' + action);
+   103→    const result = fn(payload, token);
+   104→    return jsonOut({ ok: true, data: result });
+   105→  } catch (err) {
+   106→    return jsonOut({ ok: false, error: err.message || String(err) });
+   107→  }
+   108→}
+   109→
+   110→function jsonOut(obj) {
+   111→  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
+   112→}
+   113→
+   114→// ----------------------------------------------------------------------------
+   115→// HELPER SHEET GENERIK
+   116→// ----------------------------------------------------------------------------
+   117→
+   118→function sheet(name) {
+   119→  const ss = SpreadsheetApp.getActiveSpreadsheet();
+   120→  let sh = ss.getSheetByName(name);
+   121→  if (!sh) sh = ss.insertSheet(name);
+   122→  return sh;
+   123→}
+   124→
+   125→function readSheet(name) {
+   126→  const sh = sheet(name);
+   127→  const values = sh.getDataRange().getValues();
+   128→  if (values.length < 2) return [];
+   129→  const header = values[0];
+   130→  const rows = [];
+   131→  for (let i = 1; i < values.length; i++) {
+   132→    const row = values[i];
+   133→    if (row.every(function (c) { return c === '' || c === null; })) continue;
+   134→    const obj = {};
+   135→    header.forEach(function (h, idx) { obj[h] = row[idx]; });
+   136→    rows.push(obj);
+   137→  }
+   138→  return rows;
+   139→}
+   140→
+   141→function getAll(name) { return readSheet(name); }
+   142→
+   143→function writeAll(name, objects) {
+   144→  const sh = sheet(name);
+   145→  const header = SCHEMA[name];
+   146→  sh.clearContents();
+   147→  sh.getRange(1, 1, 1, header.length).setValues([header]);
+   148→  sh.setFrozenRows(1);
+   149→  if (objects && objects.length) {
+   150→    const rows = objects.map(function (o) {
+   151→      return header.map(function (h) { return o[h] !== undefined ? o[h] : ''; });
+   152→    });
+   153→    sh.getRange(2, 1, rows.length, header.length).setValues(rows);
+   154→  }
+   155→}
+   156→
+   157→function nextId(name) {
+   158→  const rows = getAll(name);
+   159→  let max = 0;
+   160→  rows.forEach(function (r) {
+   161→    const n = parseInt(r.id, 10);
+   162→    if (!isNaN(n) && n > max) max = n;
+   163→  });
+   164→  return max + 1;
+   165→}
+   166→
+   167→function insert(name, obj) {
+   168→  const header = SCHEMA[name];
+   169→  if (header.indexOf('id') !== -1 && (obj.id === undefined || obj.id === '')) {
+   170→    obj.id = nextId(name);
+   171→  }
+   172→  const sh = sheet(name);
+   173→  const row = header.map(function (h) { return obj[h] !== undefined ? obj[h] : ''; });
+   174→  sh.appendRow(row);
+   175→  return obj;
+   176→}
+   177→
+   178→function findRowIndexById(name, id) {
+   179→  const sh = sheet(name);
+   180→  const values = sh.getDataRange().getValues();
+   181→  const header = values[0] || [];
+   182→  const idCol = header.indexOf('id');
+   183→  if (idCol === -1) return -1;
+   184→  for (let i = 1; i < values.length; i++) {
+   185→    if (String(values[i][idCol]) === String(id)) return i + 1;
+   186→  }
+   187→  return -1;
+   188→}
+   189→
+   190→function updateById(name, id, patch) {
+   191→  const sh = sheet(name);
+   192→  const header = SCHEMA[name];
+   193→  const rowIdx = findRowIndexById(name, id);
+   194→  if (rowIdx === -1) throw new Error('Data dengan id ' + id + ' tidak ditemukan di ' + name + '.');
+   195→  const rowValues = sh.getRange(rowIdx, 1, 1, header.length).getValues()[0];
+   196→  const current = {};
+   197→  header.forEach(function (h, i) { current[h] = rowValues[i]; });
+   198→  const merged = Object.assign({}, current, patch, { id: id });
+   199→  const newRow = header.map(function (h) { return merged[h] !== undefined ? merged[h] : ''; });
+   200→  sh.getRange(rowIdx, 1, 1, header.length).setValues([newRow]);
+   201→  return merged;
+   202→}
+   203→
+   204→function deleteById(name, id) {
+   205→  const rowIdx = findRowIndexById(name, id);
+   206→  if (rowIdx === -1) throw new Error('Data tidak ditemukan.');
+   207→  sheet(name).deleteRow(rowIdx);
+   208→}
+   209→
+   210→function crudActions(sheetName, writeRoles, readRoles) {
+   211→  return {
+   212→    list: function (payload, token) {
+   213→      requireAuth(token, readRoles);
+   214→      return getAll(sheetName);
+   215→    },
+   216→    save: function (payload, token) {
+   217→      requireAuth(token, writeRoles);
+   218→      if (payload.id) return updateById(sheetName, payload.id, payload);
+   219→      return insert(sheetName, payload);
+   220→    },
+   221→    remove: function (payload, token) {
+   222→      requireAuth(token, writeRoles);
+   223→      deleteById(sheetName, payload.id);
+   224→      return { deleted: true };
+   225→    }
+   226→  };
+   227→}
+   228→
+   229→function shuffleArray(arr) {
+   230→  const a = arr.slice();
+   231→  for (let i = a.length - 1; i > 0; i--) {
+   232→    const j = Math.floor(Math.random() * (i + 1));
+   233→    const tmp = a[i]; a[i] = a[j]; a[j] = tmp;
+   234→  }
+   235→  return a;
+   236→}
+   237→
+   238→// ----------------------------------------------------------------------------
+   239→// SETTINGS (key-value)
+   240→// ----------------------------------------------------------------------------
+   241→
+   242→function getSettings() {
+   243→  const rows = readSheet(SHEETS.SETTINGS);
+   244→  const obj = {};
+   245→  rows.forEach(function (r) { obj[r.key] = r.value; });
+   246→  return obj;
+   247→}
+   248→
+   249→function saveSettings(patch) {
+   250→  const sh = sheet(SHEETS.SETTINGS);
+   251→  const values = sh.getDataRange().getValues();
+   252→  const map = {};
+   253→  for (let i = 1; i < values.length; i++) map[values[i][0]] = i + 1;
+   254→  Object.keys(patch).forEach(function (k) {
+   255→    if (k === 'id') return;
+   256→    if (map[k]) sh.getRange(map[k], 2).setValue(patch[k]);
+   257→    else sh.appendRow([k, patch[k]]);
+   258→  });
+   259→  return getSettings();
+   260→}
+   261→
+   262→// ----------------------------------------------------------------------------
+   263→// AUTH & SESSION
+   264→// ----------------------------------------------------------------------------
+   265→
+   266→function hashPassword(pw) {
+   267→  const raw = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, pw + SALT_PASSWORD);
+   268→  return raw.map(function (b) { return (b < 0 ? b + 256 : b).toString(16).padStart(2, '0'); }).join('');
+   269→}
+   270→
+   271→function cleanupSessions() {
+   272→  const sh = sheet(SHEETS.SESSIONS);
+   273→  const values = sh.getDataRange().getValues();
+   274→  if (values.length < 2) return;
+   275→  const now = new Date();
+   276→  for (let i = values.length - 1; i >= 1; i--) {
+   277→    const exp = new Date(values[i][7]);
+   278→    if (isNaN(exp.getTime()) || exp < now) sh.deleteRow(i + 1);
+   279→  }
+   280→}
+   281→
+   282→function requireAuth(token, roles) {
+   283→  if (!token) throw new Error('Anda belum login. Silakan login kembali.');
+   284→  const sessions = getAll(SHEETS.SESSIONS);
+   285→  const s = sessions.find(function (x) { return x.token === token; });
+   286→  if (!s) throw new Error('Sesi tidak valid. Silakan login kembali.');
+   287→  if (new Date(s.kedaluwarsa) < new Date()) throw new Error('Sesi telah berakhir. Silakan login kembali.');
+   288→  if (roles && roles.length && roles.indexOf(s.role) === -1) {
+   289→    throw new Error('Anda tidak memiliki akses untuk aksi ini.');
+   290→  }
+   291→  return s;
+   292→}
+   293→
+   294→function writeLog(username, role, aksi, detail) {
+   295→  insert(SHEETS.LOG, {
+   296→    waktu: new Date().toISOString(), username: username, peran: role,
+   297→    aksi: aksi, detail: detail || ''
+   298→  });
+   299→}
+   300→
+   301→function actPing() { return { status: 'ok', waktu: new Date().toISOString() }; }
+   302→
+   303→function actLogin(payload) {
+   304→  const username = payload && payload.username;
+   305→  const password = payload && payload.password;
+   306→  if (!username || !password) throw new Error('Username dan password wajib diisi.');
+   307→  cleanupSessions();
+   308→  const users = getAll(SHEETS.USERS);
+   309→  const u = users.find(function (x) { return x.username === username; });
+   310→  if (!u) throw new Error('Username tidak ditemukan.');
+   311→  if (String(u.aktif).toUpperCase() === 'FALSE') throw new Error('Akun tidak aktif. Hubungi admin sekolah.');
+   312→  if (hashPassword(password) !== u.password) throw new Error('Password salah.');
+   313→  const token = Utilities.getUuid();
+   314→  const now = new Date();
+   315→  const exp = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+   316→  insert(SHEETS.SESSIONS, {
+   317→    token: token, user_id: u.id, username: u.username, role: u.role,
+   318→    ref_id: u.ref_id, nama: u.nama, dibuat_pada: now.toISOString(), kedaluwarsa: exp.toISOString()
+   319→  });
+   320→  writeLog(u.username, u.role, 'login', '');
+   321→  return { token: token, role: u.role, nama: u.nama, ref_id: u.ref_id, username: u.username, user_id: u.id };
+   322→}
+   323→
+   324→function actLogout(payload, token) {
+   325→  const sh = sheet(SHEETS.SESSIONS);
+   326→  const values = sh.getDataRange().getValues();
+   327→  for (let i = 1; i < values.length; i++) {
+   328→    if (values[i][0] === token) { sh.deleteRow(i + 1); break; }
+   329→  }
+   330→  return { ok: true };
+   331→}
+   332→
+   333→function actChangePassword(payload, token) {
+   334→  const s = requireAuth(token, null);
+   335→  const users = getAll(SHEETS.USERS);
+   336→  const u = users.find(function (x) { return String(x.id) === String(s.user_id); });
+   337→  if (!u) throw new Error('Pengguna tidak ditemukan.');
+   338→  if (hashPassword(payload.password_lama) !== u.password) throw new Error('Password lama salah.');
+   339→  updateById(SHEETS.USERS, u.id, { password: hashPassword(payload.password_baru) });
+   340→  writeLog(s.username, s.role, 'ganti_password', '');
+   341→  return { ok: true };
+   342→}
+   343→
+   344→// ----------------------------------------------------------------------------
+   345→// COMMON (dibaca oleh semua peran yang sudah login)
+   346→// ----------------------------------------------------------------------------
+   347→
+   348→function actCommonGetSettings(payload, token) { requireAuth(token, null); return getSettings(); }
+   349→function actCommonGetKelas(payload, token) { requireAuth(token, null); return getAll(SHEETS.KELAS); }
+   350→function actCommonGetMapel(payload, token) { requireAuth(token, null); return getAll(SHEETS.MAPEL); }
+   351→
+   352→// ----------------------------------------------------------------------------
+   353→// ADMIN
+   354→// ----------------------------------------------------------------------------
+   355→
+   356→function actAdminGetSummary(payload, token) {
+   357→  requireAuth(token, ['admin']);
+   358→  return {
+   359→    jumlah_siswa: getAll(SHEETS.SISWA).length,
+   360→    jumlah_guru: getAll(SHEETS.USERS).filter(function (u) { return u.role === 'guru'; }).length,
+   361→    jumlah_ortu: getAll(SHEETS.USERS).filter(function (u) { return u.role === 'ortu'; }).length,
+   362→    jumlah_kelas: getAll(SHEETS.KELAS).length,
+   363→    jumlah_mapel: getAll(SHEETS.MAPEL).length,
+   364→    jumlah_kuis: getAll(SHEETS.KUIS).length,
+   365→    jumlah_nilai: getAll(SHEETS.NILAI).length
+   366→  };
+   367→}
+   368→
+   369→function actAdminGetUsers(payload, token) {
+   370→  requireAuth(token, ['admin']);
+   371→  return getAll(SHEETS.USERS).map(function (u) {
+   372→    const copy = Object.assign({}, u); delete copy.password; return copy;
+   373→  });
+   374→}
+   375→
+   376→function actAdminSaveUser(payload, token) {
+   377→  const s = requireAuth(token, ['admin']);
+   378→  if (!payload.username) throw new Error('Username wajib diisi.');
+   379→  if (!payload.role) throw new Error('Peran (role) wajib dipilih.');
+   380→  const users = getAll(SHEETS.USERS);
+   381→  if (payload.id) {
+   382→    const existing = users.find(function (u) { return String(u.id) === String(payload.id); });
+   383→    if (!existing) throw new Error('Pengguna tidak ditemukan.');
+   384→    const dup = users.find(function (u) { return u.username === payload.username && String(u.id) !== String(payload.id); });
+   385→    if (dup) throw new Error('Username sudah digunakan pengguna lain.');
+   386→    const patch = {
+   387→      username: payload.username, role: payload.role, nama: payload.nama,
+   388→      ref_id: payload.ref_id || '', aktif: payload.aktif !== undefined ? payload.aktif : true
+   389→    };
+   390→    if (payload.password) patch.password = hashPassword(payload.password);
+   391→    const updated = updateById(SHEETS.USERS, payload.id, patch);
+   392→    writeLog(s.username, s.role, 'admin_saveUser', 'update:' + payload.username);
+   393→    const copy = Object.assign({}, updated); delete copy.password; return copy;
+   394→  } else {
+   395→    const dup = users.find(function (u) { return u.username === payload.username; });
+   396→    if (dup) throw new Error('Username sudah digunakan.');
+   397→    if (!payload.password) throw new Error('Password wajib diisi untuk pengguna baru.');
+   398→    const created = insert(SHEETS.USERS, {
+   399→      username: payload.username, password: hashPassword(payload.password), role: payload.role,
+   400→      nama: payload.nama, ref_id: payload.ref_id || '',
+   401→      aktif: payload.aktif !== undefined ? payload.aktif : true, dibuat_pada: new Date().toISOString()
+   402→    });
+   403→    writeLog(s.username, s.role, 'admin_saveUser', 'create:' + payload.username);
+   404→    const copy = Object.assign({}, created); delete copy.password; return copy;
+   405→  }
+   406→}
+   407→
+   408→function actAdminDeleteUser(payload, token) {
+   409→  const s = requireAuth(token, ['admin']);
+   410→  const users = getAll(SHEETS.USERS);
+   411→  const target = users.find(function (u) { return String(u.id) === String(payload.id); });
+   412→  if (target && target.username === 'admin') throw new Error('Akun admin utama tidak dapat dihapus.');
+   413→  deleteById(SHEETS.USERS, payload.id);
+   414→  writeLog(s.username, s.role, 'admin_deleteUser', 'id:' + payload.id);
+   415→  return { deleted: true };
+   416→}
+   417→
+   418→function actAdminResetPassword(payload, token) {
+   419→  const s = requireAuth(token, ['admin']);
+   420→  const newPass = payload.password_baru || 'ganti123';
+   421→  updateById(SHEETS.USERS, payload.id, { password: hashPassword(newPass) });
+   422→  writeLog(s.username, s.role, 'admin_resetPassword', 'id:' + payload.id);
+   423→  return { ok: true, password_baru: newPass };
+   424→}
+   425→
+   426→function actAdminGetPengampu(payload, token) {
+   427→  requireAuth(token, ['admin']);
+   428→  const list = getAll(SHEETS.PENGAMPU);
+   429→  const users = getAll(SHEETS.USERS);
+   430→  const kelas = getAll(SHEETS.KELAS);
+   431→  const mapel = getAll(SHEETS.MAPEL);
+   432→  return list.map(function (p) {
+   433→    return Object.assign({}, p, {
+   434→      nama_guru: (users.find(function (u) { return String(u.id) === String(p.guru_id); }) || {}).nama,
+   435→      nama_kelas: (kelas.find(function (k) { return String(k.id) === String(p.kelas_id); }) || {}).nama_kelas,
+   436→      nama_mapel: (mapel.find(function (m) { return String(m.id) === String(p.mapel_id); }) || {}).nama_mapel
+   437→    });
+   438→  });
+   439→}
+   440→
+   441→function actAdminBackup(payload, token) {
+   442→  requireAuth(token, ['admin']);
+   443→  const dump = {};
+   444→  Object.keys(SCHEMA).forEach(function (name) {
+   445→    dump[name] = name === 'Settings' ? getSettings() : getAll(name);
+   446→  });
+   447→  dump._exported_at = new Date().toISOString();
+   448→  return dump;
+   449→}
+   450→
+   451→function actAdminRestore(payload, token) {
+   452→  const s = requireAuth(token, ['admin']);
+   453→  const dump = payload.data;
+   454→  if (!dump) throw new Error('Data cadangan tidak valid.');
+   455→  Object.keys(SCHEMA).forEach(function (name) {
+   456→    if (name === 'Settings') { if (dump.Settings) saveSettings(dump.Settings); return; }
+   457→    if (Array.isArray(dump[name])) writeAll(name, dump[name]);
+   458→  });
+   459→  writeLog(s.username, s.role, 'admin_restore', '');
+   460→  return { ok: true };
+   461→}
+   462→
+   463→function actAdminGetLog(payload, token) {
+   464→  requireAuth(token, ['admin']);
+   465→  return getAll(SHEETS.LOG).slice(-300).reverse();
+   466→}
+   467→
+   468→// ----------------------------------------------------------------------------
+   469→// GURU
+   470→// ----------------------------------------------------------------------------
+   471→
+   472→function actGuruGetKelasAmpu(payload, token) {
+   473→  const s = requireAuth(token, ['guru']);
+   474→  const list = getAll(SHEETS.PENGAMPU).filter(function (p) { return String(p.guru_id) === String(s.user_id); });
+   475→  const kelas = getAll(SHEETS.KELAS);
+   476→  const mapel = getAll(SHEETS.MAPEL);
+   477→  return list.map(function (p) {
+   478→    return {
+   479→      id: p.id, kelas_id: p.kelas_id, mapel_id: p.mapel_id,
+   480→      nama_kelas: (kelas.find(function (k) { return String(k.id) === String(p.kelas_id); }) || {}).nama_kelas,
+   481→      nama_mapel: (mapel.find(function (m) { return String(m.id) === String(p.mapel_id); }) || {}).nama_mapel
+   482→    };
+   483→  });
+   484→}
+   485→
+   486→function actGuruGetSiswaByKelas(payload, token) {
+   487→  requireAuth(token, ['guru', 'admin']);
+   488→  return getAll(SHEETS.SISWA).filter(function (x) {
+   489→    return String(x.kelas_id) === String(payload.kelas_id) && String(x.aktif).toUpperCase() !== 'FALSE';
+   490→  });
+   491→}
+   492→
+   493→function actGuruGetNilai(payload, token) {
+   494→  requireAuth(token, ['guru', 'admin']);
+   495→  return getAll(SHEETS.NILAI).filter(function (n) {
+   496→    return String(n.kelas_id) === String(payload.kelas_id) && String(n.mapel_id) === String(payload.mapel_id);
+   497→  });
+   498→}
+   499→
+   500→function actGuruSaveNilai(payload, token) {
+   501→  const s = requireAuth(token, ['guru']);
+   502→  const items = Array.isArray(payload.items) ? payload.items : [payload];
+   503→  const out = items.map(function (it) {
+   504→    const data = {
+   505→      siswa_id: it.siswa_id, mapel_id: it.mapel_id, kelas_id: it.kelas_id,
+   506→      jenis: it.jenis, nilai: it.nilai, bobot: it.bobot || 1,
+   507→      tanggal: it.tanggal || new Date().toISOString().slice(0, 10),
+   508→      catatan: it.catatan || '', guru_id: s.user_id, dibuat_pada: new Date().toISOString()
+   509→    };
+   510→    if (it.id) return updateById(SHEETS.NILAI, it.id, data);
+   511→    return insert(SHEETS.NILAI, data);
+   512→  });
+   513→  writeLog(s.username, s.role, 'guru_saveNilai', 'jumlah:' + out.length);
+   514→  return out;
+   515→}
+   516→
+   517→function actGuruDeleteNilai(payload, token) {
+   518→  requireAuth(token, ['guru']);
+   519→  deleteById(SHEETS.NILAI, payload.id);
+   520→  return { deleted: true };
+   521→}
+   522→
+   523→function actGuruGetAnalisis(payload, token) {
+   524→  requireAuth(token, ['guru', 'admin']);
+   525→  const nilai = getAll(SHEETS.NILAI).filter(function (n) {
+   526→    return String(n.kelas_id) === String(payload.kelas_id) && String(n.mapel_id) === String(payload.mapel_id);
+   527→  });
+   528→  const siswaList = getAll(SHEETS.SISWA).filter(function (x) { return String(x.kelas_id) === String(payload.kelas_id); });
+   529→  const settings = getSettings();
+   530→  const kkm = Number(payload.kkm || settings.kkm_default || 75);
+   531→  const perSiswa = siswaList.map(function (sw) {
+   532→    const nl = nilai.filter(function (n) { return String(n.siswa_id) === String(sw.id); });
+   533→    const rata = nl.length ? nl.reduce(function (a, b) { return a + Number(b.nilai); }, 0) / nl.length : null;
+   534→    return { siswa_id: sw.id, nama: sw.nama, rata_rata: rata, jumlah_nilai: nl.length, tuntas: rata !== null ? rata >= kkm : null };
+   535→  });
+   536→  const semuaRata = perSiswa.filter(function (p) { return p.rata_rata !== null; }).map(function (p) { return p.rata_rata; });
+   537→  const rataKelas = semuaRata.length ? semuaRata.reduce(function (a, b) { return a + b; }, 0) / semuaRata.length : 0;
+   538→  const tuntas = perSiswa.filter(function (p) { return p.tuntas; }).length;
+   539→  const distribusi = { sangat_baik: 0, baik: 0, cukup: 0, kurang: 0 };
+   540→  semuaRata.forEach(function (v) {
+   541→    if (v >= 90) distribusi.sangat_baik++;
+   542→    else if (v >= kkm) distribusi.baik++;
+   543→    else if (v >= kkm - 15) distribusi.cukup++;
+   544→    else distribusi.kurang++;
+   545→  });
+   546→  const jenisSet = nilai.reduce(function (acc, n) { if (acc.indexOf(n.jenis) === -1) acc.push(n.jenis); return acc; }, []);
+   547→  const trenJenis = jenisSet.map(function (j) {
+   548→    const vals = nilai.filter(function (n) { return n.jenis === j; }).map(function (n) { return Number(n.nilai); });
+   549→    return { jenis: j, rata_rata: vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : 0, jumlah: vals.length };
+   550→  });
+   551→  return {
+   552→    rata_kelas: rataKelas, kkm: kkm, jumlah_siswa: siswaList.length, jumlah_tuntas: tuntas,
+   553→    distribusi: distribusi, per_siswa: perSiswa, tren_jenis: trenJenis
+   554→  };
+   555→}
+   556→
+   557→function buildLaporanSiswa(siswaId) {
+   558→  const siswa = getAll(SHEETS.SISWA).find(function (x) { return String(x.id) === String(siswaId); });
+   559→  if (!siswa) throw new Error('Data siswa tidak ditemukan.');
+   560→  const kelas = getAll(SHEETS.KELAS).find(function (k) { return String(k.id) === String(siswa.kelas_id); });
+   561→  const mapelList = getAll(SHEETS.MAPEL);
+   562→  const nilai = getAll(SHEETS.NILAI).filter(function (n) { return String(n.siswa_id) === String(siswaId); });
+   563→  const perMapel = mapelList.map(function (m) {
+   564→    const nl = nilai.filter(function (n) { return String(n.mapel_id) === String(m.id); });
+   565→    const rata = nl.length ? nl.reduce(function (a, b) { return a + Number(b.nilai); }, 0) / nl.length : null;
+   566→    return { mapel_id: m.id, nama_mapel: m.nama_mapel, rata_rata: rata, rincian: nl };
+   567→  }).filter(function (m) { return m.rincian.length > 0; });
+   568→  const hasil = getAll(SHEETS.HASIL).filter(function (h) { return String(h.siswa_id) === String(siswaId); });
+   569→  const kuisList = getAll(SHEETS.KUIS);
+   570→  const riwayatKuis = hasil.map(function (h) {
+   571→    const k = kuisList.find(function (kk) { return String(kk.id) === String(h.kuis_id); }) || {};
+   572→    return { judul: k.judul, jenis: k.jenis || 'Kuis', mapel_id: k.mapel_id, skor: h.skor, status: h.status, selesai_pada: h.selesai_pada };
+   573→  });
+   574→  return { siswa: siswa, nama_kelas: kelas ? kelas.nama_kelas : '', per_mapel: perMapel, riwayat_kuis: riwayatKuis, kehadiran: rekapKehadiranSiswa(siswaId), kebiasaan: rekapKebiasaan(ambilCatatanKebiasaan(siswaId, '', '')), settings: getSettings() };
+   575→}
+   576→
+   577→function actGuruGetLaporanSiswa(payload, token) { requireAuth(token, ['guru', 'admin']); return buildLaporanSiswa(payload.siswa_id); }
+   578→
+   579→function actGuruGetKuisList(payload, token) {
+   580→  const s = requireAuth(token, ['guru']);
+   581→  return getAll(SHEETS.KUIS).filter(function (k) { return String(k.guru_id) === String(s.user_id); });
+   582→}
+   583→
+   584→function actGuruGetKuisDetail(payload, token) {
+   585→  requireAuth(token, ['guru']);
+   586→  const kuis = getAll(SHEETS.KUIS).find(function (k) { return String(k.id) === String(payload.id); });
+   587→  if (!kuis) throw new Error('Kuis tidak ditemukan.');
+   588→  const soal = getAll(SHEETS.SOAL).filter(function (sq) { return String(sq.kuis_id) === String(payload.id); })
+   589→    .sort(function (a, b) { return a.urutan - b.urutan; })
+   590→    .map(function (sq) { return Object.assign({}, sq, { pilihan: JSON.parse(sq.pilihan_json || '[]') }); });
+   591→  return Object.assign({}, kuis, { soal: soal });
+   592→}
+   593→
+   594→function actGuruSaveKuis(payload, token) {
+   595→  const s = requireAuth(token, ['guru']);
+   596→  const kuisData = {
+   597→    judul: payload.judul, deskripsi: payload.deskripsi || '', jenis: payload.jenis || 'Kuis',
+   598→    mapel_id: payload.mapel_id, kelas_id: payload.kelas_id,
+   599→    guru_id: s.user_id, waktu_menit: payload.waktu_menit || 30, acak_soal: !!payload.acak_soal,
+   600→    kkm: payload.kkm || '', status: payload.status || 'draft',
+   601→    tanggal_mulai: payload.tanggal_mulai || '', tanggal_selesai: payload.tanggal_selesai || '',
+   602→    dibuat_pada: new Date().toISOString()
+   603→  };
+   604→  let kuis;
+   605→  if (payload.id) {
+   606→    kuis = updateById(SHEETS.KUIS, payload.id, kuisData);
+   607→    getAll(SHEETS.SOAL).filter(function (sq) { return String(sq.kuis_id) === String(payload.id); })
+   608→      .forEach(function (sq) { deleteById(SHEETS.SOAL, sq.id); });
+   609→  } else {
+   610→    kuis = insert(SHEETS.KUIS, kuisData);
+   611→  }
+   612→  (payload.soal || []).forEach(function (q, idx) {
+   613→    insert(SHEETS.SOAL, {
+   614→      kuis_id: kuis.id, urutan: idx + 1, tipe: q.tipe, pertanyaan: q.pertanyaan,
+   615→      pilihan_json: JSON.stringify(q.pilihan || []), kunci: q.kunci, bobot: q.bobot || 1
+   616→    });
+   617→  });
+   618→  writeLog(s.username, s.role, 'guru_saveKuis', kuis.judul);
+   619→  return kuis;
+   620→}
+   621→
+   622→function actGuruDeleteKuis(payload, token) {
+   623→  requireAuth(token, ['guru']);
+   624→  getAll(SHEETS.SOAL).filter(function (sq) { return String(sq.kuis_id) === String(payload.id); })
+   625→    .forEach(function (sq) { deleteById(SHEETS.SOAL, sq.id); });
+   626→  getAll(SHEETS.HASIL).filter(function (h) { return String(h.kuis_id) === String(payload.id); })
+   627→    .forEach(function (h) { deleteById(SHEETS.HASIL, h.id); });
+   628→  deleteById(SHEETS.KUIS, payload.id);
+   629→  return { deleted: true };
+   630→}
+   631→
+   632→function actGuruUpdateKuisStatus(payload, token) {
+   633→  requireAuth(token, ['guru']);
+   634→  return updateById(SHEETS.KUIS, payload.id, { status: payload.status });
+   635→}
+   636→
+   637→function actGuruGetHasilKuis(payload, token) {
+   638→  requireAuth(token, ['guru']);
+   639→  const hasil = getAll(SHEETS.HASIL).filter(function (h) { return String(h.kuis_id) === String(payload.kuis_id); });
+   640→  const siswa = getAll(SHEETS.SISWA);
+   641→  return hasil.map(function (h) {
+   642→    return Object.assign({}, h, { nama_siswa: (siswa.find(function (s2) { return String(s2.id) === String(h.siswa_id); }) || {}).nama });
+   643→  });
+   644→}
+   645→
+   646→function actGuruNilaiEsai(payload, token) {
+   647→  const s = requireAuth(token, ['guru']);
+   648→  const hasil = getAll(SHEETS.HASIL).find(function (h) { return String(h.id) === String(payload.hasil_id); });
+   649→  if (!hasil) throw new Error('Hasil kuis tidak ditemukan.');
+   650→  const jawaban = JSON.parse(hasil.jawaban_json || '{}');
+   651→  const soal = getAll(SHEETS.SOAL).filter(function (sq) { return String(sq.kuis_id) === String(hasil.kuis_id); });
+   652→  const skorEsai = payload.skorEsai || {};
+   653→  let totalBobot = 0, totalSkor = 0, benar = 0;
+   654→  soal.forEach(function (sq) {
+   655→    totalBobot += Number(sq.bobot || 1);
+   656→    if (sq.tipe === 'esai') {
+   657→      const sk = Number(skorEsai[sq.id] || 0);
+   658→      totalSkor += sk;
+   659→      if (sk >= Number(sq.bobot || 1)) benar++;
+   660→    } else {
+   661→      const isBenar = String(jawaban[sq.id]) === String(sq.kunci);
+   662→      if (isBenar) { totalSkor += Number(sq.bobot || 1); benar++; }
+   663→    }
+   664→  });
+   665→  const skorAkhir = totalBobot ? Math.round((totalSkor / totalBobot) * 100) : 0;
+   666→  const updated = updateById(SHEETS.HASIL, payload.hasil_id, {
+   667→    skor: skorAkhir, jumlah_benar: benar, status: 'dinilai', catatan_guru: payload.catatan || ''
+   668→  });
+   669→  writeLog(s.username, s.role, 'guru_nilaiEsai', 'hasil:' + payload.hasil_id);
+   670→  return updated;
+   671→}
+   672→
+   673→// ----------------------------------------------------------------------------
+   674→// MATERI PEMBELAJARAN
+   675→// ----------------------------------------------------------------------------
+   676→
+   677→function actGuruGetMateri(payload, token) {
+   678→  const s = requireAuth(token, ['guru']);
+   679→  let list = getAll(SHEETS.MATERI).filter(function (m) { return String(m.guru_id) === String(s.user_id); });
+   680→  if (payload.kelas_id) list = list.filter(function (m) { return String(m.kelas_id) === String(payload.kelas_id); });
+   681→  if (payload.mapel_id) list = list.filter(function (m) { return String(m.mapel_id) === String(payload.mapel_id); });
+   682→  return list.sort(function (a, b) { return String(b.tanggal || '').localeCompare(String(a.tanggal || '')); });
+   683→}
+   684→
+   685→function actGuruSaveMateri(payload, token) {
+   686→  const s = requireAuth(token, ['guru']);
+   687→  if (!payload.judul) throw new Error('Judul materi wajib diisi.');
+   688→  if (!payload.url) throw new Error('Tautan (link) materi wajib diisi.');
+   689→  const data = {
+   690→    judul: payload.judul, deskripsi: payload.deskripsi || '',
+   691→    mapel_id: payload.mapel_id, kelas_id: payload.kelas_id, guru_id: s.user_id,
+   692→    tipe: payload.tipe || 'link', url: payload.url,
+   693→    tanggal: payload.tanggal || new Date().toISOString().slice(0, 10),
+   694→    dibuat_pada: new Date().toISOString()
+   695→  };
+   696→  const saved = payload.id ? updateById(SHEETS.MATERI, payload.id, data) : insert(SHEETS.MATERI, data);
+   697→  writeLog(s.username, s.role, 'guru_saveMateri', saved.judul);
+   698→  return saved;
+   699→}
+   700→
+   701→function actGuruDeleteMateri(payload, token) {
+   702→  const s = requireAuth(token, ['guru']);
+   703→  deleteById(SHEETS.MATERI, payload.id);
+   704→  writeLog(s.username, s.role, 'guru_deleteMateri', 'materi:' + payload.id);
+   705→  return { deleted: true };
+   706→}
+   707→
+   708→function materiUntukKelas(kelasId) {
+   709→  const guru = getAll(SHEETS.USERS);
+   710→  return getAll(SHEETS.MATERI)
+   711→    .filter(function (m) { return String(m.kelas_id) === String(kelasId); })
+   712→    .map(function (m) {
+   713→      const g = guru.find(function (u) { return String(u.id) === String(m.guru_id); });
+   714→      return Object.assign({}, m, { nama_guru: g ? g.nama : '' });
+   715→    })
+   716→    .sort(function (a, b) { return String(b.tanggal || '').localeCompare(String(a.tanggal || '')); });
+   717→}
+   718→
+   719→function actSiswaGetMateri(payload, token) {
+   720→  const s = requireAuth(token, ['siswa']);
+   721→  const siswa = getAll(SHEETS.SISWA).find(function (x) { return String(x.id) === String(s.ref_id); });
+   722→  if (!siswa) throw new Error('Data siswa tidak ditemukan.');
+   723→  return materiUntukKelas(siswa.kelas_id);
+   724→}
+   725→
+   726→function actOrtuGetMateriAnak(payload, token) {
+   727→  const s = requireAuth(token, ['ortu']);
+   728→  const ids = String(s.ref_id || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+   729→  if (ids.indexOf(String(payload.siswa_id)) === -1) throw new Error('Anda tidak memiliki akses ke data siswa ini.');
+   730→  const siswa = getAll(SHEETS.SISWA).find(function (x) { return String(x.id) === String(payload.siswa_id); });
+   731→  if (!siswa) throw new Error('Data siswa tidak ditemukan.');
+   732→  return materiUntukKelas(siswa.kelas_id);
+   733→}
+   734→
+   735→// ----------------------------------------------------------------------------
+   736→// KEHADIRAN SISWA
+   737→// ----------------------------------------------------------------------------
+   738→
+   739→const STATUS_HADIR = ['Hadir', 'Sakit', 'Izin', 'Alpa'];
+   740→
+   741→function actGuruGetKehadiran(payload, token) {
+   742→  requireAuth(token, ['guru']);
+   743→  return getAll(SHEETS.KEHADIRAN).filter(function (k) {
+   744→    return String(k.kelas_id) === String(payload.kelas_id) &&
+   745→           String(k.mapel_id) === String(payload.mapel_id) &&
+   746→           String(k.tanggal).slice(0, 10) === String(payload.tanggal).slice(0, 10);
+   747→  });
+   748→}
+   749→
+   750→function actGuruSaveKehadiran(payload, token) {
+   751→  const s = requireAuth(token, ['guru']);
+   752→  const items = payload.items || [];
+   753→  if (!items.length) throw new Error('Tidak ada data kehadiran untuk disimpan.');
+   754→  const tanggal = String(payload.tanggal).slice(0, 10);
+   755→  if (!tanggal) throw new Error('Tanggal wajib diisi.');
+   756→
+   757→  const semua = getAll(SHEETS.KEHADIRAN);
+   758→  // buang catatan lama pada kelas + mapel + tanggal yang sama, lalu tulis ulang
+   759→  const sisa = semua.filter(function (k) {
+   760→    return !(String(k.kelas_id) === String(payload.kelas_id) &&
+   761→             String(k.mapel_id) === String(payload.mapel_id) &&
+   762→             String(k.tanggal).slice(0, 10) === tanggal);
+   763→  });
+   764→  let id = 0;
+   765→  sisa.forEach(function (k) { if (Number(k.id) > id) id = Number(k.id); });
+   766→  const baru = items.map(function (it) {
+   767→    id++;
+   768→    return {
+   769→      id: id, siswa_id: it.siswa_id, kelas_id: payload.kelas_id, mapel_id: payload.mapel_id,
+   770→      tanggal: tanggal, status: STATUS_HADIR.indexOf(it.status) === -1 ? 'Hadir' : it.status,
+   771→      keterangan: it.keterangan || '', guru_id: s.user_id, dibuat_pada: new Date().toISOString()
+   772→    };
+   773→  });
+   774→  writeAll(SHEETS.KEHADIRAN, sisa.concat(baru));
+   775→  writeLog(s.username, s.role, 'guru_saveKehadiran', tanggal + ' (' + baru.length + ' siswa)');
+   776→  return { tersimpan: baru.length, tanggal: tanggal };
+   777→}
+   778→
+   779→function hitungRekap(catatan) {
+   780→  const r = { Hadir: 0, Sakit: 0, Izin: 0, Alpa: 0 };
+   781→  catatan.forEach(function (k) { if (r[k.status] !== undefined) r[k.status]++; });
+   782→  const total = r.Hadir + r.Sakit + r.Izin + r.Alpa;
+   783→  return {
+   784→    hadir: r.Hadir, sakit: r.Sakit, izin: r.Izin, alpa: r.Alpa,
+   785→    total_pertemuan: total,
+   786→    persen_hadir: total ? Math.round(r.Hadir / total * 1000) / 10 : null
+   787→  };
+   788→}
+   789→
+   790→function actGuruGetRekapKehadiran(payload, token) {
+   791→  requireAuth(token, ['guru']);
+   792→  const dari = payload.dari ? String(payload.dari).slice(0, 10) : '';
+   793→  const sampai = payload.sampai ? String(payload.sampai).slice(0, 10) : '';
+   794→  const catatan = getAll(SHEETS.KEHADIRAN).filter(function (k) {
+   795→    if (String(k.kelas_id) !== String(payload.kelas_id)) return false;
+   796→    if (String(k.mapel_id) !== String(payload.mapel_id)) return false;
+   797→    const t = String(k.tanggal).slice(0, 10);
+   798→    if (dari && t < dari) return false;
+   799→    if (sampai && t > sampai) return false;
+   800→    return true;
+   801→  });
+   802→  const siswa = getAll(SHEETS.SISWA).filter(function (x) {
+   803→    return String(x.kelas_id) === String(payload.kelas_id) && String(x.aktif).toUpperCase() !== 'FALSE';
+   804→  });
+   805→  const tanggalUnik = [];
+   806→  catatan.forEach(function (k) {
+   807→    const t = String(k.tanggal).slice(0, 10);
+   808→    if (tanggalUnik.indexOf(t) === -1) tanggalUnik.push(t);
+   809→  });
+   810→  tanggalUnik.sort();
+   811→
+   812→  const perSiswa = siswa.map(function (sw) {
+   813→    const milik = catatan.filter(function (k) { return String(k.siswa_id) === String(sw.id); });
+   814→    return Object.assign({ siswa_id: sw.id, nama: sw.nama, nisn: sw.nisn }, hitungRekap(milik));
+   815→  });
+   816→
+   817→  const perTanggal = tanggalUnik.map(function (t) {
+   818→    const hari = catatan.filter(function (k) { return String(k.tanggal).slice(0, 10) === t; });
+   819→    return Object.assign({ tanggal: t }, hitungRekap(hari));
+   820→  });
+   821→
+   822→  return {
+   823→    per_siswa: perSiswa,
+   824→    per_tanggal: perTanggal,
+   825→    jumlah_pertemuan: tanggalUnik.length,
+   826→    ringkasan: hitungRekap(catatan)
+   827→  };
+   828→}
+   829→
+   830→function rekapKehadiranSiswa(siswaId) {
+   831→  const catatan = getAll(SHEETS.KEHADIRAN).filter(function (k) { return String(k.siswa_id) === String(siswaId); });
+   832→  const mapel = getAll(SHEETS.MAPEL);
+   833→  const perMapel = [];
+   834→  catatan.forEach(function (k) {
+   835→    let baris = perMapel.find(function (m) { return String(m.mapel_id) === String(k.mapel_id); });
+   836→    if (!baris) {
+   837→      const mp = mapel.find(function (m) { return String(m.id) === String(k.mapel_id); });
+   838→      baris = { mapel_id: k.mapel_id, nama_mapel: mp ? mp.nama_mapel : '(tidak diketahui)', _catatan: [] };
+   839→      perMapel.push(baris);
+   840→    }
+   841→    baris._catatan.push(k);
+   842→  });
+   843→  perMapel.forEach(function (m) {
+   844→    Object.assign(m, hitungRekap(m._catatan));
+   845→    delete m._catatan;
+   846→  });
+   847→  return {
+   848→    ringkasan: hitungRekap(catatan),
+   849→    per_mapel: perMapel,
+   850→    rincian: catatan.slice().sort(function (a, b) { return String(b.tanggal).localeCompare(String(a.tanggal)); }).slice(0, 100)
+   851→  };
+   852→}
+   853→
+   854→function actSiswaGetKehadiran(payload, token) {
+   855→  const s = requireAuth(token, ['siswa']);
+   856→  return rekapKehadiranSiswa(s.ref_id);
+   857→}
+   858→
+   859→function actOrtuGetKehadiranAnak(payload, token) {
+   860→  const s = requireAuth(token, ['ortu']);
+   861→  const ids = String(s.ref_id || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+   862→  if (ids.indexOf(String(payload.siswa_id)) === -1) throw new Error('Anda tidak memiliki akses ke data siswa ini.');
+   863→  return rekapKehadiranSiswa(payload.siswa_id);
+   864→}
+   865→
+   866→
+   867→// ----------------------------------------------------------------------------
+   868→// 7 KEBIASAAN ANAK INDONESIA HEBAT (dilaporkan orang tua dari rumah)
+   869→// ----------------------------------------------------------------------------
+   870→
+   871→const KEBIASAAN7 = [
+   872→  { kunci: 'k1', nama: 'Bangun Pagi' },
+   873→  { kunci: 'k2', nama: 'Beribadah' },
+   874→  { kunci: 'k3', nama: 'Berolahraga' },
+   875→  { kunci: 'k4', nama: 'Makan Sehat dan Bergizi' },
+   876→  { kunci: 'k5', nama: 'Gemar Belajar' },
+   877→  { kunci: 'k6', nama: 'Bermasyarakat' },
+   878→  { kunci: 'k7', nama: 'Tidur Cepat' }
+   879→];
+   880→
+   881→function predikatKebiasaan(rata) {
+   882→  if (rata === null) return '';
+   883→  if (rata >= 3.5) return 'Membudaya';
+   884→  if (rata >= 2.5) return 'Berkembang';
+   885→  if (rata >= 1.5) return 'Mulai Terlihat';
+   886→  return 'Perlu Pembiasaan';
+   887→}
+   888→
+   889→function pastikanAksesAnak(sesi, siswaId) {
+   890→  const ids = String(sesi.ref_id || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+   891→  if (ids.indexOf(String(siswaId)) === -1) throw new Error('Anda tidak memiliki akses ke data siswa ini.');
+   892→}
+   893→
+   894→function actOrtuGetKebiasaan(payload, token) {
+   895→  const s = requireAuth(token, ['ortu']);
+   896→  pastikanAksesAnak(s, payload.siswa_id);
+   897→  const tgl = String(payload.tanggal).slice(0, 10);
+   898→  const rec = getAll(SHEETS.KEBIASAAN).find(function (r) {
+   899→    return String(r.siswa_id) === String(payload.siswa_id) && String(r.tanggal).slice(0, 10) === tgl;
+   900→  });
+   901→  return rec || null;
+   902→}
+   903→
+   904→function actOrtuSaveKebiasaan(payload, token) {
+   905→  const s = requireAuth(token, ['ortu']);
+   906→  pastikanAksesAnak(s, payload.siswa_id);
+   907→  const tgl = String(payload.tanggal).slice(0, 10);
+   908→  if (!tgl) throw new Error('Tanggal wajib diisi.');
+   909→  const hariIni = new Date().toISOString().slice(0, 10);
+   910→  if (tgl > hariIni) throw new Error('Tidak dapat mengisi laporan untuk tanggal yang belum terjadi.');
+   911→
+   912→  const data = { siswa_id: payload.siswa_id, tanggal: tgl, catatan: payload.catatan || '', dilapor_oleh: s.user_id, dibuat_pada: new Date().toISOString() };
+   913→  let terisi = 0;
+   914→  KEBIASAAN7.forEach(function (k) {
+   915→    let v = Number((payload.nilai || {})[k.kunci]);
+   916→    if (!v || v < 1 || v > 4) v = 0;
+   917→    if (v > 0) terisi++;
+   918→    data[k.kunci] = v;
+   919→  });
+   920→  if (!terisi) throw new Error('Isi minimal satu kebiasaan sebelum menyimpan.');
+   921→
+   922→  const semua = getAll(SHEETS.KEBIASAAN);
+   923→  const lama = semua.find(function (r) {
+   924→    return String(r.siswa_id) === String(payload.siswa_id) && String(r.tanggal).slice(0, 10) === tgl;
+   925→  });
+   926→  const hasil = lama ? updateById(SHEETS.KEBIASAAN, lama.id, data) : insert(SHEETS.KEBIASAAN, data);
+   927→  writeLog(s.username, s.role, 'ortu_saveKebiasaan', 'siswa:' + payload.siswa_id + ' ' + tgl);
+   928→  return hasil;
+   929→}
+   930→
+   931→function rekapKebiasaan(catatan) {
+   932→  const perKebiasaan = KEBIASAAN7.map(function (k) {
+   933→    const nilai = catatan.map(function (r) { return Number(r[k.kunci]) || 0; }).filter(function (v) { return v > 0; });
+   934→    const rata = nilai.length ? nilai.reduce(function (a, b) { return a + b; }, 0) / nilai.length : null;
+   935→    const dist = { 1: 0, 2: 0, 3: 0, 4: 0 };
+   936→    nilai.forEach(function (v) { dist[v]++; });
+   937→    return {
+   938→      kunci: k.kunci, nama: k.nama,
+   939→      rata_rata: rata === null ? null : Math.round(rata * 100) / 100,
+   940→      persen: rata === null ? null : Math.round(rata / 4 * 1000) / 10,
+   941→      jumlah_laporan: nilai.length, distribusi: dist,
+   942→      predikat: predikatKebiasaan(rata)
+   943→    };
+   944→  });
+   945→  const semuaNilai = [];
+   946→  catatan.forEach(function (r) {
+   947→    KEBIASAAN7.forEach(function (k) { const v = Number(r[k.kunci]) || 0; if (v > 0) semuaNilai.push(v); });
+   948→  });
+   949→  const rataUmum = semuaNilai.length ? semuaNilai.reduce(function (a, b) { return a + b; }, 0) / semuaNilai.length : null;
+   950→
+   951→  const perTanggal = catatan.slice().sort(function (a, b) { return String(a.tanggal).localeCompare(String(b.tanggal)); }).map(function (r) {
+   952→    const v = KEBIASAAN7.map(function (k) { return Number(r[k.kunci]) || 0; }).filter(function (x) { return x > 0; });
+   953→    return {
+   954→      tanggal: String(r.tanggal).slice(0, 10),
+   955→      rata_rata: v.length ? Math.round(v.reduce(function (a, b) { return a + b; }, 0) / v.length * 100) / 100 : null,
+   956→      jumlah_terisi: v.length, catatan: r.catatan || ''
+   957→    };
+   958→  });
+   959→
+   960→  return {
+   961→    per_kebiasaan: perKebiasaan,
+   962→    per_tanggal: perTanggal,
+   963→    jumlah_hari_lapor: catatan.length,
+   964→    rata_umum: rataUmum === null ? null : Math.round(rataUmum * 100) / 100,
+   965→    persen_umum: rataUmum === null ? null : Math.round(rataUmum / 4 * 1000) / 10,
+   966→    predikat: predikatKebiasaan(rataUmum)
+   967→  };
+   968→}
+   969→
+   970→function ambilCatatanKebiasaan(siswaId, dari, sampai) {
+   971→  const d = dari ? String(dari).slice(0, 10) : '';
+   972→  const sp = sampai ? String(sampai).slice(0, 10) : '';
+   973→  return getAll(SHEETS.KEBIASAAN).filter(function (r) {
+   974→    if (String(r.siswa_id) !== String(siswaId)) return false;
+   975→    const t = String(r.tanggal).slice(0, 10);
+   976→    if (d && t < d) return false;
+   977→    if (sp && t > sp) return false;
+   978→    return true;
+   979→  });
+   980→}
+   981→
+   982→function actOrtuGetRekapKebiasaan(payload, token) {
+   983→  const s = requireAuth(token, ['ortu']);
+   984→  pastikanAksesAnak(s, payload.siswa_id);
+   985→  return rekapKebiasaan(ambilCatatanKebiasaan(payload.siswa_id, payload.dari, payload.sampai));
+   986→}
+   987→
+   988→function actGuruGetKebiasaanSiswa(payload, token) {
+   989→  requireAuth(token, ['guru']);
+   990→  const siswa = getAll(SHEETS.SISWA).find(function (x) { return String(x.id) === String(payload.siswa_id); });
+   991→  if (!siswa) throw new Error('Data siswa tidak ditemukan.');
+   992→  const rekap = rekapKebiasaan(ambilCatatanKebiasaan(payload.siswa_id, payload.dari, payload.sampai));
+   993→  return Object.assign({ siswa: siswa }, rekap);
+   994→}
+   995→
+   996→function actGuruGetKebiasaanKelas(payload, token) {
+   997→  requireAuth(token, ['guru']);
+   998→  const dari = payload.dari ? String(payload.dari).slice(0, 10) : '';
+   999→  const sampai = payload.sampai ? String(payload.sampai).slice(0, 10) : '';
+  1000→  const siswa = getAll(SHEETS.SISWA).filter(function (x) {
+  1001→    return String(x.kelas_id) === String(payload.kelas_id) && String(x.aktif).toUpperCase() !== 'FALSE';
+  1002→  });
+  1003→  const semua = getAll(SHEETS.KEBIASAAN).filter(function (r) {
+  1004→    const t = String(r.tanggal).slice(0, 10);
+  1005→    if (dari && t < dari) return false;
+  1006→    if (sampai && t > sampai) return false;
+  1007→    return true;
+  1008→  });
+  1009→
+  1010→  const perSiswa = siswa.map(function (sw) {
+  1011→    const milik = semua.filter(function (r) { return String(r.siswa_id) === String(sw.id); });
+  1012→    const rk = rekapKebiasaan(milik);
+  1013→    return {
+  1014→      siswa_id: sw.id, nama: sw.nama, nisn: sw.nisn,
+  1015→      rata_umum: rk.rata_umum, persen_umum: rk.persen_umum, predikat: rk.predikat,
+  1016→      jumlah_hari_lapor: rk.jumlah_hari_lapor,
+  1017→      per_kebiasaan: rk.per_kebiasaan.map(function (k) { return { kunci: k.kunci, rata_rata: k.rata_rata }; })
+  1018→    };
+  1019→  });
+  1020→
+  1021→  const catatanKelas = semua.filter(function (r) {
+  1022→    return siswa.some(function (sw) { return String(sw.id) === String(r.siswa_id); });
+  1023→  });
+  1024→  const rekapKelas = rekapKebiasaan(catatanKelas);
+  1025→
+  1026→  return {
+  1027→    per_siswa: perSiswa,
+  1028→    per_kebiasaan: rekapKelas.per_kebiasaan,
+  1029→    rata_umum: rekapKelas.rata_umum,
+  1030→    persen_umum: rekapKelas.persen_umum,
+  1031→    predikat: rekapKelas.predikat,
+  1032→    jumlah_laporan: catatanKelas.length,
+  1033→    jumlah_siswa_lapor: perSiswa.filter(function (p) { return p.jumlah_hari_lapor > 0; }).length,
+  1034→    daftar_kebiasaan: KEBIASAAN7
+  1035→  };
+  1036→}
+  1037→
+  1038→function actCommonGetDaftarKebiasaan(payload, token) {
+  1039→  requireAuth(token, ['admin', 'guru', 'siswa', 'ortu']);
+  1040→  return KEBIASAAN7;
+  1041→}
+  1042→
+  1043→// ----------------------------------------------------------------------------
+  1044→// SISWA
+  1045→// ----------------------------------------------------------------------------
+  1046→
+  1047→function actSiswaGetKuisAktif(payload, token) {
+  1048→  const s = requireAuth(token, ['siswa']);
+  1049→  const siswa = getAll(SHEETS.SISWA).find(function (x) { return String(x.id) === String(s.ref_id); });
+  1050→  if (!siswa) throw new Error('Data siswa tidak ditemukan.');
+  1051→  const kuis = getAll(SHEETS.KUIS).filter(function (k) {
+  1052→    return String(k.kelas_id) === String(siswa.kelas_id) && k.status === 'aktif';
+  1053→  });
+  1054→  const hasilSaya = getAll(SHEETS.HASIL).filter(function (h) { return String(h.siswa_id) === String(siswa.id); });
+  1055→  const hariIni = new Date().toISOString().slice(0, 10);
+  1056→  return kuis.map(function (k) {
+  1057→    const h = hasilSaya.find(function (hh) { return String(hh.kuis_id) === String(k.id); });
+  1058→    const mulai = k.tanggal_mulai ? String(k.tanggal_mulai).slice(0, 10) : '';
+  1059→    const selesai = k.tanggal_selesai ? String(k.tanggal_selesai).slice(0, 10) : '';
+  1060→    let jadwal = 'tersedia';
+  1061→    if (mulai && hariIni < mulai) jadwal = 'belum_dibuka';
+  1062→    else if (selesai && hariIni > selesai) jadwal = 'sudah_ditutup';
+  1063→    return Object.assign({}, k, {
+  1064→      status_pengerjaan: h ? h.status : 'belum_mulai',
+  1065→      hasil_id: h ? h.id : null, skor: h ? h.skor : null,
+  1066→      jadwal: jadwal
+  1067→    });
+  1068→  });
+  1069→}
+  1070→
+  1071→function actSiswaGetSoalKuis(payload, token) {
+  1072→  requireAuth(token, ['siswa']);
+  1073→  const kuis = getAll(SHEETS.KUIS).find(function (k) { return String(k.id) === String(payload.kuis_id); });
+  1074→  if (!kuis) throw new Error('Kuis tidak ditemukan.');
+  1075→  let soal = getAll(SHEETS.SOAL).filter(function (sq) { return String(sq.kuis_id) === String(payload.kuis_id); })
+  1076→    .sort(function (a, b) { return a.urutan - b.urutan; });
+  1077→  if (String(kuis.acak_soal).toUpperCase() === 'TRUE') soal = shuffleArray(soal);
+  1078→  return {
+  1079→    kuis: kuis,
+  1080→    soal: soal.map(function (sq) {
+  1081→      return { id: sq.id, tipe: sq.tipe, pertanyaan: sq.pertanyaan, pilihan: JSON.parse(sq.pilihan_json || '[]') };
+  1082→    })
+  1083→  };
+  1084→}
+  1085→
+  1086→function actSiswaMulaiKuis(payload, token) {
+  1087→  const s = requireAuth(token, ['siswa']);
+  1088→  const existing = getAll(SHEETS.HASIL).find(function (h) {
+  1089→    return String(h.kuis_id) === String(payload.kuis_id) && String(h.siswa_id) === String(s.ref_id);
+  1090→  });
+  1091→  if (existing) return existing;
+  1092→  return insert(SHEETS.HASIL, {
+  1093→    kuis_id: payload.kuis_id, siswa_id: s.ref_id, jawaban_json: '{}', skor: '', jumlah_benar: '',
+  1094→    jumlah_soal: '', mulai_pada: new Date().toISOString(), selesai_pada: '', status: 'mengerjakan', catatan_guru: ''
+  1095→  });
+  1096→}
+  1097→
+  1098→function actSiswaSubmitKuis(payload, token) {
+  1099→  const s = requireAuth(token, ['siswa']);
+  1100→  const hasil = getAll(SHEETS.HASIL).find(function (h) {
+  1101→    return String(h.kuis_id) === String(payload.kuis_id) && String(h.siswa_id) === String(s.ref_id);
+  1102→  });
+  1103→  if (!hasil) throw new Error('Sesi kuis tidak ditemukan. Mulai kuis terlebih dahulu.');
+  1104→  if (hasil.status !== 'mengerjakan') throw new Error('Kuis ini sudah pernah diselesaikan.');
+  1105→  const soal = getAll(SHEETS.SOAL).filter(function (sq) { return String(sq.kuis_id) === String(payload.kuis_id); });
+  1106→  const jawaban = payload.jawaban || {};
+  1107→  let totalBobot = 0, totalSkorPG = 0, benar = 0, adaEsai = false;
+  1108→  soal.forEach(function (sq) {
+  1109→    totalBobot += Number(sq.bobot || 1);
+  1110→    if (sq.tipe === 'esai') { adaEsai = true; }
+  1111→    else {
+  1112→      const isBenar = String(jawaban[sq.id]) === String(sq.kunci);
+  1113→      if (isBenar) { totalSkorPG += Number(sq.bobot || 1); benar++; }
+  1114→    }
+  1115→  });
+  1116→  const skorSementara = totalBobot ? Math.round((totalSkorPG / totalBobot) * 100) : 0;
+  1117→  const updated = updateById(SHEETS.HASIL, hasil.id, {
+  1118→    jawaban_json: JSON.stringify(jawaban), skor: skorSementara, jumlah_benar: benar, jumlah_soal: soal.length,
+  1119→    selesai_pada: new Date().toISOString(), status: adaEsai ? 'menunggu_penilaian' : 'selesai'
+  1120→  });
+  1121→  writeLog(s.username, s.role, 'siswa_submitKuis', 'kuis:' + payload.kuis_id);
+  1122→  return updated;
+  1123→}
+  1124→
+  1125→function actSiswaGetRiwayatKuis(payload, token) {
+  1126→  const s = requireAuth(token, ['siswa']);
+  1127→  const hasil = getAll(SHEETS.HASIL).filter(function (h) { return String(h.siswa_id) === String(s.ref_id); });
+  1128→  const kuisList = getAll(SHEETS.KUIS);
+  1129→  return hasil.map(function (h) {
+  1130→    const k = kuisList.find(function (kk) { return String(kk.id) === String(h.kuis_id); }) || {};
+  1131→    return Object.assign({}, h, { judul: k.judul, jenis: k.jenis || 'Kuis', mapel_id: k.mapel_id });
+  1132→  });
+  1133→}
+  1134→
+  1135→function actSiswaGetNilai(payload, token) {
+  1136→  const s = requireAuth(token, ['siswa']);
+  1137→  return buildLaporanSiswa(s.ref_id);
+  1138→}
+  1139→
+  1140→// ----------------------------------------------------------------------------
+  1141→// ORANG TUA
+  1142→// ----------------------------------------------------------------------------
+  1143→
+  1144→function actOrtuGetAnak(payload, token) {
+  1145→  const s = requireAuth(token, ['ortu']);
+  1146→  const ids = String(s.ref_id || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+  1147→  const siswa = getAll(SHEETS.SISWA);
+  1148→  return ids.map(function (id) { return siswa.find(function (x) { return String(x.id) === String(id); }); }).filter(Boolean);
+  1149→}
+  1150→
+  1151→function actOrtuGetLaporanAnak(payload, token) {
+  1152→  const s = requireAuth(token, ['ortu']);
+  1153→  const ids = String(s.ref_id || '').split(',').map(function (x) { return x.trim(); });
+  1154→  if (ids.indexOf(String(payload.siswa_id)) === -1) throw new Error('Anda tidak memiliki akses ke data siswa ini.');
+  1155→  return buildLaporanSiswa(payload.siswa_id);
+  1156→}
+  1157→
+  1158→function actOrtuGetRiwayatKuisAnak(payload, token) {
+  1159→  const s = requireAuth(token, ['ortu']);
+  1160→  const ids = String(s.ref_id || '').split(',').map(function (x) { return x.trim(); });
+  1161→  if (ids.indexOf(String(payload.siswa_id)) === -1) throw new Error('Anda tidak memiliki akses ke data siswa ini.');
+  1162→  const hasil = getAll(SHEETS.HASIL).filter(function (h) { return String(h.siswa_id) === String(payload.siswa_id); });
+  1163→  const kuisList = getAll(SHEETS.KUIS);
+  1164→  return hasil.map(function (h) {
+  1165→    const k = kuisList.find(function (kk) { return String(kk.id) === String(h.kuis_id); }) || {};
+  1166→    return Object.assign({}, h, { judul: k.judul, jenis: k.jenis || 'Kuis', mapel_id: k.mapel_id });
+  1167→  });
+  1168→}
+  1169→
+  1170→// ----------------------------------------------------------------------------
+  1171→// TABEL AKSI (ROUTER)
+  1172→// ----------------------------------------------------------------------------
+  1173→
+  1174→const kelasCrud = crudActions(SHEETS.KELAS, ['admin'], null);
+  1175→const mapelCrud = crudActions(SHEETS.MAPEL, ['admin'], null);
+  1176→const pengampuCrud = crudActions(SHEETS.PENGAMPU, ['admin'], ['admin']);
+  1177→const siswaCrud = crudActions(SHEETS.SISWA, ['admin'], ['admin', 'guru']);
+  1178→
+  1179→const ACTIONS = {
+  1180→  ping: actPing,
+  1181→  login: function (p) { return actLogin(p); },
+  1182→  logout: actLogout,
+  1183→  changePassword: actChangePassword,
+  1184→
+  1185→  common_getSettings: actCommonGetSettings,
+  1186→  common_getKelas: actCommonGetKelas,
+  1187→  common_getMapel: actCommonGetMapel,
+  1188→
+  1189→  admin_getSummary: actAdminGetSummary,
+  1190→  admin_getUsers: actAdminGetUsers,
+  1191→  admin_saveUser: actAdminSaveUser,
+  1192→  admin_deleteUser: actAdminDeleteUser,
+  1193→  admin_resetPassword: actAdminResetPassword,
+  1194→  admin_getKelas: kelasCrud.list, admin_saveKelas: kelasCrud.save, admin_deleteKelas: kelasCrud.remove,
+  1195→  admin_getMapel: mapelCrud.list, admin_saveMapel: mapelCrud.save, admin_deleteMapel: mapelCrud.remove,
+  1196→  admin_getSiswa: siswaCrud.list, admin_saveSiswa: siswaCrud.save, admin_deleteSiswa: siswaCrud.remove,
+  1197→  admin_getPengampu: actAdminGetPengampu, admin_savePengampu: pengampuCrud.save, admin_deletePengampu: pengampuCrud.remove,
+  1198→  admin_getSettings: function (p, t) { requireAuth(t, ['admin']); return getSettings(); },
+  1199→  admin_saveSettings: function (p, t) { requireAuth(t, ['admin']); return saveSettings(p); },
+  1200→  admin_getLog: actAdminGetLog,
+  1201→  admin_backup: actAdminBackup,
+  1202→  admin_restore: actAdminRestore,
+  1203→
+  1204→  guru_getKelasAmpu: actGuruGetKelasAmpu,
+  1205→  guru_getSiswaByKelas: actGuruGetSiswaByKelas,
+  1206→  guru_getNilai: actGuruGetNilai,
+  1207→  guru_saveNilai: actGuruSaveNilai,
+  1208→  guru_deleteNilai: actGuruDeleteNilai,
+  1209→  guru_getAnalisis: actGuruGetAnalisis,
+  1210→  guru_getLaporanSiswa: actGuruGetLaporanSiswa,
+  1211→  guru_getKuisList: actGuruGetKuisList,
+  1212→  guru_getKuisDetail: actGuruGetKuisDetail,
+  1213→  guru_saveKuis: actGuruSaveKuis,
+  1214→  guru_deleteKuis: actGuruDeleteKuis,
+  1215→  guru_updateKuisStatus: actGuruUpdateKuisStatus,
+  1216→  guru_getHasilKuis: actGuruGetHasilKuis,
+  1217→  guru_nilaiEsai: actGuruNilaiEsai,
+  1218→  guru_getMateri: actGuruGetMateri,
+  1219→  guru_saveMateri: actGuruSaveMateri,
+  1220→  guru_deleteMateri: actGuruDeleteMateri,
+  1221→  guru_getKehadiran: actGuruGetKehadiran,
+  1222→  guru_saveKehadiran: actGuruSaveKehadiran,
+  1223→  guru_getRekapKehadiran: actGuruGetRekapKehadiran,
+  1224→  guru_getKebiasaanKelas: actGuruGetKebiasaanKelas,
+  1225→  guru_getKebiasaanSiswa: actGuruGetKebiasaanSiswa,
+  1226→
+  1227→  siswa_getKuisAktif: actSiswaGetKuisAktif,
+  1228→  siswa_getSoalKuis: actSiswaGetSoalKuis,
+  1229→  siswa_mulaiKuis: actSiswaMulaiKuis,
+  1230→  siswa_submitKuis: actSiswaSubmitKuis,
+  1231→  siswa_getRiwayatKuis: actSiswaGetRiwayatKuis,
+  1232→  siswa_getNilai: actSiswaGetNilai,
+  1233→  siswa_getMateri: actSiswaGetMateri,
+  1234→  siswa_getKehadiran: actSiswaGetKehadiran,
+  1235→
+  1236→  ortu_getAnak: actOrtuGetAnak,
+  1237→  ortu_getLaporanAnak: actOrtuGetLaporanAnak,
+  1238→  ortu_getRiwayatKuisAnak: actOrtuGetRiwayatKuisAnak,
+  1239→  ortu_getMateriAnak: actOrtuGetMateriAnak,
+  1240→  ortu_getKehadiranAnak: actOrtuGetKehadiranAnak,
+  1241→  ortu_getKebiasaan: actOrtuGetKebiasaan,
+  1242→  ortu_saveKebiasaan: actOrtuSaveKebiasaan,
+  1243→  ortu_getRekapKebiasaan: actOrtuGetRekapKebiasaan,
+  1244→  common_getDaftarKebiasaan: actCommonGetDaftarKebiasaan
+  1245→};
+  1246→
+  1247→// ----------------------------------------------------------------------------
+  1248→// SETUP / SEED DATA (jalankan manual sekali dari editor Apps Script)
+  1249→// ----------------------------------------------------------------------------
+  1250→
+  1251→function initDatabase() {
+  1252→  const ditambahkan = [];
+  1253→  Object.keys(SCHEMA).forEach(function (name) {
+  1254→    const sh = sheet(name);
+  1255→    if (sh.getLastRow() === 0) {
+  1256→      sh.getRange(1, 1, 1, SCHEMA[name].length).setValues([SCHEMA[name]]);
+  1257→      sh.setFrozenRows(1);
+  1258→      ditambahkan.push('sheet ' + name);
+  1259→      return;
+  1260→    }
+  1261→    // Migrasi: tambahkan kolom baru yang belum ada pada instalasi lama.
+  1262→    const lastCol = sh.getLastColumn();
+  1263→    const header = sh.getRange(1, 1, 1, lastCol).getValues()[0].map(function (h) { return String(h); });
+  1264→    const kurang = SCHEMA[name].filter(function (kol) { return header.indexOf(kol) === -1; });
+  1265→    if (kurang.length) {
+  1266→      sh.getRange(1, lastCol + 1, 1, kurang.length).setValues([kurang]);
+  1267→      ditambahkan.push(name + ': ' + kurang.join(', '));
+  1268→    }
+  1269→  });
+  1270→
+  1271→  const settings = getSettings();
+  1272→  if (!settings.nama_sekolah) {
+  1273→    saveSettings({
+  1274→      nama_sekolah: 'Nama Sekolah Anda',
+  1275→      tahun_ajaran: '2026/2027',
+  1276→      semester: 'Ganjil',
+  1277→      kkm_default: 75,
+  1278→      nama_kepala_sekolah: ''
+  1279→    });
+  1280→  }
+  1281→
+  1282→  const users = getAll(SHEETS.USERS);
+  1283→  if (!users.length) {
+  1284→    insert(SHEETS.USERS, {
+  1285→      username: 'admin', password: hashPassword('admin123'), role: 'admin',
+  1286→      nama: 'Administrator', ref_id: '', aktif: true, dibuat_pada: new Date().toISOString()
+  1287→    });
+  1288→  }
+  1289→
+  1290→  return 'Database SIMANTAP siap.' + (ditambahkan.length ? ' Ditambahkan: ' + ditambahkan.join(' | ') : ' Tidak ada perubahan struktur.');
+  1291→}
+  1292→

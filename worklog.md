@@ -359,3 +359,29 @@ Stage Summary:
 - Documentation: `DUMMY_USERS.md` at project root
 - Quick-fill buttons on login page updated to use seeded accounts
 - All 4 RBAC roles verified working end-to-end
+
+---
+Task ID: 3
+Agent: Main Orchestrator
+Task: Identify menu structure per role from SIMANTAP and apply to PANDAI
+
+Work Log:
+- Analyzed `Code (3).gs` (SIMANTAP backend — Google Apps Script) for roles: admin, guru, siswa, ortu
+- Analyzed `index (4).html` (SIMANTAP frontend) — extracted NAV config at line 877 with sectioned menus per role
+- Identified SIMANTAP sidebar pattern: sections (Utama, Manajemen, Pembelajaran, Penilaian, etc.) with grouped items
+- Mapped SIMANTAP's 4-role menu structure to PANDAI's 4-role RBAC + TKA domain context
+- Updated `use-store.ts`: expanded ViewType from 19 to 40+ views (added guru-*, siswa-*, users-global, etc.)
+- Rewrote `app-layout.tsx`: implemented sectioned sidebar with section headers, matching SIMANTAP pattern
+- Updated `page.tsx`: new view switch with PlaceholderPage for views under development
+- Verified all 4 roles via agent-browser:
+  - SUPER_ADMIN: 7 items (Beranda, Kelola Sekolah, Semua Pengguna, Bank Soal Global, Analitik Platform, Laporan Global, Pengaturan)
+  - ADMIN_SCHOOL: 10 items (Beranda, Guru & Siswa, Rombel, Soal Sekolah, Buat Soal, Kelola Tryout, Jadwal & Tugaskan, Hasil & Nilai, Analisis Butir, Laporan)
+  - GURU: 7 items (Beranda, Materi Ajar, Bank Soal, Kelola Tryout, Input Nilai, Analisis Hasil, Laporan Siswa)
+  - SISWA: 7 items (Beranda, Diagnostic Test, Latihan Soal, Tryout & Ujian, Nilai Saya, Riwayat Pengerjaan, Peringkat)
+- Navigation verified: sidebar clicks navigate correctly, breadcrumbs update, active state highlights
+
+Stage Summary:
+- Menu structure fully redesigned with SIMANTAP-inspired sectioned grouping
+- All menus role-scoped: each role sees only their relevant menu items
+- New views added with PlaceholderPage component for pages under development
+- Key mapping: SIMANTAP "admin" → PANDAI SUPER_ADMIN + ADMIN_SCHOOL; SIMANTAP "ortu" not in PANDAI (future)
