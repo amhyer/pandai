@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import type { ViewType } from '@/store/use-store';
 import {
   Card,
   CardContent,
@@ -31,6 +32,11 @@ import {
   Database,
   ArrowUpRight,
   ArrowDownRight,
+  FilePlus,
+  UserPlus,
+  BarChart3,
+  Settings,
+  Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -64,6 +70,15 @@ interface GlobalAnalytics {
   }[];
 }
 
+interface RecentActivity {
+  id: string;
+  action: string;
+  detail: string;
+  time: string;
+  icon: React.ReactNode;
+  color: string;
+}
+
 // ─── Stat Card ──────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -74,11 +89,20 @@ interface StatCardProps {
   trend?: 'up' | 'down';
   trendValue?: string;
   isLoading?: boolean;
+  onClick?: () => void;
+  iconBg?: string;
+  iconColor?: string;
 }
 
-function StatCard({ title, value, icon, description, trend, trendValue, isLoading }: StatCardProps) {
+function StatCard({ title, value, icon, description, trend, trendValue, isLoading, onClick, iconBg, iconColor }: StatCardProps) {
   return (
-    <Card className="relative overflow-hidden">
+    <Card
+      className={`relative overflow-hidden cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 ${onClick ? 'group' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+    >
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -90,7 +114,7 @@ function StatCard({ title, value, icon, description, trend, trendValue, isLoadin
               </>
             ) : (
               <>
-                <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{title}</p>
                 <p className="text-2xl font-bold tracking-tight">{value}</p>
                 {description && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -104,7 +128,7 @@ function StatCard({ title, value, icon, description, trend, trendValue, isLoadin
               </>
             )}
           </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconBg ?? 'bg-[#1F3864]/10 text-[#1F3864]'} ${iconColor ?? ''}`}>
             {icon}
           </div>
         </div>
@@ -113,14 +137,41 @@ function StatCard({ title, value, icon, description, trend, trendValue, isLoadin
   );
 }
 
+// ─── Activity Icon ──────────────────────────────────────────────────
+
+function ActivityItem({ activity }: { activity: RecentActivity }) {
+  return (
+    <div className="flex items-start gap-3">
+      <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${activity.color}`}>
+        {activity.icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{activity.action}</p>
+        <p className="text-xs text-muted-foreground truncate">{activity.detail}</p>
+      </div>
+      <span className="shrink-0 text-xs text-muted-foreground">{activity.time}</span>
+    </div>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export function SuperAdminDashboard() {
   const user = useAppStore((s) => s.user);
   const navigateTo = useAppStore((s) => s.navigateTo);
+  const setSelectedSchoolId = useAppStore((s) => s.setSelectedSchoolId);
   const [analytics, setAnalytics] = useState<GlobalAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+
+  // Mock recent activity
+  const recentActivities: RecentActivity[] = [
+    { id: '1', action: 'Sekolah baru terdaftar', detail: 'SMA Negeri 3 Bandung bergabung', time: '15 menit lalu', icon: <UserPlus className="h-4 w-4" />, color: 'bg-emerald-50 text-emerald-600' },
+    { id: '2', action: 'Tryout baru dibuat', detail: 'TKA Prediksi Akhir Tahun oleh Guru Matematika', time: '1 jam lalu', icon: <FilePlus className="h-4 w-4" />, color: 'bg-[#1F3864]/10 text-[#1F3864]' },
+    { id: '3', action: '500 soal baru ditambahkan', detail: 'Bank soal NALAR diperbarui otomatis', time: '3 jam lalu', icon: <BookOpen className="h-4 w-4" />, color: 'bg-amber-50 text-amber-600' },
+    { id: '4', action: 'Laporan bulanan dikirim', detail: 'Report Mei 2025 tersedia untuk unduh', time: '6 jam lalu', icon: <BarChart3 className="h-4 w-4" />, color: 'bg-purple-50 text-purple-600' },
+    { id: '5', action: 'Pengaturan diperbarui', detail: 'Konfigurasi limit tryout diubah', time: '1 hari lalu', icon: <Settings className="h-4 w-4" />, color: 'bg-red-50 text-red-600' },
+  ];
 
   useEffect(() => {
     fetchAnalytics();
@@ -158,6 +209,11 @@ export function SuperAdminDashboard() {
     }
   }
 
+  function handleSchoolClick(schoolId: string) {
+    setSelectedSchoolId(schoolId);
+    navigateTo('school-detail');
+  }
+
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
       style: 'currency',
@@ -193,6 +249,9 @@ export function SuperAdminDashboard() {
           icon={<School className="h-5 w-5" />}
           description="aktif"
           isLoading={loading}
+          onClick={() => navigateTo('schools' as ViewType)}
+          iconBg="bg-[#1F3864]/10"
+          iconColor="text-[#1F3864]"
         />
         <StatCard
           title="Total Siswa"
@@ -200,12 +259,18 @@ export function SuperAdminDashboard() {
           icon={<GraduationCap className="h-5 w-5" />}
           description={analytics?.totalStudents ? 'terdaftar' : 'belum ada data'}
           isLoading={loading}
+          onClick={() => navigateTo('users-global' as ViewType)}
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
         />
         <StatCard
           title="Total Guru"
           value={loading ? '' : formatNumber(analytics?.totalTeachers ?? 0)}
           icon={<Users className="h-5 w-5" />}
           isLoading={loading}
+          onClick={() => navigateTo('users-global' as ViewType)}
+          iconBg="bg-amber-50"
+          iconColor="text-amber-600"
         />
         <StatCard
           title="MRR"
@@ -213,18 +278,27 @@ export function SuperAdminDashboard() {
           icon={<TrendingUp className="h-5 w-5" />}
           description="bulanan"
           isLoading={loading}
+          onClick={() => navigateTo('analytics-global' as ViewType)}
+          iconBg="bg-purple-50"
+          iconColor="text-purple-600"
         />
         <StatCard
           title="Total Soal"
           value={loading ? '' : formatNumber(analytics?.totalQuestions ?? 0)}
           icon={<BookOpen className="h-5 w-5" />}
           isLoading={loading}
+          onClick={() => navigateTo('questions-global' as ViewType)}
+          iconBg="bg-red-50"
+          iconColor="text-red-600"
         />
         <StatCard
           title="Total Tryout"
           value={loading ? '' : formatNumber(analytics?.totalExams ?? 0)}
           icon={<ClipboardList className="h-5 w-5" />}
           isLoading={loading}
+          onClick={() => navigateTo('reports-global' as ViewType)}
+          iconBg="bg-sky-50"
+          iconColor="text-sky-600"
         />
       </div>
 
@@ -296,7 +370,7 @@ export function SuperAdminDashboard() {
           <CardContent className="space-y-3">
             <Button
               className="w-full justify-start gap-2 bg-[#1F3864] hover:bg-[#152850]"
-              onClick={() => navigateTo('schools')}
+              onClick={() => navigateTo('schools' as ViewType)}
             >
               <Plus className="h-4 w-4" />
               Tambah Sekolah
@@ -347,7 +421,11 @@ export function SuperAdminDashboard() {
                 </TableHeader>
                 <TableBody>
                   {analytics.topSchools.map((school, idx) => (
-                    <TableRow key={school.id}>
+                    <TableRow
+                      key={school.id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleSchoolClick(school.id)}
+                    >
                       <TableCell className="font-medium">{idx + 1}</TableCell>
                       <TableCell className="font-medium">{school.name}</TableCell>
                       <TableCell className="text-center">{formatNumber(school._count?.users || 0)}</TableCell>
@@ -371,7 +449,7 @@ export function SuperAdminDashboard() {
                   variant="outline"
                   size="sm"
                   className="mt-3"
-                  onClick={() => navigateTo('schools')}
+                  onClick={() => navigateTo('schools' as ViewType)}
                 >
                   <Plus className="mr-1 h-3 w-3" />
                   Tambah Sekolah
@@ -379,6 +457,21 @@ export function SuperAdminDashboard() {
               </div>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Aktivitas Terkini</CardTitle>
+          <CardDescription>Event terbaru di platform PANDAI</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {recentActivities.map((activity) => (
+              <ActivityItem key={activity.id} activity={activity} />
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -405,50 +405,76 @@ interface SidebarNavProps {
 }
 
 function SidebarNav({ sections, currentView, onNavigate, onLogout }: SidebarNavProps) {
+  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
+
+  const toggleSection = (section: string) => {
+    setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
+
   return (
-    <div className="flex h-full flex-col">
-      <ScrollArea className="flex-1 px-3 py-4">
-        <nav className="flex flex-col gap-1" role="navigation" aria-label="Main navigation">
+    <div className="flex h-full flex-col min-h-0">
+      {/* Scrollable nav area */}
+      <ScrollArea className="flex-1 px-3 py-2 min-h-0">
+        <nav className="flex flex-col gap-1 pb-2" role="navigation" aria-label="Main navigation">
           {sections.map((group) => (
             <React.Fragment key={group.section}>
-              {/* Section label */}
-              <div className="mt-4 mb-1 px-3 first:mt-0">
+              {/* Section label — clickable to collapse */}
+              <button
+                onClick={() => toggleSection(group.section)}
+                className="mt-4 mb-1 flex w-full items-center justify-between px-3 first:mt-0 group/section"
+                aria-expanded={!collapsed[group.section]}
+              >
                 <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
                   {group.section}
                 </span>
+                <ChevronRight
+                  className={cn(
+                    'h-3 w-3 text-white/30 transition-transform duration-200',
+                    !collapsed[group.section] && 'rotate-90'
+                  )}
+                />
+              </button>
+
+              {/* Items — animated collapse */}
+              <div
+                className={cn(
+                  'overflow-hidden transition-all duration-200 ease-in-out',
+                  collapsed[group.section] ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'
+                )}
+              >
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = currentView === item.view;
+                  return (
+                    <button
+                      key={item.view}
+                      onClick={() => onNavigate(item.view)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
+                        'hover:scale-[1.02] active:scale-[0.98]',
+                        isActive
+                          ? 'bg-white/10 text-amber-400 shadow-sm shadow-amber-400/10 border-l-[3px] border-amber-400'
+                          : 'text-white/70 hover:bg-white/5 hover:text-white border-l-[3px] border-transparent'
+                      )}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      <Icon className="h-4.5 w-4.5 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </button>
+                  );
+                })}
               </div>
-              {/* Items */}
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                const isActive = currentView === item.view;
-                return (
-                  <button
-                    key={item.view}
-                    onClick={() => onNavigate(item.view)}
-                    className={cn(
-                      'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
-                      isActive
-                        ? 'bg-white/10 text-amber-400 shadow-sm shadow-amber-400/10 border-l-[3px] border-amber-400'
-                        : 'text-white/70 hover:bg-white/5 hover:text-white border-l-[3px] border-transparent'
-                    )}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    <Icon className="h-4.5 w-4.5 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </button>
-                );
-              })}
             </React.Fragment>
           ))}
         </nav>
       </ScrollArea>
 
-      {/* Logout at bottom */}
-      <div className="mt-auto border-t border-white/10 p-3">
+      {/* Logout at bottom — always visible */}
+      <div className="shrink-0 border-t border-white/10 p-3">
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 text-left"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-all duration-150 hover:bg-red-500/10 hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 text-left hover:scale-[1.02] active:scale-[0.98]"
         >
           <LogOut className="h-4.5 w-4.5 shrink-0" />
           <span>Keluar</span>
@@ -522,20 +548,26 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       {/* ── Desktop Sidebar ── */}
       <aside
         className={cn(
-          'hidden lg:flex lg:flex-col lg:w-64 bg-[#1F3864] shrink-0 transition-all duration-300',
-          !sidebarOpen && 'lg:w-0 lg:overflow-hidden'
+          'hidden lg:flex lg:flex-col lg:w-64 bg-[#1F3864] shrink-0 transition-all duration-300 overflow-hidden',
+          !sidebarOpen && 'lg:w-0'
         )}
       >
-        {sidebarBranding}
-        {sidebarUser && (
-          <>
-            <div className="mx-4">
-              <Separator className="bg-white/10" />
-            </div>
-            {sidebarUser}
-          </>
-        )}
-        {sidebarNav}
+        {/* Branding + User info — fixed at top */}
+        <div className="shrink-0">
+          {sidebarBranding}
+          {sidebarUser && (
+            <>
+              <div className="mx-4">
+                <Separator className="bg-white/10" />
+              </div>
+              {sidebarUser}
+            </>
+          )}
+        </div>
+        {/* Nav takes remaining space with scroll */}
+        <div className="flex-1 min-h-0">
+          {sidebarNav}
+        </div>
       </aside>
 
       {/* ── Mobile Sidebar (Sheet) ── */}
@@ -550,18 +582,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-72 p-0 bg-[#1F3864] border-r-white/10">
+        <SheetContent side="left" className="w-72 p-0 bg-[#1F3864] border-r-white/10 flex flex-col">
           <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
-          {sidebarBranding}
-          {sidebarUser && (
-            <>
-              <div className="mx-4">
-                <Separator className="bg-white/10" />
-              </div>
-              {sidebarUser}
-            </>
-          )}
-          {sidebarNav}
+          {/* Branding + User info — fixed at top on mobile */}
+          <div className="shrink-0">
+            {sidebarBranding}
+            {sidebarUser && (
+              <>
+                <div className="mx-4">
+                  <Separator className="bg-white/10" />
+                </div>
+                {sidebarUser}
+              </>
+            )}
+          </div>
+          {/* Nav takes remaining space with scroll on mobile */}
+          <div className="flex-1 min-h-0">
+            {sidebarNav}
+          </div>
         </SheetContent>
       </Sheet>
 

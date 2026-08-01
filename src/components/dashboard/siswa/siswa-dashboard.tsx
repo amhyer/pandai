@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import type { ViewType } from '@/store/use-store';
 import {
   Card,
   CardContent,
@@ -25,6 +26,8 @@ import {
   ArrowRight,
   BookOpen,
   Zap,
+  Flame,
+  Star,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -69,12 +72,19 @@ interface StatCardProps {
   icon: React.ReactNode;
   subtext?: string;
   isLoading?: boolean;
+  onClick?: () => void;
   accent?: string;
 }
 
-function StatCard({ title, value, icon, subtext, isLoading, accent }: StatCardProps) {
+function StatCard({ title, value, icon, subtext, isLoading, onClick, accent }: StatCardProps) {
   return (
-    <Card>
+    <Card
+      className={`cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+    >
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -85,7 +95,7 @@ function StatCard({ title, value, icon, subtext, isLoading, accent }: StatCardPr
               </>
             ) : (
               <>
-                <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{title}</p>
                 <p className="text-2xl font-bold tracking-tight">{value}</p>
                 {subtext && <p className="text-xs text-muted-foreground">{subtext}</p>}
               </>
@@ -104,6 +114,49 @@ function StatCard({ title, value, icon, subtext, isLoading, accent }: StatCardPr
   );
 }
 
+// ─── Streak Card ────────────────────────────────────────────────────
+
+function StreakCard({ streak }: { streak: number }) {
+  return (
+    <Card className="border-orange-200 bg-gradient-to-br from-orange-50 to-amber-50 overflow-hidden">
+      <CardContent className="p-4 sm:p-6">
+        <div className="flex items-center gap-4">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-amber-500 text-white shadow-lg shadow-orange-200">
+            <Flame className="h-7 w-7" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <p className="text-2xl font-bold text-orange-700">{streak} Hari</p>
+              {streak >= 7 && (
+                <Badge className="bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200">
+                  <Star className="mr-1 h-3 w-3" />
+                  On Fire!
+                </Badge>
+              )}
+            </div>
+            <p className="text-sm text-orange-600 font-medium">Streak Belajar</p>
+            <p className="text-xs text-muted-foreground">Berlatih tanpa putus. Terus semangat!</p>
+          </div>
+          <div className="flex gap-0.5">
+            {[...Array(7)].map((_, i) => (
+              <div
+                key={i}
+                className={`h-6 w-6 rounded-md flex items-center justify-center text-[10px] font-bold ${
+                  i < Math.min(streak, 7)
+                    ? 'bg-orange-500 text-white'
+                    : 'bg-orange-100 text-orange-300'
+                }`}
+              >
+                {['S', 'S', 'R', 'K', 'J', 'S', 'M'][i]}
+              </div>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export function SiswaDashboard() {
@@ -111,6 +164,9 @@ export function SiswaDashboard() {
   const navigateTo = useAppStore((s) => s.navigateTo);
   const [analytics, setAnalytics] = useState<StudentAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Mock streak (in a real app this would come from an API)
+  const streak = 5;
 
   useEffect(() => {
     fetchAnalytics();
@@ -155,6 +211,9 @@ export function SiswaDashboard() {
         </p>
       </div>
 
+      {/* Streak Card */}
+      <StreakCard streak={streak} />
+
       {/* Topik Prioritas (Weak Topics) */}
       {!loading && analytics?.weakTopics && analytics.weakTopics.length > 0 && (
         <Card className="border-amber-200 bg-amber-50/50">
@@ -174,7 +233,7 @@ export function SiswaDashboard() {
                   key={idx}
                   variant="outline"
                   className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100 cursor-pointer px-3 py-1.5 text-sm"
-                  onClick={() => navigateTo('practice')}
+                  onClick={() => navigateTo('practice' as ViewType)}
                 >
                   <BookOpen className="mr-1.5 h-3.5 w-3.5" />
                   {topic.topic}
@@ -194,6 +253,7 @@ export function SiswaDashboard() {
           icon={<Target className="h-5 w-5" />}
           subtext={analytics?.lastScore ? 'dari 1000' : 'belum ada'}
           isLoading={loading}
+          onClick={() => navigateTo('siswa-nilai' as ViewType)}
         />
         <StatCard
           title="Total Tryout"
@@ -202,6 +262,7 @@ export function SiswaDashboard() {
           subtext="dikerjakan"
           isLoading={loading}
           accent="bg-amber-50 text-amber-600"
+          onClick={() => navigateTo('siswa-riwayat' as ViewType)}
         />
         <StatCard
           title="Rata-rata Benar"
@@ -210,6 +271,7 @@ export function SiswaDashboard() {
           subtext="per tryout"
           isLoading={loading}
           accent="bg-emerald-50 text-emerald-600"
+          onClick={() => navigateTo('siswa-nilai' as ViewType)}
         />
         <StatCard
           title="Peringkat"
@@ -218,6 +280,7 @@ export function SiswaDashboard() {
           subtext={analytics?.rank ? 'di sekolah' : 'belum ada data'}
           isLoading={loading}
           accent="bg-amber-50 text-amber-600"
+          onClick={() => navigateTo('leaderboard' as ViewType)}
         />
       </div>
 
@@ -362,35 +425,66 @@ export function SiswaDashboard() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Button
-          className="h-auto flex-col gap-2 py-6 bg-[#1F3864] hover:bg-[#152850]"
-          onClick={() => navigateTo('diagnostic')}
-        >
-          <Stethoscope className="h-6 w-6" />
-          <span className="font-semibold">Mulai Diagnostic</span>
-          <span className="text-xs text-white/70">Tes awal kemampuan TKA</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="h-auto flex-col gap-2 py-6"
-          onClick={() => navigateTo('practice')}
-        >
-          <Dumbbell className="h-6 w-6 text-[#1F3864]" />
-          <span className="font-semibold">Latihan Sekarang</span>
-          <span className="text-xs text-muted-foreground">Drill soal per topik</span>
-        </Button>
-        <Button
-          variant="outline"
-          className="h-auto flex-col gap-2 py-6"
-          onClick={() => navigateTo('exams')}
-        >
-          <ClipboardList className="h-6 w-6 text-amber-600" />
-          <span className="font-semibold">Lihat Tryout</span>
-          <span className="text-xs text-muted-foreground">Tryout yang tersedia</span>
-        </Button>
-      </div>
+      {/* Quick Actions - Enhanced */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg">Ayo Mulai!</CardTitle>
+          <CardDescription>Pilih aktivitas belajar berikutnya</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {/* Primary Action */}
+            <div
+              className="relative overflow-hidden rounded-xl border-2 border-[#1F3864] bg-gradient-to-br from-[#1F3864] to-[#152850] p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
+              onClick={() => navigateTo('diagnostic' as ViewType)}
+            >
+              <div className="absolute top-2 right-2">
+                <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-[10px]">
+                  Prioritas
+                </Badge>
+              </div>
+              <Stethoscope className="h-8 w-8 text-white/80 mb-3" />
+              <h3 className="text-lg font-bold text-white">Mulai Diagnostic</h3>
+              <p className="text-sm text-white/60 mt-1">Tes awal kemampuan TKA</p>
+              <div className="mt-3 flex items-center gap-1 text-xs text-white/50 group-hover:text-white/80 transition-colors">
+                <span>Mulai sekarang</span>
+                <ArrowRight className="h-3 w-3" />
+              </div>
+            </div>
+
+            {/* Secondary Actions */}
+            <div
+              className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
+              onClick={() => navigateTo('practice' as ViewType)}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-600 mb-3">
+                <Dumbbell className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-amber-800">Latihan Sekarang</h3>
+              <p className="text-sm text-muted-foreground mt-1">Drill soal per topik</p>
+              <div className="mt-3 flex items-center gap-1 text-xs text-amber-600/60 group-hover:text-amber-600 transition-colors">
+                <span>Lanjutkan</span>
+                <ArrowRight className="h-3 w-3" />
+              </div>
+            </div>
+
+            <div
+              className="rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
+              onClick={() => navigateTo('exams' as ViewType)}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 mb-3">
+                <ClipboardList className="h-6 w-6" />
+              </div>
+              <h3 className="text-lg font-bold text-emerald-800">Lihat Tryout</h3>
+              <p className="text-sm text-muted-foreground mt-1">Tryout yang tersedia</p>
+              <div className="mt-3 flex items-center gap-1 text-xs text-emerald-600/60 group-hover:text-emerald-600 transition-colors">
+                <span>Lihat daftar</span>
+                <ArrowRight className="h-3 w-3" />
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

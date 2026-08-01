@@ -1,0 +1,1667 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useMemo } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import {
+     6→  Card,
+     7→  CardContent,
+     8→  CardHeader,
+     9→  CardTitle,
+    10→  CardDescription,
+    11→} from '@/components/ui/card';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import { Skeleton } from '@/components/ui/skeleton';
+    15→import { Progress } from '@/components/ui/progress';
+    16→import { toast } from 'sonner';
+    17→import {
+    18→  Stethoscope,
+    19→  Calculator,
+    20→  Atom,
+    21→  FlaskConical,
+    22→  Leaf,
+    23→  BookOpen,
+    24→  Languages,
+    25→  Play,
+    26→  CheckCircle2,
+    27→  Circle,
+    28→  Clock,
+    29→  Info,
+    30→  Sparkles,
+    31→  Dumbbell,
+    32→  Target,
+    33→  Brain,
+    34→  Lightbulb,
+    35→  TrendingUp,
+    36→  ArrowRight,
+    37→  BarChart3,
+    38→  Trophy,
+    39→  Medal,
+    40→  Crown,
+    41→  Star,
+    42→  History,
+    43→  ClipboardList,
+    44→  Filter,
+    45→  Eye,
+    46→  ChevronDown,
+    47→  ChevronUp,
+    48→  Timer,
+    49→  Award,
+    50→  User,
+    51→  GraduationCap,
+    52→  Zap,
+    53→  Flame,
+    54→  Lock,
+    55→  Unlock,
+    56→  ChevronLeft,
+    57→  ChevronRight,
+    58→  MapPin,
+    59→  Globe,
+    60→  School,
+    61→} from 'lucide-react';
+    62→
+    63→// ─── Shared Types ──────────────────────────────────────────────────
+    64→
+    65→interface SubjectInfo {
+    66→  id: string;
+    67→  name: string;
+    68→  icon: React.ReactNode;
+    69→  estimatedTime: string;
+    70→  totalQuestions: number;
+    71→  completed?: boolean;
+    72→  score?: number;
+    73→}
+    74→
+    75→interface TopicInfo {
+    76→  id: string;
+    77→  name: string;
+    78→  subject: string;
+    79→  totalQuestions: number;
+    80→  mastered: number;
+    81→  correctRate: number;
+    82→  isWeak: boolean;
+    83→}
+    84→
+    85→interface ScoreEntry {
+    86→  id: string;
+    87→  tryoutName: string;
+    88→  date: string;
+    89→  score: number;
+    90→  maxScore: number;
+    91→  correct: number;
+    92→  wrong: number;
+    93→  duration: string;
+    94→  status: 'completed' | 'in_progress' | 'timed_out';
+    95→}
+    96→
+    97→interface HistoryEntry {
+    98→  id: string;
+    99→  title: string;
+   100→  type: 'tryout' | 'diagnostic' | 'latihan';
+   101→  date: string;
+   102→  score: number;
+   103→  maxScore: number;
+   104→  duration: string;
+   105→  status: 'completed' | 'in_progress' | 'timed_out';
+   106→  details?: {
+   107→    correct: number;
+   108→    wrong: number;
+   109→    unanswered: number;
+   110→    subject?: string;
+   111→    topic?: string;
+   112→  };
+   113→}
+   114→
+   115→interface LeaderboardEntry {
+   116→  rank: number;
+   117→  name: string;
+   118→  class: string;
+   119→  avgScore: number;
+   120→  totalTryout: number;
+   121→  avatar?: string;
+   122→  isMe?: boolean;
+   123→}
+   124→
+   125→// ─── Helpers ────────────────────────────────────────────────────────
+   126→
+   127→function getStatusBadge(status: string) {
+   128→  switch (status) {
+   129→    case 'completed':
+   130→      return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200">Selesai</Badge>;
+   131→    case 'in_progress':
+   132→      return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-blue-200">Berlangsung</Badge>;
+   133→    case 'timed_out':
+   134→      return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 border-red-200">Waktu Habis</Badge>;
+   135→    default:
+   136→      return <Badge variant="outline">{status}</Badge>;
+   137→  }
+   138→}
+   139→
+   140→function getTypeBadge(type: string) {
+   141→  switch (type) {
+   142→    case 'tryout':
+   143→      return <Badge className="bg-[#1F3864]/10 text-[#1F3864] hover:bg-[#1F3864]/15 border-[#1F3864]/20">Tryout</Badge>;
+   144→    case 'diagnostic':
+   145→      return <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-purple-200">Diagnostic</Badge>;
+   146→    case 'latihan':
+   147→      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200">Latihan</Badge>;
+   148→    default:
+   149→      return <Badge variant="outline">{type}</Badge>;
+   150→  }
+   151→}
+   152→
+   153→// ═══════════════════════════════════════════════════════════════════
+   154→//  1. DIAGNOSTIC VIEW
+   155→// ═══════════════════════════════════════════════════════════════════
+   156→
+   157→export function DiagnosticView() {
+   158→  const user = useAppStore((s) => s.user);
+   159→  const navigateTo = useAppStore((s) => s.navigateTo);
+   160→  const [loading, setLoading] = useState(true);
+   161→  const [subjects, setSubjects] = useState<SubjectInfo[]>([]);
+   162→  const [selectedSubject, setSelectedSubject] = useState<string | null>(null);
+   163→
+   164→  const DIAGNOSTIC_SUBJECTS: SubjectInfo[] = useMemo(
+   165→    () => [
+   166→      { id: 'matematika', name: 'Matematika', icon: <Calculator className="h-6 w-6" />, estimatedTime: '30 menit', totalQuestions: 25 },
+   167→      { id: 'fisika', name: 'Fisika', icon: <Atom className="h-6 w-6" />, estimatedTime: '25 menit', totalQuestions: 20 },
+   168→      { id: 'kimia', name: 'Kimia', icon: <FlaskConical className="h-6 w-6" />, estimatedTime: '25 menit', totalQuestions: 20 },
+   169→      { id: 'biologi', name: 'Biologi', icon: <Leaf className="h-6 w-6" />, estimatedTime: '25 menit', totalQuestions: 20 },
+   170→      { id: 'b-indonesia', name: 'B. Indonesia', icon: <BookOpen className="h-6 w-6" />, estimatedTime: '20 menit', totalQuestions: 15 },
+   171→      { id: 'b-inggris', name: 'B. Inggris', icon: <Languages className="h-6 w-6" />, estimatedTime: '20 menit', totalQuestions: 15 },
+   172→    ],
+   173→    []
+   174→  );
+   175→
+   176→  useEffect(() => {
+   177→    // Simulate loading diagnostic progress
+   178→    const timer = setTimeout(() => {
+   179→      setSubjects([
+   180→        { ...DIAGNOSTIC_SUBJECTS[0], completed: true, score: 720 },
+   181→        { ...DIAGNOSTIC_SUBJECTS[1], completed: true, score: 650 },
+   182→        { ...DIAGNOSTIC_SUBJECTS[2] },
+   183→        { ...DIAGNOSTIC_SUBJECTS[3] },
+   184→        { ...DIAGNOSTIC_SUBJECTS[4] },
+   185→        { ...DIAGNOSTIC_SUBJECTS[5] },
+   186→      ]);
+   187→      setLoading(false);
+   188→    }, 800);
+   189→    return () => clearTimeout(timer);
+   190→  }, [DIAGNOSTIC_SUBJECTS]);
+   191→
+   192→  const completedCount = subjects.filter((s) => s.completed).length;
+   193→  const totalCount = subjects.length;
+   194→  const progressPercent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+   195→
+   196→  function handleStartDiagnostic(subjectId?: string) {
+   197→    toast.success('Memulai diagnostic test...');
+   198→    // In real app: navigate to exam runner with diagnostic config
+   199→  }
+   200→
+   201→  function handleStartFullDiagnostic() {
+   202→    toast.success('Memulai diagnostic lengkap...');
+   203→  }
+   204→
+   205→  return (
+   206→    <div className="space-y-6">
+   207→      {/* Hero Card */}
+   208→      <Card className="bg-[#1F3864] border-[#1F3864] text-white overflow-hidden relative">
+   209→        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
+   210→        <CardContent className="p-6 sm:p-10 relative z-10">
+   211→          <div className="flex flex-col items-center text-center gap-4">
+   212→            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-sm">
+   213→              <Stethoscope className="h-8 w-8 text-amber-400" />
+   214→            </div>
+   215→            <div className="space-y-2">
+   216→              <h1 className="text-2xl sm:text-3xl font-bold">Diagnostic Test TKA</h1>
+   217→              <p className="text-white/80 max-w-xl mx-auto">
+   218→                Kenali kekuatan dan kelemahanmu di setiap mata pelajaran TKA.
+   219→                Tes diagnostic ini akan menganalisis kemampuan awalmu agar belajar jadi lebih
+   220→                terarah dan efisien.
+   221→              </p>
+   222→            </div>
+   223→            <div className="flex items-center gap-2 text-sm text-white/60">
+   224→              <Sparkles className="h-4 w-4 text-amber-400" />
+   225→              <span>Rekomendasi topik belajar otomatis setelah selesai</span>
+   226→            </div>
+   227→          </div>
+   228→        </CardContent>
+   229→      </Card>
+   230→
+   231→      {/* Progress Section */}
+   232→      {!loading && (
+   233→        <Card>
+   234→          <CardContent className="p-5">
+   235→            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+   236→              <div className="flex-1 space-y-2">
+   237→                <div className="flex items-center justify-between">
+   238→                  <p className="text-sm font-medium">Progress Diagnostic</p>
+   239→                  <p className="text-sm text-muted-foreground">
+   240→                    {completedCount} dari {totalCount} mapel selesai
+   241→                  </p>
+   242→                </div>
+   243→                <Progress value={progressPercent} className="h-2.5" />
+   244→              </div>
+   245→              {completedCount > 0 && completedCount < totalCount && (
+   246→                <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 shrink-0">
+   247→                  <Flame className="mr-1 h-3.5 w-3.5" />
+   248→                  {progressPercent}% selesai
+   249→                </Badge>
+   250→              )}
+   251→              {completedCount === totalCount && (
+   252→                <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 shrink-0">
+   253→                  <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+   254→                  Semua selesai!
+   255→                </Badge>
+   256→              )}
+   257→            </div>
+   258→          </CardContent>
+   259→        </Card>
+   260→      )}
+   261→
+   262→      {/* Subject Selection Grid */}
+   263→      <div>
+   264→        <h2 className="text-lg font-semibold mb-1">Pilih Mata Pelajaran</h2>
+   265→        <p className="text-sm text-muted-foreground mb-4">
+   266→          Mulai diagnostic per mapel atau pilih semua sekaligus di bawah
+   267→        </p>
+   268→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   269→          {loading
+   270→            ? Array.from({ length: 6 }).map((_, i) => (
+   271→                <Card key={i}>
+   272→                  <CardContent className="p-5">
+   273→                    <div className="flex items-start gap-3">
+   274→                      <Skeleton className="h-10 w-10 rounded-lg" />
+   275→                      <div className="flex-1 space-y-2">
+   276→                        <Skeleton className="h-5 w-24" />
+   277→                        <Skeleton className="h-4 w-32" />
+   278→                        <Skeleton className="h-9 w-28 mt-2" />
+   279→                      </div>
+   280→                    </div>
+   281→                  </CardContent>
+   282→                </Card>
+   283→              ))
+   284→            : subjects.map((subject) => (
+   285→                <Card
+   286→                  key={subject.id}
+   287→                  className={`group relative transition-all hover:shadow-md ${
+   288→                    subject.completed
+   289→                      ? 'border-emerald-200 bg-emerald-50/30'
+   290→                      : selectedSubject === subject.id
+   291→                      ? 'border-[#1F3864] ring-2 ring-[#1F3864]/20'
+   292→                      : 'hover:border-[#1F3864]/40'
+   293→                  }`}
+   294→                >
+   295→                  {subject.completed && (
+   296→                    <div className="absolute top-3 right-3">
+   297→                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+   298→                    </div>
+   299→                  )}
+   300→                  <CardContent className="p-5">
+   301→                    <div className="flex items-start gap-3">
+   302→                      <div
+   303→                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+   304→                          subject.completed
+   305→                            ? 'bg-emerald-100 text-emerald-600'
+   306→                            : 'bg-[#1F3864]/10 text-[#1F3864]'
+   307→                        }`}
+   308→                      >
+   309→                        {subject.icon}
+   310→                      </div>
+   311→                      <div className="flex-1 min-w-0">
+   312→                        <h3 className="font-semibold">{subject.name}</h3>
+   313→                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+   314→                          <span className="flex items-center gap-1">
+   315→                            <ClipboardList className="h-3 w-3" />
+   316→                            {subject.totalQuestions} soal
+   317→                          </span>
+   318→                          <span className="flex items-center gap-1">
+   319→                            <Clock className="h-3 w-3" />
+   320→                            {subject.estimatedTime}
+   321→                          </span>
+   322→                        </div>
+   323→                        {subject.completed && subject.score !== undefined && (
+   324→                          <div className="mt-2">
+   325→                            <Badge
+   326→                              className={`${
+   327→                                subject.score >= 700
+   328→                                  ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+   329→                                  : 'bg-amber-100 text-amber-700 border-amber-200'
+   330→                              } hover:bg-transparent`}
+   331→                            >
+   332→                              Skor: {subject.score}
+   333→                            </Badge>
+   334→                          </div>
+   335→                        )}
+   336→                        {!subject.completed && (
+   337→                          <Button
+   338→                            size="sm"
+   339→                            className="mt-3 bg-[#1F3864] hover:bg-[#152850] text-xs"
+   340→                            onClick={() => handleStartDiagnostic(subject.id)}
+   341→                          >
+   342→                            <Play className="mr-1.5 h-3.5 w-3.5" />
+   343→                            Mulai Tes
+   344→                          </Button>
+   345→                        )}
+   346→                      </div>
+   347→                    </div>
+   348→                  </CardContent>
+   349→                </Card>
+   350→              ))}
+   351→        </div>
+   352→      </div>
+   353→
+   354→      {/* Info Box */}
+   355→      <Card className="border-blue-200 bg-blue-50/50">
+   356→        <CardContent className="p-5">
+   357→          <div className="flex gap-3">
+   358→            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-100">
+   359→              <Info className="h-5 w-5 text-blue-600" />
+   360→            </div>
+   361→            <div className="space-y-1">
+   362→              <h4 className="text-sm font-semibold text-blue-900">Mengapa Diagnostic Test penting?</h4>
+   363→              <p className="text-sm text-blue-800/80">
+   364→                Diagnostic Test membantu PANDAI mengenali kekuatan dan kelemahanmu di
+   365→                setiap topik. Hasilnya digunakan untuk merekomendasikan latihan yang paling
+   366→                kamu butuhkan, sehingga waktu belajarmu lebih efisien dan target TKA tercapai!
+   367→              </p>
+   368→            </div>
+   369→          </div>
+   370→        </CardContent>
+   371→      </Card>
+   372→
+   373→      {/* Start Full Diagnostic Button */}
+   374→      <div className="flex justify-center pt-2 pb-4">
+   375→        <Button
+   376→          size="lg"
+   377→          className="bg-[#1F3864] hover:bg-[#152850] px-10 py-6 text-base font-semibold"
+   378→          onClick={handleStartFullDiagnostic}
+   379→          disabled={completedCount === totalCount}
+   380→        >
+   381→          <Stethoscope className="mr-2 h-5 w-5" />
+   382→          {completedCount === totalCount
+   383→            ? 'Diagnostic Selesai! Lihat Hasil'
+   384→            : completedCount > 0
+   385→            ? 'Lanjutkan Diagnostic'
+   386→            : 'Mulai Diagnostic'}
+   387→          <ArrowRight className="ml-2 h-4 w-4" />
+   388→        </Button>
+   389→      </div>
+   390→    </div>
+   391→  );
+   392→}
+   393→
+   394→// ═══════════════════════════════════════════════════════════════════
+   395→//  2. PRACTICE VIEW
+   396→// ═══════════════════════════════════════════════════════════════════
+   397→
+   398→export function PracticeView() {
+   399→  const user = useAppStore((s) => s.user);
+   400→  const navigateTo = useAppStore((s) => s.navigateTo);
+   401→  const [loading, setLoading] = useState(true);
+   402→  const [selectedTopic, setSelectedTopic] = useState<string | null>(null);
+   403→  const [topics, setTopics] = useState<TopicInfo[]>([]);
+   404→  const [activeSession, setActiveSession] = useState(false);
+   405→  const [currentQuestion, setCurrentQuestion] = useState(1);
+   406→  const [totalQuestionsSession, setTotalQuestionsSession] = useState(10);
+   407→  const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
+   408→
+   409→  // Simulated stats
+   410→  const [stats, setStats] = useState({
+   411→    topicsStudied: 0,
+   412→    questionsCorrect: 0,
+   413→    masteryLevel: 0,
+   414→  });
+   415→
+   416→  useEffect(() => {
+   417→    const timer = setTimeout(() => {
+   418→      setTopics([
+   419→        { id: 't1', name: 'Turunan Fungsi', subject: 'Matematika', totalQuestions: 40, mastered: 28, correctRate: 70, isWeak: false },
+   420→        { id: 't2', name: 'Limit & Kekontinuan', subject: 'Matematika', totalQuestions: 35, mastered: 15, correctRate: 43, isWeak: true },
+   421→        { id: 't3', name: 'Kinematika GLB & GLBB', subject: 'Fisika', totalQuestions: 30, mastered: 25, correctRate: 83, isWeak: false },
+   422→        { id: 't4', name: 'Hukum Newton', subject: 'Fisika', totalQuestions: 30, mastered: 12, correctRate: 40, isWeak: true },
+   423→        { id: 't5', name: 'Stoikiometri', subject: 'Kimia', totalQuestions: 35, mastered: 30, correctRate: 86, isWeak: false },
+   424→        { id: 't6', name: 'Ikatan Kimia', subject: 'Kimia', totalQuestions: 25, mastered: 10, correctRate: 40, isWeak: true },
+   425→        { id: 't7', name: 'Sel & Organel', subject: 'Biologi', totalQuestions: 30, mastered: 22, correctRate: 73, isWeak: false },
+   426→        { id: 't8', name: 'Struktur Teks', subject: 'B. Indonesia', totalQuestions: 20, mastered: 18, correctRate: 90, isWeak: false },
+   427→      ]);
+   428→      setStats({ topicsStudied: 8, questionsCorrect: 342, masteryLevel: 67 });
+   429→      setLoading(false);
+   430→    }, 700);
+   431→    return () => clearTimeout(timer);
+   432→  }, []);
+   433→
+   434→  const DUMMY_OPTIONS = [
+   435→    'f(x) = 2x² - 3x + 1',
+   436→    'f(x) = 4x³ + 2x - 5',
+   437→    'f(x) = x² + 7x - 2',
+   438→    'f(x) = 3x³ - x² + 4',
+   439→  ];
+   440→
+   441→  function handleStartPractice(topicId: string) {
+   442→    setSelectedTopic(topicId);
+   443→    setActiveSession(true);
+   444→    setCurrentQuestion(1);
+   445→    setSelectedAnswer(null);
+   446→    toast.success('Sesi latihan dimulai! Semangat! \ud83d\udcaa');
+   447→  }
+   448→
+   449→  function handleSelectAnswer(option: string) {
+   450→    setSelectedAnswer(option);
+   451→  }
+   452→
+   453→  function handleNextQuestion() {
+   454→    if (currentQuestion < totalQuestionsSession) {
+   455→      setCurrentQuestion((prev) => prev + 1);
+   456→      setSelectedAnswer(null);
+   457→    } else {
+   458→      toast.success('Sesi latihan selesai! Kerja bagus! \ud83c\udf89');
+   459→      setActiveSession(false);
+   460→      setSelectedTopic(null);
+   461→    }
+   462→  }
+   463→
+   464→  if (activeSession && selectedTopic) {
+   465→    const topic = topics.find((t) => t.id === selectedTopic);
+   466→    return (
+   467→      <div className="space-y-4">
+   468→        {/* Session Header */}
+   469→        <div className="flex items-center justify-between">
+   470→          <Button variant="ghost" size="sm" onClick={() => setActiveSession(false)}>
+   471→            <ChevronLeft className="mr-1 h-4 w-4" />
+   472→            Kembali
+   473→          </Button>
+   474→          <Badge className="bg-[#1F3864]/10 text-[#1F3864] border-[#1F3864]/20">
+   475→            {topic?.name ?? 'Latihan'}
+   476→          </Badge>
+   477→        </div>
+   478→
+   479→        {/* Progress */}
+   480→        <div className="space-y-2">
+   481→          <div className="flex justify-between text-sm">
+   482→            <span className="text-muted-foreground">
+   483→              Soal {currentQuestion} dari {totalQuestionsSession}
+   484→            </span>
+   485→            <span className="font-medium">
+   486→              {Math.round((currentQuestion / totalQuestionsSession) * 100)}%
+   487→            </span>
+   488→          </div>
+   489→          <Progress value={(currentQuestion / totalQuestionsSession) * 100} className="h-2" />
+   490→        </div>
+   491→
+   492→        {/* Question Card */}
+   493→        <Card className="mt-4">
+   494→          <CardHeader>
+   495→            <div className="flex items-center gap-2">
+   496→              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1F3864] text-white text-sm font-bold">
+   497→                {currentQuestion}
+   498→              </div>
+   499→              <CardDescription>Pilihan Ganda</CardDescription>
+   500→            </div>
+   501→          </CardHeader>
+   502→          <CardContent className="space-y-5">
+   503→            <p className="text-base font-medium leading-relaxed">
+   504→              Tentukan turunan pertama dari fungsi f(x) = 6x\u00B3 - 4x\u00B2 + 3x - 7
+   505→            </p>
+   506→            <div className="space-y-2.5">
+   507→              {DUMMY_OPTIONS.map((opt, idx) => {
+   508→                const letter = String.fromCharCode(65 + idx);
+   509→                return (
+   510→                  <button
+   511→                    key={idx}
+   512→                    className={`w-full text-left rounded-lg border-2 p-4 transition-all hover:bg-muted/50 ${
+   513→                      selectedAnswer === opt
+   514→                        ? 'border-[#1F3864] bg-[#1F3864]/5'
+   515→                        : 'border-border'
+   516→                    }`}
+   517→                    onClick={() => handleSelectAnswer(opt)}
+   518→                  >
+   519→                    <div className="flex items-center gap-3">
+   520→                      <span
+   521→                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm font-semibold ${
+   522→                          selectedAnswer === opt
+   523→                            ? 'bg-[#1F3864] text-white'
+   524→                            : 'bg-muted text-muted-foreground'
+   525→                        }`}
+   526→                      >
+   527→                        {letter}
+   528→                      </span>
+   529→                      <span className="text-sm">{opt}</span>
+   530→                    </div>
+   531→                  </button>
+   532→                );
+   533→              })}
+   534→            </div>
+   535→          </CardContent>
+   536→        </Card>
+   537→
+   538→        {/* Navigation */}
+   539→        <div className="flex justify-between">
+   540→          <Button
+   541→            variant="outline"
+   542→            onClick={() => setCurrentQuestion((prev) => Math.max(1, prev - 1))}
+   543→            disabled={currentQuestion === 1}
+   544→          >
+   545→            <ChevronLeft className="mr-1 h-4 w-4" />
+   546→            Sebelumnya
+   547→          </Button>
+   548→          <Button
+   549→            className="bg-[#1F3864] hover:bg-[#152850]"
+   550→            onClick={handleNextQuestion}
+   551→          >
+   552→            {currentQuestion === totalQuestionsSession ? 'Selesai' : 'Selanjutnya'}
+   553→            {currentQuestion === totalQuestionsSession ? (
+   554→              <CheckCircle2 className="ml-1.5 h-4 w-4" />
+   555→            ) : (
+   556→              <ChevronRight className="ml-1.5 h-4 w-4" />
+   557→            )}
+   558→          </Button>
+   559→        </div>
+   560→      </div>
+   561→    );
+   562→  }
+   563→
+   564→  return (
+   565→    <div className="space-y-6">
+   566→      {/* Header */}
+   567→      <div>
+   568→        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   569→          <Dumbbell className="h-6 w-6 text-[#1F3864]" />
+   570→          Latihan Soal Adaptif
+   571→        </h1>
+   572→        <p className="text-muted-foreground mt-1">
+   573→          Belajar lebih pintar dengan soal yang disesuaikan kemampuanmu. Kuasai topik demi topik!
+   574→        </p>
+   575→      </div>
+   576→
+   577→      {/* Stats Bar */}
+   578→      {!loading && (
+   579→        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+   580→          <Card>
+   581→            <CardContent className="p-4 flex items-center gap-3">
+   582→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+   583→                <Brain className="h-5 w-5" />
+   584→              </div>
+   585→              <div>
+   586→                <p className="text-xs text-muted-foreground">Topik Dipelajari</p>
+   587→                <p className="text-xl font-bold">{stats.topicsStudied}</p>
+   588→              </div>
+   589→            </CardContent>
+   590→          </Card>
+   591→          <Card>
+   592→            <CardContent className="p-4 flex items-center gap-3">
+   593→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+   594→                <CheckCircle2 className="h-5 w-5" />
+   595→              </div>
+   596→              <div>
+   597→                <p className="text-xs text-muted-foreground">Soal Dijawab Benar</p>
+   598→                <p className="text-xl font-bold">{stats.questionsCorrect}</p>
+   599→              </div>
+   600→            </CardContent>
+   601→          </Card>
+   602→          <Card>
+   603→            <CardContent className="p-4 flex items-center gap-3">
+   604→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+   605→                <Target className="h-5 w-5" />
+   606→              </div>
+   607→              <div>
+   608→                <p className="text-xs text-muted-foreground">Tingkat Penguasaan</p>
+   609→                <p className="text-xl font-bold">{stats.masteryLevel}%</p>
+   610→              </div>
+   611→            </CardContent>
+   612→          </Card>
+   613→        </div>
+   614→      )}
+   615→
+   616→      {/* Motivation Banner */}
+   617→      <Card className="bg-gradient-to-r from-amber-50 to-orange-50 border-amber-200">
+   618→        <CardContent className="p-4 flex items-center gap-3">
+   619→          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100">
+   620→            <Lightbulb className="h-5 w-5 text-amber-600" />
+   621→          </div>
+   622→          <div>
+   623→            <p className="text-sm font-medium text-amber-900">
+   624→              {stats.masteryLevel >= 70
+   625→                ? '\u2b50 Hebat! Penguasaanmu sudah cukup baik. Terus tingkatkan!'
+   626→                : '\ud83d\udcaa Ayo tingkatkan penguasaanmu! Fokus ke topik yang masih lemah.'}
+   627→            </p>
+   628→          </div>
+   629→        </CardContent>
+   630→      </Card>
+   631→
+   632→      {/* Topic Cards Grid */}
+   633→      <div>
+   634→        <h2 className="text-lg font-semibold mb-1">Pilih Topik Latihan</h2>
+   635→        <p className="text-sm text-muted-foreground mb-4">
+   636→          Topik dengan border kuning membutuhkan perhatian lebih
+   637→        </p>
+   638→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+   639→          {loading
+   640→            ? Array.from({ length: 8 }).map((_, i) => (
+   641→                <Card key={i}>
+   642→                  <CardContent className="p-4 space-y-3">
+   643→                    <Skeleton className="h-5 w-32" />
+   644→                    <Skeleton className="h-4 w-24" />
+   645→                    <Skeleton className="h-2 w-full" />
+   646→                    <Skeleton className="h-9 w-24" />
+   647→                  </CardContent>
+   648→                </Card>
+   649→              ))
+   650→            : topics.map((topic) => (
+   651→                <Card
+   652→                  key={topic.id}
+   653→                  className={`transition-all hover:shadow-md ${
+   654→                    topic.isWeak
+   655→                      ? 'border-amber-300 border-2 bg-amber-50/30'
+   656→                      : 'hover:border-[#1F3864]/40'
+   657→                  }`}
+   658→                >
+   659→                  <CardContent className="p-4 space-y-3">
+   660→                    <div className="flex items-start justify-between">
+   661→                      <div>
+   662→                        <h3 className="font-semibold text-sm">{topic.name}</h3>
+   663→                        <p className="text-xs text-muted-foreground">{topic.subject}</p>
+   664→                      </div>
+   665→                      {topic.isWeak && (
+   666→                        <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 text-[10px]">
+   667→                          Perlu Diperkuat
+   668→                        </Badge>
+   669→                      )}
+   670→                    </div>
+   671→
+   672→                    <div className="flex items-center justify-between text-xs text-muted-foreground">
+   673→                      <span>{topic.totalQuestions} soal</span>
+   674→                      <span>{topic.mastered}/{topic.totalQuestions} dikuasai</span>
+   675→                    </div>
+   676→
+   677→                    <div className="space-y-1">
+   678→                      <div className="flex justify-between text-xs">
+   679→                        <span className="text-muted-foreground">Penguasaan</span>
+   680→                        <span
+   681→                          className={`font-medium ${
+   682→                            topic.correctRate >= 70
+   683→                              ? 'text-emerald-600'
+   684→                              : topic.correctRate >= 50
+   685→                              ? 'text-amber-600'
+   686→                              : 'text-red-500'
+   687→                          }`}
+   688→                        >
+   689→                          {topic.correctRate}%
+   690→                        </span>
+   691→                      </div>
+   692→                      <Progress
+   693→                        value={topic.correctRate}
+   694→                        className={`h-1.5 ${
+   695→                          topic.correctRate >= 70
+   696→                            ? '[&>div]:bg-emerald-500'
+   697→                            : topic.correctRate >= 50
+   698→                            ? '[&>div]:bg-amber-500'
+   699→                            : '[&>div]:bg-red-500'
+   700→                        }`}
+   701→                      />
+   702→                    </div>
+   703→
+   704→                    <Button
+   705→                      size="sm"
+   706→                      className={`w-full text-xs ${
+   707→                        topic.isWeak
+   708→                          ? 'bg-amber-500 hover:bg-amber-600'
+   709→                          : 'bg-[#1F3864] hover:bg-[#152850]'
+   710→                      }`}
+   711→                      onClick={() => handleStartPractice(topic.id)}
+   712→                    >
+   713→                      <Play className="mr-1.5 h-3.5 w-3.5" />
+   714→                      Latihan
+   715→                    </Button>
+   716→                  </CardContent>
+   717→                </Card>
+   718→              ))}
+   719→        </div>
+   720→      </div>
+   721→    </div>
+   722→  );
+   723→}
+   724→
+   725→// ═══════════════════════════════════════════════════════════════════
+   726→//  3. SISWA NILAI VIEW
+   727→// ═══════════════════════════════════════════════════════════════════
+   728→
+   729→export function SiswaNilaiView() {
+   730→  const user = useAppStore((s) => s.user);
+   731→  const [loading, setLoading] = useState(true);
+   732→  const [scores, setScores] = useState<ScoreEntry[]>([]);
+   733→  const [selectedScore, setSelectedScore] = useState<string | null>(null);
+   734→
+   735→  useEffect(() => {
+   736→    const timer = setTimeout(() => {
+   737→      setScores([
+   738→        { id: 's1', tryoutName: 'Tryout TKA 1 - Batch A', date: '2025-01-15', score: 720, maxScore: 1000, correct: 58, wrong: 22, duration: '1j 45m', status: 'completed' },
+   739→        { id: 's2', tryoutName: 'Tryout TKA 2 - Batch A', date: '2025-02-10', score: 780, maxScore: 1000, correct: 64, wrong: 16, duration: '1j 38m', status: 'completed' },
+   740→        { id: 's3', tryoutName: 'Tryout TKA 3 - Batch B', date: '2025-03-05', score: 810, maxScore: 1000, correct: 68, wrong: 12, duration: '1j 30m', status: 'completed' },
+   741→        { id: 's4', tryoutName: 'Tryout TKA 4 - Batch B', date: '2025-03-28', score: 850, maxScore: 1000, correct: 72, wrong: 8, duration: '1j 25m', status: 'completed' },
+   742→        { id: 's5', tryoutName: 'Tryout TKA 5 - Final', date: '2025-04-15', score: 0, maxScore: 1000, correct: 0, wrong: 0, duration: '0j 0m', status: 'in_progress' },
+   743→      ]);
+   744→      setLoading(false);
+   745→    }, 600);
+   746→    return () => clearTimeout(timer);
+   747→  }, []);
+   748→
+   749→  const completedScores = scores.filter((s) => s.status === 'completed');
+   750→  const avgScore =
+   751→    completedScores.length > 0
+   752→      ? Math.round(completedScores.reduce((a, b) => a + b.score, 0) / completedScores.length)
+   753→      : 0;
+   754→  const highestScore =
+   755→    completedScores.length > 0
+   756→      ? Math.max(...completedScores.map((s) => s.score))
+   757→      : 0;
+   758→  const maxBarScore = Math.max(...scores.map((s) => s.score), 1);
+   759→
+   760→  function handleViewDetail(scoreId: string) {
+   761→    setSelectedScore(selectedScore === scoreId ? null : scoreId);
+   762→  }
+   763→
+   764→  return (
+   765→    <div className="space-y-6">
+   766→      {/* Header */}
+   767→      <div>
+   768→        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+   769→          <BarChart3 className="h-6 w-6 text-[#1F3864]" />
+   770→          Nilai Saya
+   771→        </h1>
+   772→        <p className="text-muted-foreground mt-1">
+   773→          Pantau perkembangan skor TKA dan lihat kemajuanmu dari waktu ke waktu
+   774→        </p>
+   775→      </div>
+   776→
+   777→      {/* Overview Stats */}
+   778→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   779→        {loading ? (
+   780→          Array.from({ length: 4 }).map((_, i) => (
+   781→            <Card key={i}>
+   782→              <CardContent className="p-4 space-y-2">
+   783→                <Skeleton className="h-4 w-20" />
+   784→                <Skeleton className="h-8 w-16" />
+   785→              </CardContent>
+   786→            </Card>
+   787→          ))
+   788→        ) : (
+   789→          <>
+   790→            <Card>
+   791→              <CardContent className="p-4">
+   792→                <div className="flex items-center gap-2 mb-1">
+   793→                  <TrendingUp className="h-4 w-4 text-emerald-500" />
+   794→                  <p className="text-xs text-muted-foreground">Rata-rata Skor</p>
+   795→                </div>
+   796→                <p className="text-2xl font-bold text-[#1F3864]">{avgScore}</p>
+   797→                <p className="text-xs text-muted-foreground">dari 1000</p>
+   798→              </CardContent>
+   799→            </Card>
+   800→            <Card>
+   801→              <CardContent className="p-4">
+   802→                <div className="flex items-center gap-2 mb-1">
+   803→                  <Trophy className="h-4 w-4 text-amber-500" />
+   804→                  <p className="text-xs text-muted-foreground">Skor Tertinggi</p>
+   805→                </div>
+   806→                <p className="text-2xl font-bold text-amber-600">{highestScore}</p>
+   807→                <p className="text-xs text-muted-foreground">dari 1000</p>
+   808→              </CardContent>
+   809→            </Card>
+   810→            <Card>
+   811→              <CardContent className="p-4">
+   812→                <div className="flex items-center gap-2 mb-1">
+   813→                  <ClipboardList className="h-4 w-4 text-[#1F3864]" />
+   814→                  <p className="text-xs text-muted-foreground">Total Tryout</p>
+   815→                </div>
+   816→                <p className="text-2xl font-bold">{completedScores.length}</p>
+   817→                <p className="text-xs text-muted-foreground">diselesaikan</p>
+   818→              </CardContent>
+   819→            </Card>
+   820→            <Card>
+   821→              <CardContent className="p-4">
+   822→                <div className="flex items-center gap-2 mb-1">
+   823→                  <Award className="h-4 w-4 text-purple-500" />
+   824→                  <p className="text-xs text-muted-foreground">Peringkat</p>
+   825→                </div>
+   826→                <p className="text-2xl font-bold">#12</p>
+   827→                <p className="text-xs text-muted-foreground">di sekolah</p>
+   828→              </CardContent>
+   829→            </Card>
+   830→          </>
+   831→        )}
+   832→      </div>
+   833→
+   834→      {/* Score Trend - Simple CSS Bar Chart */}
+   835→      <Card>
+   836→        <CardHeader>
+   837→          <CardTitle className="text-lg">Tren Skor Tryout</CardTitle>
+   838→          <CardDescription>Visualisasi perkembangan skor dari tryout ke tryout</CardDescription>
+   839→        </CardHeader>
+   840→        <CardContent>
+   841→          {loading ? (
+   842→            <Skeleton className="h-48 w-full" />
+   843→          ) : completedScores.length > 0 ? (
+   844→            <div className="space-y-3">
+   845→              {scores.map((entry) => {
+   846→                const heightPercent = maxBarScore > 0 ? (entry.score / 1000) * 100 : 0;
+   847→                return (
+   848→                  <div key={entry.id} className="flex items-center gap-4">
+   849→                    <div className="w-36 sm:w-48 shrink-0 text-right">
+   850→                      <p className="text-sm font-medium truncate">{entry.tryoutName}</p>
+   851→                      <p className="text-xs text-muted-foreground">{entry.date}</p>
+   852→                    </div>
+   853→                    <div className="flex-1 flex items-center gap-3">
+   854→                      <div className="flex-1 h-8 bg-muted rounded-md overflow-hidden relative">
+   855→                        <div
+   856→                          className={`h-full rounded-md transition-all duration-700 flex items-center justify-end pr-3 ${
+   857→                            entry.score >= 800
+   858→                              ? 'bg-gradient-to-r from-[#1F3864] to-emerald-500'
+   859→                              : entry.score >= 600
+   860→                              ? 'bg-gradient-to-r from-[#1F3864] to-amber-400'
+   861→                              : 'bg-gradient-to-r from-[#1F3864] to-red-400'
+   862→                          }`}
+   863→                          style={{ width: `${Math.max(heightPercent, entry.status === 'completed' ? 8 : 2)}%` }}
+   864→                        >
+   865→                          {entry.score > 0 && (
+   866→                            <span className="text-white text-xs font-bold drop-shadow-sm">
+   867→                              {entry.score}
+   868→                            </span>
+   869→                          )}
+   870→                        </div>
+   871→                      </div>
+   872→                      {getStatusBadge(entry.status)}
+   873→                    </div>
+   874→                  </div>
+   875→                );
+   876→              })}
+   877→            </div>
+   878→          ) : (
+   879→            <div className="flex h-48 items-center justify-center text-muted-foreground">
+   880→              <div className="text-center">
+   881→                <BarChart3 className="mx-auto h-10 w-10 text-muted-foreground/40" />
+   882→                <p className="mt-2 text-sm">Belum ada data skor</p>
+   883→              </div>
+   884→            </div>
+   885→          )}
+   886→        </CardContent>
+   887→      </Card>
+   888→
+   889→      {/* Scores Table */}
+   890→      <Card>
+   891→        <CardHeader>
+   892→          <CardTitle className="text-lg">Detail Nilai Tryout</CardTitle>
+   893→          <CardDescription>Klik "Lihat Detail" untuk analisis lebih lanjut</CardDescription>
+   894→        </CardHeader>
+   895→        <CardContent>
+   896→          {loading ? (
+   897→            <div className="space-y-3">
+   898→              {Array.from({ length: 4 }).map((_, i) => (
+   899→                <Skeleton key={i} className="h-14 w-full" />
+   900→              ))}
+   901→            </div>
+   902→          ) : (
+   903→            <div className="overflow-x-auto">
+   904→              <table className="w-full text-sm">
+   905→                <thead>
+   906→                  <tr className="border-b text-left">
+   907→                    <th className="pb-3 font-medium text-muted-foreground">Tryout</th>
+   908→                    <th className="pb-3 font-medium text-muted-foreground">Tanggal</th>
+   909→                    <th className="pb-3 font-medium text-muted-foreground text-center">Skor</th>
+   910→                    <th className="pb-3 font-medium text-muted-foreground text-center hidden sm:table-cell">Benar/Salah</th>
+   911→                    <th className="pb-3 font-medium text-muted-foreground text-center hidden md:table-cell">Durasi</th>
+   912→                    <th className="pb-3 font-medium text-muted-foreground text-center">Status</th>
+   913→                    <th className="pb-3 font-medium text-muted-foreground text-center">Aksi</th>
+   914→                  </tr>
+   915→                </thead>
+   916→                <tbody className="divide-y">
+   917→                  {scores.map((entry) => (
+   918→                    <React.Fragment key={entry.id}>
+   919→                      <tr className="group">
+   920→                        <td className="py-3 pr-4">
+   921→                          <p className="font-medium max-w-[200px] truncate">{entry.tryoutName}</p>
+   922→                        </td>
+   923→                        <td className="py-3 pr-4 text-muted-foreground whitespace-nowrap">
+   924→                          {entry.date}
+   925→                        </td>
+   926→                        <td className="py-3 pr-4 text-center">
+   927→                          <span
+   928→                            className={`font-bold ${
+   929→                              entry.score >= 800
+   930→                                ? 'text-emerald-600'
+   931→                                : entry.score >= 600
+   932→                                ? 'text-amber-600'
+   933→                                : entry.score > 0
+   934→                                ? 'text-red-500'
+   935→                                : 'text-muted-foreground'
+   936→                            }`}
+   937→                          >
+   938→                            {entry.score > 0 ? entry.score : '-'}
+   939→                          </span>
+   940→                        </td>
+   941→                        <td className="py-3 pr-4 text-center hidden sm:table-cell">
+   942→                          {entry.status === 'completed' ? (
+   943→                            <span>
+   944→                              <span className="text-emerald-600 font-medium">{entry.correct}</span>
+   945→                              <span className="text-muted-foreground">/</span>
+   946→                              <span className="text-red-500 font-medium">{entry.wrong}</span>
+   947→                            </span>
+   948→                          ) : (
+   949→                            <span className="text-muted-foreground">-</span>
+   950→                          )}
+   951→                        </td>
+   952→                        <td className="py-3 pr-4 text-center text-muted-foreground hidden md:table-cell">
+   953→                          {entry.duration}
+   954→                        </td>
+   955→                        <td className="py-3 pr-4 text-center">{getStatusBadge(entry.status)}</td>
+   956→                        <td className="py-3 text-center">
+   957→                          {entry.status === 'completed' && (
+   958→                            <Button
+   959→                              variant="ghost"
+   960→                              size="sm"
+   961→                              className="text-xs"
+   962→                              onClick={() => handleViewDetail(entry.id)}
+   963→                            >
+   964→                              <Eye className="mr-1 h-3.5 w-3.5" />
+   965→                              Lihat Detail
+   966→                            </Button>
+   967→                          )}
+   968→                        </td>
+   969→                      </tr>
+   970→                      {/* Expandable Detail Row */}
+   971→                      {selectedScore === entry.id && entry.status === 'completed' && (
+   972→                        <tr>
+   973→                          <td colSpan={7} className="bg-muted/30 px-4 py-3">
+   974→                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+   975→                              <div>
+   976→                                <p className="text-xs text-muted-foreground">Skor</p>
+   977→                                <p className="font-bold text-[#1F3864]">{entry.score}/1000</p>
+   978→                              </div>
+   979→                              <div>
+   980→                                <p className="text-xs text-muted-foreground">Jawaban Benar</p>
+   981→                                <p className="font-bold text-emerald-600">{entry.correct} soal</p>
+   982→                              </div>
+   983→                              <div>
+   984→                                <p className="text-xs text-muted-foreground">Jawaban Salah</p>
+   985→                                <p className="font-bold text-red-500">{entry.wrong} soal</p>
+   986→                              </div>
+   987→                              <div>
+   988→                                <p className="text-xs text-muted-foreground">Akurasi</p>
+   989→                                <p className="font-bold">
+   990→                                  {Math.round((entry.correct / (entry.correct + entry.wrong)) * 100)}%
+   991→                                </p>
+   992→                              </div>
+   993→                            </div>
+   994→                          </td>
+   995→                        </tr>
+   996→                      )}
+   997→                    </React.Fragment>
+   998→                  ))}
+   999→                </tbody>
+  1000→              </table>
+  1001→            </div>
+  1002→          )}
+  1003→        </CardContent>
+  1004→      </Card>
+  1005→    </div>
+  1006→  );
+  1007→}
+  1008→
+  1009→// ═══════════════════════════════════════════════════════════════════
+  1010→//  4. SISWA RIWAYAT VIEW
+  1011→// ═══════════════════════════════════════════════════════════════════
+  1012→
+  1013→export function SiswaRiwayatView() {
+  1014→  const user = useAppStore((s) => s.user);
+  1015→  const [loading, setLoading] = useState(true);
+  1016→  const [activeFilter, setActiveFilter] = useState<'semua' | 'tryout' | 'diagnostic' | 'latihan'>('semua');
+  1017→  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  1018→  const [expandedId, setExpandedId] = useState<string | null>(null);
+  1019→
+  1020→  useEffect(() => {
+  1021→    const timer = setTimeout(() => {
+  1022→      setHistory([
+  1023→        { id: 'h1', title: 'Tryout TKA 4 - Batch B', type: 'tryout', date: '2025-03-28', score: 850, maxScore: 1000, duration: '1j 25m', status: 'completed', details: { correct: 72, wrong: 8, unanswered: 0 } },
+  1024→        { id: 'h2', title: 'Latihan - Hukum Newton', type: 'latihan', date: '2025-03-27', score: 80, maxScore: 100, duration: '25m', status: 'completed', details: { correct: 8, wrong: 2, unanswered: 0, subject: 'Fisika', topic: 'Hukum Newton' } },
+  1025→        { id: 'h3', title: 'Diagnostic - Matematika', type: 'diagnostic', date: '2025-03-25', score: 720, maxScore: 1000, duration: '28m', status: 'completed', details: { correct: 18, wrong: 7, unanswered: 0, subject: 'Matematika' } },
+  1026→        { id: 'h4', title: 'Tryout TKA 3 - Batch B', type: 'tryout', date: '2025-03-05', score: 810, maxScore: 1000, duration: '1j 30m', status: 'completed', details: { correct: 68, wrong: 12, unanswered: 0 } },
+  1027→        { id: 'h5', title: 'Latihan - Turunan Fungsi', type: 'latihan', date: '2025-03-03', score: 90, maxScore: 100, duration: '20m', status: 'completed', details: { correct: 9, wrong: 1, unanswered: 0, subject: 'Matematika', topic: 'Turunan Fungsi' } },
+  1028→        { id: 'h6', title: 'Diagnostic - Fisika', type: 'diagnostic', date: '2025-03-01', score: 650, maxScore: 1000, duration: '22m', status: 'completed', details: { correct: 13, wrong: 7, unanswered: 0, subject: 'Fisika' } },
+  1029→        { id: 'h7', title: 'Tryout TKA 2 - Batch A', type: 'tryout', date: '2025-02-10', score: 780, maxScore: 1000, duration: '1j 38m', status: 'completed', details: { correct: 64, wrong: 16, unanswered: 0 } },
+  1030→        { id: 'h8', title: 'Tryout TKA 5 - Final', type: 'tryout', date: '2025-04-15', score: 0, maxScore: 1000, duration: '0j 0m', status: 'in_progress', details: { correct: 0, wrong: 0, unanswered: 80, subject: 'Semua Mapel' } },
+  1031→      ]);
+  1032→      setLoading(false);
+  1033→    }, 600);
+  1034→    return () => clearTimeout(timer);
+  1035→  }, []);
+  1036→
+  1037→  const filteredHistory = history.filter((entry) => {
+  1038→    if (activeFilter === 'semua') return true;
+  1039→    return entry.type === activeFilter;
+  1040→  });
+  1041→
+  1042→  const completedHistory = history.filter((h) => h.status === 'completed');
+  1043→  const avgScore =
+  1044→    completedHistory.length > 0
+  1045→      ? Math.round(
+  1046→          completedHistory.reduce((a, b) => a + (b.score / b.maxScore) * 100, 0) / completedHistory.length
+  1047→        )
+  1048→      : 0;
+  1049→
+  1050→  const FILTER_TABS = [
+  1051→    { key: 'semua' as const, label: 'Semua', icon: <Filter className="h-3.5 w-3.5" /> },
+  1052→    { key: 'tryout' as const, label: 'Tryout', icon: <ClipboardList className="h-3.5 w-3.5" /> },
+  1053→    { key: 'diagnostic' as const, label: 'Diagnostic', icon: <Stethoscope className="h-3.5 w-3.5" /> },
+  1054→    { key: 'latihan' as const, label: 'Latihan', icon: <Dumbbell className="h-3.5 w-3.5" /> },
+  1055→  ];
+  1056→
+  1057→  function toggleExpand(id: string) {
+  1058→    setExpandedId(expandedId === id ? null : id);
+  1059→  }
+  1060→
+  1061→  return (
+  1062→    <div className="space-y-6">
+  1063→      {/* Header */}
+  1064→      <div>
+  1065→        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+  1066→          <History className="h-6 w-6 text-[#1F3864]" />
+  1067→          Riwayat Pengerjaan
+  1068→        </h1>
+  1069→        <p className="text-muted-foreground mt-1">
+  1070→          Lihat semua aktivitas pengerjaan tes dan latihanmu
+  1071→        </p>
+  1072→      </div>
+  1073→
+  1074→      {/* Stats Summary */}
+  1075→      {!loading && (
+  1076→        <div className="grid grid-cols-3 gap-4">
+  1077→          <Card>
+  1078→            <CardContent className="p-4 text-center">
+  1079→              <p className="text-2xl font-bold text-[#1F3864]">{history.length}</p>
+  1080→              <p className="text-xs text-muted-foreground mt-1">Total Pengerjaan</p>
+  1081→            </CardContent>
+  1082→          </Card>
+  1083→          <Card>
+  1084→            <CardContent className="p-4 text-center">
+  1085→              <p className="text-2xl font-bold text-emerald-600">{avgScore}%</p>
+  1086→              <p className="text-xs text-muted-foreground mt-1">Rata-rata Skor</p>
+  1087→            </CardContent>
+  1088→          </Card>
+  1089→          <Card>
+  1090→            <CardContent className="p-4 text-center">
+  1091→              <p className="text-2xl font-bold text-amber-600">8j 48m</p>
+  1092→              <p className="text-xs text-muted-foreground mt-1">Waktu Total</p>
+  1093→            </CardContent>
+  1094→          </Card>
+  1095→        </div>
+  1096→      )}
+  1097→
+  1098→      {/* Filter Tabs */}
+  1099→      <div className="flex flex-wrap gap-2">
+  1100→        {FILTER_TABS.map((tab) => {
+  1101→          const count =
+  1102→            tab.key === 'semua'
+  1103→              ? history.length
+  1104→              : history.filter((h) => h.type === tab.key).length;
+  1105→          return (
+  1106→            <Button
+  1107→              key={tab.key}
+  1108→              variant={activeFilter === tab.key ? 'default' : 'outline'}
+  1109→              size="sm"
+  1110→              className={
+  1111→                activeFilter === tab.key
+  1112→                  ? 'bg-[#1F3864] hover:bg-[#152850]'
+  1113→                  : ''
+  1114→              }
+  1115→              onClick={() => setActiveFilter(tab.key)}
+  1116→            >
+  1117→              {tab.icon}
+  1118→              <span className="ml-1.5">{tab.label}</span>
+  1119→              <Badge
+  1120→                variant="secondary"
+  1121→                className={`ml-1.5 h-5 px-1.5 text-[10px] ${
+  1122→                  activeFilter === tab.key
+  1123→                    ? 'bg-white/20 text-white hover:bg-white/20'
+  1124→                    : ''
+  1125→                }`}
+  1126→              >
+  1127→                {count}
+  1128→              </Badge>
+  1129→            </Button>
+  1130→          );
+  1131→        })}
+  1132→      </div>
+  1133→
+  1134→      {/* History List (Timeline-style cards) */}
+  1135→      <div className="space-y-3">
+  1136→        {loading ? (
+  1137→          Array.from({ length: 5 }).map((_, i) => (
+  1138→            <Card key={i}>
+  1139→              <CardContent className="p-4">
+  1140→                <div className="flex items-center gap-3">
+  1141→                  <Skeleton className="h-4 w-4 rounded-full" />
+  1142→                  <div className="flex-1 space-y-2">
+  1143→                    <Skeleton className="h-5 w-64" />
+  1144→                    <Skeleton className="h-4 w-40" />
+  1145→                  </div>
+  1146→                </div>
+  1147→              </CardContent>
+  1148→            </Card>
+  1149→          ))
+  1150→        ) : filteredHistory.length > 0 ? (
+  1151→          filteredHistory.map((entry, idx) => (
+  1152→            <Card
+  1153→              key={entry.id}
+  1154→              className={`transition-all hover:shadow-sm ${
+  1155→                expandedId === entry.id ? 'ring-2 ring-[#1F3864]/20' : ''
+  1156→              }`}
+  1157→            >
+  1158→              <CardContent className="p-4">
+  1159→                {/* Main Row */}
+  1160→                <div className="flex items-start gap-3">
+  1161→                  {/* Timeline dot */}
+  1162→                  <div className="flex flex-col items-center mt-1">
+  1163→                    <div
+  1164→                      className={`h-3 w-3 rounded-full ${
+  1165→                        entry.status === 'completed'
+  1166→                          ? 'bg-emerald-500'
+  1167→                          : entry.status === 'in_progress'
+  1168→                          ? 'bg-blue-500'
+  1169→                          : 'bg-red-400'
+  1170→                      }`}
+  1171→                    />
+  1172→                    {idx < filteredHistory.length - 1 && (
+  1173→                      <div className="w-px h-8 bg-border mt-1" />
+  1174→                    )}
+  1175→                  </div>
+  1176→
+  1177→                  {/* Content */}
+  1178→                  <div className="flex-1 min-w-0">
+  1179→                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+  1180→                      <div className="min-w-0">
+  1181→                        <div className="flex items-center gap-2 flex-wrap">
+  1182→                          <h3 className="font-semibold text-sm truncate">{entry.title}</h3>
+  1183→                          {getTypeBadge(entry.type)}
+  1184→                        </div>
+  1185→                        <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+  1186→                          <span className="flex items-center gap-1">
+  1187→                            <Clock className="h-3 w-3" />
+  1188→                            {entry.date}
+  1189→                          </span>
+  1190→                          <span className="flex items-center gap-1">
+  1191→                            <Timer className="h-3 w-3" />
+  1192→                            {entry.duration}
+  1193→                          </span>
+  1194→                        </div>
+  1195→                      </div>
+  1196→
+  1197→                      <div className="flex items-center gap-3 shrink-0">
+  1198→                        {entry.status === 'completed' && (
+  1199→                          <div className="text-right">
+  1200→                            <p className="font-bold text-sm">{entry.score}/{entry.maxScore}</p>
+  1201→                            <p className="text-[10px] text-muted-foreground">
+  1202→                              {Math.round((entry.score / entry.maxScore) * 100)}%
+  1203→                            </p>
+  1204→                          </div>
+  1205→                        )}
+  1206→                        {getStatusBadge(entry.status)}
+  1207→                        <Button
+  1208→                          variant="ghost"
+  1209→                          size="sm"
+  1210→                          className="text-xs"
+  1211→                          onClick={() => toggleExpand(entry.id)}
+  1212→                        >
+  1213→                          <Eye className="mr-1 h-3.5 w-3.5" />
+  1214→                          Lihat
+  1215→                          {expandedId === entry.id ? (
+  1216→                            <ChevronUp className="ml-1 h-3 w-3" />
+  1217→                          ) : (
+  1218→                            <ChevronDown className="ml-1 h-3 w-3" />
+  1219→                          )}
+  1220→                        </Button>
+  1221→                      </div>
+  1222→                    </div>
+  1223→
+  1224→                    {/* Expanded Detail */}
+  1225→                    {expandedId === entry.id && entry.details && (
+  1226→                      <div className="mt-3 pt-3 border-t">
+  1227→                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+  1228→                          <div>
+  1229→                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+  1230→                              Benar
+  1231→                            </p>
+  1232→                            <p className="text-sm font-semibold text-emerald-600">
+  1233→                              {entry.details.correct} soal
+  1234→                            </p>
+  1235→                          </div>
+  1236→                          <div>
+  1237→                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+  1238→                              Salah
+  1239→                            </p>
+  1240→                            <p className="text-sm font-semibold text-red-500">
+  1241→                              {entry.details.wrong} soal
+  1242→                            </p>
+  1243→                          </div>
+  1244→                          <div>
+  1245→                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+  1246→                              Tidak Dijawab
+  1247→                            </p>
+  1248→                            <p className="text-sm font-semibold text-muted-foreground">
+  1249→                              {entry.details.unanswered} soal
+  1250→                            </p>
+  1251→                          </div>
+  1252→                          {entry.details.subject && (
+  1253→                            <div>
+  1254→                              <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+  1255→                                {entry.details.topic ? 'Topik' : 'Mapel'}
+  1256→                              </p>
+  1257→                              <p className="text-sm font-semibold">
+  1258→                                {entry.details.topic ?? entry.details.subject}
+  1259→                              </p>
+  1260→                            </div>
+  1261→                          )}
+  1262→                        </div>
+  1263→                        {entry.status === 'completed' && entry.type === 'tryout' && (
+  1264→                          <div className="mt-3">
+  1265→                            <Button
+  1266→                              size="sm"
+  1267→                              variant="outline"
+  1268→                              className="text-xs"
+  1269→                              onClick={() => toast.info('Membuka pembahasan...')}
+  1270→                            >
+  1271→                              <BookOpen className="mr-1.5 h-3.5 w-3.5" />
+  1272→                              Lihat Pembahasan
+  1273→                            </Button>
+  1274→                          </div>
+  1275→                        )}
+  1276→                      </div>
+  1277→                    )}
+  1278→                  </div>
+  1279→                </div>
+  1280→              </CardContent>
+  1281→            </Card>
+  1282→          ))
+  1283→        ) : (
+  1284→          <Card>
+  1285→            <CardContent className="p-10 text-center text-muted-foreground">
+  1286→              <History className="mx-auto h-12 w-12 text-muted-foreground/30" />
+  1287→              <p className="mt-3 font-medium">Belum ada riwayat</p>
+  1288→              <p className="text-sm mt-1">
+  1289→                {activeFilter !== 'semua'
+  1290→                  ? `Belum ada riwayat ${activeFilter}`
+  1291→                  : 'Mulai tryout atau latihan untuk melihat riwayat di sini'}
+  1292→              </p>
+  1293→            </CardContent>
+  1294→          </Card>
+  1295→        )}
+  1296→      </div>
+  1297→    </div>
+  1298→  );
+  1299→}
+  1300→
+  1301→// ═══════════════════════════════════════════════════════════════════
+  1302→//  5. LEADERBOARD VIEW
+  1303→// ═══════════════════════════════════════════════════════════════════
+  1304→
+  1305→export function LeaderboardView() {
+  1306→  const user = useAppStore((s) => s.user);
+  1307→  const [loading, setLoading] = useState(true);
+  1308→  const [activeTab, setActiveTab] = useState<'sekolah' | 'kelas' | 'nasional'>('sekolah');
+  1309→  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  1310→  const [myRank, setMyRank] = useState<LeaderboardEntry | null>(null);
+  1311→
+  1312→  useEffect(() => {
+  1313→    const timer = setTimeout(() => {
+  1314→      const data: LeaderboardEntry[] = [
+  1315→        { rank: 1, name: 'Ahmad Rizky Pratama', class: 'XII IPA 1', avgScore: 920, totalTryout: 8, isMe: false },
+  1316→        { rank: 2, name: 'Siti Nurhaliza', class: 'XII IPA 2', avgScore: 895, totalTryout: 7, isMe: false },
+  1317→        { rank: 3, name: 'Budi Santoso', class: 'XII IPA 1', avgScore: 870, totalTryout: 8, isMe: false },
+  1318→        { rank: 4, name: 'Dewi Lestari', class: 'XII IPA 3', avgScore: 855, totalTryout: 6, isMe: false },
+  1319→        { rank: 5, name: 'Reza Firmansyah', class: 'XII IPA 2', avgScore: 840, totalTryout: 7, isMe: false },
+  1320→        { rank: 6, name: 'Anisa Putri', class: 'XII IPA 1', avgScore: 830, totalTryout: 6, isMe: false },
+  1321→        { rank: 7, name: 'Fajar Nugroho', class: 'XII IPA 3', avgScore: 815, totalTryout: 5, isMe: false },
+  1322→        { rank: 8, name: 'Rina Wulandari', class: 'XII IPA 2', avgScore: 800, totalTryout: 7, isMe: false },
+  1323→        { rank: 9, name: 'Dimas Aditya', class: 'XII IPA 1', avgScore: 790, totalTryout: 6, isMe: false },
+  1324→        { rank: 10, name: 'Maya Sari', class: 'XII IPA 3', avgScore: 780, totalTryout: 5, isMe: false },
+  1325→        { rank: 11, name: 'Andi Wijaya', class: 'XII IPA 2', avgScore: 760, totalTryout: 5, isMe: false },
+  1326→        { rank: 12, name: user?.name ?? 'Kamu', class: 'XII IPA 1', avgScore: 790, totalTryout: 4, isMe: true },
+  1327→        { rank: 13, name: 'Putri Ayu', class: 'XII IPA 1', avgScore: 750, totalTryout: 4, isMe: false },
+  1328→        { rank: 14, name: 'Hendra Saputra', class: 'XII IPA 3', avgScore: 730, totalTryout: 3, isMe: false },
+  1329→        { rank: 15, name: 'Lina Marlina', class: 'XII IPA 2', avgScore: 710, totalTryout: 4, isMe: false },
+  1330→      ];
+  1331→      setLeaderboard(data);
+  1332→      setMyRank(data.find((d) => d.isMe) ?? null);
+  1333→      setLoading(false);
+  1334→    }, 800);
+  1335→    return () => clearTimeout(timer);
+  1336→  }, [user?.name]);
+  1337→
+  1338→  const topThree = leaderboard.filter((e) => e.rank <= 3);
+  1339→  const rest = leaderboard.filter((e) => e.rank > 3);
+  1340→
+  1341→  const TABS = [
+  1342→    { key: 'sekolah' as const, label: 'Sekolah', icon: <School className="h-3.5 w-3.5" /> },
+  1343→    { key: 'kelas' as const, label: 'Kelas', icon: <GraduationCap className="h-3.5 w-3.5" /> },
+  1344→    { key: 'nasional' as const, label: 'Nasional', icon: <Globe className="h-3.5 w-3.5" /> },
+  1345→  ];
+  1346→
+  1347→  function getMedalColor(rank: number) {
+  1348→    switch (rank) {
+  1349→      case 1: return { bg: 'bg-gradient-to-b from-amber-50 to-amber-100/50', border: 'border-amber-300', text: 'text-amber-600', medal: 'bg-amber-400', icon: <Crown className="h-5 w-5" /> };
+  1350→      case 2: return { bg: 'bg-gradient-to-b from-slate-50 to-slate-100/50', border: 'border-slate-300', text: 'text-slate-500', medal: 'bg-slate-400', icon: <Medal className="h-5 w-5" /> };
+  1351→      case 3: return { bg: 'bg-gradient-to-b from-orange-50 to-orange-100/50', border: 'border-orange-300', text: 'text-orange-600', medal: 'bg-orange-400', icon: <Medal className="h-5 w-5" /> };
+  1352→      default: return null;
+  1353→    }
+  1354→  }
+  1355→
+  1356→  function getAvatarColor(name: string) {
+  1357→    const colors = [
+  1358→      'bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-rose-500',
+  1359→      'bg-amber-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-pink-500',
+  1360→    ];
+  1361→    let hash = 0;
+  1362→    for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  1363→    return colors[Math.abs(hash) % colors.length];
+  1364→  }
+  1365→
+  1366→  function getInitials(name: string) {
+  1367→    return name
+  1368→      .split(' ')
+  1369→      .slice(0, 2)
+  1370→      .map((w) => w[0])
+  1371→      .join('')
+  1372→      .toUpperCase();
+  1373→  }
+  1374→
+  1375→  return (
+  1376→    <div className="space-y-6">
+  1377→      {/* Header */}
+  1378→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  1379→        <div>
+  1380→          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+  1381→            <Trophy className="h-6 w-6 text-amber-500" />
+  1382→            Peringkat
+  1383→          </h1>
+  1384→          <p className="text-muted-foreground mt-1">
+  1385→            Lihat posisimu dan termotivasi dari siswa-siswa terbaik!
+  1386→          </p>
+  1387→        </div>
+  1388→
+  1389→        {/* Tabs */}
+  1390→        <div className="flex gap-1 p-1 bg-muted rounded-lg">
+  1391→          {TABS.map((tab) => (
+  1392→            <Button
+  1393→              key={tab.key}
+  1394→              variant={activeTab === tab.key ? 'default' : 'ghost'}
+  1395→              size="sm"
+  1396→              className={
+  1397→                activeTab === tab.key
+  1398→                  ? 'bg-[#1F3864] hover:bg-[#152850] shadow-sm'
+  1399→                  : 'hover:bg-transparent'
+  1400→              }
+  1401→              onClick={() => {
+  1402→                if (tab.key === 'nasional') {
+  1403→                  toast.info('Peringkat Nasional segera hadir!');
+  1404→                  return;
+  1405→                }
+  1406→                setActiveTab(tab.key);
+  1407→              }}
+  1408→            >
+  1409→              {tab.icon}
+  1410→              <span className="ml-1.5 hidden sm:inline">{tab.label}</span>
+  1411→            </Button>
+  1412→          ))}
+  1413→        </div>
+  1414→      </div>
+  1415→
+  1416→      {/* My Rank Highlight */}
+  1417→      {!loading && myRank && (
+  1418→        <Card className="bg-[#1F3864] border-[#1F3864] text-white">
+  1419→          <CardContent className="p-5">
+  1420→            <div className="flex items-center gap-4">
+  1421→              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white/10 text-2xl font-bold">
+  1422→                #{myRank.rank}
+  1423→              </div>
+  1424→              <div className="flex-1 min-w-0">
+  1425→                <div className="flex items-center gap-2">
+  1426→                  <Star className="h-4 w-4 text-amber-400" />
+  1427→                  <p className="text-sm font-medium text-white/80">Peringkat Kamu</p>
+  1428→                </div>
+  1429→                <p className="text-lg font-bold">{myRank.name}</p>
+  1430→                <p className="text-sm text-white/70">
+  1431→                  {myRank.class} &middot; Rata-rata: <span className="text-amber-400 font-semibold">{myRank.avgScore}</span>
+  1432→                </p>
+  1433→              </div>
+  1434→              <div className="text-right shrink-0">
+  1435→                <p className="text-xs text-white/60">Total Tryout</p>
+  1436→                <p className="text-xl font-bold">{myRank.totalTryout}</p>
+  1437→              </div>
+  1438→            </div>
+  1439→            {/* Motivation */}
+  1440→            <div className="mt-4 pt-3 border-t border-white/10">
+  1441→              <p className="text-sm text-white/80">
+  1442→                {myRank.rank <= 5
+  1443→                  ? '\u2b50 Luar biasa! Kamu ada di top 5! Pertahankan!'
+  1444→                  : myRank.rank <= 10
+  1445→                  ? '\ud83d\udcaa Hebat! Kamu sudah masuk top 10. Sedikit lagi ke puncak!'
+  1446→                  : '\ud83d\ude80 Terus berlatih! Setiap soal membawamu lebih dekat ke peringkat atas!'}
+  1447→              </p>
+  1448→            </div>
+  1449→          </CardContent>
+  1450→        </Card>
+  1451→      )}
+  1452→
+  1453→      {/* Loading State */}
+  1454→      {loading ? (
+  1455→        <div className="space-y-4">
+  1456→          {/* Podium skeleton */}
+  1457→          <div className="grid grid-cols-3 gap-4">
+  1458→            {Array.from({ length: 3 }).map((_, i) => (
+  1459→              <Card key={i}>
+  1460→                <CardContent className="p-6 flex flex-col items-center gap-3">
+  1461→                  <Skeleton className="h-16 w-16 rounded-full" />
+  1462→                  <Skeleton className="h-5 w-28" />
+  1463→                  <Skeleton className="h-4 w-20" />
+  1464→                </CardContent>
+  1465→              </Card>
+  1466→            ))}
+  1467→          </div>
+  1468→          {/* Table skeleton */}
+  1469→          {Array.from({ length: 6 }).map((_, i) => (
+  1470→            <Skeleton key={i} className="h-12 w-full" />
+  1471→          ))}
+  1472→        </div>
+  1473→      ) : (
+  1474→        <>
+  1475→          {/* Top 3 Podium */}
+  1476→          {topThree.length > 0 && (
+  1477→            <div className="grid grid-cols-3 gap-3 sm:gap-4">
+  1478→              {/* 2nd Place (left) */}
+  1479→              {topThree.find((e) => e.rank === 2) && (() => {
+  1480→                const entry = topThree.find((e) => e.rank === 2)!;
+  1481→                const medal = getMedalColor(2)!;
+  1482→                return (
+  1483→                  <Card className={`${medal.bg} ${medal.border} border-2` }>
+  1484→                    <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center gap-2">
+  1485→                      <div className={`flex h-7 w-7 items-center justify-center rounded-full ${medal.medal} text-white`}>
+  1486→                        {medal.icon}
+  1487→                      </div>
+  1488→                      <div className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full ${getAvatarColor(entry.name)} text-white text-lg font-bold`}>
+  1489→                        {getInitials(entry.name)}
+  1490→                      </div>
+  1491→                      <div>
+  1492→                        <p className="font-semibold text-sm sm:text-base truncate max-w-full">{entry.name}</p>
+  1493→                        <p className="text-xs text-muted-foreground">{entry.class}</p>
+  1494→                      </div>
+  1495→                      <div className="text-center">
+  1496→                        <p className={`text-xl sm:text-2xl font-bold ${medal.text}`}>{entry.avgScore}</p>
+  1497→                        <p className="text-[10px] text-muted-foreground">Rata-rata Skor</p>
+  1498→                      </div>
+  1499→                    </CardContent>
+  1500→                  </Card>
+  1501→                );
+  1502→              })()}
+  1503→
+  1504→              {/* 1st Place (center, taller) */}
+  1505→              {topThree.find((e) => e.rank === 1) && (() => {
+  1506→                const entry = topThree.find((e) => e.rank === 1)!;
+  1507→                const medal = getMedalColor(1)!;
+  1508→                return (
+  1509→                  <Card className={`${medal.bg} ${medal.border} border-2 sm:-mt-4` }>
+  1510→                    <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center gap-2 pt-6 sm:pt-8">
+  1511→                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-white">
+  1512→                        {medal.icon}
+  1513→                      </div>
+  1514→                      <div className={`flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full ${getAvatarColor(entry.name)} text-white text-xl sm:text-2xl font-bold ring-4 ring-amber-200` }>
+  1515→                        {getInitials(entry.name)}
+  1516→                      </div>
+  1517→                      <div>
+  1518→                        <p className="font-bold text-sm sm:text-base truncate max-w-full">{entry.name}</p>
+  1519→                        <p className="text-xs text-muted-foreground">{entry.class}</p>
+  1520→                      </div>
+  1521→                      <div className="text-center">
+  1522→                        <p className="text-2xl sm:text-3xl font-bold text-amber-600">{entry.avgScore}</p>
+  1523→                        <p className="text-[10px] text-muted-foreground">Rata-rata Skor</p>
+  1524→                      </div>
+  1525→                    </CardContent>
+  1526→                  </Card>
+  1527→                );
+  1528→              })()}
+  1529→
+  1530→              {/* 3rd Place (right) */}
+  1531→              {topThree.find((e) => e.rank === 3) && (() => {
+  1532→                const entry = topThree.find((e) => e.rank === 3)!;
+  1533→                const medal = getMedalColor(3)!;
+  1534→                return (
+  1535→                  <Card className={`${medal.bg} ${medal.border} border-2` }>
+  1536→                    <CardContent className="p-4 sm:p-6 flex flex-col items-center text-center gap-2">
+  1537→                      <div className={`flex h-7 w-7 items-center justify-center rounded-full ${medal.medal} text-white`}>
+  1538→                        {medal.icon}
+  1539→                      </div>
+  1540→                      <div className={`flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full ${getAvatarColor(entry.name)} text-white text-lg font-bold`}>
+  1541→                        {getInitials(entry.name)}
+  1542→                      </div>
+  1543→                      <div>
+  1544→                        <p className="font-semibold text-sm sm:text-base truncate max-w-full">{entry.name}</p>
+  1545→                        <p className="text-xs text-muted-foreground">{entry.class}</p>
+  1546→                      </div>
+  1547→                      <div className="text-center">
+  1548→                        <p className={`text-xl sm:text-2xl font-bold ${medal.text}`}>{entry.avgScore}</p>
+  1549→                        <p className="text-[10px] text-muted-foreground">Rata-rata Skor</p>
+  1550→                      </div>
+  1551→                    </CardContent>
+  1552→                  </Card>
+  1553→                );
+  1554→              })()}
+  1555→            </div>
+  1556→          )}
+  1557→
+  1558→          {/* Remaining Leaderboard Table */}
+  1559→          <Card>
+  1560→            <CardHeader className="pb-3">
+  1561→              <CardTitle className="text-base">Peringkat Lengkap</CardTitle>
+  1562→            </CardHeader>
+  1563→            <CardContent>
+  1564→              {rest.length > 0 ? (
+  1565→                <div className="overflow-x-auto">
+  1566→                  <table className="w-full text-sm">
+  1567→                    <thead>
+  1568→                      <tr className="border-b text-left">
+  1569→                        <th className="pb-3 pr-4 font-medium text-muted-foreground w-16 text-center">#</th>
+  1570→                        <th className="pb-3 pr-4 font-medium text-muted-foreground">Nama Siswa</th>
+  1571→                        <th className="pb-3 pr-4 font-medium text-muted-foreground hidden sm:table-cell">Kelas</th>
+  1572→                        <th className="pb-3 pr-4 font-medium text-muted-foreground text-center">Rata-rata Skor</th>
+  1573→                        <th className="pb-3 font-medium text-muted-foreground text-center hidden sm:table-cell">Total Tryout</th>
+  1574→                      </tr>
+  1575→                    </thead>
+  1576→                    <tbody className="divide-y">
+  1577→                      {rest.map((entry) => (
+  1578→                        <tr
+  1579→                          key={entry.rank}
+  1580→                          className={`group ${
+  1581→                            entry.isMe
+  1582→                              ? 'bg-[#1F3864]/5 font-semibold'
+  1583→                              : 'hover:bg-muted/50'
+  1584→                          }`}
+  1585→                        >
+  1586→                          <td className="py-3 pr-4 text-center">
+  1587→                            <span
+  1588→                              className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+  1589→                                entry.isMe
+  1590→                                  ? 'bg-[#1F3864] text-white'
+  1591→                                  : 'bg-muted text-muted-foreground'
+  1592→                              }`}
+  1593→                            >
+  1594→                              {entry.rank}
+  1595→                            </span>
+  1596→                          </td>
+  1597→                          <td className="py-3 pr-4">
+  1598→                            <div className="flex items-center gap-2.5">
+  1599→                              <div
+  1600→                                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${getAvatarColor(entry.name)} text-white text-xs font-bold`}
+  1601→                              >
+  1602→                                {getInitials(entry.name)}
+  1603→                              </div>
+  1604→                              <div>
+  1605→                                <p className="font-medium truncate">{entry.name}</p>
+  1606→                                {entry.isMe && (
+  1607→                                  <p className="text-[10px] text-[#1F3864] font-semibold">(Kamu)</p>
+  1608→                                )}
+  1609→                              </div>
+  1610→                            </div>
+  1611→                          </td>
+  1612→                          <td className="py-3 pr-4 text-muted-foreground hidden sm:table-cell">
+  1613→                            {entry.class}
+  1614→                          </td>
+  1615→                          <td className="py-3 pr-4 text-center">
+  1616→                            <span
+  1617→                              className={`font-bold ${
+  1618→                                entry.avgScore >= 850
+  1619→                                  ? 'text-emerald-600'
+  1620→                                  : entry.avgScore >= 750
+  1621→                                  ? 'text-[#1F3864]'
+  1622→                                  : 'text-amber-600'
+  1623→                              }`}
+  1624→                            >
+  1625→                              {entry.avgScore}
+  1626→                            </span>
+  1627→                          </td>
+  1628→                          <td className="py-3 text-center text-muted-foreground hidden sm:table-cell">
+  1629→                            {entry.totalTryout}x
+  1630→                          </td>
+  1631→                        </tr>
+  1632→                      ))}
+  1633→                    </tbody>
+  1634→                  </table>
+  1635→                </div>
+  1636→              ) : (
+  1637→                <div className="py-10 text-center text-muted-foreground">
+  1638→                  <Trophy className="mx-auto h-10 w-10 text-muted-foreground/30" />
+  1639→                  <p className="mt-2 text-sm">Belum ada data peringkat</p>
+  1640→                </div>
+  1641→              )}
+  1642→            </CardContent>
+  1643→          </Card>
+  1644→
+  1645→          {/* Empty state for Nasional tab */}
+  1646→          {activeTab === 'nasional' && (
+  1647→            <Card>
+  1648→              <CardContent className="py-16 text-center">
+  1649→                <Globe className="mx-auto h-14 w-14 text-muted-foreground/30" />
+  1650→                <h3 className="mt-4 text-lg font-semibold">Peringkat Nasional</h3>
+  1651→                <p className="mt-1 text-sm text-muted-foreground max-w-md mx-auto">
+  1652→                  Fitur peringkat nasional akan segera tersedia. Kamu bisa membandingkan
+  1653→                  kemampuanmu dengan siswa dari seluruh Indonesia!
+  1654→                </p>
+  1655→                <Badge className="mt-4 bg-amber-100 text-amber-700 border-amber-200">
+  1656→                  <Sparkles className="mr-1 h-3.5 w-3.5" />
+  1657→                  Segera Hadir
+  1658→                </Badge>
+  1659→              </CardContent>
+  1660→            </Card>
+  1661→          )}
+  1662→        </>
+  1663→      )}
+  1664→    </div>
+  1665→  );
+  1666→}
+  1667→

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useAppStore } from '@/store/use-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -56,9 +56,29 @@ export function LoginForm() {
     }
   };
 
-  const handleDemoLogin = (username: string, pwd: string) => {
+  const handleDemoLogin = async (username: string, pwd: string) => {
     setIdentifier(username);
     setPassword(pwd);
+    setIsLoading(true);
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password: pwd }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Login gagal. Periksa kembali username dan password.');
+        return;
+      }
+      setUser(data);
+      toast.success(`Selamat datang, ${data.name}!`);
+      navigateTo('dashboard');
+    } catch {
+      toast.error('Terjadi kesalahan jaringan. Silakan coba lagi.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   // Determine placeholder based on input

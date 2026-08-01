@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import type { ViewType } from '@/store/use-store';
 import {
   Card,
   CardContent,
@@ -10,6 +11,7 @@ import {
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   GraduationCap,
@@ -21,6 +23,12 @@ import {
   ClipboardList,
   UserCog,
   TrendingUp,
+  Clock,
+  Calendar,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -45,6 +53,15 @@ interface SchoolAnalytics {
   recentAttempts: { name: string; score: number; date: string }[];
 }
 
+interface UpcomingExam {
+  id: string;
+  name: string;
+  date: string;
+  status: 'scheduled' | 'in_progress' | 'grading';
+  participants: number;
+  subject: string;
+}
+
 // ─── Stat Card ──────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -53,11 +70,20 @@ interface StatCardProps {
   icon: React.ReactNode;
   subtext?: string;
   isLoading?: boolean;
+  onClick?: () => void;
+  iconBg?: string;
+  iconColor?: string;
 }
 
-function StatCard({ title, value, icon, subtext, isLoading }: StatCardProps) {
+function StatCard({ title, value, icon, subtext, isLoading, onClick, iconBg, iconColor }: StatCardProps) {
   return (
-    <Card>
+    <Card
+      className={`cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group ${onClick ? '' : ''}`}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
+    >
       <CardContent className="p-4 sm:p-6">
         <div className="flex items-start justify-between">
           <div className="space-y-1">
@@ -68,19 +94,48 @@ function StatCard({ title, value, icon, subtext, isLoading }: StatCardProps) {
               </>
             ) : (
               <>
-                <p className="text-sm font-medium text-muted-foreground">{title}</p>
+                <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{title}</p>
                 <p className="text-2xl font-bold tracking-tight">{value}</p>
                 {subtext && <p className="text-xs text-muted-foreground">{subtext}</p>}
               </>
             )}
           </div>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+          <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconBg ?? 'bg-[#1F3864]/10 text-[#1F3864]'} ${iconColor ?? ''}`}>
             {icon}
           </div>
         </div>
       </CardContent>
     </Card>
   );
+}
+
+// ─── Exam Status Badge ──────────────────────────────────────────────
+
+function ExamStatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; className: string }> = {
+    scheduled: { label: 'Dijadwalkan', className: 'bg-sky-50 text-sky-700 border-sky-200' },
+    in_progress: { label: 'Berlangsung', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+    grading: { label: 'Dinilai', className: 'bg-amber-50 text-amber-700 border-amber-200' },
+  };
+  const c = config[status] ?? config.scheduled;
+  return (
+    <Badge variant="outline" className={c.className}>
+      {c.label}
+    </Badge>
+  );
+}
+
+// ─── Countdown Helper ──────────────────────────────────────────────
+
+function getCountdown(dateStr: string): string {
+  const target = new Date(dateStr).getTime();
+  const now = Date.now();
+  const diff = target - now;
+  if (diff <= 0) return 'Sudah dimulai';
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  if (days > 0) return `${days} hari ${hours} jam lagi`;
+  return `${hours} jam lagi`;
 }
 
 // ─── Main Component ─────────────────────────────────────────────────
@@ -90,6 +145,14 @@ export function AdminSekolahDashboard() {
   const navigateTo = useAppStore((s) => s.navigateTo);
   const [analytics, setAnalytics] = useState<SchoolAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Mock upcoming exams
+  const upcomingExams: UpcomingExam[] = [
+    { id: 'e1', name: 'TKA Prediksi Akhir Tahun', date: '2025-06-15T08:00:00', status: 'scheduled', participants: 120, subject: 'TKA Umum' },
+    { id: 'e2', name: 'Tryout Matematika', date: '2025-06-10T09:00:00', status: 'scheduled', participants: 85, subject: 'Matematika' },
+    { id: 'e3', name: 'Tryout Fisika & Kimia', date: '2025-06-08T10:00:00', status: 'in_progress', participants: 72, subject: 'IPA' },
+    { id: 'e4', name: 'UTS Genap 2025', date: '2025-06-05T07:30:00', status: 'grading', participants: 200, subject: 'Semua Mapel' },
+  ];
 
   useEffect(() => {
     fetchAnalytics();
@@ -131,24 +194,36 @@ export function AdminSekolahDashboard() {
           icon={<GraduationCap className="h-5 w-5" />}
           subtext="terdaftar"
           isLoading={loading}
+          onClick={() => navigateTo('users' as ViewType)}
+          iconBg="bg-emerald-50"
+          iconColor="text-emerald-600"
         />
         <StatCard
           title="Total Guru"
           value={loading ? '' : (analytics?.totalTeachers ?? 0)}
           icon={<Users className="h-5 w-5" />}
           isLoading={loading}
+          onClick={() => navigateTo('users' as ViewType)}
+          iconBg="bg-amber-50"
+          iconColor="text-amber-600"
         />
         <StatCard
           title="Total Kelas"
           value={loading ? '' : (analytics?.totalClasses ?? 0)}
           icon={<School className="h-5 w-5" />}
           isLoading={loading}
+          onClick={() => navigateTo('classes' as ViewType)}
+          iconBg="bg-[#1F3864]/10"
+          iconColor="text-[#1F3864]"
         />
         <StatCard
           title="Total Soal"
           value={loading ? '' : (analytics?.totalQuestions ?? 0)}
           icon={<BookOpen className="h-5 w-5" />}
           isLoading={loading}
+          onClick={() => navigateTo('questions' as ViewType)}
+          iconBg="bg-red-50"
+          iconColor="text-red-600"
         />
         <StatCard
           title="Rata-rata Skor"
@@ -156,6 +231,9 @@ export function AdminSekolahDashboard() {
           icon={<BarChart3 className="h-5 w-5" />}
           subtext="dari semua tryout"
           isLoading={loading}
+          onClick={() => navigateTo('results' as ViewType)}
+          iconBg="bg-purple-50"
+          iconColor="text-purple-600"
         />
         <StatCard
           title="Prediksi TKA"
@@ -163,6 +241,9 @@ export function AdminSekolahDashboard() {
           icon={<Target className="h-5 w-5" />}
           subtext="estimasi"
           isLoading={loading}
+          onClick={() => navigateTo('analytics' as ViewType)}
+          iconBg="bg-sky-50"
+          iconColor="text-sky-600"
         />
       </div>
 
@@ -221,40 +302,115 @@ export function AdminSekolahDashboard() {
             <CardDescription>Kelola sekolah Anda</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button
-              className="w-full justify-start gap-2 bg-[#1F3864] hover:bg-[#152850]"
-              onClick={() => navigateTo('users')}
+            <div
+              className="flex items-center gap-3 rounded-lg border-2 border-[#1F3864]/20 bg-[#1F3864]/5 p-3 cursor-pointer hover:bg-[#1F3864]/10 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              onClick={() => navigateTo('users' as ViewType)}
             >
-              <UserCog className="h-4 w-4" />
-              Kelola Guru & Siswa
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => navigateTo('exams')}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F3864] text-white">
+                <UserCog className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-[#1F3864]">Kelola Guru & Siswa</p>
+                <p className="text-xs text-muted-foreground">Tambah, edit, nonaktifkan</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-[#1F3864]/40" />
+            </div>
+            <div
+              className="flex items-center gap-3 rounded-lg border-2 border-amber-200 bg-amber-50 p-3 cursor-pointer hover:bg-amber-100 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              onClick={() => navigateTo('exams' as ViewType)}
             >
-              <ClipboardList className="h-4 w-4" />
-              Buat Tryout
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => navigateTo('classes')}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
+                <ClipboardList className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-800">Buat Tryout</p>
+                <p className="text-xs text-muted-foreground">Buat paket tryout baru</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-amber-400" />
+            </div>
+            <div
+              className="flex items-center gap-3 rounded-lg border-2 border-emerald-200 bg-emerald-50 p-3 cursor-pointer hover:bg-emerald-100 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              onClick={() => navigateTo('classes' as ViewType)}
             >
-              <School className="h-4 w-4" />
-              Manajemen Kelas
-            </Button>
-            <Button
-              variant="outline"
-              className="w-full justify-start gap-2"
-              onClick={() => navigateTo('reports')}
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500 text-white">
+                <School className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-emerald-800">Manajemen Kelas</p>
+                <p className="text-xs text-muted-foreground">Rombongan belajar</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div
+              className="flex items-center gap-3 rounded-lg border-2 border-purple-200 bg-purple-50 p-3 cursor-pointer hover:bg-purple-100 transition-all hover:-translate-y-0.5 hover:shadow-md"
+              onClick={() => navigateTo('reports' as ViewType)}
             >
-              <TrendingUp className="h-4 w-4" />
-              Lihat Laporan
-            </Button>
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500 text-white">
+                <TrendingUp className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-purple-800">Lihat Laporan</p>
+                <p className="text-xs text-muted-foreground">Laporan & analisis</p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-purple-400" />
+            </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Upcoming Exams */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Ujian & Tryout Mendatang</CardTitle>
+              <CardDescription>Jadwal ujian yang akan datang</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigateTo('exam-assignments' as ViewType)}>
+              <Calendar className="h-3.5 w-3.5" />
+              Lihat Jadwal
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {upcomingExams.map((exam) => (
+              <div
+                key={exam.id}
+                className="flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors group"
+                onClick={() => navigateTo('exam-assignments' as ViewType)}
+              >
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
+                  exam.status === 'in_progress' ? 'bg-emerald-50 text-emerald-600' :
+                  exam.status === 'grading' ? 'bg-amber-50 text-amber-600' :
+                  'bg-sky-50 text-sky-600'
+                }`}>
+                  <FileText className="h-5 w-5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold truncate">{exam.name}</p>
+                    <ExamStatusBadge status={exam.status} />
+                  </div>
+                  <div className="flex items-center gap-3 mt-0.5">
+                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      {getCountdown(exam.date)}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {exam.participants} peserta
+                    </span>
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                      {exam.subject}
+                    </Badge>
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground/40 group-hover:text-muted-foreground transition-colors" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
