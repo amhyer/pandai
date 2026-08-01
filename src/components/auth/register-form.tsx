@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppStore } from '@/store/use-store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -11,7 +11,8 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import {
   Mail, Lock, User, School, Eye, EyeOff, GraduationCap,
-  Search, ShieldCheck, MapPin, Award, Calendar, BookOpen, Building2, Phone, Loader2, Sparkles
+  Search, ShieldCheck, MapPin, Award, Calendar, BookOpen, Building2, Phone, Loader2, Sparkles,
+  Upload, Database, FileSpreadsheet, AlertCircle
 } from 'lucide-react';
 
 type RegisterRole = 'SISWA' | 'GURU' | 'ADMIN_SCHOOL';
@@ -32,6 +33,7 @@ interface DapodikSchool {
   email: string;
   emailDomain: string;
   source: string;
+  sourceDetail?: string;
 }
 
 export function RegisterForm() {
@@ -56,6 +58,16 @@ export function RegisterForm() {
   const [nameAutoFilled, setNameAutoFilled] = useState(false);
   const [emailAutoFilled, setEmailAutoFilled] = useState(false);
 
+  // File upload state
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadFileName, setUploadFileName] = useState('');
+
+  // Toggle between NPSN search and file upload
+  const [lookupMode, setLookupMode] = useState<'npsn' | 'upload'>('npsn');
+
+  // Ref for file input
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const isSchoolAdmin = role === 'ADMIN_SCHOOL';
 
   // Auto-fill nama kepala sekolah & email sekolah when Dapodik data is verified
@@ -72,7 +84,6 @@ export function RegisterForm() {
         setEmail(schoolEmail);
         setEmailAutoFilled(true);
       } else if (dapodikSchool.emailDomain) {
-        // Construct email from email domain (e.g., info@sman1makassar.sch.id)
         const constructedEmail = `info@${dapodikSchool.emailDomain}`;
         setEmail(constructedEmail);
         setEmailAutoFilled(true);
@@ -81,7 +92,6 @@ export function RegisterForm() {
         setEmailAutoFilled(false);
       }
     } else {
-      // Reset auto-fill flags when verification is cleared
       setNameAutoFilled(false);
       setEmailAutoFilled(false);
     }
@@ -125,7 +135,7 @@ export function RegisterForm() {
   const handleSearchNpsn = async () => {
     const q = npsnInput.trim();
     if (!q) {
-      toast.error('Masukkan NPSN atau nama sekolah');
+      toast.error('Masukkan NPSN (8 digit)');
       return;
     }
 
@@ -141,7 +151,6 @@ export function RegisterForm() {
         return;
       }
 
-      // Pick the first result
       const school = data[0];
       setDapodikSchool(school);
       setDapodikVerified(true);
@@ -158,6 +167,62 @@ export function RegisterForm() {
     }
   };
 
+  const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file extension
+    const ext = file.name.toLowerCase().split('.').pop();
+    const allowed = ['db', 'sqlite', 'sqlite3', 'db3', 'xlsx', 'xls', 'csv'];
+    if (!ext || !allowed.includes(ext)) {
+      toast.error('Format file tidak didukung. Gunakan: .db, .sqlite, .xlsx, .xls, .csv');
+      return;
+    }
+
+    // Validate file size (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('File terlalu besar (maksimal 50MB)');
+      return;
+    }
+
+    setIsUploading(true);
+    setUploadFileName(file.name);
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/dapodik/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || 'Gagal membaca file Dapodik');
+        setDapodikSchool(null);
+        setDapodikVerified(false);
+        return;
+      }
+
+      // Successfully parsed — apply same flow as NPSN lookup
+      setDapodikSchool(data);
+      setDapodikVerified(true);
+
+      const srcLabel = data.source === 'dapodik-file' ? 'file Dapodik' : 'Dapodik';
+      toast.success(`Data sekolah "${data.name}" berhasil dibaca dari ${srcLabel}`);
+    } catch {
+      toast.error('Gagal mengunggah file. Coba lagi.');
+    } finally {
+      setIsUploading(false);
+      // Reset file input so same file can be re-uploaded
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
@@ -165,7 +230,6 @@ export function RegisterForm() {
     setIsLoading(true);
     try {
       if (isSchoolAdmin && dapodikSchool) {
-        // Admin Sekolah registration via /api/auth/register-school
         const res = await fetch('/api/auth/register-school', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -201,7 +265,6 @@ export function RegisterForm() {
         toast.success('Registrasi berhasil! Selamat datang, Admin Sekolah.');
         navigateTo('dashboard');
       } else {
-        // Siswa / Guru registration via /api/auth/register
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -324,39 +387,138 @@ export function RegisterForm() {
                 <Label className="text-sm font-medium text-slate-700">
                   Verifikasi Data Sekolah
                 </Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                      type="text"
-                      placeholder="Masukkan NPSN (8 digit)"
-                      value={npsnInput}
-                      onChange={(e) => {
-                        setNpsnInput(e.target.value);
-                        if (dapodikVerified) {
-                          setDapodikVerified(false);
-                          setDapodikSchool(null);
-                        }
-                      }}
-                      className="pl-10 h-11 border-slate-300 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
-                      disabled={isLoading || isSearching}
-                      onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchNpsn(); } }}
-                    />
-                  </div>
-                  <Button
+
+                {/* Mode Toggle: NPSN Search vs File Upload */}
+                <div className="flex gap-1.5 bg-slate-100 rounded-lg p-1">
+                  <button
                     type="button"
-                    onClick={handleSearchNpsn}
-                    disabled={isLoading || isSearching || !npsnInput.trim()}
-                    className="h-11 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shrink-0 transition-colors"
+                    onClick={() => setLookupMode('npsn')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                      lookupMode === 'npsn'
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
                   >
-                    {isSearching ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Search className="h-4 w-4" />
-                    )}
-                    <span className="ml-1.5">Cari</span>
-                  </Button>
+                    <Search className="h-3.5 w-3.5" />
+                    Cari NPSN
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLookupMode('upload')}
+                    className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-medium transition-all duration-200 ${
+                      lookupMode === 'upload'
+                        ? 'bg-white text-emerald-700 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    Upload File Dapodik
+                  </button>
                 </div>
+
+                {/* NPSN Search Mode */}
+                {lookupMode === 'npsn' && (
+                  <div className="space-y-2">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input
+                          type="text"
+                          placeholder="Masukkan NPSN (8 digit)"
+                          value={npsnInput}
+                          onChange={(e) => {
+                            setNpsnInput(e.target.value);
+                            if (dapodikVerified) {
+                              setDapodikVerified(false);
+                              setDapodikSchool(null);
+                            }
+                          }}
+                          className="pl-10 h-11 border-slate-300 focus-visible:ring-emerald-500/30 focus-visible:border-emerald-500"
+                          disabled={isLoading || isSearching}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearchNpsn(); } }}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={handleSearchNpsn}
+                        disabled={isLoading || isSearching || !npsnInput.trim()}
+                        className="h-11 px-5 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shrink-0 transition-colors"
+                      >
+                        {isSearching ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="h-4 w-4" />
+                        )}
+                        <span className="ml-1.5">Cari</span>
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      Cari berdasarkan NPSN atau nama sekolah dari database lokal
+                    </p>
+                  </div>
+                )}
+
+                {/* File Upload Mode */}
+                {lookupMode === 'upload' && (
+                  <div className="space-y-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept=".db,.sqlite,.sqlite3,.db3,.xlsx,.xls,.csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isUploading}
+                      className="w-full flex flex-col items-center justify-center gap-2 px-4 py-5 border-2 border-dashed border-emerald-300 rounded-lg hover:bg-emerald-50/50 transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isUploading ? (
+                        <Loader2 className="h-8 w-8 text-emerald-500 animate-spin" />
+                      ) : uploadFileName ? (
+                        <FileSpreadsheet className="h-8 w-8 text-emerald-500" />
+                      ) : (
+                        <Upload className="h-8 w-8 text-emerald-500" />
+                      )}
+                      <div className="text-center">
+                        {isUploading ? (
+                          <p className="text-sm font-medium text-emerald-600">Membaca file...</p>
+                        ) : uploadFileName ? (
+                          <>
+                            <p className="text-sm font-medium text-slate-700 truncate max-w-[250px]">{uploadFileName}</p>
+                            <p className="text-[11px] text-slate-400">Klik untuk ganti file</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm font-medium text-slate-700">
+                              Klik untuk upload file Dapodik
+                            </p>
+                            <p className="text-[11px] text-slate-400">
+                              Database (.db, .sqlite) atau Ekspor Excel (.xlsx, .csv)
+                            </p>
+                          </>
+                        )}
+                      </div>
+                    </button>
+
+                    {/* Info box about finding DAPODIK data */}
+                    {!dapodikVerified && (
+                      <div className="flex gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
+                        <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                        <div className="text-[11px] text-amber-800 space-y-1">
+                          <p className="font-medium">Lokasi data Dapodik di laptop:</p>
+                          <p className="text-amber-700">
+                            • <strong>Windows:</strong> C:\Users\[User]\AppData\Local\Dapodikdasmen\
+                          </p>
+                          <p className="text-amber-700">
+                            • File biasanya: <code className="bg-amber-100 px-0.5 rounded">dapo.db</code> atau <code className="bg-amber-100 px-0.5 rounded">PD-Data.db</code>
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Dapodik School Card */}
                 {dapodikVerified && dapodikSchool && (
@@ -364,10 +526,12 @@ export function RegisterForm() {
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <ShieldCheck className="h-5 w-5 text-emerald-600" />
-                        <span className="text-sm font-semibold text-emerald-700">Data Terverifikasi Dapodik</span>
+                        <span className="text-sm font-semibold text-emerald-700">
+                          Data Terverifikasi {dapodikSchool.source === 'dapodik-file' ? 'dari File Dapodik' : 'Dapodik'}
+                        </span>
                       </div>
                       <Badge className="bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-medium">
-                        {dapodikSchool.npsn}
+                        {dapodikSchool.npsn || '-'}
                       </Badge>
                     </div>
 
@@ -375,15 +539,15 @@ export function RegisterForm() {
                       <div className="flex items-start gap-2">
                         <School className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                         <div className="min-w-0">
-                          <p className="font-semibold text-slate-800">{dapodikSchool.name}</p>
-                          <p className="text-slate-500 text-xs">{dapodikSchool.address}</p>
+                          <p className="font-semibold text-slate-800">{dapodikSchool.name || '-'}</p>
+                          <p className="text-slate-500 text-xs">{dapodikSchool.address || '-'}</p>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 pl-6">
                         <div className="flex items-center gap-1.5 text-slate-600">
                           <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                          <span className="text-xs truncate">{dapodikSchool.district}, {dapodikSchool.city}</span>
+                          <span className="text-xs truncate">{dapodikSchool.district}{dapodikSchool.district && dapodikSchool.city ? ', ' : ''}{dapodikSchool.city}</span>
                         </div>
                         <div className="flex items-center gap-1.5 text-slate-600">
                           <MapPin className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
@@ -392,28 +556,38 @@ export function RegisterForm() {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-3 pl-6">
-                        <Badge variant="outline" className="border-emerald-300 text-emerald-700 text-xs font-medium">
-                          {dapodikSchool.schoolType}
-                        </Badge>
-                        <div className="flex items-center gap-1 text-xs text-slate-600">
-                          <Award className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>Akreditasi <strong>{dapodikSchool.accreditation || '-'}</strong></span>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-slate-600">
-                          <Calendar className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>Berdiri {dapodikSchool.established || '-'}</span>
-                        </div>
+                        {dapodikSchool.schoolType && (
+                          <Badge variant="outline" className="border-emerald-300 text-emerald-700 text-xs font-medium">
+                            {dapodikSchool.schoolType}
+                          </Badge>
+                        )}
+                        {dapodikSchool.accreditation && (
+                          <div className="flex items-center gap-1 text-xs text-slate-600">
+                            <Award className="h-3.5 w-3.5 text-emerald-500" />
+                            <span>Akreditasi <strong>{dapodikSchool.accreditation}</strong></span>
+                          </div>
+                        )}
+                        {dapodikSchool.established && (
+                          <div className="flex items-center gap-1 text-xs text-slate-600">
+                            <Calendar className="h-3.5 w-3.5 text-emerald-500" />
+                            <span>Berdiri {dapodikSchool.established}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex flex-wrap items-center gap-4 pl-6 text-xs text-slate-500">
-                        <div className="flex items-center gap-1">
-                          <User className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>KS: {dapodikSchool.principalName || '-'}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Phone className="h-3.5 w-3.5 text-emerald-500" />
-                          <span>{dapodikSchool.phone || '-'}</span>
-                        </div>
+                        {dapodikSchool.principalName && (
+                          <div className="flex items-center gap-1">
+                            <User className="h-3.5 w-3.5 text-emerald-500" />
+                            <span>KS: {dapodikSchool.principalName}</span>
+                          </div>
+                        )}
+                        {dapodikSchool.phone && (
+                          <div className="flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5 text-emerald-500" />
+                            <span>{dapodikSchool.phone}</span>
+                          </div>
+                        )}
                         {dapodikSchool.email && (
                           <div className="flex items-center gap-1">
                             <Mail className="h-3.5 w-3.5 text-emerald-500" />
@@ -423,13 +597,23 @@ export function RegisterForm() {
                       </div>
                     </div>
 
+                    {/* Source detail */}
+                    {dapodikSchool.sourceDetail && (
+                      <p className="text-[10px] text-emerald-600/70 flex items-center gap-1 pl-1">
+                        <Database className="h-3 w-3" />
+                        {dapodikSchool.sourceDetail}
+                      </p>
+                    )}
+
                     {/* Auto-fill indicator */}
-                    <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-200/60">
-                      <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
-                      <span className="text-xs text-emerald-600 font-medium">
-                        Nama & email telah diisi otomatis dari data Dapodik
-                      </span>
-                    </div>
+                    {(nameAutoFilled || emailAutoFilled) && (
+                      <div className="flex items-center gap-1.5 pt-1 border-t border-emerald-200/60">
+                        <Sparkles className="h-3.5 w-3.5 text-emerald-600" />
+                        <span className="text-xs text-emerald-600 font-medium">
+                          Nama & email telah diisi otomatis dari data Dapodik
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -457,7 +641,7 @@ export function RegisterForm() {
                   value={name}
                   onChange={(e) => {
                     setName(e.target.value);
-                    setNameAutoFilled(false); // Clear auto-fill flag on manual edit
+                    setNameAutoFilled(false);
                   }}
                   className={`pl-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500 ${
                     nameAutoFilled ? 'bg-emerald-50/50 border-emerald-300' : ''
@@ -489,7 +673,7 @@ export function RegisterForm() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    setEmailAutoFilled(false); // Clear auto-fill flag on manual edit
+                    setEmailAutoFilled(false);
                   }}
                   className={`pl-10 h-11 border-slate-300 focus-visible:ring-amber-500/30 focus-visible:border-amber-500 ${
                     emailAutoFilled ? 'bg-emerald-50/50 border-emerald-300' : ''

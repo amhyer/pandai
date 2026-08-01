@@ -270,3 +270,33 @@ Stage Summary:
 - Principal name and school email auto-fill immediately when NPSN matches
 - User can still manually edit auto-filled fields
 - DAPODIK live API blocked by WAF (SafeLine) - gracefully falls back to local NPSN database
+---
+Task ID: 6
+Agent: Main Orchestrator
+Task: Upload data DAPODIK dari laptop operator (SQLite database file)
+
+Work Log:
+- Installed `better-sqlite3` and `xlsx` packages
+- Added `better-sqlite3` to `serverExternalPackages` in next.config.ts
+- Created `/api/dapodik/upload` API route that:
+  - Accepts FormData file upload (.db, .sqlite, .sqlite3, .db3, .xlsx, .xls, .csv)
+  - SQLite: Uses better-sqlite3 to read DAPODIK database, auto-detects school table (sekolah, mst_sekolah, ref_sekolah, etc.)
+  - Excel/CSV: Uses xlsx library to parse exported DAPODIK data
+  - Case-insensitive column matching with 15+ field candidates per data point
+  - Max file size: 50MB
+  - Returns school data in same format as NPSN lookup API
+- Updated `register-form.tsx` with dual-mode verification:
+  - Toggle between "Cari NPSN" and "Upload File Dapodik" modes
+  - Upload zone: drag-drop style button with file type hints
+  - Info box showing DAPODIK file location on Windows laptop
+  - File upload triggers same auto-fill flow as NPSN search
+- Added `sourceDetail` to DapodikSchool interface for showing parse source info
+- Browser-tested: uploaded test_dapodik.db → parsed "sekolah" table → extracted all fields → auto-filled name & email
+
+Stage Summary:
+- Admin sekolah can now upload DAPODIK database file (.db) from their laptop
+- System reads SQLite database, finds school table, extracts all school profile data
+- Nama Kepala Sekolah & Email auto-fill just like NPSN search
+- Also supports Excel/CSV exports from DAPODIK
+- Info box guides admin to find DAPODIK data on their laptop
+- 3 ways to verify: (1) NPSN online search → (2) Local DB search → (3) Upload DAPODIK file
