@@ -300,3 +300,36 @@ Stage Summary:
 - Also supports Excel/CSV exports from DAPODIK
 - Info box guides admin to find DAPODIK data on their laptop
 - 3 ways to verify: (1) NPSN online search → (2) Local DB search → (3) Upload DAPODIK file
+---
+Task ID: 7
+Agent: Main Orchestrator
+Task: Analyze rapormerdeka_tarikdatadapodik_v2.exe & build PANDAI DAPODIK Connector
+
+Work Log:
+- Extracted and reverse-engineered rapormerdeka_tarikdatadapodik_v2.exe (PyInstaller EXE, Python 3.9)
+- Discovered DAPODIK Lokal Webservice API architecture:
+  - DAPODIK Desktop runs REST API on http://localhost:5774
+  - Endpoints: /WebService/getSekolah, /WebService/getGtk, /WebService/getPesertaDidik, /WebService/getRombonganBelajar
+  - Authentication: Bearer token (Webservice Key from DAPODIK settings)
+  - Input: NPSN + Token → Output: JSON arrays of school/guru/student/class data
+- Created PANDAI DAPODIK Connector (tools/dapodik-connector.py):
+  - Standalone Python script admin runs on their laptop
+  - Connects to DAPODIK Lokal webservice at localhost:5774
+  - Fetches: sekolah, guru_tendik, peserta_didik, rombongan_belajar
+  - Exports structured JSON file with school profile + all data
+  - Includes guides for activating DAPODIK webservice
+- Created /api/dapodik/connector/download endpoint to serve the script
+- Updated /api/dapodik/upload to parse PANDAI Connector JSON format
+- Updated register-form.tsx:
+  - Added "Download pandai-dapodik-connector.py" button
+  - Added JSON (.json) to accepted file types
+  - Green info box explains connector approach (DAPODIK Webservice REST API)
+  - Collapsible section for manual DB upload instructions
+- Browser-tested: connector JSON upload → school data auto-filled + extra data logged (guru_tendik, peserta_didik, rombongan_belajar)
+
+Stage Summary:
+- DAPODIK Lokal has REST API at localhost:5774 (Webservice feature)
+- PANDAI Connector script pulls data via this API and generates JSON export
+- Admin workflow: Download script → Run on laptop → Upload JSON to PANDAI
+- Alternative: Direct DB upload (.db) or Excel export upload (.xlsx/.csv)
+- 4 data types extracted: Sekolah, Guru/Tendik, Peserta Didik, Rombongan Belajar

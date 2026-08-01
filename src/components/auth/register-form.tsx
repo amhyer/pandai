@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import {
   Mail, Lock, User, School, Eye, EyeOff, GraduationCap,
   Search, ShieldCheck, MapPin, Award, Calendar, BookOpen, Building2, Phone, Loader2, Sparkles,
-  Upload, Database, FileSpreadsheet, AlertCircle
+  Upload, Database, FileSpreadsheet, AlertCircle, Download
 } from 'lucide-react';
 
 type RegisterRole = 'SISWA' | 'GURU' | 'ADMIN_SCHOOL';
@@ -167,13 +167,35 @@ export function RegisterForm() {
     }
   };
 
+  const handleDownloadConnector = async () => {
+    try {
+      const res = await fetch('/api/dapodik/connector/download');
+      if (!res.ok) {
+        toast.error('Gagal mengunduh connector script');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pandai-dapodik-connector.py';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('Script berhasil diunduh! Jalankan di laptop dengan DAPODIK Desktop.');
+    } catch {
+      toast.error('Gagal mengunduh script. Coba lagi.');
+    }
+  };
+
   const handleFileUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     // Validate file extension
     const ext = file.name.toLowerCase().split('.').pop();
-    const allowed = ['db', 'sqlite', 'sqlite3', 'db3', 'xlsx', 'xls', 'csv'];
+    const allowed = ['db', 'sqlite', 'sqlite3', 'db3', 'xlsx', 'xls', 'csv', 'json'];
     if (!ext || !allowed.includes(ext)) {
       toast.error('Format file tidak didukung. Gunakan: .db, .sqlite, .xlsx, .xls, .csv');
       return;
@@ -464,7 +486,7 @@ export function RegisterForm() {
                     <input
                       type="file"
                       ref={fileInputRef}
-                      accept=".db,.sqlite,.sqlite3,.db3,.xlsx,.xls,.csv"
+                      accept=".db,.sqlite,.sqlite3,.db3,.xlsx,.xls,.csv,.json"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
@@ -495,7 +517,7 @@ export function RegisterForm() {
                               Klik untuk upload file Dapodik
                             </p>
                             <p className="text-[11px] text-slate-400">
-                              Database (.db, .sqlite) atau Ekspor Excel (.xlsx, .csv)
+                              JSON (.json) / Database (.db, .sqlite) / Excel (.xlsx, .csv)
                             </p>
                           </>
                         )}
@@ -504,17 +526,40 @@ export function RegisterForm() {
 
                     {/* Info box about finding DAPODIK data */}
                     {!dapodikVerified && (
-                      <div className="flex gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-lg">
-                        <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
-                        <div className="text-[11px] text-amber-800 space-y-1">
-                          <p className="font-medium">Lokasi data Dapodik di laptop:</p>
-                          <p className="text-amber-700">
-                            • <strong>Windows:</strong> C:\Users\[User]\AppData\Local\Dapodikdasmen\
-                          </p>
-                          <p className="text-amber-700">
-                            • File biasanya: <code className="bg-amber-100 px-0.5 rounded">dapo.db</code> atau <code className="bg-amber-100 px-0.5 rounded">PD-Data.db</code>
-                          </p>
+                      <div className="space-y-2">
+                        <div className="flex gap-2 p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg">
+                          <Database className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+                          <div className="text-[11px] text-emerald-800 space-y-1">
+                            <p className="font-medium">Cara Terbaik: Gunakan PANDAI Connector</p>
+                            <p className="text-emerald-700">
+                              Download script Python yang menarik data langsung dari DAPODIK Lokal di laptop Anda.
+                            </p>
+                            <p className="text-emerald-700">
+                              DAPODIK Lokal memiliki <strong>Webservice REST API</strong> di port 5774 — script ini membaca data dari sana.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={handleDownloadConnector}
+                              className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-100 hover:bg-emerald-200 px-2 py-1 rounded transition-colors"
+                            >
+                              <Download className="h-3 w-3" />
+                              Download pandai-dapodik-connector.py
+                            </button>
+                          </div>
                         </div>
+                        <details className="text-[11px]">
+                          <summary className="text-slate-500 cursor-pointer hover:text-slate-700 font-medium">
+                            Cara manual: Upload database DAPODIK langsung
+                          </summary>
+                          <div className="flex gap-2 p-2 mt-1 bg-slate-50 border border-slate-200 rounded-lg">
+                            <AlertCircle className="h-4 w-4 text-slate-500 mt-0.5 shrink-0" />
+                            <div className="text-slate-600 space-y-0.5">
+                              <p><strong>Lokasi database DAPODIK:</strong></p>
+                              <p>• Windows: C:\Users\[User]\AppData\Local\Dapodikdasmen\</p>
+                              <p>• File: <code className="bg-slate-100 px-0.5 rounded">dapo.db</code> / <code className="bg-slate-100 px-0.5 rounded">PD-Data.db</code></p>
+                            </div>
+                          </div>
+                        </details>
                       </div>
                     )}
                   </div>

@@ -269,7 +269,103 @@ async function parseExcelOrCsv(buffer: ArrayBuffer, filename: string): Promise<D
 }
 
 // =====================================================
-// 3. Main upload handler
+// 3. Parse PANDAI Connector JSON export
+// =====================================================
+async function parsePandaiConnectorJson(buffer: ArrayBuffer): Promise<DapodikSchoolData | null> {
+  try {
+    const text = new TextDecoder().decode(buffer);
+    const json = JSON.parse(text);
+
+    // PANDAI connector format has "_meta" + "sekolah" keys
+    if (json._meta && json.sekolah) {
+      const sekolah = json.sekolah as Record<string, unknown>;
+      const meta = json._meta as Record<string, unknown>;
+
+      const school: DapodikSchoolData = {
+        npsn: String(sekolah.npsn ?? ''),
+        name: String(sekolah.name ?? ''),
+        address: String(sekolah.address ?? ''),
+        province: String(sekolah.province ?? ''),
+        city: String(sekolah.city ?? ''),
+        district: String(sekolah.district ?? ''),
+        village: String(sekolah.village ?? ''),
+        postalCode: String(sekolah.postalCode ?? ''),
+        principalName: String(sekolah.principalName ?? ''),
+        nuptkPrincipal: String(sekolah.nuptkPrincipal ?? ''),
+        accreditation: String(sekolah.accreditation ?? ''),
+        schoolType: String(sekolah.schoolType ?? ''),
+        established: String(sekolah.established ?? ''),
+        curriculum: String(sekolah.curriculum ?? ''),
+        phone: String(sekolah.phone ?? ''),
+        fax: String(sekolah.fax ?? ''),
+        email: String(sekolah.email ?? ''),
+        website: String(sekolah.website ?? ''),
+        status: String(sekolah.status ?? ''),
+        source: 'dapodik-connector',
+        sourceDetail: `PANDAI Connector v${meta.version || '1.0'} (exported ${meta.exportedAt || 'unknown'})`,
+      };
+
+      if (!school.npsn && !school.name) {
+        console.log('[DAPODIK Upload] No NPSN/name in connector JSON');
+        return null;
+      }
+
+      // Log extra data types that were exported
+      const dataTypes = meta.dataTypes as string[] | undefined;
+      if (dataTypes) {
+        for (const dt of dataTypes) {
+          if (dt !== 'sekolah' && Array.isArray(json[dt])) {
+            console.log(`[DAPODIK Upload] Extra data: ${dt} (${json[dt].length} records)`);
+          }
+        }
+      }
+
+      console.log(`[DAPODIK Upload] Connector JSON: ${school.name} (NPSN: ${school.npsn})`);
+      return school;
+    }
+
+    // Also try raw DAPODIK API format (list of school objects)
+    if (Array.isArray(json) && json.length > 0) {
+      const row = json[0] as Record<string, unknown>;
+      const school: DapodikSchoolData = {
+        npsn: String(row.npsn ?? ''),
+        name: String(row.nama ?? row.nama_sekolah ?? row.nama_sp ?? ''),
+        address: String(row.alamat ?? ''),
+        province: String(row.propinsi ?? row.provinsi ?? ''),
+        city: String(row.kabupaten_kota ?? row.kabupaten ?? ''),
+        district: String(row.kecamatan ?? ''),
+        village: String(row.desa_kelurahan ?? ''),
+        postalCode: String(row.kode_pos ?? ''),
+        principalName: String(row.kepala_sekolah ?? ''),
+        nuptkPrincipal: String(row.nuptk_kepala ?? ''),
+        accreditation: String(row.akreditasi ?? ''),
+        schoolType: String(row.bentuk_pendidikan ?? ''),
+        established: String(row.tahun_berdiri ?? ''),
+        curriculum: String(row.kurikulum ?? ''),
+        phone: String(row.telepon ?? ''),
+        fax: String(row.fax ?? ''),
+        email: String(row.email ?? ''),
+        website: String(row.website ?? ''),
+        status: String(row.status ?? ''),
+        source: 'dapodik-json',
+        sourceDetail: `DAPODIK API JSON (${json.length} records)`,
+      };
+
+      if (!school.npsn && !school.name) return null;
+      console.log(`[DAPODIK Upload] Raw JSON: ${school.name} (NPSN: ${school.npsn})`);
+      return school;
+    }
+
+    console.log('[DAPODIK Upload] JSON format not recognized');
+    return null;
+  } catch (err) {
+    console.error('[DAPODIK Upload] JSON parse error:', err);
+    return null;
+  }
+}
+
+// =====================================================
+// 4. Main upload handler
 // =====================================================
 export async function POST(request: Request) {
   try {
@@ -293,15 +389,21 @@ export async function POST(request: Request) {
     let schoolData: DapodikSchoolData | null = null;
 
     // Detect file type and parse accordingly
-    if (filename.endsWith('.db') || filename.endsWith('.sqlite') || filename.endsWith('.sqlite3') || filename.endsWith('.db3')) {
+    if (filename.endsWith('.json')) {
+      // PANDAI Connector export or DAPODIK API JSON
+      schoolData = await parsePandaiConnectorJson(buffer);
+    } else if (filename.endsWith('.db') || filename.endsWith('.sqlite') || filename.endsWith('.sqlite3') || filename.endsWith('.db3')) {
       // SQLite database file (DAPODIK desktop database)
       schoolData = await parseSqliteDatabase(buffer);
     } else if (filename.endsWith('.xlsx') || filename.endsWith('.xls') || filename.endsWith('.csv')) {
       // Excel or CSV export
       schoolData = await parseExcelOrCsv(buffer, filename);
     } else {
-      // Try SQLite first, then Excel
-      schoolData = await parseSqliteDatabase(buffer);
+      // Try JSON first, then SQLite, then Excel
+      schoolData = await parsePandaiConnectorJson(buffer);
+      if (!schoolData) {
+        schoolData = await parseSqliteDatabase(buffer);
+      }
       if (!schoolData) {
         schoolData = await parseExcelOrCsv(buffer, filename);
       }
@@ -309,7 +411,7 @@ export async function POST(request: Request) {
 
     if (!schoolData) {
       return NextResponse.json(
-        { error: 'Gagal membaca data sekolah dari file. Pastikan file adalah database DAPODIK (.db) atau ekspor Excel/CSV.' },
+        { error: 'Gagal membaca data sekolah dari file. Pastikan file adalah: .json (PANDAI Connector), .db (database DAPODIK), atau .xlsx/.csv.' },
         { status: 422 },
       );
     }
