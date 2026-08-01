@@ -24,7 +24,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -55,6 +54,7 @@ import {
   Search,
   Users,
   GraduationCap,
+  UserPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -63,17 +63,20 @@ import { toast } from 'sonner';
 interface UserRecord {
   id: string;
   name: string;
-  email: string;
+  username?: string;
+  email?: string;
   role: string;
+  nisn?: string;
+  nip?: string;
   className?: string;
+  schoolId?: string;
   isActive: boolean;
 }
 
-interface UserFormData {
+interface ClassRecord {
+  id: string;
   name: string;
-  email: string;
-  password: string;
-  role: string;
+  grade: number;
 }
 
 // ─── Role Badge ──────────────────────────────────────────────────────
@@ -86,91 +89,138 @@ function RoleBadge({ role }: { role: string }) {
   if (upper === 'SISWA') {
     return <Badge className="bg-amber-100 text-amber-700 border-amber-200 border">Siswa</Badge>;
   }
+  if (upper === 'ORANG_TUA') {
+    return <Badge className="bg-green-100 text-green-700 border-green-200 border">Orang Tua</Badge>;
+  }
   return <Badge variant="outline">{role}</Badge>;
 }
 
-// ─── User Form Dialog ───────────────────────────────────────────────
+// ─── Guru Form Dialog ───────────────────────────────────────────────
 
-interface UserFormDialogProps {
+interface GuruFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  defaultRole: string;
-  onSubmit: (data: UserFormData) => void;
+  schoolId: string;
+  onSubmit: () => void;
   isSubmitting: boolean;
 }
 
-function UserFormDialog({ open, onOpenChange, defaultRole, onSubmit, isSubmitting }: UserFormDialogProps) {
-  const [form, setForm] = useState<UserFormData>({
+function GuruFormDialog({ open, onOpenChange, schoolId, onSubmit, isSubmitting }: GuruFormDialogProps) {
+  const [form, setForm] = useState({
     name: '',
-    email: '',
+    nip: '',
+    nik: '',
+    phone: '',
     password: '',
-    role: defaultRole,
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const resetForm = () => {
+    setForm({ name: '', nip: '', nik: '', phone: '', password: '' });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
-      toast.error('Semua field wajib diisi');
+    if (!form.name.trim()) {
+      toast.error('Nama wajib diisi');
       return;
     }
-    onSubmit(form);
+    if (!form.nip.trim() && !form.nik.trim()) {
+      toast.error('NIP atau NIK wajib diisi untuk guru');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          role: 'GURU',
+          schoolId,
+          password: form.password || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || 'Guru berhasil ditambahkan');
+        resetForm();
+        onOpenChange(false);
+        onSubmit();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Gagal menambahkan guru');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Tambah Pengguna Baru</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-[#1F3864]" />
+            Tambah Guru Baru
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="user-name">Nama Lengkap *</Label>
+            <Label htmlFor="guru-name">Nama Lengkap <span className="text-red-500">*</span></Label>
             <Input
-              id="user-name"
-              placeholder="John Doe"
+              id="guru-name"
+              placeholder="Contoh: Andi Mustafa, S.Pd."
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="user-email">Email *</Label>
-            <Input
-              id="user-email"
-              type="email"
-              placeholder="john@sekolah.sch.id"
-              value={form.email}
-              onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-            />
-          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="user-password">Password *</Label>
+              <Label htmlFor="guru-nip">NIP (PNS)</Label>
               <Input
-                id="user-password"
+                id="guru-nip"
+                placeholder="198504152010011001"
+                value={form.nip}
+                onChange={(e) => setForm((f) => ({ ...f, nip: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="guru-nik">NIK (Non-PNS)</Label>
+              <Input
+                id="guru-nik"
+                placeholder="3502155678090002"
+                value={form.nik}
+                onChange={(e) => setForm((f) => ({ ...f, nik: e.target.value }))}
+              />
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-400">
+            Isi NIP atau NIK. Ini akan digunakan sebagai <span className="font-semibold">username login</span> guru.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="guru-phone">No. Telepon</Label>
+              <Input
+                id="guru-phone"
+                placeholder="08123456789"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="guru-password">Password</Label>
+              <Input
+                id="guru-password"
                 type="password"
-                placeholder="Min 6 karakter"
+                placeholder="Kosongkan = default"
                 value={form.password}
                 onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="user-role">Role *</Label>
-              <Select
-                value={form.role}
-                onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}
-              >
-                <SelectTrigger id="user-role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="GURU">Guru</SelectItem>
-                  <SelectItem value="SISWA">Siswa</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>
               Batal
             </Button>
             <Button
@@ -178,7 +228,179 @@ function UserFormDialog({ open, onOpenChange, defaultRole, onSubmit, isSubmittin
               className="bg-[#1F3864] hover:bg-[#152850]"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Menyimpan...' : 'Tambah Pengguna'}
+              {isSubmitting ? 'Menyimpan...' : 'Tambah Guru'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Siswa Form Dialog ───────────────────────────────────────────────
+
+interface SiswaFormDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  schoolId: string;
+  classes: ClassRecord[];
+  onSubmit: () => void;
+  isSubmitting: boolean;
+}
+
+function SiswaFormDialog({ open, onOpenChange, schoolId, classes, onSubmit, isSubmitting }: SiswaFormDialogProps) {
+  const [form, setForm] = useState({
+    name: '',
+    nisn: '',
+    namaOrtu: '',
+    jk: '',
+    classId: '',
+    phone: '',
+    password: '',
+  });
+
+  const resetForm = () => {
+    setForm({ name: '', nisn: '', namaOrtu: '', jk: '', classId: '', phone: '', password: '' });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast.error('Nama wajib diisi');
+      return;
+    }
+    if (!form.nisn.trim() || form.nisn.trim().length !== 10) {
+      toast.error('NISN wajib 10 digit');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...form,
+          role: 'SISWA',
+          schoolId,
+          classId: form.classId || undefined,
+          password: form.password || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || 'Siswa berhasil ditambahkan');
+        resetForm();
+        onOpenChange(false);
+        onSubmit();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Gagal menambahkan siswa');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5 text-amber-600" />
+            Tambah Siswa Baru
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="siswa-name">Nama Lengkap <span className="text-red-500">*</span></Label>
+            <Input
+              id="siswa-name"
+              placeholder="Contoh: Ahmad Fadli Rahman"
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="siswa-nisn">NISN <span className="text-red-500">*</span></Label>
+              <Input
+                id="siswa-nisn"
+                placeholder="0051234567 (10 digit)"
+                value={form.nisn}
+                onChange={(e) => setForm((f) => ({ ...f, nisn: e.target.value.replace(/\D/g, '').slice(0, 10) }))}
+                className={form.nisn.length > 0 && form.nisn.length !== 10 ? 'border-red-300 focus-visible:ring-red-500/30' : ''}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="siswa-jk">Jenis Kelamin</Label>
+              <Select value={form.jk} onValueChange={(v) => setForm((f) => ({ ...f, jk: v }))}>
+                <SelectTrigger id="siswa-jk">
+                  <SelectValue placeholder="Pilih" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="L">Laki-laki</SelectItem>
+                  <SelectItem value="P">Perempuan</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <p className="text-[11px] text-slate-400">
+            NISN akan digunakan sebagai <span className="font-semibold">username login</span> siswa.
+          </p>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="siswa-class">Kelas (Rombel)</Label>
+              <Select value={form.classId} onValueChange={(v) => setForm((f) => ({ ...f, classId: v }))}>
+                <SelectTrigger id="siswa-class">
+                  <SelectValue placeholder="Pilih kelas" />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((cls) => (
+                    <SelectItem key={cls.id} value={cls.id}>
+                      {cls.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="siswa-phone">No. Telepon</Label>
+              <Input
+                id="siswa-phone"
+                placeholder="08123456789"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="siswa-ortu">Nama Orang Tua / Wali</Label>
+            <Input
+              id="siswa-ortu"
+              placeholder="Contoh: H. Rahman"
+              value={form.namaOrtu}
+              onChange={(e) => setForm((f) => ({ ...f, namaOrtu: e.target.value }))}
+            />
+            <p className="text-[11px] text-amber-600 bg-amber-50 rounded-md px-3 py-2">
+              📌 Jika diisi, akun <span className="font-semibold">Orang Tua</span> akan dibuat otomatis dengan password <span className="font-mono font-bold">123</span>
+            </p>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>
+              Batal
+            </Button>
+            <Button
+              type="submit"
+              className="bg-amber-600 hover:bg-amber-700"
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Menyimpan...' : 'Tambah Siswa'}
             </Button>
           </div>
         </form>
@@ -223,7 +445,7 @@ function UserTable({ users, loading, onDelete }: UserTableProps) {
         <TableHeader>
           <TableRow>
             <TableHead>Nama</TableHead>
-            <TableHead className="hidden sm:table-cell">Email</TableHead>
+            <TableHead className="hidden sm:table-cell">Login ID</TableHead>
             <TableHead className="text-center">Role</TableHead>
             <TableHead className="text-center hidden md:table-cell">Kelas</TableHead>
             <TableHead className="text-center">Status</TableHead>
@@ -234,7 +456,9 @@ function UserTable({ users, loading, onDelete }: UserTableProps) {
           {users.map((u) => (
             <TableRow key={u.id}>
               <TableCell className="font-medium">{u.name}</TableCell>
-              <TableCell className="hidden sm:table-cell text-muted-foreground">{u.email}</TableCell>
+              <TableCell className="hidden sm:table-cell text-muted-foreground font-mono text-xs">
+                {u.nisn || u.nip || u.username || u.email || '-'}
+              </TableCell>
               <TableCell className="text-center"><RoleBadge role={u.role} /></TableCell>
               <TableCell className="text-center hidden md:table-cell">{u.className ?? '-'}</TableCell>
               <TableCell className="text-center">
@@ -269,6 +493,7 @@ export function UserManager() {
   const user = useAppStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<string>('GURU');
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -291,33 +516,26 @@ export function UserManager() {
     }
   }, [user?.schoolId, activeTab]);
 
+  const fetchClasses = useCallback(async () => {
+    if (!user?.schoolId) return;
+    try {
+      const res = await fetch(`/api/classes?schoolId=${user.schoolId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClasses(Array.isArray(data) ? data : []);
+      }
+    } catch {
+      // silent
+    }
+  }, [user?.schoolId]);
+
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
 
-  const handleSubmit = async (form: UserFormData) => {
-    if (!user?.schoolId) return;
-    try {
-      setSubmitting(true);
-      const res = await fetch('/api/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...form, schoolId: user.schoolId }),
-      });
-      if (res.ok) {
-        toast.success('Pengguna berhasil ditambahkan');
-        setDialogOpen(false);
-        fetchUsers();
-      } else {
-        const err = await res.json().catch(() => ({}));
-        toast.error(err.error ?? 'Gagal menambahkan pengguna');
-      }
-    } catch {
-      toast.error('Terjadi kesalahan');
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  useEffect(() => {
+    fetchClasses();
+  }, [fetchClasses]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -339,7 +557,10 @@ export function UserManager() {
   const filtered = users.filter(
     (u) =>
       u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
+      (u.username || '').toLowerCase().includes(search.toLowerCase()) ||
+      (u.email || '').toLowerCase().includes(search.toLowerCase()) ||
+      (u.nisn || '').includes(search) ||
+      (u.nip || '').includes(search)
   );
 
   return (
@@ -354,8 +575,8 @@ export function UserManager() {
           className="bg-[#1F3864] hover:bg-[#152850]"
           onClick={() => setDialogOpen(true)}
         >
-          <Plus className="mr-2 h-4 w-4" />
-          Tambah Pengguna
+          <UserPlus className="mr-2 h-4 w-4" />
+          Tambah {activeTab === 'GURU' ? 'Guru' : 'Siswa'}
         </Button>
       </div>
 
@@ -376,7 +597,7 @@ export function UserManager() {
           <div className="relative w-full max-w-sm">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Cari nama atau email..."
+              placeholder={activeTab === 'GURU' ? 'Cari nama atau NIP...' : 'Cari nama atau NISN...'}
               className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -393,13 +614,22 @@ export function UserManager() {
         </TabsContent>
       </Tabs>
 
-      {/* Add User Dialog */}
-      <UserFormDialog
-        key={dialogOpen ? `form-${activeTab}` : 'closed'}
-        open={dialogOpen}
+      {/* Guru Form Dialog */}
+      <GuruFormDialog
+        open={dialogOpen && activeTab === 'GURU'}
         onOpenChange={setDialogOpen}
-        defaultRole={activeTab}
-        onSubmit={handleSubmit}
+        schoolId={user?.schoolId || ''}
+        onSubmit={fetchUsers}
+        isSubmitting={submitting}
+      />
+
+      {/* Siswa Form Dialog */}
+      <SiswaFormDialog
+        open={dialogOpen && activeTab === 'SISWA'}
+        onOpenChange={setDialogOpen}
+        schoolId={user?.schoolId || ''}
+        classes={classes}
+        onSubmit={fetchUsers}
         isSubmitting={submitting}
       />
 
