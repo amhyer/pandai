@@ -1,0 +1,26 @@
+'use client';
+
+import dynamic from 'next/dynamic';
+import { useAppStore } from '@/store/use-store';
+
+// Only 3 dynamic imports for initial page load — keeps Turbopack compilation lightweight
+const LandingPage = dynamic(() => import('@/components/landing/landing-page'), { ssr: false });
+const LoginForm = dynamic(() => import('@/components/auth/login-form').then(m => ({ default: m.LoginForm })), { ssr: false });
+const RegisterForm = dynamic(() => import('@/components/auth/register-form').then(m => ({ default: m.RegisterForm })), { ssr: false });
+
+// App shell with all authenticated routes — loaded only when needed
+const AppShell = dynamic(() => import('@/components/app-shell'), { ssr: false });
+
+export default function Home() {
+  const { currentView, isAuthenticated, user } = useAppStore();
+
+  // Public views (lightweight, no AppLayout needed)
+  if (currentView === 'landing') return <LandingPage />;
+  if (currentView === 'login') return <LoginForm />;
+  if (currentView === 'register') return <RegisterForm />;
+
+  // Protected views — delegate to AppShell (includes AppLayout + all authenticated content)
+  if (!isAuthenticated || !user) return <LandingPage />;
+
+  return <AppShell />;
+}
