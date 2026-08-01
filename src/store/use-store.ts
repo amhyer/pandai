@@ -22,40 +22,41 @@ export type ViewType =
   | 'settings'             // Pengaturan Aplikasi
 
   // ── ADMIN_SCHOOL ──
-  | 'users'                // Guru & Siswa
   | 'classes'              // Rombel (Kelas)
-  | 'questions'            // Bank Soal Sekolah
-  | 'question-editor'      // Buat/Edit Soal (sub)
-  | 'exams'                // Tryout & Ujian
-  | 'exam-editor'          // Editor Paket Tryout (sub)
-  | 'exam-assignments'     // Jadwal & Penugasan Tryout
-  | 'results'              // Hasil & Nilai
-  | 'result-detail'        // Detail Hasil (sub)
-  | 'analytics'            // Analisis Butir Soal
-  | 'reports'              // Laporan Cetak
+  | 'subjects'             // Mata Pelajaran
+  | 'users'                // Data Siswa
+  | 'teacher-assignments'   // Penugasan Guru
+  | 'settings'             // Pengaturan Aplikasi
+  | 'backup-restore'        // Cadangkan & Pulihkan
+  | 'activity-log'         // Log Aktivitas
 
   // ── GURU ──
-  | 'guru-materi'          // Materi Ajar
-  | 'guru-soal'            // Bank Soal (sub scope guru)
-  | 'guru-tryout'          // Kelola Tryout
-  | 'guru-nilai'           // Input & Kelola Nilai
+  | 'guru-materi'          // Materi Pelajaran
+  | 'guru-tugas'           // Tugas, Kuis & Ujian
+  | 'guru-kehadiran'        // Kehadiran Siswa
+  | 'guru-rekap-kehadiran'  // Rekap Kehadiran
+  | 'guru-karakter'        // Isi Laporan 7 Kebiasaan
+  | 'guru-rekap-karakter'  // Rekap 7 Kebiasaan
+  | 'guru-jurnal'          // Jurnal Mengajar
+  | 'guru-nilai'           // Input Nilai
   | 'guru-analisis'        // Analisis Hasil Belajar
   | 'guru-laporan'         // Laporan Siswa
 
   // ── SISWA ──
-  | 'diagnostic'           // Diagnostic Test (tes awal)
-  | 'practice'             // Latihan Adaptif
-  | 'exam-runner'          // Kerjakan Tryout
-  | 'siswa-nilai'          // Nilai Saya
+  | 'siswa-materi'         // Materi Pelajaran
+  | 'siswa-tugas'          // Tugas & Ujian
   | 'siswa-riwayat'        // Riwayat Pengerjaan
-  | 'leaderboard'          // Peringkat
+  | 'siswa-nilai'          // Nilai Saya
+  | 'siswa-kehadiran'      // Kehadiran Saya
 
   // ── ORANG_TUA ──
-  | 'ortu-nilai'           // Nilai & Progres Anak
+  | 'ortu-karakter'        // Isi Laporan Harian (7 Kebiasaan)
+  | 'ortu-rekap-karakter'  // Rekap & Analisis (7 Kebiasaan)
+  | 'ortu-nilai'           // Nilai & Progres
   | 'ortu-materi'          // Materi Pelajaran
   | 'ortu-kehadiran'       // Kehadiran
-  | 'ortu-kuis'            // Riwayat Pengerjaan Anak
-  | 'ortu-laporan'         // Laporan Cetak Anak
+  | 'ortu-kuis'            // Riwayat Pengerjaan
+  | 'ortu-laporan'         // Laporan Cetak
 
   // ── Shared ──
   | 'profile'

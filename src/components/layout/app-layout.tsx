@@ -42,26 +42,30 @@ import {
   ClipboardList,
   FilePlus,
   Trophy,
-  Medal,
-  Stethoscope,
-  Dumbbell,
   LogOut,
   Bell,
   Menu,
   ChevronRight,
-  FlaskConical,
   FileText,
-  PenLine,
   UserCheck,
   ListChecks,
   Target,
   TrendingUp,
-  ChartColumn,
   Printer,
   Database,
   Activity,
-  CalendarClock,
   FolderOpen,
+  BookMarked,
+  ClipboardCheck,
+  History,
+  Star,
+  CalendarDays,
+  Shield,
+  HardDrive,
+  ScrollText,
+  Heart,
+  Award,
+  PenLine,
   BrainCircuit,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -87,7 +91,6 @@ type RoleNav = Record<UserRole, NavSection[]>;
 const NAV_CONFIG: RoleNav = {
   // ────────────────────────────────────────────────────────────────
   // SUPER ADMIN — Mengelola platform lintas sekolah
-  // (Setara: SIMANTAP admin)
   // ────────────────────────────────────────────────────────────────
   SUPER_ADMIN: [
     {
@@ -101,12 +104,6 @@ const NAV_CONFIG: RoleNav = {
       items: [
         { label: 'Kelola Sekolah', view: 'schools', icon: School },
         { label: 'Semua Pengguna', view: 'users-global', icon: Users },
-      ],
-    },
-    {
-      section: 'Konten',
-      items: [
-        { label: 'Bank Soal Global', view: 'questions-global', icon: FlaskConical },
       ],
     },
     {
@@ -125,8 +122,7 @@ const NAV_CONFIG: RoleNav = {
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // ADMIN SEKOLAH — Mengelola sekolah sendiri
-  // (Setara: SIMANTAP admin, scope per-sekolah)
+  // ADMIN SEKOLAH — 8 Menu dalam 4 Seksi
   // ────────────────────────────────────────────────────────────────
   ADMIN_SCHOOL: [
     {
@@ -136,39 +132,31 @@ const NAV_CONFIG: RoleNav = {
       ],
     },
     {
-      section: 'Manajemen',
+      section: 'Data Induk',
       items: [
-        { label: 'Guru & Siswa', view: 'users', icon: Users },
-        { label: 'Rombel (Kelas)', view: 'classes', icon: GraduationCap },
+        { label: 'Kelas', view: 'classes', icon: GraduationCap },
+        { label: 'Mata Pelajaran', view: 'subjects', icon: BookMarked },
+        { label: 'Data Siswa', view: 'users', icon: Users },
       ],
     },
     {
-      section: 'Bank Soal',
+      section: 'Penugasan',
       items: [
-        { label: 'Soal Sekolah', view: 'questions', icon: BookOpen },
-        { label: 'Buat Soal', view: 'question-editor', icon: PenLine },
+        { label: 'Penugasan Guru', view: 'teacher-assignments', icon: ClipboardCheck },
       ],
     },
     {
-      section: 'Tryout & Ujian',
+      section: 'Sistem',
       items: [
-        { label: 'Kelola Tryout', view: 'exams', icon: ClipboardList },
-        { label: 'Jadwal & Tugaskan', view: 'exam-assignments', icon: CalendarClock },
-      ],
-    },
-    {
-      section: 'Penilaian',
-      items: [
-        { label: 'Hasil & Nilai', view: 'results', icon: Trophy },
-        { label: 'Analisis Butir', view: 'analytics', icon: ChartColumn },
-        { label: 'Laporan', view: 'reports', icon: Printer },
+        { label: 'Pengaturan Aplikasi', view: 'settings', icon: Settings },
+        { label: 'Cadangkan & Pulihkan', view: 'backup-restore', icon: HardDrive },
+        { label: 'Log Aktivitas', view: 'activity-log', icon: Activity },
       ],
     },
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // GURU — Mengajar dan menilai siswa
-  // (Setara: SIMANTAP guru — Pembelajaran + Penilaian)
+  // GURU — 11 Menu dalam 6 Seksi
   // ────────────────────────────────────────────────────────────────
   GURU: [
     {
@@ -180,29 +168,42 @@ const NAV_CONFIG: RoleNav = {
     {
       section: 'Pembelajaran',
       items: [
-        { label: 'Materi Ajar', view: 'guru-materi', icon: FileText },
-        { label: 'Bank Soal', view: 'guru-soal', icon: FlaskConical },
+        { label: 'Materi Pelajaran', view: 'guru-materi', icon: FileText },
+        { label: 'Tugas, Kuis & Ujian', view: 'guru-tugas', icon: ClipboardList },
       ],
     },
     {
-      section: 'Tryout',
+      section: 'Kehadiran',
       items: [
-        { label: 'Kelola Tryout', view: 'guru-tryout', icon: ClipboardList },
+        { label: 'Kehadiran Siswa', view: 'guru-kehadiran', icon: CalendarDays },
+        { label: 'Rekap Kehadiran', view: 'guru-rekap-kehadiran', icon: History },
+      ],
+    },
+    {
+      section: 'Karakter',
+      items: [
+        { label: 'Isi Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
+        { label: 'Rekap 7 Kebiasaan', view: 'guru-rekap-karakter', icon: Award },
+      ],
+    },
+    {
+      section: 'Administrasi',
+      items: [
+        { label: 'Jurnal Mengajar', view: 'guru-jurnal', icon: ScrollText },
       ],
     },
     {
       section: 'Penilaian',
       items: [
         { label: 'Input Nilai', view: 'guru-nilai', icon: ListChecks },
-        { label: 'Analisis Hasil', view: 'guru-analisis', icon: TrendingUp },
+        { label: 'Analisis Hasil Belajar', view: 'guru-analisis', icon: TrendingUp },
         { label: 'Laporan Siswa', view: 'guru-laporan', icon: Printer },
       ],
     },
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // SISWA — Belajar, latihan, dan tryout
-  // (Setara: SIMANTAP siswa — Pembelajaran + Penilaian)
+  // SISWA — 6 Menu dalam 3 Seksi
   // ────────────────────────────────────────────────────────────────
   SISWA: [
     {
@@ -212,32 +213,24 @@ const NAV_CONFIG: RoleNav = {
       ],
     },
     {
-      section: 'Pembelajaran',
+      section: 'Belajar',
       items: [
-        { label: 'Diagnostic Test', view: 'diagnostic', icon: Stethoscope },
-        { label: 'Latihan Soal', view: 'practice', icon: Dumbbell },
-        { label: 'Materi Ajar', view: 'ortu-materi', icon: BookOpen },
-      ],
-    },
-    {
-      section: 'Tryout & Ujian',
-      items: [
-        { label: 'Kerjakan Tryout', view: 'exam-runner', icon: ClipboardList },
+        { label: 'Materi Pelajaran', view: 'siswa-materi', icon: BookOpen },
+        { label: 'Tugas & Ujian', view: 'siswa-tugas', icon: ClipboardList },
+        { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: History },
       ],
     },
     {
       section: 'Hasil',
       items: [
-        { label: 'Nilai Saya', view: 'siswa-nilai', icon: FilePlus },
-        { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: Database },
-        { label: 'Peringkat', view: 'leaderboard', icon: Trophy },
+        { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
+        { label: 'Kehadiran Saya', view: 'siswa-kehadiran', icon: CalendarDays },
       ],
     },
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // ORANG TUA — Pantau perkembangan belajar anak
-  // (Setara: SIMANTAP ortu — Pantau Anak + 7 Kebiasaan)
+  // ORANG TUA — 8 Menu dalam 3 Seksi
   // ────────────────────────────────────────────────────────────────
   ORANG_TUA: [
     {
@@ -247,13 +240,20 @@ const NAV_CONFIG: RoleNav = {
       ],
     },
     {
+      section: '7 Kebiasaan Anak Hebat',
+      items: [
+        { label: 'Isi Laporan Harian', view: 'ortu-karakter', icon: Heart },
+        { label: 'Rekap & Analisis', view: 'ortu-rekap-karakter', icon: BarChart3 },
+      ],
+    },
+    {
       section: 'Pantau Anak',
       items: [
         { label: 'Nilai & Progres', view: 'ortu-nilai', icon: Target },
-        { label: 'Materi Pelajaran', view: 'ortu-materi', icon: FileText },
+        { label: 'Materi Pelajaran', view: 'ortu-materi', icon: BookOpen },
         { label: 'Kehadiran', view: 'ortu-kehadiran', icon: UserCheck },
-        { label: 'Riwayat Pengerjaan', view: 'ortu-kuis', icon: ClipboardList },
-        { label: 'Laporan', view: 'ortu-laporan', icon: Printer },
+        { label: 'Riwayat Pengerjaan', view: 'ortu-kuis', icon: History },
+        { label: 'Laporan Cetak', view: 'ortu-laporan', icon: Printer },
       ],
     },
   ],
@@ -284,46 +284,45 @@ const VIEW_LABELS: Record<ViewType, string> = {
   schools: 'Kelola Sekolah',
   'school-detail': 'Detail Sekolah',
   'users-global': 'Semua Pengguna',
-  'questions-global': 'Bank Soal Global',
   'reports-global': 'Laporan Global',
   'analytics-global': 'Analitik Platform',
   settings: 'Pengaturan',
 
   // ADMIN_SCHOOL
-  users: 'Guru & Siswa',
-  classes: 'Rombel (Kelas)',
-  questions: 'Soal Sekolah',
-  'question-editor': 'Buat Soal',
-  exams: 'Kelola Tryout',
-  'exam-editor': 'Editor Tryout',
-  'exam-assignments': 'Jadwal & Tugaskan',
-  results: 'Hasil & Nilai',
-  'result-detail': 'Detail Hasil',
-  analytics: 'Analisis Butir',
-  reports: 'Laporan',
+  classes: 'Kelas',
+  subjects: 'Mata Pelajaran',
+  users: 'Data Siswa',
+  'teacher-assignments': 'Penugasan Guru',
+  'backup-restore': 'Cadangkan & Pulihkan',
+  'activity-log': 'Log Aktivitas',
 
   // GURU
-  'guru-materi': 'Materi Ajar',
-  'guru-soal': 'Bank Soal',
-  'guru-tryout': 'Kelola Tryout',
+  'guru-materi': 'Materi Pelajaran',
+  'guru-tugas': 'Tugas, Kuis & Ujian',
+  'guru-kehadiran': 'Kehadiran Siswa',
+  'guru-rekap-kehadiran': 'Rekap Kehadiran',
+  'guru-karakter': 'Isi Laporan 7 Kebiasaan',
+  'guru-rekap-karakter': 'Rekap 7 Kebiasaan',
+  'guru-jurnal': 'Jurnal Mengajar',
   'guru-nilai': 'Input Nilai',
-  'guru-analisis': 'Analisis Hasil',
+  'guru-analisis': 'Analisis Hasil Belajar',
   'guru-laporan': 'Laporan Siswa',
 
   // SISWA
-  diagnostic: 'Diagnostic Test',
-  practice: 'Latihan Soal',
-  'exam-runner': 'Tryout & Ujian',
-  'siswa-nilai': 'Nilai Saya',
+  'siswa-materi': 'Materi Pelajaran',
+  'siswa-tugas': 'Tugas & Ujian',
   'siswa-riwayat': 'Riwayat Pengerjaan',
-  leaderboard: 'Peringkat',
+  'siswa-nilai': 'Nilai Saya',
+  'siswa-kehadiran': 'Kehadiran Saya',
 
   // ORANG_TUA
+  'ortu-karakter': 'Isi Laporan Harian',
+  'ortu-rekap-karakter': 'Rekap & Analisis',
   'ortu-nilai': 'Nilai & Progres',
   'ortu-materi': 'Materi Pelajaran',
   'ortu-kehadiran': 'Kehadiran',
   'ortu-kuis': 'Riwayat Pengerjaan',
-  'ortu-laporan': 'Laporan',
+  'ortu-laporan': 'Laporan Cetak',
 
   // Shared
   profile: 'Profil',
@@ -342,42 +341,32 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
       { label: VIEW_LABELS['school-detail'] },
     ],
     'users-global': [{ label: VIEW_LABELS['users-global'] }],
-    'questions-global': [{ label: VIEW_LABELS['questions-global'] }],
     'reports-global': [{ label: VIEW_LABELS['reports-global'] }],
     'analytics-global': [{ label: VIEW_LABELS['analytics-global'] }],
     settings: [{ label: VIEW_LABELS.settings }],
-    users: [{ label: VIEW_LABELS.users }],
     classes: [{ label: VIEW_LABELS.classes }],
-    questions: [{ label: VIEW_LABELS.questions }],
-    'question-editor': [
-      { label: VIEW_LABELS.questions, view: 'questions' },
-      { label: VIEW_LABELS['question-editor'] },
-    ],
-    exams: [{ label: VIEW_LABELS.exams }],
-    'exam-editor': [
-      { label: VIEW_LABELS.exams, view: 'exams' },
-      { label: VIEW_LABELS['exam-editor'] },
-    ],
-    'exam-assignments': [{ label: VIEW_LABELS['exam-assignments'] }],
-    results: [{ label: VIEW_LABELS.results }],
-    'result-detail': [
-      { label: VIEW_LABELS.results, view: 'results' },
-      { label: VIEW_LABELS['result-detail'] },
-    ],
-    analytics: [{ label: VIEW_LABELS.analytics }],
-    reports: [{ label: VIEW_LABELS.reports }],
+    subjects: [{ label: VIEW_LABELS.subjects }],
+    users: [{ label: VIEW_LABELS.users }],
+    'teacher-assignments': [{ label: VIEW_LABELS['teacher-assignments'] }],
+    'backup-restore': [{ label: VIEW_LABELS['backup-restore'] }],
+    'activity-log': [{ label: VIEW_LABELS['activity-log'] }],
     'guru-materi': [{ label: VIEW_LABELS['guru-materi'] }],
-    'guru-soal': [{ label: VIEW_LABELS['guru-soal'] }],
-    'guru-tryout': [{ label: VIEW_LABELS['guru-tryout'] }],
+    'guru-tugas': [{ label: VIEW_LABELS['guru-tugas'] }],
+    'guru-kehadiran': [{ label: VIEW_LABELS['guru-kehadiran'] }],
+    'guru-rekap-kehadiran': [{ label: VIEW_LABELS['guru-rekap-kehadiran'] }],
+    'guru-karakter': [{ label: VIEW_LABELS['guru-karakter'] }],
+    'guru-rekap-karakter': [{ label: VIEW_LABELS['guru-rekap-karakter'] }],
+    'guru-jurnal': [{ label: VIEW_LABELS['guru-jurnal'] }],
     'guru-nilai': [{ label: VIEW_LABELS['guru-nilai'] }],
     'guru-analisis': [{ label: VIEW_LABELS['guru-analisis'] }],
     'guru-laporan': [{ label: VIEW_LABELS['guru-laporan'] }],
-    diagnostic: [{ label: VIEW_LABELS.diagnostic }],
-    practice: [{ label: VIEW_LABELS.practice }],
-    'exam-runner': [{ label: VIEW_LABELS['exam-runner'] }],
-    'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
+    'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
+    'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
     'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
-    leaderboard: [{ label: VIEW_LABELS.leaderboard }],
+    'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
+    'siswa-kehadiran': [{ label: VIEW_LABELS['siswa-kehadiran'] }],
+    'ortu-karakter': [{ label: VIEW_LABELS['ortu-karakter'] }],
+    'ortu-rekap-karakter': [{ label: VIEW_LABELS['ortu-rekap-karakter'] }],
     'ortu-nilai': [{ label: VIEW_LABELS['ortu-nilai'] }],
     'ortu-materi': [{ label: VIEW_LABELS['ortu-materi'] }],
     'ortu-kehadiran': [{ label: VIEW_LABELS['ortu-kehadiran'] }],
