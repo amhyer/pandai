@@ -201,6 +201,41 @@ const NAV_CONFIG: RoleNav = {
   ],
 
   // ────────────────────────────────────────────────────────────────
+  // SISWA — Belajar, latihan, dan tryout
+  // (Setara: SIMANTAP siswa — Pembelajaran + Penilaian)
+  // ────────────────────────────────────────────────────────────────
+  SISWA: [
+    {
+      section: 'Utama',
+      items: [
+        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      section: 'Pembelajaran',
+      items: [
+        { label: 'Diagnostic Test', view: 'diagnostic', icon: Stethoscope },
+        { label: 'Latihan Soal', view: 'practice', icon: Dumbbell },
+        { label: 'Materi Ajar', view: 'ortu-materi', icon: BookOpen },
+      ],
+    },
+    {
+      section: 'Tryout & Ujian',
+      items: [
+        { label: 'Kerjakan Tryout', view: 'exam-runner', icon: ClipboardList },
+      ],
+    },
+    {
+      section: 'Hasil',
+      items: [
+        { label: 'Nilai Saya', view: 'siswa-nilai', icon: FilePlus },
+        { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: Database },
+        { label: 'Peringkat', view: 'leaderboard', icon: Trophy },
+      ],
+    },
+  ],
+
+  // ────────────────────────────────────────────────────────────────
   // ORANG TUA — Pantau perkembangan belajar anak
   // (Setara: SIMANTAP ortu — Pantau Anak + 7 Kebiasaan)
   // ────────────────────────────────────────────────────────────────
@@ -343,6 +378,11 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
     'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
     leaderboard: [{ label: VIEW_LABELS.leaderboard }],
+    'ortu-nilai': [{ label: VIEW_LABELS['ortu-nilai'] }],
+    'ortu-materi': [{ label: VIEW_LABELS['ortu-materi'] }],
+    'ortu-kehadiran': [{ label: VIEW_LABELS['ortu-kehadiran'] }],
+    'ortu-kuis': [{ label: VIEW_LABELS['ortu-kuis'] }],
+    'ortu-laporan': [{ label: VIEW_LABELS['ortu-laporan'] }],
     profile: [{ label: VIEW_LABELS.profile }],
     notifications: [{ label: VIEW_LABELS.notifications }],
     broadcasts: [{ label: VIEW_LABELS.broadcasts }],

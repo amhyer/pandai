@@ -1,0 +1,934 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect } from 'react';
+     4→import { motion } from 'framer-motion';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { useAppStore } from '@/store/use-store';
+     9→import {
+    10→  GraduationCap,
+    11→  Menu,
+    12→  X,
+    13→  Stethoscope,
+    14→  Target,
+    15→  BookOpen,
+    16→  Timer,
+    17→  BarChart3,
+    18→  Trophy,
+    19→  Search,
+    20→  Zap,
+    21→  ArrowRight,
+    22→  Check,
+    23→  Users,
+    24→  FileQuestion,
+    25→  TrendingUp,
+    26→  Sparkles,
+    27→  ChevronRight,
+    28→  ShieldCheck,
+    29→  Brain,
+    30→  BarChart2,
+    31→  Flame,
+    32→} from 'lucide-react';
+    33→import {
+    34→  Sheet,
+    35→  SheetTrigger,
+    36→  SheetContent,
+    37→  SheetHeader,
+    38→  SheetTitle,
+    39→  SheetClose,
+    40→} from '@/components/ui/sheet';
+    41→
+    42→// ─── Animation Variants ─────────────────────────────────────────────────────
+    43→
+    44→const fadeInUp = {
+    45→  hidden: { opacity: 0, y: 30 },
+    46→  visible: (i: number = 0) => ({
+    47→    opacity: 1,
+    48→    y: 0,
+    49→    transition: { delay: i * 0.1, duration: 0.5, ease: 'easeOut' },
+    50→  }),
+    51→};
+    52→
+    53→const staggerContainer = {
+    54→  hidden: { opacity: 0 },
+    55→  visible: {
+    56→    opacity: 1,
+    57→    transition: { staggerChildren: 0.1, delayChildren: 0.1 },
+    58→  },
+    59→};
+    60→
+    61→const scaleIn = {
+    62→  hidden: { opacity: 0, scale: 0.9 },
+    63→  visible: {
+    64→    opacity: 1,
+    65→    scale: 1,
+    66→    transition: { duration: 0.5, ease: 'easeOut' },
+    67→  },
+    68→};
+    69→
+    70→// ─── Section Wrapper with scroll-triggered animation ────────────────────────
+    71→
+    72→function AnimatedSection({
+    73→  children,
+    74→  className = '',
+    75→  delay = 0,
+    76→}: {
+    77→  children: React.ReactNode;
+    78→  className?: string;
+    79→  delay?: number;
+    80→}) {
+    81→  const [inView, setInView] = useState(false);
+    82→
+    83→  useEffect(() => {
+    84→    const observer = new IntersectionObserver(
+    85→      ([entry]) => {
+    86→        if (entry.isIntersecting) setInView(true);
+    87→      },
+    88→      { threshold: 0.1, rootMargin: '0px 0px -50px 0px' }
+    89→    );
+    90→    const el = document.getElementById(`section-${className.replace(/\s/g, '-')}`);
+    91→    if (el) observer.observe(el);
+    92→    return () => observer.disconnect();
+    93→  }, [className]);
+    94→
+    95→  return (
+    96→    <motion.section
+    97→      id={`section-${className.replace(/\s/g, '-')}`}
+    98→      initial="hidden"
+    99→      animate={inView ? 'visible' : 'hidden'}
+   100→      variants={staggerContainer}
+   101→      className={className}
+   102→    >
+   103→      {children}
+   104→    </motion.section>
+   105→  );
+   106→}
+   107→
+   108→// ─── Navbar ─────────────────────────────────────────────────────────────────
+   109→
+   110→function Navbar() {
+   111→  const { navigateTo } = useAppStore();
+   112→  const [scrolled, setScrolled] = useState(false);
+   113→
+   114→  useEffect(() => {
+   115→    const handleScroll = () => setScrolled(window.scrollY > 20);
+   116→    window.addEventListener('scroll', handleScroll);
+   117→    return () => window.removeEventListener('scroll', handleScroll);
+   118→  }, []);
+   119→
+   120→  const navLinks = [
+   121→    { label: 'Fitur', href: '#fitur' },
+   122→    { label: 'Harga', href: '#harga' },
+   123→    { label: 'Tentang', href: '#tentang' },
+   124→  ];
+   125→
+   126→  const handleNavClick = (href: string) => {
+   127→    const el = document.querySelector(href);
+   128→    if (el) el.scrollIntoView({ behavior: 'smooth' });
+   129→  };
+   130→
+   131→  return (
+   132→    <header
+   133→      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+   134→        scrolled
+   135→          ? 'bg-emerald-600/95 backdrop-blur-md shadow-sm border-b border-emerald-500/50'
+   136→          : 'bg-emerald-600'
+   137→      }`}
+   138→    >
+   139→      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+   140→        {/* Logo */}
+   141→        <div className="flex items-center gap-2">
+   142→          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20">
+   143→            <GraduationCap className="h-5 w-5 text-white" />
+   144→          </div>
+   145→          <span className="text-xl font-bold tracking-tight text-white">
+   146→            PANDAI
+   147→          </span>
+   148→        </div>
+   149→
+   150→        {/* Desktop Nav */}
+   151→        <div className="hidden md:flex items-center gap-8">
+   152→          {navLinks.map((link) => (
+   153→            <button
+   154→              key={link.href}
+   155→              onClick={() => handleNavClick(link.href)}
+   156→              className={`text-sm font-medium transition-colors hover:text-emerald-200 ${
+   157→                scrolled ? 'text-white/90' : 'text-white/80'
+   158→              }`}
+   159→            >
+   160→              {link.label}
+   161→            </button>
+   162→          ))}
+   163→        </div>
+   164→
+   165→        {/* Desktop CTA */}
+   166→        <div className="hidden md:flex items-center gap-3">
+   167→          <Button
+   168→            variant="ghost"
+   169→            className="text-white/80 hover:text-white hover:bg-white/10"
+   170→            onClick={() => navigateTo('login')}
+   171→          >
+   172→            Masuk
+   173→          </Button>
+   174→          <Button
+   175→            className="bg-white hover:bg-white/90 text-emerald-700 font-semibold shadow-md hover:shadow-lg transition-all"
+   176→            onClick={() => navigateTo('register')}
+   177→          >
+   178→            Daftar Sekolah
+   179→          </Button>
+   180→        </div>
+   181→
+   182→        {/* Mobile Menu */}
+   183→        <div className="md:hidden">
+   184→          <Sheet>
+   185→            <SheetTrigger asChild>
+   186→              <Button variant="ghost" size="icon" className="text-white hover:bg-white/10">
+   187→                <Menu className="h-5 w-5" />
+   188→              </Button>
+   189→            </SheetTrigger>
+   190→            <SheetContent side="right" className="w-72">
+   191→              <SheetHeader>
+   192→                <SheetTitle className="flex items-center gap-2 text-emerald-700">
+   193→                  <GraduationCap className="h-5 w-5 text-emerald-600" />
+   194→                  PANDAI
+   195→                </SheetTitle>
+   196→              </SheetHeader>
+   197→              <div className="flex flex-col gap-2 px-4">
+   198→                {navLinks.map((link) => (
+   199→                  <button
+   200→                    key={link.href}
+   201→                    onClick={() => {
+   202→                      handleNavClick(link.href);
+   203→                    }}
+   204→                    className="text-left rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 hover:text-navy transition-colors"
+   205→                  >
+   206→                    {link.label}
+   207→                  </button>
+   208→                ))}
+   209→                <div className="mt-4 flex flex-col gap-2 border-t pt-4">
+   210→                  <Button
+   211→                    variant="outline"
+   212→                    className="w-full text-navy border-navy/20"
+   213→                    onClick={() => navigateTo('login')}
+   214→                  >
+   215→                    Masuk
+   216→                  </Button>
+   217→                  <Button
+   218→                    className="w-full bg-gold hover:bg-gold-dark text-white font-semibold"
+   219→                    onClick={() => navigateTo('register')}
+   220→                  >
+   221→                    Daftar Sekolah
+   222→                  </Button>
+   223→                </div>
+   224→              </div>
+   225→            </SheetContent>
+   226→          </Sheet>
+   227→        </div>
+   228→      </nav>
+   229→    </header>
+   230→  );
+   231→}
+   232→
+   233→// ─── Hero Section ───────────────────────────────────────────────────────────
+   234→
+   235→function HeroSection() {
+   236→  const { navigateTo } = useAppStore();
+   237→
+   238→  const stats = [
+   239→    { value: '50+', label: 'Sekolah' },
+   240→    { value: '5.000+', label: 'Siswa' },
+   241→    { value: '100K+', label: 'Soal' },
+   242→    { value: '92%', label: 'Kenaikan Skor' },
+   243→  ];
+   244→
+   245→  return (
+   246→    <section className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-br from-navy via-navy-light to-navy pt-16">
+   247→      {/* Background decorative elements */}
+   248→      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+   249→        <div className="absolute -top-40 -right-40 h-96 w-96 rounded-full bg-gold/10 blur-3xl" />
+   250→        <div className="absolute top-1/3 -left-20 h-72 w-72 rounded-full bg-gold/5 blur-3xl" />
+   251→        <div className="absolute bottom-20 right-1/4 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
+   252→        {/* Grid pattern */}
+   253→        <div
+   254→          className="absolute inset-0 opacity-[0.03]"
+   255→          style={{
+   256→            backgroundImage:
+   257→              'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
+   258→            backgroundSize: '60px 60px',
+   259→          }}
+   260→        />
+   261→      </div>
+   262→
+   263→      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20 md:py-28">
+   264→        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+   265→          {/* Left - Content */}
+   266→          <div>
+   267→            <motion.div
+   268→              initial="hidden"
+   269→              animate="visible"
+   270→              variants={staggerContainer}
+   271→            >
+   272→              <motion.div variants={fadeInUp} custom={0}>
+   273→                <Badge className="bg-gold/20 text-gold border-gold/30 px-3 py-1 text-sm mb-6">
+   274→                  <Sparkles className="h-3.5 w-3.5 mr-1" />
+   275→                  Platform TKA #1 di Indonesia
+   276→                </Badge>
+   277→              </motion.div>
+   278→
+   279→              <motion.h1
+   280→                variants={fadeInUp}
+   281→                custom={1}
+   282→                className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white leading-tight tracking-tight"
+   283→              >
+   284→                Tingkatkan Skor{' '}
+   285→                <span className="text-gold">TKA</span>{' '}
+   286→                Siswa Anda
+   287→              </motion.h1>
+   288→
+   289→              <motion.p
+   290→                variants={fadeInUp}
+   291→                custom={2}
+   292→                className="mt-6 text-lg sm:text-xl text-gray-300 leading-relaxed max-w-xl"
+   293→              >
+   294→                Platform persiapan Tes Kemampuan Akademik berbasis AI dengan diagnostic
+   295→                test, latihan adaptif, dan analisis kelemahan per topik.
+   296→              </motion.p>
+   297→
+   298→              <motion.div
+   299→                variants={fadeInUp}
+   300→                custom={3}
+   301→                className="mt-8 flex flex-col sm:flex-row gap-4"
+   302→              >
+   303→                <Button
+   304→                  size="lg"
+   305→                  className="bg-gold hover:bg-gold-dark text-white font-semibold text-base px-8 h-12 shadow-lg shadow-gold/25 hover:shadow-gold/40 transition-all"
+   306→                  onClick={() => navigateTo('register')}
+   307→                >
+   308→                  Mulai Gratis
+   309→                  <ArrowRight className="ml-2 h-4 w-4" />
+   310→                </Button>
+   311→                <Button
+   312→                  size="lg"
+   313→                  variant="outline"
+   314→                  className="border-white/20 text-white hover:bg-white/10 hover:text-white text-base px-8 h-12 bg-transparent"
+   315→                  onClick={() => {
+   316→                    document.querySelector('#fitur')?.scrollIntoView({ behavior: 'smooth' });
+   317→                  }}
+   318→                >
+   319→                  Lihat Demo
+   320→                  <ChevronRight className="ml-1 h-4 w-4" />
+   321→                </Button>
+   322→              </motion.div>
+   323→            </motion.div>
+   324→
+   325→            {/* Stats */}
+   326→            <motion.div
+   327→              initial="hidden"
+   328→              animate="visible"
+   329→              variants={staggerContainer}
+   330→              className="mt-14 grid grid-cols-2 sm:grid-cols-4 gap-6"
+   331→            >
+   332→              {stats.map((stat, i) => (
+   333→                <motion.div
+   334→                  key={stat.label}
+   335→                  variants={fadeInUp}
+   336→                  custom={i + 4}
+   337→                  className="text-center"
+   338→                >
+   339→                  <div className="text-2xl sm:text-3xl font-bold text-gold">{stat.value}</div>
+   340→                  <div className="mt-1 text-sm text-gray-400">{stat.label}</div>
+   341→                </motion.div>
+   342→              ))}
+   343→            </motion.div>
+   344→          </div>
+   345→
+   346→          {/* Right - Hero Illustration */}
+   347→          <motion.div
+   348→            initial={{ opacity: 0, x: 40 }}
+   349→            animate={{ opacity: 1, x: 0 }}
+   350→            transition={{ duration: 0.7, delay: 0.3, ease: 'easeOut' }}
+   351→            className="hidden lg:flex items-center justify-center"
+   352→          >
+   353→            <div className="relative w-full max-w-md">
+   354→              {/* Main card shape */}
+   355→              <div className="relative bg-white/10 backdrop-blur-sm rounded-3xl border border-white/10 p-8 shadow-2xl">
+   356→                <div className="flex items-center gap-3 mb-6">
+   357→                  <div className="h-10 w-10 rounded-xl bg-gold/20 flex items-center justify-center">
+   358→                    <Brain className="h-5 w-5 text-gold" />
+   359→                  </div>
+   360→                  <div>
+   361→                    <div className="text-white font-semibold text-sm">Diagnostic Test</div>
+   362→                    <div className="text-gray-400 text-xs">Menganalisis kemampuan siswa</div>
+   363→                  </div>
+   364→                </div>
+   365→
+   366→                {/* Simulated radar chart */}
+   367→                <div className="relative mx-auto w-48 h-48">
+   368→                  <svg viewBox="0 0 200 200" className="w-full h-full">
+   369→                    {/* Background rings */}
+   370→                    {[20, 40, 60, 80, 100].map((r) => (
+   371→                      <polygon
+   372→                        key={r}
+   373→                        points={`${100},${100 - r} ${100 + r * 0.95},${100 - r * 0.31} ${100 + r * 0.59},${100 + r * 0.81} ${100 - r * 0.59},${100 + r * 0.81} ${100 - r * 0.95},${100 - r * 0.31}`}
+   374→                        fill="none"
+   375→                        stroke="rgba(255,255,255,0.08)"
+   376→                        strokeWidth="1"
+   377→                      />
+   378→                    ))
+   379→                    }
+   380→                    {/* Data polygon */}
+   381→                    <polygon
+   382→                      points="100,25 175,72 140,165 60,165 25,72"
+   383→                      fill="rgba(212,160,23,0.15)"
+   384→                      stroke="#D4A017"
+   385→                      strokeWidth="2"
+   386→                    />
+   387→                    {/* Data points */}
+   388→                    {[
+   389→                      [100, 25],
+   390→                      [175, 72],
+   391→                      [140, 165],
+   392→                      [60, 165],
+   393→                      [25, 72],
+   394→                    ].map(([cx, cy], i) => (
+   395→                      <circle
+   396→                        key={i}
+   397→                        cx={cx}
+   398→                        cy={cy}
+   399→                        r="4"
+   400→                        fill="#D4A017"
+   401→                        stroke="white"
+   402→                        strokeWidth="2"
+   403→                      />
+   404→                    ))}
+   405→                  </svg>
+   406→                  <div className="absolute inset-0 flex items-center justify-center">
+   407→                    <span className="text-3xl font-bold text-gold">78</span>
+   408→                  </div>
+   409→                </div>
+   410→
+   411→                <div className="mt-6 grid grid-cols-3 gap-3">
+   412→                  {['Matematika', 'Fisika', 'Bahasa', 'Biologi', 'Kimia', 'IPA'].map(
+   413→                    (subject, i) => (
+   414→                      <div key={subject} className="text-center">
+   415→                        <div className={`h-1.5 rounded-full ${i % 2 === 0 ? 'bg-gold' : 'bg-gold/40'} mb-1.5`}
+   416→                          style={{ width: `${60 + (i * 8)}%`, margin: '0 auto' }}
+   417→                        />
+   418→                        <span className="text-[10px] text-gray-400">{subject}</span>
+   419→                      </div>
+   420→                    )
+   421→                  )}
+   422→                </div>
+   423→              </div>
+   424→
+   425→              {/* Floating elements */}
+   426→              <div className="absolute -top-4 -right-4 bg-gold rounded-2xl px-4 py-3 shadow-lg shadow-gold/20">
+   427→                <div className="flex items-center gap-2">
+   428→                  <TrendingUp className="h-4 w-4 text-white" />
+   429→                  <span className="text-white font-bold text-sm">+92%</span>
+   430→                </div>
+   431→                <p className="text-white/80 text-[10px] mt-0.5">Kenaikan skor</p>
+   432→              </div>
+   433→
+   434→              <div className="absolute -bottom-4 -left-4 bg-white/10 backdrop-blur-sm rounded-2xl px-4 py-3 border border-white/10">
+   435→                <div className="flex items-center gap-2">
+   436→                  <Users className="h-4 w-4 text-gold" />
+   437→                  <span className="text-white font-bold text-sm">5.000+</span>
+   438→                </div>
+   439→                <p className="text-gray-400 text-[10px] mt-0.5">Siswa aktif</p>
+   440→              </div>
+   441→            </div>
+   442→          </motion.div>
+   443→        </div>
+   444→      </div>
+   445→    </section>
+   446→  );
+   447→}
+   448→
+   449→// ─── Features Section (Bento Grid) ─────────────────────────────────────────
+   450→
+   451→const features = [
+   452→  {
+   453→    icon: Stethoscope,
+   454→    title: 'Diagnostic Test Awal',
+   455→    description: 'Pemetaan kekuatan & kelemahan siswa secara mendalam di awal pembelajaran.',
+   456→    span: 'md:col-span-2',
+   457→    accent: 'from-navy/5 to-navy/10',
+   458→    iconBg: 'bg-navy/10',
+   459→    iconColor: 'text-navy',
+   460→  },
+   461→  {
+   462→    icon: Target,
+   463→    title: 'Latihan Adaptif',
+   464→    description: 'Soal menyesuaikan kemampuan siswa secara real-time berdasarkan performa.',
+   465→    span: 'md:col-span-1',
+   466→    accent: 'from-gold/5 to-gold/10',
+   467→    iconBg: 'bg-gold/10',
+   468→    iconColor: 'text-gold-dark',
+   469→  },
+   470→  {
+   471→    icon: BookOpen,
+   472→    title: 'Bank Soal HOTS',
+   473→    description: '10 mata uji lengkap, level C1-C6 untuk mengasah kemampuan berpikir tingkat tinggi.',
+   474→    span: 'md:col-span-1',
+   475→    accent: 'from-emerald-50 to-emerald-100/50',
+   476→    iconBg: 'bg-emerald-100',
+   477→    iconColor: 'text-emerald-600',
+   478→  },
+   479→  {
+   480→    icon: Timer,
+   481→    title: 'Tryout Berkala',
+   482→    description: 'Simulasi ujian lengkap dengan timer, fitur anti-nyontek, dan auto-submit.',
+   483→    span: 'md:col-span-2',
+   484→    accent: 'from-orange-50 to-orange-100/50',
+   485→    iconBg: 'bg-orange-100',
+   486→    iconColor: 'text-orange-600',
+   487→  },
+   488→  {
+   489→    icon: BarChart3,
+   490→    title: 'Analisis Mendalam',
+   491→    description: 'Radar mapel, heatmap topik, dan insight untuk setiap siswa secara individual.',
+   492→    span: 'md:col-span-1',
+   493→    accent: 'from-violet-50 to-violet-100/50',
+   494→    iconBg: 'bg-violet-100',
+   495→    iconColor: 'text-violet-600',
+   496→  },
+   497→  {
+   498→    icon: Trophy,
+   499→    title: 'Leaderboard Sehat',
+   500→    description: 'Motivasi siswa dengan peringkat tanpa tekanan berlebihan.',
+   501→    span: 'md:col-span-1',
+   502→    accent: 'from-rose-50 to-rose-100/50',
+   503→    iconBg: 'bg-rose-100',
+   504→    iconColor: 'text-rose-600',
+   505→  },
+   506→];
+   507→
+   508→function FeaturesSection() {
+   509→  return (
+   510→    <AnimatedSection id="fitur" className="py-20 md:py-28 bg-gray-50/50">
+   511→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   512→        <motion.div variants={fadeInUp} className="text-center mb-16">
+   513→          <Badge variant="secondary" className="bg-gold/10 text-gold-dark border-gold/20 mb-4">
+   514→            <Zap className="h-3.5 w-3.5 mr-1" />
+   515→            Fitur Unggulan
+   516→          </Badge>
+   517→          <h2 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight">
+   518→            Semua yang sekolah Anda butuhkan
+   519→          </h2>
+   520→          <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
+   521→            Fitur lengkap untuk mempersiapkan siswa menghadapi Tes Kemampuan Akademik
+   522→            dengan pendekatan yang terukur dan personal.
+   523→          </p>
+   524→        </motion.div>
+   525→
+   526→        <div className="grid md:grid-cols-3 gap-4 md:gap-5">
+   527→          {features.map((feature, i) => {
+   528→            const Icon = feature.icon;
+   529→            return (
+   530→              <motion.div key={feature.title} variants={scaleIn} custom={i} className={feature.span}>
+   531→                <Card className={`h-full border-0 shadow-sm hover:shadow-md transition-shadow duration-300 bg-gradient-to-br ${feature.accent} overflow-hidden`}>
+   532→                  <CardHeader className="pb-3">
+   533→                    <div className={`inline-flex h-11 w-11 items-center justify-center rounded-xl ${feature.iconBg} mb-2`}>
+   534→                      <Icon className={`h-5 w-5 ${feature.iconColor}`} />
+   535→                    </div>
+   536→                    <CardTitle className="text-navy text-lg">{feature.title}</CardTitle>
+   537→                  </CardHeader>
+   538→                  <CardContent className="pt-0">
+   539→                    <CardDescription className="text-gray-500 leading-relaxed">
+   540→                      {feature.description}
+   541→                    </CardDescription>
+   542→                  </CardContent>
+   543→                </Card>
+   544→              </motion.div>
+   545→            );
+   546→          })}
+   547→        </div>
+   548→      </div>
+   549→    </AnimatedSection>
+   550→  );
+   551→}
+   552→
+   553→// ─── How It Works Section ───────────────────────────────────────────────────
+   554→
+   555→const steps = [
+   556→  {
+   557→    number: '01',
+   558→    icon: Search,
+   559→    title: 'Diagnostic',
+   560→    description:
+   561→      'Siswa mengerjakan tes diagnostik awal. Sistem AI memetakan kekuatan dan kelemahan di setiap topik secara mendalam.',
+   562→    color: 'navy',
+   563→  },
+   564→  {
+   565→    number: '02',
+   566→    icon: Target,
+   567→    title: 'Drill & Practice',
+   568→    description:
+   569→      'Sistem menyusun latihan adaptif yang fokus ke topik lemah. Soal disesuaikan level kemampuan masing-masing siswa.',
+   570→    color: 'gold',
+   571→  },
+   572→  {
+   573→    number: '03',
+   574→    icon: BarChart2,
+   575→    title: 'Tryout & Evaluate',
+   576→    description:
+   577→      'Ukur progres berkala dengan tryout realistis. Dapatkan prediksi skor TKA dan rekomendasi perbaikan.',
+   578→    color: 'navy',
+   579→  },
+   580→];
+   581→
+   582→function HowItWorksSection() {
+   583→  return (
+   584→    <AnimatedSection id="tentang" className="py-20 md:py-28 bg-white">
+   585→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   586→        <motion.div variants={fadeInUp} className="text-center mb-16">
+   587→          <Badge variant="secondary" className="bg-navy/5 text-navy border-navy/10 mb-4">
+   588→            <ChevronRight className="h-3.5 w-3.5 mr-1" />
+   589→            Cara Kerja
+   590→          </Badge>
+   591→          <h2 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight">
+   592→            3 Langkah Menuju Skor TKA Terbaik
+   593→          </h2>
+   594→          <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
+   595→            Proses yang terstruktur dan terukur untuk memaksimalkan potensi setiap siswa.
+   596→          </p>
+   597→        </motion.div>
+   598→
+   599→        <div className="grid md:grid-cols-3 gap-8 md:gap-12">
+   600→          {steps.map((step, i) => {
+   601→            const Icon = step.icon;
+   602→            return (
+   603→              <motion.div key={step.number} variants={fadeInUp} custom={i} className="relative">
+   604→                {/* Connector line (desktop) */}
+   605→                {i < steps.length - 1 && (
+   606→                  <div className="hidden md:block absolute top-12 left-[calc(50%+40px)] right-[calc(-50%+40px)] h-0.5 bg-gradient-to-r from-navy/20 to-gold/20" />
+   607→                )}
+   608→
+   609→                <div className="text-center">
+   610→                  <div className="relative inline-flex mb-6">
+   611→                    <div
+   612→                      className={`h-24 w-24 rounded-2xl flex items-center justify-center shadow-lg ${
+   613→                        step.color === 'gold'
+   614→                          ? 'bg-gold/10 shadow-gold/10'
+   615→                          : 'bg-navy/5 shadow-navy/10'
+   616→                      }`}
+   617→                    >
+   618→                      <Icon
+   619→                        className={`h-10 w-10 ${
+   620→                          step.color === 'gold' ? 'text-gold' : 'text-navy'
+   621→                        }`}
+   622→                      />
+   623→                    </div>
+   624→                    <div
+   625→                      className={`absolute -top-2 -right-2 h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+   626→                        step.color === 'gold' ? 'bg-gold' : 'bg-navy'
+   627→                      }`}
+   628→                    >
+   629→                      {step.number}
+   630→                    </div>
+   631→                  </div>
+   632→
+   633→                  <h3 className="text-xl font-bold text-navy mb-3">{step.title}</h3>
+   634→                  <p className="text-gray-500 leading-relaxed max-w-xs mx-auto">
+   635→                    {step.description}
+   636→                  </p>
+   637→                </div>
+   638→              </motion.div>
+   639→            );
+   640→          })}
+   641→        </div>
+   642→      </div>
+   643→    </AnimatedSection>
+   644→  );
+   645→}
+   646→
+   647→// ─── Pricing Section ────────────────────────────────────────────────────────
+   648→
+   649→const pricingPlans = [
+   650→  {
+   651→    name: 'Free',
+   652→    price: 'Rp 0',
+   653→    period: '/bulan',
+   654→    description: 'Cocok untuk mencoba platform sebelum berkomitmen.',
+   655→    highlighted: false,
+   656→    features: [
+   657→      { text: 'Hingga 50 siswa', included: true },
+   658→      { text: 'Diagnostic Test', included: true },
+   659→      { text: 'Bank Soal Global', included: true },
+   660→      { text: 'Laporan Dasar', included: true },
+   661→      { text: 'Tryout Berkala', included: false },
+   662→      { text: 'Analisis Butir Soal', included: false },
+   663→      { text: 'Laporan PDF', included: false },
+   664→    ],
+   665→  },
+   666→  {
+   667→    name: 'Starter',
+   668→    price: 'Rp 250.000',
+   669→    period: '/bulan',
+   670→    description: 'Ideal untuk sekolah dengan kebutuhan tryout rutin.',
+   671→    highlighted: false,
+   672→    features: [
+   673→      { text: 'Hingga 200 siswa', included: true },
+   674→      { text: 'Diagnostic Test', included: true },
+   675→      { text: 'Bank Soal Global', included: true },
+   676→      { text: 'Tryout Berkala', included: true },
+   677→      { text: 'Analisis Butir Soal', included: true },
+   678→      { text: 'Laporan Mendalam', included: true },
+   679→      { text: 'Laporan PDF', included: false },
+   680→    ],
+   681→  },
+   682→  {
+   683→    name: 'Pro',
+   684→    price: 'Rp 500.000',
+   685→    period: '/bulan',
+   686→    description: 'Solusi lengkap untuk sekolah yang serius meningkatkan skor TKA.',
+   687→    highlighted: true,
+   688→    features: [
+   689→      { text: 'Siswa Unlimited', included: true },
+   690→      { text: 'Diagnostic Test', included: true },
+   691→      { text: 'Bank Soal Global + Privat', included: true },
+   692→      { text: 'Tryout Berkala', included: true },
+   693→      { text: 'Analisis Butir Soal', included: true },
+   694→      { text: 'Laporan Mendalam', included: true },
+   695→      { text: 'Laporan PDF Ekspor', included: true },
+   696→    ],
+   697→  },
+   698→];
+   699→
+   700→function PricingSection() {
+   701→  const { navigateTo } = useAppStore();
+   702→
+   703→  return (
+   704→    <AnimatedSection id="harga" className="py-20 md:py-28 bg-gray-50/50">
+   705→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   706→        <motion.div variants={fadeInUp} className="text-center mb-16">
+   707→          <Badge variant="secondary" className="bg-gold/10 text-gold-dark border-gold/20 mb-4">
+   708→            <Flame className="h-3.5 w-3.5 mr-1" />
+   709→            Harga
+   710→          </Badge>
+   711→          <h2 className="text-3xl sm:text-4xl font-bold text-navy tracking-tight">
+   712→            Pilih Paket yang Tepat
+   713→          </h2>
+   714→          <p className="mt-4 text-lg text-gray-500 max-w-2xl mx-auto">
+   715→            Mulai gratis, upgrade kapan saja. Tanpa biaya tersembunyi.
+   716→          </p>
+   717→        </motion.div>
+   718→
+   719→        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 items-start max-w-5xl mx-auto">
+   720→          {pricingPlans.map((plan, i) => (
+   721→            <motion.div key={plan.name} variants={fadeInUp} custom={i}>
+   722→              <Card
+   723→                className={`relative h-full transition-shadow duration-300 hover:shadow-lg ${
+   724→                  plan.highlighted
+   725→                    ? 'border-2 border-gold shadow-lg shadow-gold/10 scale-105 md:scale-110'
+   726→                    : 'border border-gray-200'
+   727→                }`}
+   728→              >
+   729→                {plan.highlighted && (
+   730→                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
+   731→                    <Badge className="bg-gold text-white border-0 px-4 py-1 shadow-md">
+   732→                      <Sparkles className="h-3.5 w-3.5 mr-1" />
+   733→                      Paling Populer
+   734→                    </Badge>
+   735→                  </div>
+   736→                )}
+   737→
+   738→                <CardHeader className="text-center pb-4 pt-8">
+   739→                  <CardTitle
+   740→                    className={`text-lg font-semibold ${
+   741→                      plan.highlighted ? 'text-gold-dark' : 'text-navy'
+   742→                    }`}
+   743→                  >
+   744→                    {plan.name}
+   745→                  </CardTitle>
+   746→                  <div className="mt-3">
+   747→                    <span
+   748→                      className={`text-4xl font-extrabold tracking-tight ${
+   749→                        plan.highlighted ? 'text-navy' : 'text-navy'
+   750→                      }`}
+   751→                    >
+   752→                      {plan.price}
+   753→                    </span>
+   754→                    <span className="text-gray-400 text-sm">{plan.period}</span>
+   755→                  </div>
+   756→                  <CardDescription className="mt-2">{plan.description}</CardDescription>
+   757→                </CardHeader>
+   758→
+   759→                <CardContent className="pt-0 pb-8">
+   760→                  <div className="space-y-3 mb-8">
+   761→                    {plan.features.map((feature) => (
+   762→                      <div key={feature.text} className="flex items-center gap-3">
+   763→                        {feature.included ? (
+   764→                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
+   765→                            <Check className="h-3 w-3 text-emerald-600" />
+   766→                          </div>
+   767→                        ) : (
+   768→                          <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-100">
+   769→                            <X className="h-3 w-3 text-gray-300" />
+   770→                          </div>
+   771→                        )}
+   772→                        <span
+   773→                          className={`text-sm ${
+   774→                            feature.included ? 'text-gray-700' : 'text-gray-400'
+   775→                          }`}
+   776→                        >
+   777→                          {feature.text}
+   778→                        </span>
+   779→                      </div>
+   780→                    ))}
+   781→                  </div>
+   782→
+   783→                  <Button
+   784→                    className={`w-full font-semibold h-11 ${
+   785→                      plan.highlighted
+   786→                        ? 'bg-gold hover:bg-gold-dark text-white shadow-md hover:shadow-lg'
+   787→                        : 'bg-navy hover:bg-navy-light text-white'
+   788→                    }`}
+   789→                    onClick={() => navigateTo('register')}
+   790→                  >
+   791→                    {plan.name === 'Free' ? 'Mulai Gratis' : `Pilih ${plan.name}`}
+   792→                    <ArrowRight className="ml-2 h-4 w-4" />
+   793→                  </Button>
+   794→                </CardContent>
+   795→              </Card>
+   796→            </motion.div>
+   797→          ))}
+   798→        </div>
+   799→      </div>
+   800→    </AnimatedSection>
+   801→  );
+   802→}
+   803→
+   804→// ─── CTA Section ────────────────────────────────────────────────────────────
+   805→
+   806→function CTASection() {
+   807→  const { navigateTo } = useAppStore();
+   808→
+   809→  return (
+   810→    <AnimatedSection className="py-20 md:py-28 bg-white">
+   811→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+   812→        <motion.div
+   813→          variants={fadeInUp}
+   814→          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-navy via-navy-light to-navy px-8 py-16 md:px-16 md:py-20 text-center"
+   815→        >
+   816→          {/* Decorative elements */}
+   817→          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+   818→            <div className="absolute -top-20 -left-20 h-64 w-64 rounded-full bg-gold/10 blur-3xl" />
+   819→            <div className="absolute -bottom-20 -right-20 h-64 w-64 rounded-full bg-gold/5 blur-3xl" />
+   820→          </div>
+   821→
+   822→          <div className="relative z-10">
+   823→            <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gold/20 mb-6">
+   824→              <ShieldCheck className="h-7 w-7 text-gold" />
+   825→            </div>
+   826→            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white tracking-tight max-w-3xl mx-auto leading-tight">
+   827→              Siap meningkatkan skor TKA{' '}
+   828→              <span className="text-gold">sekolah Anda?</span>
+   829→            </h2>
+   830→            <p className="mt-5 text-lg text-gray-300 max-w-xl mx-auto">
+   831→              Bergabung dengan 50+ sekolah yang sudah mempercayai PANDAI untuk persiapan TKA siswa mereka.
+   832→            </p>
+   833→            <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center">
+   834→              <Button
+   835→                size="lg"
+   836→                className="bg-gold hover:bg-gold-dark text-white font-semibold text-base px-10 h-13 shadow-lg shadow-gold/25 hover:shadow-gold/40 transition-all"
+   837→                onClick={() => navigateTo('register')}
+   838→              >
+   839→                Daftar Sekolah Gratis
+   840→                <ArrowRight className="ml-2 h-4 w-4" />
+   841→              </Button>
+   842→              <Button
+   843→                size="lg"
+   844→                variant="outline"
+   845→                className="border-white/20 text-white hover:bg-white/10 hover:text-white text-base px-8 h-13 bg-transparent"
+   846→                onClick={() => navigateTo('login')}
+   847→              >
+   848→                Masuk ke Akun
+   849→              </Button>
+   850→            </div>
+   851→          </div>
+   852→        </motion.div>
+   853→      </div>
+   854→    </AnimatedSection>
+   855→  );
+   856→}
+   857→
+   858→// ─── Footer ─────────────────────────────────────────────────────────────────
+   859→
+   860→function Footer() {
+   861→  const footerLinks = [
+   862→    { label: 'Tentang', href: '#tentang' },
+   863→    { label: 'Bantuan', href: '#' },
+   864→    { label: 'Kebijakan Privasi', href: '#' },
+   865→    { label: 'Syarat & Ketentuan', href: '#' },
+   866→  ];
+   867→
+   868→  const handleLinkClick = (href: string) => {
+   869→    if (href === '#') return;
+   870→    const el = document.querySelector(href);
+   871→    if (el) el.scrollIntoView({ behavior: 'smooth' });
+   872→  };
+   873→
+   874→  return (
+   875→    <footer className="bg-navy border-t border-navy-light">
+   876→      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+   877→        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+   878→          {/* Logo & brand */}
+   879→          <div className="flex flex-col items-center md:items-start gap-2">
+   880→            <div className="flex items-center gap-2">
+   881→              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
+   882→                <GraduationCap className="h-4 w-4 text-gold" />
+   883→              </div>
+   884→              <span className="text-lg font-bold text-white tracking-tight">
+   885→                PANDAI
+   886→              </span>
+   887→            </div>
+   888→            <p className="text-sm text-gray-400">
+   889→              by <span className="text-gold font-medium">NALAR</span>
+   890→            </p>
+   891→          </div>
+   892→
+   893→          {/* Links */}
+   894→          <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+   895→            {footerLinks.map((link) => (
+   896→              <button
+   897→                key={link.label}
+   898→                onClick={() => handleLinkClick(link.href)}
+   899→                className="text-sm text-gray-400 hover:text-gold transition-colors"
+   900→              >
+   901→                {link.label}
+   902→              </button>
+   903→            ))}
+   904→          </div>
+   905→        </div>
+   906→
+   907→        <div className="mt-8 pt-8 border-t border-white/10 text-center">
+   908→          <p className="text-sm text-gray-500">
+   909→            &copy; {new Date().getFullYear()} PANDAI by NALAR. All rights reserved.
+   910→          </p>
+   911→        </div>
+   912→      </div>
+   913→    </footer>
+   914→  );
+   915→}
+   916→
+   917→// ─── Landing Page (Main Export) ─────────────────────────────────────────────
+   918→
+   919→export default function LandingPage() {
+   920→  return (
+   921→    <div className="min-h-screen flex flex-col bg-white">
+   922→      <Navbar />
+   923→      <main className="flex-1">
+   924→        <HeroSection />
+   925→        <FeaturesSection />
+   926→        <HowItWorksSection />
+   927→        <PricingSection />
+   928→        <CTASection />
+   929→      </main>
+   930→      <Footer />
+   931→    </div>
+   932→  );
+   933→}
+   934→
