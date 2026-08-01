@@ -333,3 +333,29 @@ Stage Summary:
 - Admin workflow: Download script → Run on laptop → Upload JSON to PANDAI
 - Alternative: Direct DB upload (.db) or Excel export upload (.xlsx/.csv)
 - 4 data types extracted: Sekolah, Guru/Tendik, Peserta Didik, Rombongan Belajar
+
+---
+Task ID: 2
+Agent: Main Orchestrator
+Task: Create dummy users documentation and seed script for PANDAI testing
+
+Work Log:
+- Reviewed Prisma schema (User model with 4 RBAC roles: SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA)
+- Reviewed auth system (SHA-256 hash with salt 'pandai_salt_2024')
+- Created `prisma/seed.ts` seed script with comprehensive dummy data:
+  - 2 Schools: SMA Negeri 1 Makassar (Pro plan) + SMK Negeri 2 Surabaya (Starter plan)
+  - 1 Super Admin, 2 Admin Sekolah, 2 Guru, 10 Siswa across 4 classes
+  - 10 Subjects with topics/subtopics
+- Ran seed script successfully: 15 new users created (total 37 users in DB)
+- Created `DUMMY_USERS.md` documentation with all credentials organized by role
+- Updated login-form.tsx quick-fill buttons to use new seeded credentials
+- Added `bun run seed` script to package.json
+- Verified login via API (all 4 roles confirmed working)
+- Verified login via agent browser UI (Siswa quick-fill → Dashboard "Halo, Ahmad!")
+
+Stage Summary:
+- Universal password: `password123` for all dummy accounts
+- Seed script: `prisma/seed.ts` (run with `bun run seed`)
+- Documentation: `DUMMY_USERS.md` at project root
+- Quick-fill buttons on login page updated to use seeded accounts
+- All 4 RBAC roles verified working end-to-end

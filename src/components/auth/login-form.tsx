@@ -10,10 +10,10 @@ import { toast } from 'sonner';
 import { Mail, Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
-  { label: 'Super Admin', email: 'admin@nalar.id', icon: Shield },
-  { label: 'Admin Sekolah', email: 'admin@sma1jkt.sch.id', icon: UserCheck },
-  { label: 'Guru', email: 'guru.bindo@sma1jkt.sch.id', icon: GraduationCap },
-  { label: 'Siswa', email: 'siswa1@sma1jkt.sch.id', icon: GraduationCap },
+  { label: 'Super Admin', email: 'superadmin@pandai.id', icon: Shield },
+  { label: 'Admin Sekolah', email: 'admin.sman1@pandai.id', icon: UserCheck },
+  { label: 'Guru', email: 'guru.sman1@pandai.id', icon: GraduationCap },
+  { label: 'Siswa', email: 'ahmad.sman1@pandai.id', icon: GraduationCap },
 ];
 
 export function LoginForm() {
