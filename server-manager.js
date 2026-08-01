@@ -1,36 +1,62 @@
+#!/usr/bin/env node
+// server-manager.js — Auto-restart dev server when it crashes
+
 const { spawn } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
-const log = (msg) => {
-  const time = new Date().toLocaleTimeString();
-  console.log(`[${time}] ${msg}`);
-};
+const LOG = path.join(__dirname, 'dev.log');
+const KEEPALIVE_LOG = path.join(__dirname, 'keepalive.log');
+
+let restartCount = 0;
+const MAX_RESTARTS = 100;
+
+function log(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}\n`;
+  fs.appendFileSync(KEEPALIVE_LOG, line);
+  console.log(line.trim());
+}
 
 function startServer() {
-  log('Starting Next.js dev server...');
+  if (restartCount >= MAX_RESTARTS) {
+    log('Max restarts reached, exiting.');
+    process.exit(1);
+  }
+
+  restartCount++;
+  const env = { ...process.env, NODE_OPTIONS: '--max-old-space-size=2048' };
+
+  log(`Starting server (attempt #${restartCount})...`);
+
+  // Clear old log
+  if (restartCount === 1) {
+    try { fs.writeFileSync(LOG, ''); } catch {}
+  }
+
   const child = spawn('npx', ['next', 'dev', '-p', '3000'], {
-    cwd: path.join(__dirname),
-    stdio: ['ignore', 'pipe', 'pipe'],
-    env: { ...process.env, NODE_OPTIONS: '--max-old-space-size=512' },
+    cwd: __dirname,
+    env,
+    stdio: ['pipe', fs.openSync(LOG, 'a'), fs.openSync(LOG, 'a')],
   });
 
-  child.stdout.on('data', (data) => {
-    process.stdout.write(data);
-  });
-
-  child.stderr.on('data', (data) => {
-    process.stderr.write(data);
-  });
-
-  child.on('exit', (code) => {
-    log(`Server exited with code ${code}, restarting in 2s...`);
-    setTimeout(startServer, 2000);
+  child.on('exit', (code, signal) => {
+    log(`Server exited with code=${code} signal=${signal}`);
+    if (code !== 0) {
+      log('Restarting in 2s...');
+      setTimeout(startServer, 2000);
+    } else {
+      log('Clean exit, not restarting.');
+    }
   });
 
   child.on('error', (err) => {
-    log(`Error: ${err.message}, restarting in 2s...`);
+    log(`Server error: ${err.message}`);
     setTimeout(startServer, 2000);
   });
 }
 
-startServer();
+// Kill any existing next processes
+spawn('pkill', ['-f', 'next'], { stdio: 'inherit' }).on('exit', () => {
+  log('Killed existing next processes.');
+  setTimeout(startServer, 1500);
+});

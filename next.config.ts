@@ -5,4 +5,5 @@ const nextConfig: NextConfig = {
   },
   reactStrictMode: false,
   serverExternalPackages: ["better-sqlite3"],
+  allowedDevOrigins: ["*"],
 };
