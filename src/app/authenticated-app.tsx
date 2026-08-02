@@ -74,11 +74,11 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'classes': React.lazy(() => import('@/components/dashboard/admin-sekolah/class-manager').then(m => ({ default: m.ClassManager }))),
   'users': React.lazy(() => import('@/components/dashboard/admin-sekolah/user-manager').then(m => ({ default: m.UserManager }))),
 
-  // ADMIN_SCHOOL — placeholder views (not yet built)
-  'subjects': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Mata Pelajaran" /> })),
-  'teacher-assignments': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Penugasan Guru" /> })),
-  'backup-restore': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Cadangkan & Pulihkan" /> })),
-  'activity-log': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Log Aktivitas" /> })),
+  // ADMIN_SCHOOL — new views
+  'subjects': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.SubjectsView }))),
+  'teacher-assignments': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.TeacherAssignmentsView }))),
+  'backup-restore': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.BackupRestoreView }))),
+  'activity-log': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.ActivityLogView }))),
 
   // GURU — existing components
   'guru-materi': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruMateriView }))),
@@ -86,20 +86,20 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-analisis': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruAnalisisView }))),
   'guru-laporan': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruLaporanView }))),
 
-  // GURU — placeholder views
-  'guru-tugas': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Tugas, Kuis & Ujian" /> })),
-  'guru-kehadiran': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Kehadiran Siswa" /> })),
-  'guru-rekap-kehadiran': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Rekap Kehadiran" /> })),
-  'guru-karakter': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Isi Laporan 7 Kebiasaan" /> })),
-  'guru-rekap-karakter': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Rekap 7 Kebiasaan" /> })),
-  'guru-jurnal': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Jurnal Mengajar" /> })),
+  // GURU — new interactive views
+  'guru-tugas': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruTugasView }))),
+  'guru-kehadiran': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruKehadiranView }))),
+  'guru-rekap-kehadiran': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruRekapKehadiranView }))),
+  'guru-karakter': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruKarakterView }))),
+  'guru-rekap-karakter': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruRekapKarakterView }))),
+  'guru-jurnal': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruJurnalView }))),
 
-  // SISWA — placeholder views
-  'siswa-materi': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Materi Pelajaran" /> })),
-  'siswa-tugas': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Tugas & Ujian" /> })),
+  // SISWA — new views
+  'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
+  'siswa-tugas': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaTugasView }))),
   'siswa-riwayat': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaRiwayatView }))),
   'siswa-nilai': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaNilaiView }))),
-  'siswa-kehadiran': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Kehadiran Saya" /> })),
+  'siswa-kehadiran': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaKehadiranView }))),
 
   // ORANG_TUA — existing components
   'ortu-nilai': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuNilaiView }))),
@@ -108,9 +108,9 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'ortu-kuis': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuKuisView }))),
   'ortu-laporan': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuLaporanView }))),
 
-  // ORANG_TUA — placeholder views
-  'ortu-karakter': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Isi Laporan Harian" /> })),
-  'ortu-rekap-karakter': React.lazy(() => Promise.resolve({ default: () => <PlaceholderView title="Rekap & Analisis" /> })),
+  // ORANG_TUA — new views
+  'ortu-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuKarakterView }))),
+  'ortu-rekap-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuRekapKarakterView }))),
 
   // Shared
   'profile': React.lazy(() => import('@/components/views/shared-views').then(m => ({ default: m.ProfileView }))),

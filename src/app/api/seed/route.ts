@@ -15,6 +15,12 @@ export async function POST() {
     await db.question.deleteMany();
     await db.topic.deleteMany();
     await db.subject.deleteMany();
+    await db.attendance.deleteMany();
+    await db.teacherAssignment.deleteMany();
+    await db.teachingJournal.deleteMany();
+    await db.characterReport.deleteMany();
+    await db.activityLog.deleteMany();
+    await db.material.deleteMany();
     await db.user.deleteMany();
     await db.class.deleteMany();
     await db.subscription.deleteMany();
@@ -345,6 +351,142 @@ export async function POST() {
       });
     }
 
+    // ===== TEACHER ASSIGNMENTS =====
+    await db.teacherAssignment.createMany({
+      data: [
+        { teacherId: guruBindo.id, subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+        { teacherId: guruBindo.id, subjectId: bindo.id, classId: classRecords[1].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+        { teacherId: guruBing.id, subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+        { teacherId: guruBing.id, subjectId: bing.id, classId: classRecords[3].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+        { teacherId: guruMat.id, subjectId: mat.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+        { teacherId: guruMat.id, subjectId: mat.id, classId: classRecords[1].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+        { teacherId: guruMat.id, subjectId: fis.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+      ],
+    });
+
+    // ===== ATTENDANCE (last 30 days) =====
+    const statuses = ['hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'izin', 'sakit', 'alpa'];
+    const attendanceData: any[] = [];
+    const now = new Date();
+    for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - dayOffset);
+      const dayOfWeek = date.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip weekends
+      const dateStr = date.toISOString().split('T')[0];
+
+      for (let s = 0; s < Math.min(students.length, 10); s++) {
+        const student = students[s];
+        const status = statuses[Math.floor(Math.random() * statuses.length)];
+        attendanceData.push({
+          studentId: student.id,
+          classId: classRecords[s % classRecords.length].id,
+          schoolId: sma1.id,
+          date: dateStr,
+          status,
+          recordedBy: guruBindo.id,
+        });
+      }
+    }
+    // Batch insert (max 1000 at a time)
+    for (let i = 0; i < attendanceData.length; i += 500) {
+      await db.attendance.createMany({ data: attendanceData.slice(i, i + 500) });
+    }
+
+    // ===== TEACHING JOURNALS =====
+    await db.teachingJournal.createMany({
+      data: [
+        { teacherId: guruBindo.id, classId: classRecords[0].id, subjectId: bindo.id, schoolId: sma1.id, date: '2025-01-06', topic: 'Teks Eksposisi - Struktur dan Ciri', activities: 'Menjelaskan struktur teks eksposisi, membaca contoh teks, diskusi kelompok', notes: 'Siswa antusias dalam diskusi kelompok' },
+        { teacherId: guruBindo.id, classId: classRecords[1].id, subjectId: bindo.id, schoolId: sma1.id, date: '2025-01-06', topic: 'Teks Argumentasi', activities: 'Analisis contoh teks argumentasi dari media massa', notes: 'Perlu drill lebih banyak soal' },
+        { teacherId: guruBing.id, classId: classRecords[0].id, subjectId: bing.id, schoolId: sma1.id, date: '2025-01-07', topic: 'Conditional Sentences Type 1-3', activities: 'Penjelasan materi, latihan soal, role play', notes: null },
+        { teacherId: guruBing.id, classId: classRecords[3].id, subjectId: bing.id, schoolId: sma1.id, date: '2025-01-07', topic: 'Reading Comprehension Strategies', activities: 'Skimming and scanning techniques, practice passages', notes: 'Beberapa siswa masih kesulitan inferensi' },
+        { teacherId: guruMat.id, classId: classRecords[0].id, subjectId: mat.id, schoolId: sma1.id, date: '2025-01-08', topic: 'Turunan Fungsi - Konsep Dasar', activities: 'Definisi turunan, contoh perhitungan, latihan 20 soal', notes: 'Materi dipahami dengan baik' },
+        { teacherId: guruMat.id, classId: classRecords[1].id, subjectId: mat.id, schoolId: sma1.id, date: '2025-01-08', topic: 'Integral Tentu', activities: 'Penjelasan konsep, hubungan turunan-integral, latihan', notes: null },
+        { teacherId: guruMat.id, classId: classRecords[0].id, subjectId: fis.id, schoolId: sma1.id, date: '2025-01-09', topic: 'Hukum Newton tentang Gravitasi', activities: 'Demonstrasi, perhitungan gaya gravitasi, latihan soal', notes: 'Interaktif, siswa aktif bertanya' },
+      ],
+    });
+
+    // ===== CHARACTER REPORTS (7 Kebiasaan) =====
+    const habitNames = ['proaktif', 'tujuan', 'prioritas', 'menang', 'mengerti', 'bersinergi', 'asah'];
+    const charData: any[] = [];
+    for (let dayOffset = 0; dayOffset < 20; dayOffset++) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - dayOffset);
+      if (date.getDay() === 0 || date.getDay() === 6) continue;
+      const dateStr = date.toISOString().split('T')[0];
+
+      for (let s = 0; s < Math.min(students.length, 5); s++) {
+        // Guru reports
+        for (const habit of habitNames.slice(0, 3 + Math.floor(Math.random() * 5))) {
+          charData.push({
+            studentId: students[s].id,
+            classId: classRecords[s % classRecords.length].id,
+            schoolId: sma1.id,
+            reporterId: guruBindo.id,
+            date: dateStr,
+            habit,
+            rating: Math.floor(Math.random() * 3) + 3, // 3-5
+            note: Math.random() > 0.7 ? 'Menunjukkan perkembangan baik' : null,
+          });
+        }
+      }
+    }
+    for (let i = 0; i < charData.length; i += 500) {
+      await db.characterReport.createMany({ data: charData.slice(i, i + 500) });
+    }
+
+    // ===== MATERIALS (Materi Pelajaran) =====
+    await db.material.createMany({
+      data: [
+        { title: 'Pengantar Teks Eksposisi', description: 'Memahami konsep dasar teks eksposisi', content: 'Teks eksposisi adalah teks yang menjelaskan atau memberitahukan sesuatu agar pembaca mengetahui dan memahami hal yang dibahas.', subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBindo.id, type: 'materi', status: 'published' },
+        { title: 'Struktur Teks Argumentasi', description: 'Tesis, argumentasi, dan penegasan ulang', content: 'Teks argumentasi memiliki tiga bagian utama...', subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBindo.id, type: 'materi', status: 'published' },
+        { title: 'Conditional Sentences Review', description: 'Kembali mengulang conditional type 1-3', content: 'Conditional sentences digunakan untuk menyatakan...', subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBing.id, type: 'materi', status: 'published' },
+        { title: 'Tips Reading Comprehension', description: 'Strategi menjawab soal reading', content: 'Skimming untuk gambaran umum, scanning untuk detail...', subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBing.id, type: 'materi', status: 'published' },
+        { title: 'Turunan Fungsi Aljabar', description: 'Aturan dasar turunan', content: 'f\'(x) = limit h→0 [f(x+h) - f(x)] / h', subjectId: mat.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'materi', status: 'published' },
+        { title: 'Hukum Newton tentang Gravitasi', description: 'F = G(m1*m2)/r²', content: 'Hukum gravitasi universal Newton menyatakan...', subjectId: fis.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'materi', status: 'published' },
+        { title: 'Latihan Soal Eksposisi', description: '10 soal latihan teks eksposisi', content: 'Kerjakan 10 soal berikut...', subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBindo.id, type: 'tugas', status: 'published', dueDate: '2025-02-01' },
+        { title: 'Kuis Conditional Sentences', description: 'Quiz online 15 soal', subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBing.id, type: 'quiz', status: 'published', dueDate: '2025-01-20' },
+        { title: 'Tugas Turunan Fungsi', description: '20 soal turunan fungsi', content: 'Selesaikan turunan dari fungsi-fungsi berikut...', subjectId: mat.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'tugas', status: 'published', dueDate: '2025-01-25' },
+        { title: 'Kuis Hukum Newton', description: '10 soal pilihan ganda', subjectId: fis.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'quiz', status: 'published', dueDate: '2025-02-05' },
+      ],
+    });
+
+    // ===== ACTIVITY LOGS =====
+    await db.activityLog.createMany({
+      data: [
+        { userId: superAdmin.id, action: 'Login ke sistem', detail: 'Super admin login', module: 'auth' },
+        { userId: superAdmin.id, action: 'Melihat dashboard global', detail: null, module: 'dashboard' },
+        { userId: superAdmin.id, schoolId: sma1.id, action: 'Membuat sekolah baru', detail: 'SMA Negeri 1 Jakarta', module: 'schools' },
+        { schoolId: sma1.id, action: 'Seed data demo', detail: 'Semua data demo berhasil dimuat', module: 'system' },
+        { userId: guruBindo.id, schoolId: sma1.id, action: 'Membuat materi baru', detail: 'Pengantar Teks Eksposisi', module: 'materials' },
+        { userId: guruBindo.id, schoolId: sma1.id, action: 'Membuat tugas', detail: 'Latihan Soal Eksposisi', module: 'materials' },
+        { userId: guruBing.id, schoolId: sma1.id, action: 'Membuat kuis', detail: 'Kuis Conditional Sentences', module: 'materials' },
+        { userId: guruMat.id, schoolId: sma1.id, action: 'Input jurnal mengajar', detail: 'Turunan Fungsi - Konsep Dasar', module: 'journals' },
+        { userId: guruMat.id, schoolId: sma1.id, action: 'Input kehadiran kelas XII IPA 1', detail: '15 siswa hadir, 1 izin', module: 'attendance' },
+        { userId: guruBindo.id, schoolId: sma1.id, action: 'Input laporan karakter', detail: '7 Kebiasaan - XII IPA 1', module: 'character' },
+        { schoolId: sma1.id, action: 'Tryout TKA dimulai', detail: 'Tryout TKA Desember 2024', module: 'exams' },
+        { schoolId: sma1.id, action: 'Backup database', detail: 'Auto backup berhasil', module: 'system' },
+        { userId: guruBing.id, schoolId: sma1.id, action: 'Membuat materi baru', detail: 'Tips Reading Comprehension', module: 'materials' },
+        { userId: guruMat.id, schoolId: sma1.id, action: 'Input jurnal mengajar', detail: 'Hukum Newton tentang Gravitasi', module: 'journals' },
+        { schoolId: sma1.id, action: 'Registrasi akun guru baru', detail: '3 guru terdaftar', module: 'users' },
+        { schoolId: sma1.id, action: 'Registrasi akun siswa', detail: '15 siswa terdaftar', module: 'users' },
+        { schoolId: sma1.id, action: 'Pembuatan kelas baru', detail: '4 kelas dibuat', module: 'classes' },
+        { userId: guruMat.id, schoolId: sma1.id, action: 'Input nilai siswa', detail: 'XII IPA 1 - Matematika', module: 'grades' },
+      ],
+    });
+
+    // ===== ORANG TUA ACCOUNT =====
+    const ortu1 = await db.user.create({
+      data: { email: 'ortu.ahmad@email.com', password: pw, name: 'Bpk. Hasan Basri', role: 'ORANG_TUA', schoolId: sma1.id, isActive: true },
+    });
+    // Link first student to this parent
+    if (students.length > 0) {
+      await db.user.update({
+        where: { id: students[0].id },
+        data: { parentId: ortu1.id, namaOrtu: 'Bpk. Hasan Basri' },
+      });
+    }
+
     return NextResponse.json({
       success: true,
       message: 'Data demo berhasil di-seed!',
@@ -353,6 +495,7 @@ export async function POST() {
         adminSekolah: { email: 'admin@sma1jkt.sch.id', password: 'password123' },
         guru: { email: 'guru.bindo@sma1jkt.sch.id', password: 'password123' },
         siswa: { email: 'siswa1@sma1jkt.sch.id', password: 'password123' },
+        orangTua: { email: 'ortu.ahmad@email.com', password: 'password123' },
       },
     });
   } catch (error: any) {

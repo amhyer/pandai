@@ -1,0 +1,802 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useMemo } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import {
+     6→  Card,
+     7→  CardContent,
+     8→  CardHeader,
+     9→  CardTitle,
+    10→  CardDescription,
+    11→} from '@/components/ui/card';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import { Skeleton } from '@/components/ui/skeleton';
+    15→import { Input } from '@/components/ui/input';
+    16→import {
+    17→  Table,
+    18→  TableBody,
+    19→  TableCell,
+    20→  TableHead,
+    21→  TableHeader,
+    22→  TableRow,
+    23→} from '@/components/ui/table';
+    24→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    25→import { toast } from 'sonner';
+    26→import {
+    27→  Users,
+    28→  Search,
+    29→  Filter,
+    30→  Download,
+    31→  Plus,
+    32→  MoreHorizontal,
+    33→  Eye,
+    34→  Trash2,
+    35→  Mail,
+    36→  School,
+    37→  GraduationCap,
+    38→  UserCog,
+    39→  Baby,
+    40→  BookOpen,
+    41→  FileText,
+    42→  BarChart3,
+    43→  TrendingUp,
+    44→  TrendingDown,
+    45→  ArrowUpRight,
+    46→  ArrowDownRight,
+    47→  Building2,
+    48→  ClipboardCheck,
+    49→  UserCheck,
+    50→  Wallet,
+    51→  FileBarChart,
+    52→  PieChart,
+    53→  Activity,
+    54→  Globe,
+    55→  Settings as SettingsIcon,
+    56→  Database,
+    57→  Shield,
+    58→  Bell,
+    59→  Server,
+    60→  Clock,
+    61→  CheckCircle2,
+    62→  XCircle,
+    63→  AlertCircle,
+    64→  ChevronRight,
+    65→  RefreshCw,
+    66→  Upload,
+    67→  FileDown,
+    68→  FileSpreadsheet,
+    69→} from 'lucide-react';
+    70→
+    71→// ═══════════════════════════════════════════════════════════════════════
+    72→//  Shared Helpers
+    73→// ═══════════════════════════════════════════════════════════════════════
+    74→
+    75→function PageHeader({
+    76→  title,
+    77→  description,
+    78→  action,
+    79→}: {
+    80→  title: string;
+    81→  description: string;
+    82→  action?: React.ReactNode;
+    83→}) {
+    84→  return (
+    85→    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    86→      <div>
+    87→        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+    88→        <p className="text-muted-foreground">{description}</p>
+    89→      </div>
+    90→      {action && <div className="flex items-center gap-2">{action}</div>}
+    91→    </div>
+    92→  );
+    93→}
+    94→
+    95→function EmptyState({
+    96→  icon: Icon,
+    97→  title,
+    98→  description,
+    99→  action,
+   100→}: {
+   101→  icon: React.ElementType;
+   102→  title: string;
+   103→  description: string;
+   104→  action?: React.ReactNode;
+   105→}) {
+   106→  return (
+   107→    <div className="flex h-48 items-center justify-center text-muted-foreground">
+   108→      <div className="text-center">
+   109→        <Icon className="mx-auto h-10 w-10 text-muted-foreground/40" />
+   110→        <p className="mt-3 text-sm font-medium">{title}</p>
+   111→        <p className="mt-1 text-xs text-muted-foreground/80 max-w-sm">
+   112→          {description}
+   113→        </p>
+   114→        {action && <div className="mt-4">{action}</div>}
+   115→      </div>
+   116→    </div>
+   117→  );
+   118→}
+   119→
+   120→function MiniStatCard({
+   121→  title,
+   122→  value,
+   123→  icon,
+   124→  trend,
+   125→  trendValue,
+   126→}: {
+   127→  title: string;
+   128→  value: string | number;
+   129→  icon: React.ReactNode;
+   130→  trend?: 'up' | 'down';
+   131→  trendValue?: string;
+   132→}) {
+   133→  return (
+   134→    <Card className="relative overflow-hidden">
+   135→      <CardContent className="p-4 sm:p-5">
+   136→        <div className="flex items-start justify-between">
+   137→          <div className="space-y-1">
+   138→            <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+   139→              {title}
+   140→            </p>
+   141→            <p className="text-xl sm:text-2xl font-bold tracking-tight">{value}</p>
+   142→            {trendValue && (
+   143→              <p className="text-xs text-muted-foreground flex items-center gap-1">
+   144→                {trend === 'up' && (
+   145→                  <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+   146→                )}
+   147→                {trend === 'down' && (
+   148→                  <ArrowDownRight className="h-3 w-3 text-red-500" />
+   149→                )}
+   150→                <span
+   151→                  className={
+   152→                    trend === 'up'
+   153→                      ? 'text-emerald-600'
+   154→                      : trend === 'down'
+   155→                        ? 'text-red-600'
+   156→                        : ''
+   157→                  }
+   158→                >
+   159→                  {trendValue}
+   160→                </span>
+   161→              </p>
+   162→            )}
+   163→          </div>
+   164→          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+   165→            {icon}
+   166→          </div>
+   167→        </div>
+   168→      </CardContent>
+   169→    </Card>
+   170→  );
+   171→}
+   172→
+   173→function getRoleBadge(role: string) {
+   174→  const map: Record<string, { label: string; cls: string }> = {
+   175→    SUPER_ADMIN: {
+   176→      label: 'Super Admin',
+   177→      cls: 'bg-purple-100 text-purple-700 border-purple-200',
+   178→    },
+   179→    ADMIN_SCHOOL: {
+   180→      label: 'Admin',
+   181→      cls: 'bg-blue-100 text-blue-700 border-blue-200',
+   182→    },
+   183→    GURU: {
+   184→      label: 'Guru',
+   185→      cls: 'bg-amber-100 text-amber-700 border-amber-200',
+   186→    },
+   187→    SISWA: {
+   188→      label: 'Siswa',
+   189→      cls: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+   190→    },
+   191→    ORANG_TUA: {
+   192→      label: 'Orang Tua',
+   193→      cls: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+   194→    },
+   195→  };
+   196→  const r = map[role] ?? { label: role, cls: 'bg-gray-100 text-gray-700 border-gray-200' };
+   197→  return <Badge variant="outline" className={r.cls}>{r.label}</Badge>;
+   198→}
+   199→
+   200→function getStatusBadge(status: string) {
+   201→  const s = status?.toLowerCase();
+   202→  if (s === 'active' || s === 'aktif') {
+   203→    return (
+   204→      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+   205→        <CheckCircle2 className="mr-1 h-3 w-3" />
+   206→        Aktif
+   207→      </Badge>
+   208→    );
+   209→  }
+   210→  if (s === 'inactive' || s === 'nonaktif' || s === 'tidak aktif') {
+   211→    return (
+   212→      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
+   213→        <XCircle className="mr-1 h-3 w-3" />
+   214→        Nonaktif
+   215→      </Badge>
+   216→    );
+   217→  }
+   218→  return (
+   219→    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+   220→      <AlertCircle className="mr-1 h-3 w-3" />
+   221→      {status}
+   222→    </Badge>
+   223→  );
+   224→}
+   225→
+   226→// ═══════════════════════════════════════════════════════════════════════
+   227→//  1. UsersGlobalView
+   228→// ═══════════════════════════════════════════════════════════════════════
+   229→
+   230→const PLACEHOLDER_USERS = [
+   231→  { id: '1', name: 'Dr. Surya Dharma, M.Pd.', email: 'surya@smakn1.sch.id', role: 'ADMIN_SCHOOL', school: 'SMA KN 1 Bandung', status: 'active' },
+   232→  { id: '2', name: 'Rina Wulandari, S.Pd.', email: 'rina.w@smakn1.sch.id', role: 'GURU', school: 'SMA KN 1 Bandung', status: 'active' },
+   233→  { id: '3', name: 'Ahmad Fauzan', email: 'ahmad.fauzan@siswa.sch.id', role: 'SISWA', school: 'SMA KN 1 Bandung', status: 'active' },
+   234→  { id: '4', name: 'Budi Santoso', email: 'budi.s@ortu.sch.id', role: 'ORANG_TUA', school: 'SMA KN 1 Bandung', status: 'active' },
+   235→  { id: '5', name: 'Ir. Hendra Wijaya, M.T.', email: 'hendra@smansa.sch.id', role: 'ADMIN_SCHOOL', school: 'SMAN 1 Surabaya', status: 'active' },
+   236→  { id: '6', name: 'Dewi Kartika, S.Pd.', email: 'dewi.k@smansa.sch.id', role: 'GURU', school: 'SMAN 1 Surabaya', status: 'active' },
+   237→  { id: '7', name: 'Rizky Pratama', email: 'rizky.p@siswa.sch.id', role: 'SISWA', school: 'SMAN 1 Surabaya', status: 'inactive' },
+   238→  { id: '8', name: 'Siti Aminah, M.Pd.', email: 'siti@smam2.sch.id', role: 'ADMIN_SCHOOL', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
+   239→  { id: '9', name: 'Agus Supriyadi', email: 'agus.s@smam2.sch.id', role: 'GURU', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
+   240→  { id: '10', name: 'Putri Amelia', email: 'putri.a@siswa.sch.id', role: 'SISWA', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
+   241→  { id: '11', name: 'Fajar Nugroho', email: 'fajar.n@siswa.sch.id', role: 'SISWA', school: 'SMA KN 1 Bandung', status: 'active' },
+   242→  { id: '12', name: 'Lina Marlina, S.Pd.', email: 'lina@smansa.sch.id', role: 'GURU', school: 'SMAN 1 Surabaya', status: 'inactive' },
+   243→];
+   244→
+   245→export function UsersGlobalView() {
+   246→  const [search, setSearch] = useState('');
+   247→  const [roleFilter, setRoleFilter] = useState('all');
+   248→
+   249→  const filtered = useMemo(() => {
+   250→    let list = PLACEHOLDER_USERS;
+   251→    if (roleFilter !== 'all') {
+   252→      list = list.filter((u) => u.role === roleFilter);
+   253→    }
+   254→    if (search.trim()) {
+   255→      const q = search.toLowerCase();
+   256→      list = list.filter(
+   257→        (u) =>
+   258→          u.name.toLowerCase().includes(q) ||
+   259→          u.email.toLowerCase().includes(q) ||
+   260→          u.school.toLowerCase().includes(q)
+   261→      );
+   262→    }
+   263→    return list;
+   264→  }, [search, roleFilter]);
+   265→
+   266→  const stats = useMemo(() => {
+   267→    const all = PLACEHOLDER_USERS;
+   268→    return {
+   269→      total: all.length,
+   270→      guru: all.filter((u) => u.role === 'GURU').length,
+   271→      siswa: all.filter((u) => u.role === 'SISWA').length,
+   272→      admin: all.filter((u) => u.role === 'ADMIN_SCHOOL').length,
+   273→      ortu: all.filter((u) => u.role === 'ORANG_TUA').length,
+   274→    };
+   275→  }, []);
+   276→
+   277→  return (
+   278→    <div className="space-y-6">
+   279→      <PageHeader
+   280→        title="Pengguna Global"
+   281→        description="Kelola semua pengguna dari seluruh sekolah di platform PANDAI."
+   282→        action={
+   283→          <Button
+   284→            className="bg-[#1F3864] hover:bg-[#152850]"
+   285→            onClick={() => toast.info('Fitur unduh data pengguna akan segera hadir.')}
+   286→          >
+   287→            <Download className="mr-2 h-4 w-4" />
+   288→            Ekspor Data
+   289→          </Button>
+   290→        }
+   291→      />
+   292→
+   293→      {/* Stats Cards */}
+   294→      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+   295→        <MiniStatCard title="Total Pengguna" value={stats.total} icon={<Users className="h-4 w-4" />} trend="up" trendValue="+12% bulan ini" />
+   296→        <MiniStatCard title="Guru" value={stats.guru} icon={<UserCog className="h-4 w-4" />} />
+   297→        <MiniStatCard title="Siswa" value={stats.siswa} icon={<GraduationCap className="h-4 w-4" />} trend="up" trendValue="+24 bulan ini" />
+   298→        <MiniStatCard title="Admin Sekolah" value={stats.admin} icon={<School className="h-4 w-4" />} />
+   299→        <MiniStatCard title="Orang Tua" value={stats.ortu} icon={<Baby className="h-4 w-4" />} />
+   300→      </div>
+   301→
+   302→      {/* Search & Filters */}
+   303→      <Card>
+   304→        <CardContent className="p-4 sm:p-6">
+   305→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+   306→            <div className="relative flex-1 max-w-md">
+   307→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   308→              <Input
+   309→                placeholder="Cari nama, email, atau sekolah..."
+   310→                value={search}
+   311→                onChange={(e) => setSearch(e.target.value)}
+   312→                className="pl-9"
+   313→              />
+   314→            </div>
+   315→            <Tabs value={roleFilter} onValueChange={setRoleFilter}>
+   316→              <TabsList>
+   317→                <TabsTrigger value="all">Semua</TabsTrigger>
+   318→                <TabsTrigger value="GURU">Guru</TabsTrigger>
+   319→                <TabsTrigger value="SISWA">Siswa</TabsTrigger>
+   320→                <TabsTrigger value="ADMIN_SCHOOL">Admin</TabsTrigger>
+   321→                <TabsTrigger value="ORANG_TUA">Ortu</TabsTrigger>
+   322→              </TabsList>
+   323→            </Tabs>
+   324→          </div>
+   325→        </CardContent>
+   326→      </Card>
+   327→
+   328→      {/* Users Table */}
+   329→      <Card>
+   330→        <CardContent className="p-0">
+   331→          <div className="overflow-x-auto">
+   332→            <Table>
+   333→              <TableHeader>
+   334→                <TableRow className="bg-muted/50">
+   335→                  <TableHead className="w-[50px]">No</TableHead>
+   336→                  <TableHead>Nama</TableHead>
+   337→                  <TableHead className="hidden md:table-cell">Email / Username</TableHead>
+   338→                  <TableHead>Role</TableHead>
+   339→                  <TableHead className="hidden lg:table-cell">Sekolah</TableHead>
+   340→                  <TableHead>Status</TableHead>
+   341→                  <TableHead className="w-[50px]"><span className="sr-only">Aksi</span></TableHead>
+   342→                </TableRow>
+   343→              </TableHeader>
+   344→              <TableBody>
+   345→                {filtered.length === 0 ? (
+   346→                  <TableRow>
+   347→                    <TableCell colSpan={7}>
+   348→                      <EmptyState
+   349→                        icon={Users}
+   350→                        title="Tidak ada pengguna ditemukan"
+   351→                        description="Coba ubah filter atau kata kunci pencarian Anda."
+   352→                      />
+   353→                    </TableCell>
+   354→                  </TableRow>
+   355→                ) : (
+   356→                  filtered.map((user, idx) => (
+   357→                    <TableRow key={user.id} className="group">
+   358→                      <TableCell className="text-muted-foreground text-sm">
+   359→                        {idx + 1}
+   360→                      </TableCell>
+   361→                      <TableCell>
+   362→                        <div className="flex items-center gap-3">
+   363→                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1F3864]/10 text-[#1F3864] text-xs font-semibold">
+   364→                            {user.name
+   365→                              .split(' ')
+   366→                              .map((n) => n[0])
+   367→                              .join('')
+   368→                              .slice(0, 2)}
+   369→                          </div>
+   370→                          <span className="font-medium text-sm">{user.name}</span>
+   371→                        </div>
+   372→                      </TableCell>
+   373→                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+   374→                        {user.email}
+   375→                      </TableCell>
+   376→                      <TableCell>{getRoleBadge(user.role)}</TableCell>
+   377→                      <TableCell className="hidden lg:table-cell text-sm">
+   378→                        <div className="flex items-center gap-1.5">
+   379→                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+   380→                          {user.school}
+   381→                        </div>
+   382→                      </TableCell>
+   383→                      <TableCell>{getStatusBadge(user.status)}</TableCell>
+   384→                      <TableCell>
+   385→                        <Button
+   386→                          variant="ghost"
+   387→                          size="icon"
+   388→                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+   389→                          onClick={() => toast.info(`Detail pengguna: ${user.name}`)}
+   390→                        >
+   391→                          <MoreHorizontal className="h-4 w-4" />
+   392→                        </Button>
+   393→                      </TableCell>
+   394→                    </TableRow>
+   395→                  ))
+   396→                )}
+   397→              </TableBody>
+   398→            </Table>
+   399→          </div>
+   400→          {filtered.length > 0 && (
+   401→            <div className="border-t px-4 py-3 text-sm text-muted-foreground flex items-center justify-between">
+   402→              <span>Menampilkan {filtered.length} dari {PLACEHOLDER_USERS.length} pengguna</span>
+   403→              <Button variant="ghost" size="sm" className="text-xs">
+   404→                <ChevronRight className="mr-1 h-3 w-3" />
+   405→                Selanjutnya
+   406→              </Button>
+   407→            </div>
+   408→          )}
+   409→        </CardContent>
+   410→      </Card>
+   411→    </div>
+   412→  );
+   413→}
+   414→
+   415→// ═══════════════════════════════════════════════════════════════════════
+   416→//  2. QuestionsGlobalView
+   417→// ═══════════════════════════════════════════════════════════════════════
+   418→
+   419→const PLACEHOLDER_QUESTIONS = [
+   420→  { id: 'Q001', subject: 'Matematika', topic: 'Aljabar', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'published', author: 'Rina Wulandari, S.Pd.', school: 'SMA KN 1 Bandung', usageCount: 142 },
+   421→  { id: 'Q002', subject: 'Fisika', topic: 'Kinematika', type: 'Pilihan Ganda', difficulty: 'Sulit', status: 'published', author: 'Dewi Kartika, S.Pd.', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 98 },
+   422→  { id: 'Q003', subject: 'Bahasa Indonesia', topic: 'Teks Narasi', type: 'Esai', difficulty: 'Mudah', status: 'published', author: 'Agus Supriyadi', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 67 },
+   423→  { id: 'Q004', subject: 'Biologi', topic: 'Sel dan Jaringan', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'draft', author: 'Lina Marlina, S.Pd.', school: 'SMAN 1 Surabaya', usageCount: 0 },
+   424→  { id: 'Q005', subject: 'Kimia', topic: 'Stoikiometri', type: 'Pilihan Ganda', difficulty: 'Sulit', status: 'published', author: 'Rina Wulandari, S.Pd.', school: 'SMA KN 1 Bandung', usageCount: 210 },
+   425→  { id: 'Q006', subject: 'Matematika', topic: 'Geometri', type: 'Pilihan Ganda', difficulty: 'Mudah', status: 'archived', author: 'Dewi Kartika, S.Pd.', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 45 },
+   426→  { id: 'Q007', subject: 'Bahasa Inggris', topic: 'Reading Comprehension', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'published', author: 'Agus Supriyadi', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 189 },
+   427→  { id: 'Q008', subject: 'Fisika', topic: 'Dinamika', type: 'Pilihan Ganda', difficulty: 'Sulit', status: 'draft', author: 'Rina Wulandari, S.Pd.', school: 'SMA KN 1 Bandung', usageCount: 0 },
+   428→  { id: 'Q009', subject: 'Sejarah', topic: 'Kemerdekaan Indonesia', type: 'Esai', difficulty: 'Mudah', status: 'published', author: 'Lina Marlina, S.Pd.', school: 'SMAN 1 Surabaya', usageCount: 34 },
+   429→  { id: 'Q010', subject: 'Matematika', topic: 'Statistika', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'published', author: 'Dewi Kartika, S.Pd.', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 156 },
+   430→];
+   431→
+   432→const SUBJECTS = ['Semua', 'Matematika', 'Fisika', 'Kimia', 'Biologi', 'Bahasa Indonesia', 'Bahasa Inggris', 'Sejarah'];
+   433→
+   434→function getDifficultyBadge(d: string) {
+   435→  const map: Record<string, { cls: string }> = {
+   436→    Mudah: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+   437→    Sedang: { cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+   438→    Sulit: { cls: 'bg-red-50 text-red-700 border-red-200' },
+   439→  };
+   440→  const m = map[d] ?? { cls: 'bg-gray-50 text-gray-600 border-gray-200' };
+   441→  return <Badge variant="outline" className={m.cls}>{d}</Badge>;
+   442→}
+   443→
+   444→function getQuestionStatusBadge(s: string) {
+   445→  const map: Record<string, { label: string; cls: string }> = {
+   446→    published: { label: 'Published', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+   447→    draft: { label: 'Draft', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+   448→    archived: { label: 'Archived', cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+   449→  };
+   450→  const m = map[s] ?? { label: s, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
+   451→  return <Badge variant="outline" className={m.cls}>{m.label}</Badge>;
+   452→}
+   453→
+   454→export function QuestionsGlobalView() {
+   455→  const [search, setSearch] = useState('');
+   456→  const [subjectFilter, setSubjectFilter] = useState('Semua');
+   457→  const [statusFilter, setStatusFilter] = useState('all');
+   458→
+   459→  const filtered = useMemo(() => {
+   460→    let list = PLACEHOLDER_QUESTIONS;
+   461→    if (subjectFilter !== 'Semua') {
+   462→      list = list.filter((q) => q.subject === subjectFilter);
+   463→    }
+   464→    if (statusFilter !== 'all') {
+   465→      list = list.filter((q) => q.status === statusFilter);
+   466→    }
+   467→    if (search.trim()) {
+   468→      const q = search.toLowerCase();
+   469→      list = list.filter(
+   470→        (item) =>
+   471→          item.topic.toLowerCase().includes(q) ||
+   472→          item.subject.toLowerCase().includes(q) ||
+   473→          item.author.toLowerCase().includes(q)
+   474→      );
+   475→    }
+   476→    return list;
+   477→  }, [search, subjectFilter, statusFilter]);
+   478→
+   479→  const stats = useMemo(() => {
+   480→    const all = PLACEHOLDER_QUESTIONS;
+   481→    return {
+   482→      total: all.length,
+   483→      published: all.filter((q) => q.status === 'published').length,
+   484→      draft: all.filter((q) => q.status === 'draft').length,
+   485→      archived: all.filter((q) => q.status === 'archived').length,
+   486→    };
+   487→  }, []);
+   488→
+   489→  return (
+   490→    <div className="space-y-6">
+   491→      <PageHeader
+   492→        title="Bank Soal Global"
+   493→        description="Kelola seluruh bank soal dari semua sekolah. Soal yang dipublish dapat digunakan di NALAR tryout."
+   494→        action={
+   495→          <Button
+   496→            className="bg-[#1F3864] hover:bg-[#152850]"
+   497→            onClick={() => toast.info('Fitur import soal akan segera hadir.')}
+   498→          >
+   499→            <Upload className="mr-2 h-4 w-4" />
+   500→            Import Soal
+   501→          </Button>
+   502→        }
+   503→      />
+   504→
+   505→      {/* Stats */}
+   506→      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+   507→        <MiniStatCard title="Total Soal" value={stats.total} icon={<BookOpen className="h-4 w-4" />} trend="up" trendValue="+18 bulan ini" />
+   508→        <MiniStatCard title="Published" value={stats.published} icon={<CheckCircle2 className="h-4 w-4" />} />
+   509→        <MiniStatCard title="Draft" value={stats.draft} icon={<FileText className="h-4 w-4" />} />
+   510→        <MiniStatCard title="Archived" value={stats.archived} icon={<Archive className="h-4 w-4" />} />
+   511→      </div>
+   512→
+   513→      {/* Filters */}
+   514→      <Card>
+   515→        <CardContent className="p-4 sm:p-6">
+   516→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+   517→            <div className="relative flex-1 max-w-md">
+   518→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   519→              <Input
+   520→                placeholder="Cari topik, mata pelajaran, atau penulis..."
+   521→                value={search}
+   522→                onChange={(e) => setSearch(e.target.value)}
+   523→                className="pl-9"
+   524→              />
+   525→            </div>
+   526→            <div className="flex flex-wrap items-center gap-2">
+   527→              <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+   528→                <TabsList>
+   529→                  <TabsTrigger value="all">Semua</TabsTrigger>
+   530→                  <TabsTrigger value="published">Published</TabsTrigger>
+   531→                  <TabsTrigger value="draft">Draft</TabsTrigger>
+   532→                  <TabsTrigger value="archived">Archived</TabsTrigger>
+   533→                </TabsList>
+   534→              </Tabs>
+   535→            </div>
+   536→          </div>
+   537→          {/* Subject pills */}
+   538→          <div className="mt-4 flex flex-wrap gap-2">
+   539→            {SUBJECTS.map((s) => (
+   540→              <Button
+   541→                key={s}
+   542→                variant={subjectFilter === s ? 'default' : 'outline'}
+   543→                size="sm"
+   544→                className={
+   545→                  subjectFilter === s
+   546→                    ? 'bg-[#1F3864] hover:bg-[#152850] text-xs'
+   547→                    : 'text-xs'
+   548→                }
+   549→                onClick={() => setSubjectFilter(s)}
+   550→              >
+   551→                {s}
+   552→              </Button>
+   553→            ))}
+   554→          </div>
+   555→        </CardContent>
+   556→      </Card>
+   557→
+   558→      {/* Questions Table */}
+   559→      <Card>
+   560→        <CardContent className="p-0">
+   561→          <div className="overflow-x-auto">
+   562→            <Table>
+   563→              <TableHeader>
+   564→                <TableRow className="bg-muted/50">
+   565→                  <TableHead className="w-[70px]">ID</TableHead>
+   566→                  <TableHead>Mata Pelajaran</TableHead>
+   567→                  <TableHead>Topik</TableHead>
+   568→                  <TableHead className="hidden sm:table-cell">Tipe</TableHead>
+   569→                  <TableHead className="hidden md:table-cell">Kesulitan</TableHead>
+   570→                  <TableHead>Status</TableHead>
+   571→                  <TableHead className="hidden xl:table-cell">Penggunaan</TableHead>
+   572→                  <TableHead className="hidden lg:table-cell">Pembuat</TableHead>
+   573→                  <TableHead className="w-[50px]"><span className="sr-only">Aksi</span></TableHead>
+   574→                </TableRow>
+   575→              </TableHeader>
+   576→              <TableBody>
+   577→                {filtered.length === 0 ? (
+   578→                  <TableRow>
+   579→                    <TableCell colSpan={9}>
+   580→                      <EmptyState
+   581→                        icon={BookOpen}
+   582→                        title="Tidak ada soal ditemukan"
+   583→                        description="Coba ubah filter atau kata kunci pencarian Anda."
+   584→                      />
+   585→                    </TableCell>
+   586→                  </TableRow>
+   587→                ) : (
+   588→                  filtered.map((q) => (
+   589→                    <TableRow key={q.id} className="group">
+   590→                      <TableCell className="font-mono text-xs text-muted-foreground">
+   591→                        {q.id}
+   592→                      </TableCell>
+   593→                      <TableCell className="font-medium text-sm">{q.subject}</TableCell>
+   594→                      <TableCell className="text-sm text-muted-foreground">{q.topic}</TableCell>
+   595→                      <TableCell className="hidden sm:table-cell">
+   596→                        <Badge variant="secondary" className="text-xs">
+   597→                          {q.type}
+   598→                        </Badge>
+   599→                      </TableCell>
+   600→                      <TableCell className="hidden md:table-cell">{getDifficultyBadge(q.difficulty)}</TableCell>
+   601→                      <TableCell>{getQuestionStatusBadge(q.status)}</TableCell>
+   602→                      <TableCell className="hidden xl:table-cell">
+   603→                        {q.usageCount > 0 ? (
+   604→                          <span className="text-sm font-medium">{q.usageCount}x</span>
+   605→                        ) : (
+   606→                          <span className="text-xs text-muted-foreground">-</span>
+   607→                        )}
+   608→                      </TableCell>
+   609→                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+   610→                        {q.author}
+   611→                      </TableCell>
+   612→                      <TableCell>
+   613→                        <Button
+   614→                          variant="ghost"
+   615→                          size="icon"
+   616→                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+   617→                          onClick={() => toast.info(`Detail soal: ${q.id} - ${q.topic}`)}
+   618→                        >
+   619→                          <Eye className="h-4 w-4" />
+   620→                        </Button>
+   621→                      </TableCell>
+   622→                    </TableRow>
+   623→                  ))
+   624→                )}
+   625→              </TableBody>
+   626→            </Table>
+   627→          </div>
+   628→          {filtered.length > 0 && (
+   629→            <div className="border-t px-4 py-3 text-sm text-muted-foreground flex items-center justify-between">
+   630→              <span>Menampilkan {filtered.length} dari {PLACEHOLDER_QUESTIONS.length} soal</span>
+   631→              <Button variant="ghost" size="sm" className="text-xs">
+   632→                <ChevronRight className="mr-1 h-3 w-3" />
+   633→                Selanjutnya
+   634→              </Button>
+   635→            </div>
+   636→          )}
+   637→        </CardContent>
+   638→      </Card>
+   639→    </div>
+   640→  );
+   641→}
+   642→
+   643→// Helper icon for archived stat card (to avoid extra import)
+   644→function Archive({ className }: { className?: string }) {
+   645→  return (
+   646→    <svg
+   647→      xmlns="http://www.w3.org/2000/svg"
+   648→      viewBox="0 0 24 24"
+   649→      fill="none"
+   650→      stroke="currentColor"
+   651→      strokeWidth="2"
+   652→      strokeLinecap="round"
+   653→      strokeLinejoin="round"
+   654→      className={className}
+   655→    >
+   656→      <rect width="20" height="5" x="2" y="3" rx="1" />
+   657→      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+   658→      <path d="M10 12h4" />
+   659→    </svg>
+   660→  );
+   661→}
+   662→
+   663→// ═══════════════════════════════════════════════════════════════════════
+   664→//  3. ReportsGlobalView
+   665→// ═══════════════════════════════════════════════════════════════════════
+   666→
+   667→const REPORT_TYPES = [
+   668→  {
+   669→    id: 'school',
+   670→    title: 'Laporan Sekolah',
+   671→    description: 'Ringkasan data sekolah termasuk jumlah siswa, guru, dan aktivitas.',
+   672→    icon: Building2,
+   673→    color: 'bg-blue-50 text-blue-600 border-blue-200',
+   674→    count: 3,
+   675→  },
+   676→  {
+   677→    id: 'tryout',
+   678→    title: 'Laporan Hasil Tryout',
+   679→    description: 'Analisis hasil tryout per sekolah, mata pelajaran, dan kompetensi.',
+   680→    icon: ClipboardCheck,
+   681→    color: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+   682→    count: 12,
+   683→  },
+   684→  {
+   685→    id: 'attendance',
+   686→    title: 'Laporan Kehadiran',
+   687→    description: 'Data kehadiran siswa dan guru dalam mengikuti tryout dan aktivitas.',
+   688→    icon: UserCheck,
+   689→    color: 'bg-amber-50 text-amber-600 border-amber-200',
+   690→    count: 8,
+   691→  },
+   692→  {
+   693→    id: 'financial',
+   694→    title: 'Laporan Keuangan',
+   695→    description: 'Ringkasan pendapatan, langganan, dan status pembayaran sekolah.',
+   696→    icon: Wallet,
+   697→    color: 'bg-purple-50 text-purple-600 border-purple-200',
+   698→    count: 2,
+   699→  },
+   700→];
+   701→
+   702→const RECENT_REPORTS = [
+   703→  { id: 'R001', name: 'Laporan Hasil Tryout TKA - Gelombang 1', type: 'tryout', generatedAt: '2025-01-15 09:30', generatedBy: 'Super Admin', size: '2.4 MB' },
+   704→  { id: 'R002', name: 'Ringkasan Data Sekolah - Januari 2025', type: 'school', generatedAt: '2025-01-14 14:15', generatedBy: 'Super Admin', size: '1.1 MB' },
+   705→  { id: 'R003', name: 'Laporan Kehadiran Tryout Semester 1', type: 'attendance', generatedAt: '2025-01-10 11:00', generatedBy: 'Super Admin', size: '3.8 MB' },
+   706→  { id: 'R004', name: 'Laporan Keuangan Q4 2024', type: 'financial', generatedAt: '2025-01-05 08:45', generatedBy: 'Super Admin', size: '890 KB' },
+   707→  { id: 'R005', name: 'Laporan Analisis Butir Soal - Matematika', type: 'tryout', generatedAt: '2024-12-28 16:20', generatedBy: 'Super Admin', size: '5.2 MB' },
+   708→];
+   709→
+   710→function getReportTypeBadge(type: string) {
+   711→  const map: Record<string, { label: string; cls: string }> = {
+   712→    school: { label: 'Sekolah', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+   713→    tryout: { label: 'Tryout', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+   714→    attendance: { label: 'Kehadiran', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+   715→    financial: { label: 'Keuangan', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+   716→  };
+   717→  const m = map[type] ?? { label: type, cls: 'bg-gray-50 text-gray-600 border-gray-200' };
+   718→  return <Badge variant="outline" className={m.cls}>{m.label}</Badge>;
+   719→}
+   720→
+   721→export function ReportsGlobalView() {
+   722→  const [generating, setGenerating] = useState<string | null>(null);
+   723→
+   724→  function handleGenerate(type: string) {
+   725→    setGenerating(type);
+   726→    setTimeout(() => {
+   727→      setGenerating(null);
+   728→      toast.success(`Laporan berhasil digenerate!`);
+   729→    }, 2000);
+   730→  }
+   731→
+   732→  return (
+   733→    <div className="space-y-6">
+   734→      <PageHeader
+   735→        title="Laporan Global"
+   736→        description="Buat dan kelola laporan lintas sekolah di platform PANDAI."
+   737→        action={
+   738→          <Button
+   739→            className="bg-[#1F3864] hover:bg-[#152850]"
+   740→            onClick={() => toast.info('Fitur jadwalkan laporan akan segera hadir.')}
+   741→          >
+   742→            <Clock className="mr-2 h-4 w-4" />
+   743→            Jadwalkan Laporan
+   744→          </Button>
+   745→        }
+   746→      />
+   747→
+   748→      {/* Report Type Cards */}
+   749→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   750→        {REPORT_TYPES.map((rt) => {
+   751→          const Icon = rt.icon;
+   752→          const isGenerating = generating === rt.id;
+   753→          return (
+   754→            <Card
+   755→              key={rt.id}
+   756→              className="group cursor-pointer transition-all hover:shadow-md hover:border-[#1F3864]/20"
+   757→              onClick={() => handleGenerate(rt.id)}
+   758→            >
+   759→              <CardHeader className="pb-3">
+   760→                <div className="flex items-start justify-between">
+   761→                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${rt.color}`}>
+   762→                    <Icon className="h-5 w-5" />
+   763→                  </div>
+   764→                  <Badge variant="secondary" className="text-xs">
+   765→                    {rt.count} laporan
+   766→                  </Badge>
+   767→                </div>
+   768→              </CardHeader>
+   769→              <CardContent className="pt-0">
+   770→                <CardTitle className="text-sm font-semibold mb-1">{rt.title}</CardTitle>
+   771→                <CardDescription className="text-xs mb-3">
+   772→                  {rt.description}
+   773→                </CardDescription>
+   774→                <Button
+   775→                  variant="outline"
+   776→                  size="sm"
+   777→                  className="w-full text-xs"
+   778→                  disabled={isGenerating}
+   779→                >
+   780→                  {isGenerating ? (
+   781→                    <>
+   782→                      <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
+   783→                      Generating...
+   784→                    </>
+   785→                  ) : (
+   786→                    <>
+   787→                      <FileBarChart className="mr-1.5 h-3 w-3" />
+   788→                      Generate Laporan
+   789→                    </>
+   790→                  )}
+   791→                </Button>
+   792→              </CardContent>
+   793→            </Card>
+   794→          );
+   795→        })}
+   796→      </div>
+   797→
+   798→      {/* Recent Reports */}
+   799→      <Card>
+   800→        <CardHeader>
+
+[showing lines 1-800 of 1553; use offset=801 with limit to continue reading]

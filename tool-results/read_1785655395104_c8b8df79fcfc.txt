@@ -1,0 +1,1553 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useMemo } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import {
+     6→  Card,
+     7→  CardContent,
+     8→  CardHeader,
+     9→  CardTitle,
+    10→  CardDescription,
+    11→} from '@/components/ui/card';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import { Skeleton } from '@/components/ui/skeleton';
+    15→import { Input } from '@/components/ui/input';
+    16→import {
+    17→  Table,
+    18→  TableBody,
+    19→  TableCell,
+    20→  TableHead,
+    21→  TableHeader,
+    22→  TableRow,
+    23→} from '@/components/ui/table';
+    24→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    25→import { toast } from 'sonner';
+    26→import {
+    27→  Users,
+    28→  Search,
+    29→  Filter,
+    30→  Download,
+    31→  Plus,
+    32→  MoreHorizontal,
+    33→  Eye,
+    34→  Trash2,
+    35→  Mail,
+    36→  School,
+    37→  GraduationCap,
+    38→  UserCog,
+    39→  Baby,
+    40→  BookOpen,
+    41→  FileText,
+    42→  BarChart3,
+    43→  TrendingUp,
+    44→  TrendingDown,
+    45→  ArrowUpRight,
+    46→  ArrowDownRight,
+    47→  Building2,
+    48→  ClipboardCheck,
+    49→  UserCheck,
+    50→  Wallet,
+    51→  FileBarChart,
+    52→  PieChart,
+    53→  Activity,
+    54→  Globe,
+    55→  Settings as SettingsIcon,
+    56→  Database,
+    57→  Shield,
+    58→  Bell,
+    59→  Server,
+    60→  Clock,
+    61→  CheckCircle2,
+    62→  XCircle,
+    63→  AlertCircle,
+    64→  ChevronRight,
+    65→  RefreshCw,
+    66→  Upload,
+    67→  FileDown,
+    68→  FileSpreadsheet,
+    69→} from 'lucide-react';
+    70→
+    71→// ═══════════════════════════════════════════════════════════════════════
+    72→//  Shared Helpers
+    73→// ═══════════════════════════════════════════════════════════════════════
+    74→
+    75→function PageHeader({
+    76→  title,
+    77→  description,
+    78→  action,
+    79→}: {
+    80→  title: string;
+    81→  description: string;
+    82→  action?: React.ReactNode;
+    83→}) {
+    84→  return (
+    85→    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    86→      <div>
+    87→        <h1 className="text-2xl font-bold tracking-tight">{title}</h1>
+    88→        <p className="text-muted-foreground">{description}</p>
+    89→      </div>
+    90→      {action && <div className="flex items-center gap-2">{action}</div>}
+    91→    </div>
+    92→  );
+    93→}
+    94→
+    95→function EmptyState({
+    96→  icon: Icon,
+    97→  title,
+    98→  description,
+    99→  action,
+   100→}: {
+   101→  icon: React.ElementType;
+   102→  title: string;
+   103→  description: string;
+   104→  action?: React.ReactNode;
+   105→}) {
+   106→  return (
+   107→    <div className="flex h-48 items-center justify-center text-muted-foreground">
+   108→      <div className="text-center">
+   109→        <Icon className="mx-auto h-10 w-10 text-muted-foreground/40" />
+   110→        <p className="mt-3 text-sm font-medium">{title}</p>
+   111→        <p className="mt-1 text-xs text-muted-foreground/80 max-w-sm">
+   112→          {description}
+   113→        </p>
+   114→        {action && <div className="mt-4">{action}</div>}
+   115→      </div>
+   116→    </div>
+   117→  );
+   118→}
+   119→
+   120→function MiniStatCard({
+   121→  title,
+   122→  value,
+   123→  icon,
+   124→  trend,
+   125→  trendValue,
+   126→}: {
+   127→  title: string;
+   128→  value: string | number;
+   129→  icon: React.ReactNode;
+   130→  trend?: 'up' | 'down';
+   131→  trendValue?: string;
+   132→}) {
+   133→  return (
+   134→    <Card className="relative overflow-hidden">
+   135→      <CardContent className="p-4 sm:p-5">
+   136→        <div className="flex items-start justify-between">
+   137→          <div className="space-y-1">
+   138→            <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+   139→              {title}
+   140→            </p>
+   141→            <p className="text-xl sm:text-2xl font-bold tracking-tight">{value}</p>
+   142→            {trendValue && (
+   143→              <p className="text-xs text-muted-foreground flex items-center gap-1">
+   144→                {trend === 'up' && (
+   145→                  <ArrowUpRight className="h-3 w-3 text-emerald-500" />
+   146→                )}
+   147→                {trend === 'down' && (
+   148→                  <ArrowDownRight className="h-3 w-3 text-red-500" />
+   149→                )}
+   150→                <span
+   151→                  className={
+   152→                    trend === 'up'
+   153→                      ? 'text-emerald-600'
+   154→                      : trend === 'down'
+   155→                        ? 'text-red-600'
+   156→                        : ''
+   157→                  }
+   158→                >
+   159→                  {trendValue}
+   160→                </span>
+   161→              </p>
+   162→            )}
+   163→          </div>
+   164→          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+   165→            {icon}
+   166→          </div>
+   167→        </div>
+   168→      </CardContent>
+   169→    </Card>
+   170→  );
+   171→}
+   172→
+   173→function getRoleBadge(role: string) {
+   174→  const map: Record<string, { label: string; cls: string }> = {
+   175→    SUPER_ADMIN: {
+   176→      label: 'Super Admin',
+   177→      cls: 'bg-purple-100 text-purple-700 border-purple-200',
+   178→    },
+   179→    ADMIN_SCHOOL: {
+   180→      label: 'Admin',
+   181→      cls: 'bg-blue-100 text-blue-700 border-blue-200',
+   182→    },
+   183→    GURU: {
+   184→      label: 'Guru',
+   185→      cls: 'bg-amber-100 text-amber-700 border-amber-200',
+   186→    },
+   187→    SISWA: {
+   188→      label: 'Siswa',
+   189→      cls: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+   190→    },
+   191→    ORANG_TUA: {
+   192→      label: 'Orang Tua',
+   193→      cls: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+   194→    },
+   195→  };
+   196→  const r = map[role] ?? { label: role, cls: 'bg-gray-100 text-gray-700 border-gray-200' };
+   197→  return <Badge variant="outline" className={r.cls}>{r.label}</Badge>;
+   198→}
+   199→
+   200→function getStatusBadge(status: string) {
+   201→  const s = status?.toLowerCase();
+   202→  if (s === 'active' || s === 'aktif') {
+   203→    return (
+   204→      <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+   205→        <CheckCircle2 className="mr-1 h-3 w-3" />
+   206→        Aktif
+   207→      </Badge>
+   208→    );
+   209→  }
+   210→  if (s === 'inactive' || s === 'nonaktif' || s === 'tidak aktif') {
+   211→    return (
+   212→      <Badge variant="outline" className="bg-gray-50 text-gray-500 border-gray-200">
+   213→        <XCircle className="mr-1 h-3 w-3" />
+   214→        Nonaktif
+   215→      </Badge>
+   216→    );
+   217→  }
+   218→  return (
+   219→    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+   220→      <AlertCircle className="mr-1 h-3 w-3" />
+   221→      {status}
+   222→    </Badge>
+   223→  );
+   224→}
+   225→
+   226→// ═══════════════════════════════════════════════════════════════════════
+   227→//  1. UsersGlobalView
+   228→// ═══════════════════════════════════════════════════════════════════════
+   229→
+   230→const PLACEHOLDER_USERS = [
+   231→  { id: '1', name: 'Dr. Surya Dharma, M.Pd.', email: 'surya@smakn1.sch.id', role: 'ADMIN_SCHOOL', school: 'SMA KN 1 Bandung', status: 'active' },
+   232→  { id: '2', name: 'Rina Wulandari, S.Pd.', email: 'rina.w@smakn1.sch.id', role: 'GURU', school: 'SMA KN 1 Bandung', status: 'active' },
+   233→  { id: '3', name: 'Ahmad Fauzan', email: 'ahmad.fauzan@siswa.sch.id', role: 'SISWA', school: 'SMA KN 1 Bandung', status: 'active' },
+   234→  { id: '4', name: 'Budi Santoso', email: 'budi.s@ortu.sch.id', role: 'ORANG_TUA', school: 'SMA KN 1 Bandung', status: 'active' },
+   235→  { id: '5', name: 'Ir. Hendra Wijaya, M.T.', email: 'hendra@smansa.sch.id', role: 'ADMIN_SCHOOL', school: 'SMAN 1 Surabaya', status: 'active' },
+   236→  { id: '6', name: 'Dewi Kartika, S.Pd.', email: 'dewi.k@smansa.sch.id', role: 'GURU', school: 'SMAN 1 Surabaya', status: 'active' },
+   237→  { id: '7', name: 'Rizky Pratama', email: 'rizky.p@siswa.sch.id', role: 'SISWA', school: 'SMAN 1 Surabaya', status: 'inactive' },
+   238→  { id: '8', name: 'Siti Aminah, M.Pd.', email: 'siti@smam2.sch.id', role: 'ADMIN_SCHOOL', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
+   239→  { id: '9', name: 'Agus Supriyadi', email: 'agus.s@smam2.sch.id', role: 'GURU', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
+   240→  { id: '10', name: 'Putri Amelia', email: 'putri.a@siswa.sch.id', role: 'SISWA', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
+   241→  { id: '11', name: 'Fajar Nugroho', email: 'fajar.n@siswa.sch.id', role: 'SISWA', school: 'SMA KN 1 Bandung', status: 'active' },
+   242→  { id: '12', name: 'Lina Marlina, S.Pd.', email: 'lina@smansa.sch.id', role: 'GURU', school: 'SMAN 1 Surabaya', status: 'inactive' },
+   243→];
+   244→
+   245→export function UsersGlobalView() {
+   246→  const [search, setSearch] = useState('');
+   247→  const [roleFilter, setRoleFilter] = useState('all');
+   248→
+   249→  const filtered = useMemo(() => {
+   250→    let list = PLACEHOLDER_USERS;
+   251→    if (roleFilter !== 'all') {
+   252→      list = list.filter((u) => u.role === roleFilter);
+   253→    }
+   254→    if (search.trim()) {
+   255→      const q = search.toLowerCase();
+   256→      list = list.filter(
+   257→        (u) =>
+   258→          u.name.toLowerCase().includes(q) ||
+   259→          u.email.toLowerCase().includes(q) ||
+   260→          u.school.toLowerCase().includes(q)
+   261→      );
+   262→    }
+   263→    return list;
+   264→  }, [search, roleFilter]);
+   265→
+   266→  const stats = useMemo(() => {
+   267→    const all = PLACEHOLDER_USERS;
+   268→    return {
+   269→      total: all.length,
+   270→      guru: all.filter((u) => u.role === 'GURU').length,
+   271→      siswa: all.filter((u) => u.role === 'SISWA').length,
+   272→      admin: all.filter((u) => u.role === 'ADMIN_SCHOOL').length,
+   273→      ortu: all.filter((u) => u.role === 'ORANG_TUA').length,
+   274→    };
+   275→  }, []);
+   276→
+   277→  return (
+   278→    <div className="space-y-6">
+   279→      <PageHeader
+   280→        title="Pengguna Global"
+   281→        description="Kelola semua pengguna dari seluruh sekolah di platform PANDAI."
+   282→        action={
+   283→          <Button
+   284→            className="bg-[#1F3864] hover:bg-[#152850]"
+   285→            onClick={() => toast.info('Fitur unduh data pengguna akan segera hadir.')}
+   286→          >
+   287→            <Download className="mr-2 h-4 w-4" />
+   288→            Ekspor Data
+   289→          </Button>
+   290→        }
+   291→      />
+   292→
+   293→      {/* Stats Cards */}
+   294→      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-5">
+   295→        <MiniStatCard title="Total Pengguna" value={stats.total} icon={<Users className="h-4 w-4" />} trend="up" trendValue="+12% bulan ini" />
+   296→        <MiniStatCard title="Guru" value={stats.guru} icon={<UserCog className="h-4 w-4" />} />
+   297→        <MiniStatCard title="Siswa" value={stats.siswa} icon={<GraduationCap className="h-4 w-4" />} trend="up" trendValue="+24 bulan ini" />
+   298→        <MiniStatCard title="Admin Sekolah" value={stats.admin} icon={<School className="h-4 w-4" />} />
+   299→        <MiniStatCard title="Orang Tua" value={stats.ortu} icon={<Baby className="h-4 w-4" />} />
+   300→      </div>
+   301→
+   302→      {/* Search & Filters */}
+   303→      <Card>
+   304→        <CardContent className="p-4 sm:p-6">
+   305→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+   306→            <div className="relative flex-1 max-w-md">
+   307→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   308→              <Input
+   309→                placeholder="Cari nama, email, atau sekolah..."
+   310→                value={search}
+   311→                onChange={(e) => setSearch(e.target.value)}
+   312→                className="pl-9"
+   313→              />
+   314→            </div>
+   315→            <Tabs value={roleFilter} onValueChange={setRoleFilter}>
+   316→              <TabsList>
+   317→                <TabsTrigger value="all">Semua</TabsTrigger>
+   318→                <TabsTrigger value="GURU">Guru</TabsTrigger>
+   319→                <TabsTrigger value="SISWA">Siswa</TabsTrigger>
+   320→                <TabsTrigger value="ADMIN_SCHOOL">Admin</TabsTrigger>
+   321→                <TabsTrigger value="ORANG_TUA">Ortu</TabsTrigger>
+   322→              </TabsList>
+   323→            </Tabs>
+   324→          </div>
+   325→        </CardContent>
+   326→      </Card>
+   327→
+   328→      {/* Users Table */}
+   329→      <Card>
+   330→        <CardContent className="p-0">
+   331→          <div className="overflow-x-auto">
+   332→            <Table>
+   333→              <TableHeader>
+   334→                <TableRow className="bg-muted/50">
+   335→                  <TableHead className="w-[50px]">No</TableHead>
+   336→                  <TableHead>Nama</TableHead>
+   337→                  <TableHead className="hidden md:table-cell">Email / Username</TableHead>
+   338→                  <TableHead>Role</TableHead>
+   339→                  <TableHead className="hidden lg:table-cell">Sekolah</TableHead>
+   340→                  <TableHead>Status</TableHead>
+   341→                  <TableHead className="w-[50px]"><span className="sr-only">Aksi</span></TableHead>
+   342→                </TableRow>
+   343→              </TableHeader>
+   344→              <TableBody>
+   345→                {filtered.length === 0 ? (
+   346→                  <TableRow>
+   347→                    <TableCell colSpan={7}>
+   348→                      <EmptyState
+   349→                        icon={Users}
+   350→                        title="Tidak ada pengguna ditemukan"
+   351→                        description="Coba ubah filter atau kata kunci pencarian Anda."
+   352→                      />
+   353→                    </TableCell>
+   354→                  </TableRow>
+   355→                ) : (
+   356→                  filtered.map((user, idx) => (
+   357→                    <TableRow key={user.id} className="group">
+   358→                      <TableCell className="text-muted-foreground text-sm">
+   359→                        {idx + 1}
+   360→                      </TableCell>
+   361→                      <TableCell>
+   362→                        <div className="flex items-center gap-3">
+   363→                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1F3864]/10 text-[#1F3864] text-xs font-semibold">
+   364→                            {user.name
+   365→                              .split(' ')
+   366→                              .map((n) => n[0])
+   367→                              .join('')
+   368→                              .slice(0, 2)}
+   369→                          </div>
+   370→                          <span className="font-medium text-sm">{user.name}</span>
+   371→                        </div>
+   372→                      </TableCell>
+   373→                      <TableCell className="hidden md:table-cell text-muted-foreground text-sm">
+   374→                        {user.email}
+   375→                      </TableCell>
+   376→                      <TableCell>{getRoleBadge(user.role)}</TableCell>
+   377→                      <TableCell className="hidden lg:table-cell text-sm">
+   378→                        <div className="flex items-center gap-1.5">
+   379→                          <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
+   380→                          {user.school}
+   381→                        </div>
+   382→                      </TableCell>
+   383→                      <TableCell>{getStatusBadge(user.status)}</TableCell>
+   384→                      <TableCell>
+   385→                        <Button
+   386→                          variant="ghost"
+   387→                          size="icon"
+   388→                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+   389→                          onClick={() => toast.info(`Detail pengguna: ${user.name}`)}
+   390→                        >
+   391→                          <MoreHorizontal className="h-4 w-4" />
+   392→                        </Button>
+   393→                      </TableCell>
+   394→                    </TableRow>
+   395→                  ))
+   396→                )}
+   397→              </TableBody>
+   398→            </Table>
+   399→          </div>
+   400→          {filtered.length > 0 && (
+   401→            <div className="border-t px-4 py-3 text-sm text-muted-foreground flex items-center justify-between">
+   402→              <span>Menampilkan {filtered.length} dari {PLACEHOLDER_USERS.length} pengguna</span>
+   403→              <Button variant="ghost" size="sm" className="text-xs">
+   404→                <ChevronRight className="mr-1 h-3 w-3" />
+   405→                Selanjutnya
+   406→              </Button>
+   407→            </div>
+   408→          )}
+   409→        </CardContent>
+   410→      </Card>
+   411→    </div>
+   412→  );
+   413→}
+   414→
+   415→// ═══════════════════════════════════════════════════════════════════════
+   416→//  2. QuestionsGlobalView
+   417→// ═══════════════════════════════════════════════════════════════════════
+   418→
+   419→const PLACEHOLDER_QUESTIONS = [
+   420→  { id: 'Q001', subject: 'Matematika', topic: 'Aljabar', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'published', author: 'Rina Wulandari, S.Pd.', school: 'SMA KN 1 Bandung', usageCount: 142 },
+   421→  { id: 'Q002', subject: 'Fisika', topic: 'Kinematika', type: 'Pilihan Ganda', difficulty: 'Sulit', status: 'published', author: 'Dewi Kartika, S.Pd.', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 98 },
+   422→  { id: 'Q003', subject: 'Bahasa Indonesia', topic: 'Teks Narasi', type: 'Esai', difficulty: 'Mudah', status: 'published', author: 'Agus Supriyadi', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 67 },
+   423→  { id: 'Q004', subject: 'Biologi', topic: 'Sel dan Jaringan', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'draft', author: 'Lina Marlina, S.Pd.', school: 'SMAN 1 Surabaya', usageCount: 0 },
+   424→  { id: 'Q005', subject: 'Kimia', topic: 'Stoikiometri', type: 'Pilihan Ganda', difficulty: 'Sulit', status: 'published', author: 'Rina Wulandari, S.Pd.', school: 'SMA KN 1 Bandung', usageCount: 210 },
+   425→  { id: 'Q006', subject: 'Matematika', topic: 'Geometri', type: 'Pilihan Ganda', difficulty: 'Mudah', status: 'archived', author: 'Dewi Kartika, S.Pd.', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 45 },
+   426→  { id: 'Q007', subject: 'Bahasa Inggris', topic: 'Reading Comprehension', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'published', author: 'Agus Supriyadi', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 189 },
+   427→  { id: 'Q008', subject: 'Fisika', topic: 'Dinamika', type: 'Pilihan Ganda', difficulty: 'Sulit', status: 'draft', author: 'Rina Wulandari, S.Pd.', school: 'SMA KN 1 Bandung', usageCount: 0 },
+   428→  { id: 'Q009', subject: 'Sejarah', topic: 'Kemerdekaan Indonesia', type: 'Esai', difficulty: 'Mudah', status: 'published', author: 'Lina Marlina, S.Pd.', school: 'SMAN 1 Surabaya', usageCount: 34 },
+   429→  { id: 'Q010', subject: 'Matematika', topic: 'Statistika', type: 'Pilihan Ganda', difficulty: 'Sedang', status: 'published', author: 'Dewi Kartika, S.Pd.', school: 'SMA Muhammadiyah 2 Jakarta', usageCount: 156 },
+   430→];
+   431→
+   432→const SUBJECTS = ['Semua', 'Matematika', 'Fisika', 'Kimia', 'Biologi', 'Bahasa Indonesia', 'Bahasa Inggris', 'Sejarah'];
+   433→
+   434→function getDifficultyBadge(d: string) {
+   435→  const map: Record<string, { cls: string }> = {
+   436→    Mudah: { cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+   437→    Sedang: { cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+   438→    Sulit: { cls: 'bg-red-50 text-red-700 border-red-200' },
+   439→  };
+   440→  const m = map[d] ?? { cls: 'bg-gray-50 text-gray-600 border-gray-200' };
+   441→  return <Badge variant="outline" className={m.cls}>{d}</Badge>;
+   442→}
+   443→
+   444→function getQuestionStatusBadge(s: string) {
+   445→  const map: Record<string, { label: string; cls: string }> = {
+   446→    published: { label: 'Published', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+   447→    draft: { label: 'Draft', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+   448→    archived: { label: 'Archived', cls: 'bg-gray-100 text-gray-500 border-gray-200' },
+   449→  };
+   450→  const m = map[s] ?? { label: s, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
+   451→  return <Badge variant="outline" className={m.cls}>{m.label}</Badge>;
+   452→}
+   453→
+   454→export function QuestionsGlobalView() {
+   455→  const [search, setSearch] = useState('');
+   456→  const [subjectFilter, setSubjectFilter] = useState('Semua');
+   457→  const [statusFilter, setStatusFilter] = useState('all');
+   458→
+   459→  const filtered = useMemo(() => {
+   460→    let list = PLACEHOLDER_QUESTIONS;
+   461→    if (subjectFilter !== 'Semua') {
+   462→      list = list.filter((q) => q.subject === subjectFilter);
+   463→    }
+   464→    if (statusFilter !== 'all') {
+   465→      list = list.filter((q) => q.status === statusFilter);
+   466→    }
+   467→    if (search.trim()) {
+   468→      const q = search.toLowerCase();
+   469→      list = list.filter(
+   470→        (item) =>
+   471→          item.topic.toLowerCase().includes(q) ||
+   472→          item.subject.toLowerCase().includes(q) ||
+   473→          item.author.toLowerCase().includes(q)
+   474→      );
+   475→    }
+   476→    return list;
+   477→  }, [search, subjectFilter, statusFilter]);
+   478→
+   479→  const stats = useMemo(() => {
+   480→    const all = PLACEHOLDER_QUESTIONS;
+   481→    return {
+   482→      total: all.length,
+   483→      published: all.filter((q) => q.status === 'published').length,
+   484→      draft: all.filter((q) => q.status === 'draft').length,
+   485→      archived: all.filter((q) => q.status === 'archived').length,
+   486→    };
+   487→  }, []);
+   488→
+   489→  return (
+   490→    <div className="space-y-6">
+   491→      <PageHeader
+   492→        title="Bank Soal Global"
+   493→        description="Kelola seluruh bank soal dari semua sekolah. Soal yang dipublish dapat digunakan di NALAR tryout."
+   494→        action={
+   495→          <Button
+   496→            className="bg-[#1F3864] hover:bg-[#152850]"
+   497→            onClick={() => toast.info('Fitur import soal akan segera hadir.')}
+   498→          >
+   499→            <Upload className="mr-2 h-4 w-4" />
+   500→            Import Soal
+   501→          </Button>
+   502→        }
+   503→      />
+   504→
+   505→      {/* Stats */}
+   506→      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+   507→        <MiniStatCard title="Total Soal" value={stats.total} icon={<BookOpen className="h-4 w-4" />} trend="up" trendValue="+18 bulan ini" />
+   508→        <MiniStatCard title="Published" value={stats.published} icon={<CheckCircle2 className="h-4 w-4" />} />
+   509→        <MiniStatCard title="Draft" value={stats.draft} icon={<FileText className="h-4 w-4" />} />
+   510→        <MiniStatCard title="Archived" value={stats.archived} icon={<Archive className="h-4 w-4" />} />
+   511→      </div>
+   512→
+   513→      {/* Filters */}
+   514→      <Card>
+   515→        <CardContent className="p-4 sm:p-6">
+   516→          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+   517→            <div className="relative flex-1 max-w-md">
+   518→              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   519→              <Input
+   520→                placeholder="Cari topik, mata pelajaran, atau penulis..."
+   521→                value={search}
+   522→                onChange={(e) => setSearch(e.target.value)}
+   523→                className="pl-9"
+   524→              />
+   525→            </div>
+   526→            <div className="flex flex-wrap items-center gap-2">
+   527→              <Tabs value={statusFilter} onValueChange={setStatusFilter}>
+   528→                <TabsList>
+   529→                  <TabsTrigger value="all">Semua</TabsTrigger>
+   530→                  <TabsTrigger value="published">Published</TabsTrigger>
+   531→                  <TabsTrigger value="draft">Draft</TabsTrigger>
+   532→                  <TabsTrigger value="archived">Archived</TabsTrigger>
+   533→                </TabsList>
+   534→              </Tabs>
+   535→            </div>
+   536→          </div>
+   537→          {/* Subject pills */}
+   538→          <div className="mt-4 flex flex-wrap gap-2">
+   539→            {SUBJECTS.map((s) => (
+   540→              <Button
+   541→                key={s}
+   542→                variant={subjectFilter === s ? 'default' : 'outline'}
+   543→                size="sm"
+   544→                className={
+   545→                  subjectFilter === s
+   546→                    ? 'bg-[#1F3864] hover:bg-[#152850] text-xs'
+   547→                    : 'text-xs'
+   548→                }
+   549→                onClick={() => setSubjectFilter(s)}
+   550→              >
+   551→                {s}
+   552→              </Button>
+   553→            ))}
+   554→          </div>
+   555→        </CardContent>
+   556→      </Card>
+   557→
+   558→      {/* Questions Table */}
+   559→      <Card>
+   560→        <CardContent className="p-0">
+   561→          <div className="overflow-x-auto">
+   562→            <Table>
+   563→              <TableHeader>
+   564→                <TableRow className="bg-muted/50">
+   565→                  <TableHead className="w-[70px]">ID</TableHead>
+   566→                  <TableHead>Mata Pelajaran</TableHead>
+   567→                  <TableHead>Topik</TableHead>
+   568→                  <TableHead className="hidden sm:table-cell">Tipe</TableHead>
+   569→                  <TableHead className="hidden md:table-cell">Kesulitan</TableHead>
+   570→                  <TableHead>Status</TableHead>
+   571→                  <TableHead className="hidden xl:table-cell">Penggunaan</TableHead>
+   572→                  <TableHead className="hidden lg:table-cell">Pembuat</TableHead>
+   573→                  <TableHead className="w-[50px]"><span className="sr-only">Aksi</span></TableHead>
+   574→                </TableRow>
+   575→              </TableHeader>
+   576→              <TableBody>
+   577→                {filtered.length === 0 ? (
+   578→                  <TableRow>
+   579→                    <TableCell colSpan={9}>
+   580→                      <EmptyState
+   581→                        icon={BookOpen}
+   582→                        title="Tidak ada soal ditemukan"
+   583→                        description="Coba ubah filter atau kata kunci pencarian Anda."
+   584→                      />
+   585→                    </TableCell>
+   586→                  </TableRow>
+   587→                ) : (
+   588→                  filtered.map((q) => (
+   589→                    <TableRow key={q.id} className="group">
+   590→                      <TableCell className="font-mono text-xs text-muted-foreground">
+   591→                        {q.id}
+   592→                      </TableCell>
+   593→                      <TableCell className="font-medium text-sm">{q.subject}</TableCell>
+   594→                      <TableCell className="text-sm text-muted-foreground">{q.topic}</TableCell>
+   595→                      <TableCell className="hidden sm:table-cell">
+   596→                        <Badge variant="secondary" className="text-xs">
+   597→                          {q.type}
+   598→                        </Badge>
+   599→                      </TableCell>
+   600→                      <TableCell className="hidden md:table-cell">{getDifficultyBadge(q.difficulty)}</TableCell>
+   601→                      <TableCell>{getQuestionStatusBadge(q.status)}</TableCell>
+   602→                      <TableCell className="hidden xl:table-cell">
+   603→                        {q.usageCount > 0 ? (
+   604→                          <span className="text-sm font-medium">{q.usageCount}x</span>
+   605→                        ) : (
+   606→                          <span className="text-xs text-muted-foreground">-</span>
+   607→                        )}
+   608→                      </TableCell>
+   609→                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+   610→                        {q.author}
+   611→                      </TableCell>
+   612→                      <TableCell>
+   613→                        <Button
+   614→                          variant="ghost"
+   615→                          size="icon"
+   616→                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+   617→                          onClick={() => toast.info(`Detail soal: ${q.id} - ${q.topic}`)}
+   618→                        >
+   619→                          <Eye className="h-4 w-4" />
+   620→                        </Button>
+   621→                      </TableCell>
+   622→                    </TableRow>
+   623→                  ))
+   624→                )}
+   625→              </TableBody>
+   626→            </Table>
+   627→          </div>
+   628→          {filtered.length > 0 && (
+   629→            <div className="border-t px-4 py-3 text-sm text-muted-foreground flex items-center justify-between">
+   630→              <span>Menampilkan {filtered.length} dari {PLACEHOLDER_QUESTIONS.length} soal</span>
+   631→              <Button variant="ghost" size="sm" className="text-xs">
+   632→                <ChevronRight className="mr-1 h-3 w-3" />
+   633→                Selanjutnya
+   634→              </Button>
+   635→            </div>
+   636→          )}
+   637→        </CardContent>
+   638→      </Card>
+   639→    </div>
+   640→  );
+   641→}
+   642→
+   643→// Helper icon for archived stat card (to avoid extra import)
+   644→function Archive({ className }: { className?: string }) {
+   645→  return (
+   646→    <svg
+   647→      xmlns="http://www.w3.org/2000/svg"
+   648→      viewBox="0 0 24 24"
+   649→      fill="none"
+   650→      stroke="currentColor"
+   651→      strokeWidth="2"
+   652→      strokeLinecap="round"
+   653→      strokeLinejoin="round"
+   654→      className={className}
+   655→    >
+   656→      <rect width="20" height="5" x="2" y="3" rx="1" />
+   657→      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+   658→      <path d="M10 12h4" />
+   659→    </svg>
+   660→  );
+   661→}
+   662→
+   663→// ═══════════════════════════════════════════════════════════════════════
+   664→//  3. ReportsGlobalView
+   665→// ═══════════════════════════════════════════════════════════════════════
+   666→
+   667→const REPORT_TYPES = [
+   668→  {
+   669→    id: 'school',
+   670→    title: 'Laporan Sekolah',
+   671→    description: 'Ringkasan data sekolah termasuk jumlah siswa, guru, dan aktivitas.',
+   672→    icon: Building2,
+   673→    color: 'bg-blue-50 text-blue-600 border-blue-200',
+   674→    count: 3,
+   675→  },
+   676→  {
+   677→    id: 'tryout',
+   678→    title: 'Laporan Hasil Tryout',
+   679→    description: 'Analisis hasil tryout per sekolah, mata pelajaran, dan kompetensi.',
+   680→    icon: ClipboardCheck,
+   681→    color: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+   682→    count: 12,
+   683→  },
+   684→  {
+   685→    id: 'attendance',
+   686→    title: 'Laporan Kehadiran',
+   687→    description: 'Data kehadiran siswa dan guru dalam mengikuti tryout dan aktivitas.',
+   688→    icon: UserCheck,
+   689→    color: 'bg-amber-50 text-amber-600 border-amber-200',
+   690→    count: 8,
+   691→  },
+   692→  {
+   693→    id: 'financial',
+   694→    title: 'Laporan Keuangan',
+   695→    description: 'Ringkasan pendapatan, langganan, dan status pembayaran sekolah.',
+   696→    icon: Wallet,
+   697→    color: 'bg-purple-50 text-purple-600 border-purple-200',
+   698→    count: 2,
+   699→  },
+   700→];
+   701→
+   702→const RECENT_REPORTS = [
+   703→  { id: 'R001', name: 'Laporan Hasil Tryout TKA - Gelombang 1', type: 'tryout', generatedAt: '2025-01-15 09:30', generatedBy: 'Super Admin', size: '2.4 MB' },
+   704→  { id: 'R002', name: 'Ringkasan Data Sekolah - Januari 2025', type: 'school', generatedAt: '2025-01-14 14:15', generatedBy: 'Super Admin', size: '1.1 MB' },
+   705→  { id: 'R003', name: 'Laporan Kehadiran Tryout Semester 1', type: 'attendance', generatedAt: '2025-01-10 11:00', generatedBy: 'Super Admin', size: '3.8 MB' },
+   706→  { id: 'R004', name: 'Laporan Keuangan Q4 2024', type: 'financial', generatedAt: '2025-01-05 08:45', generatedBy: 'Super Admin', size: '890 KB' },
+   707→  { id: 'R005', name: 'Laporan Analisis Butir Soal - Matematika', type: 'tryout', generatedAt: '2024-12-28 16:20', generatedBy: 'Super Admin', size: '5.2 MB' },
+   708→];
+   709→
+   710→function getReportTypeBadge(type: string) {
+   711→  const map: Record<string, { label: string; cls: string }> = {
+   712→    school: { label: 'Sekolah', cls: 'bg-blue-50 text-blue-700 border-blue-200' },
+   713→    tryout: { label: 'Tryout', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+   714→    attendance: { label: 'Kehadiran', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+   715→    financial: { label: 'Keuangan', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+   716→  };
+   717→  const m = map[type] ?? { label: type, cls: 'bg-gray-50 text-gray-600 border-gray-200' };
+   718→  return <Badge variant="outline" className={m.cls}>{m.label}</Badge>;
+   719→}
+   720→
+   721→export function ReportsGlobalView() {
+   722→  const [generating, setGenerating] = useState<string | null>(null);
+   723→
+   724→  function handleGenerate(type: string) {
+   725→    setGenerating(type);
+   726→    setTimeout(() => {
+   727→      setGenerating(null);
+   728→      toast.success(`Laporan berhasil digenerate!`);
+   729→    }, 2000);
+   730→  }
+   731→
+   732→  return (
+   733→    <div className="space-y-6">
+   734→      <PageHeader
+   735→        title="Laporan Global"
+   736→        description="Buat dan kelola laporan lintas sekolah di platform PANDAI."
+   737→        action={
+   738→          <Button
+   739→            className="bg-[#1F3864] hover:bg-[#152850]"
+   740→            onClick={() => toast.info('Fitur jadwalkan laporan akan segera hadir.')}
+   741→          >
+   742→            <Clock className="mr-2 h-4 w-4" />
+   743→            Jadwalkan Laporan
+   744→          </Button>
+   745→        }
+   746→      />
+   747→
+   748→      {/* Report Type Cards */}
+   749→      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+   750→        {REPORT_TYPES.map((rt) => {
+   751→          const Icon = rt.icon;
+   752→          const isGenerating = generating === rt.id;
+   753→          return (
+   754→            <Card
+   755→              key={rt.id}
+   756→              className="group cursor-pointer transition-all hover:shadow-md hover:border-[#1F3864]/20"
+   757→              onClick={() => handleGenerate(rt.id)}
+   758→            >
+   759→              <CardHeader className="pb-3">
+   760→                <div className="flex items-start justify-between">
+   761→                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg border ${rt.color}`}>
+   762→                    <Icon className="h-5 w-5" />
+   763→                  </div>
+   764→                  <Badge variant="secondary" className="text-xs">
+   765→                    {rt.count} laporan
+   766→                  </Badge>
+   767→                </div>
+   768→              </CardHeader>
+   769→              <CardContent className="pt-0">
+   770→                <CardTitle className="text-sm font-semibold mb-1">{rt.title}</CardTitle>
+   771→                <CardDescription className="text-xs mb-3">
+   772→                  {rt.description}
+   773→                </CardDescription>
+   774→                <Button
+   775→                  variant="outline"
+   776→                  size="sm"
+   777→                  className="w-full text-xs"
+   778→                  disabled={isGenerating}
+   779→                >
+   780→                  {isGenerating ? (
+   781→                    <>
+   782→                      <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
+   783→                      Generating...
+   784→                    </>
+   785→                  ) : (
+   786→                    <>
+   787→                      <FileBarChart className="mr-1.5 h-3 w-3" />
+   788→                      Generate Laporan
+   789→                    </>
+   790→                  )}
+   791→                </Button>
+   792→              </CardContent>
+   793→            </Card>
+   794→          );
+   795→        })}
+   796→      </div>
+   797→
+   798→      {/* Recent Reports */}
+   799→      <Card>
+   800→        <CardHeader>
+   801→          <div className="flex items-center justify-between">
+   802→            <div>
+   803→              <CardTitle className="text-lg">Laporan Terbaru</CardTitle>
+   804→              <CardDescription>Daftar laporan yang sudah pernah di-generate.</CardDescription>
+   805→            </div>
+   806→            <Button
+   807→              variant="outline"
+   808→              size="sm"
+   809→              className="text-xs"
+   810→              onClick={() => toast.info('Menampilkan semua riwayat laporan.')}
+   811→            >
+   812→              Lihat Semua
+   813→              <ChevronRight className="ml-1 h-3 w-3" />
+   814→            </Button>
+   815→          </div>
+   816→        </CardHeader>
+   817→        <CardContent className="p-0">
+   818→          <div className="overflow-x-auto">
+   819→            <Table>
+   820→              <TableHeader>
+   821→                <TableRow className="bg-muted/50">
+   822→                  <TableHead className="w-[70px]">ID</TableHead>
+   823→                  <TableHead>Nama Laporan</TableHead>
+   824→                  <TableHead className="hidden sm:table-cell">Tipe</TableHead>
+   825→                  <TableHead className="hidden md:table-cell">Tanggal Dibuat</TableHead>
+   826→                  <TableHead className="hidden lg:table-cell">Oleh</TableHead>
+   827→                  <TableHead className="hidden md:table-cell">Ukuran</TableHead>
+   828→                  <TableHead className="w-[80px] text-right">Aksi</TableHead>
+   829→                </TableRow>
+   830→              </TableHeader>
+   831→              <TableBody>
+   832→                {RECENT_REPORTS.map((r) => (
+   833→                  <TableRow key={r.id} className="group">
+   834→                    <TableCell className="font-mono text-xs text-muted-foreground">
+   835→                      {r.id}
+   836→                    </TableCell>
+   837→                    <TableCell>
+   838→                      <div className="flex items-center gap-2">
+   839→                        <FileSpreadsheet className="h-4 w-4 text-muted-foreground shrink-0" />
+   840→                        <span className="font-medium text-sm">{r.name}</span>
+   841→                      </div>
+   842→                    </TableCell>
+   843→                    <TableCell className="hidden sm:table-cell">{getReportTypeBadge(r.type)}</TableCell>
+   844→                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+   845→                      {r.generatedAt}
+   846→                    </TableCell>
+   847→                    <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+   848→                      {r.generatedBy}
+   849→                    </TableCell>
+   850→                    <TableCell className="hidden md:table-cell text-sm text-muted-foreground">
+   851→                      {r.size}
+   852→                    </TableCell>
+   853→                    <TableCell className="text-right">
+   854→                      <div className="flex items-center justify-end gap-1">
+   855→                        <Button
+   856→                          variant="ghost"
+   857→                          size="icon"
+   858→                          className="h-8 w-8"
+   859→                          onClick={() => toast.info(`Mengunduh: ${r.name}`)}
+   860→                        >
+   861→                          <FileDown className="h-4 w-4" />
+   862→                        </Button>
+   863→                        <Button
+   864→                          variant="ghost"
+   865→                          size="icon"
+   866→                          className="h-8 w-8 text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity"
+   867→                          onClick={() => toast.info('Menghapus laporan...')}
+   868→                        >
+   869→                          <Trash2 className="h-4 w-4" />
+   870→                        </Button>
+   871→                      </div>
+   872→                    </TableCell>
+   873→                  </TableRow>
+   874→                ))}
+   875→              </TableBody>
+   876→            </Table>
+   877→          </div>
+   878→          <div className="border-t px-4 py-3 text-sm text-muted-foreground flex items-center justify-between">
+   879→            <span>Menampilkan {RECENT_REPORTS.length} laporan terbaru</span>
+   880→            <Button variant="ghost" size="sm" className="text-xs">
+   881→              <ChevronRight className="mr-1 h-3 w-3" />
+   882→              Selanjutnya
+   883→            </Button>
+   884→          </div>
+   885→        </CardContent>
+   886→      </Card>
+   887→    </div>
+   888→  );
+   889→}
+   890→
+   891→// ═══════════════════════════════════════════════════════════════════════
+   892→//  4. AnalyticsGlobalView
+   893→// ═══════════════════════════════════════════════════════════════════════
+   894→
+   895→const TOP_SCHOOLS = [
+   896→  { rank: 1, name: 'SMA KN 1 Bandung', students: 342, avgScore: 78.5, completionRate: 92, plan: 'PRO' },
+   897→  { rank: 2, name: 'SMAN 1 Surabaya', students: 287, avgScore: 75.2, completionRate: 88, plan: 'PRO' },
+   898→  { rank: 3, name: 'SMA Muhammadiyah 2 Jakarta', students: 198, avgScore: 72.8, completionRate: 85, plan: 'STARTER' },
+   899→  { rank: 4, name: 'SMAN 3 Semarang', students: 156, avgScore: 70.1, completionRate: 79, plan: 'STARTER' },
+   900→  { rank: 5, name: 'SMA IT Al-Azhar', students: 124, avgScore: 68.4, completionRate: 74, plan: 'FREE' },
+   901→];
+   902→
+   903→function getRankBadge(rank: number) {
+   904→  if (rank === 1) return <Badge className="bg-amber-100 text-amber-800 border-amber-300 hover:bg-amber-100">🥇 #1</Badge>;
+   905→  if (rank === 2) return <Badge className="bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-100">🥈 #2</Badge>;
+   906→  if (rank === 3) return <Badge className="bg-orange-50 text-orange-700 border-orange-300 hover:bg-orange-50">🥉 #3</Badge>;
+   907→  return <Badge variant="outline" className="text-muted-foreground">#{rank}</Badge>;
+   908→}
+   909→
+   910→function getPlanBadge(plan: string) {
+   911→  const map: Record<string, { cls: string }> = {
+   912→    FREE: { cls: 'bg-gray-100 text-gray-600 border-gray-200' },
+   913→    STARTER: { cls: 'bg-blue-100 text-blue-700 border-blue-200' },
+   914→    PRO: { cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+   915→  };
+   916→  const m = map[plan] ?? map.FREE;
+   917→  return <Badge variant="outline" className={m.cls}>{plan}</Badge>;
+   918→}
+   919→
+   920→export function AnalyticsGlobalView() {
+   921→  const [timeRange, setTimeRange] = useState('30d');
+   922→
+   923→  return (
+   924→    <div className="space-y-6">
+   925→      <PageHeader
+   926→        title="Analitik Platform"
+   927→        description="Pantau performa dan pertumbuhan platform PANDAI secara keseluruhan."
+   928→        action={
+   929→          <div className="flex items-center gap-2">
+   930→            <Tabs value={timeRange} onValueChange={setTimeRange}>
+   931→              <TabsList>
+   932→                <TabsTrigger value="7d">7 Hari</TabsTrigger>
+   933→                <TabsTrigger value="30d">30 Hari</TabsTrigger>
+   934→                <TabsTrigger value="90d">90 Hari</TabsTrigger>
+   935→                <TabsTrigger value="1y">1 Tahun</TabsTrigger>
+   936→              </TabsList>
+   937→            </Tabs>
+   938→          </div>
+   939→        }
+   940→      />
+   941→
+   942→      {/* Overview Stats */}
+   943→      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+   944→        <MiniStatCard
+   945→          title="Total Sekolah"
+   946→          value="5"
+   947→          icon={<Building2 className="h-4 w-4" />}
+   948→          trend="up"
+   949→          trendValue="+2 bulan ini"
+   950→        />
+   951→        <MiniStatCard
+   952→          title="Total Pengguna"
+   953→          value="1,107"
+   954→          icon={<Users className="h-4 w-4" />}
+   955→          trend="up"
+   956→          trendValue="+15% vs periode lalu"
+   957→        />
+   958→        <MiniStatCard
+   959→          title="Tryout Dikerjakan"
+   960→          value="3,842"
+   961→          icon={<ClipboardCheck className="h-4 w-4" />}
+   962→          trend="up"
+   963→          trendValue="+28% vs periode lalu"
+   964→        />
+   965→        <MiniStatCard
+   966→          title="Rata-rata Skor"
+   967→          value="73.0"
+   968→          icon={<TrendingUp className="h-4 w-4" />}
+   969→          trend="down"
+   970→          trendValue="-2.1% vs periode lalu"
+   971→        />
+   972→      </div>
+   973→
+   974→      {/* Charts Area */}
+   975→      <div className="grid gap-4 lg:grid-cols-2">
+   976→        {/* User Growth Chart Placeholder */}
+   977→        <Card>
+   978→          <CardHeader>
+   979→            <CardTitle className="text-base">Pertumbuhan Pengguna</CardTitle>
+   980→            <CardDescription>Jumlah pengguna baru per periode</CardDescription>
+   981→          </CardHeader>
+   982→          <CardContent>
+   983→            <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30">
+   984→              <BarChart3 className="h-12 w-12 text-[#1F3864]/30" />
+   985→              <p className="mt-3 text-sm font-medium text-muted-foreground">
+   986→                Grafik Pertumbuhan Pengguna
+   987→              </p>
+   988→              <p className="mt-1 text-xs text-muted-foreground/70">
+   989→                Data akan otomatis tampil saat terhubung ke API analytics.
+   990→              </p>
+   991→            </div>
+   992→          </CardContent>
+   993→        </Card>
+   994→
+   995→        {/* Score Distribution Chart Placeholder */}
+   996→        <Card>
+   997→          <CardHeader>
+   998→            <CardTitle className="text-base">Distribusi Skor Tryout</CardTitle>
+   999→            <CardDescription>Sebaran skor siswa di seluruh platform</CardDescription>
+  1000→          </CardHeader>
+  1001→          <CardContent>
+  1002→            <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30">
+  1003→              <PieChart className="h-12 w-12 text-[#1F3864]/30" />
+  1004→              <p className="mt-3 text-sm font-medium text-muted-foreground">
+  1005→                Grafik Distribusi Skor
+  1006→              </p>
+  1007→              <p className="mt-1 text-xs text-muted-foreground/70">
+  1008→                Data akan otomatis tampil saat terhubung ke API analytics.
+  1009→              </p>
+  1010→            </div>
+  1011→          </CardContent>
+  1012→        </Card>
+  1013→      </div>
+  1014→
+  1015→      {/* Engagement & Activity */}
+  1016→      <div className="grid gap-4 lg:grid-cols-3">
+  1017→        <Card className="lg:col-span-2">
+  1018→          <CardHeader>
+  1019→            <CardTitle className="text-base">Aktivitas Harian</CardTitle>
+  1020→            <CardDescription>Jumlah tryout dikerjakan per hari</CardDescription>
+  1021→          </CardHeader>
+  1022→          <CardContent>
+  1023→            <div className="flex h-56 flex-col items-center justify-center rounded-lg border border-dashed bg-muted/30">
+  1024→              <Activity className="h-12 w-12 text-[#1F3864]/30" />
+  1025→              <p className="mt-3 text-sm font-medium text-muted-foreground">
+  1026→                Grafik Aktivitas Harian
+  1027→              </p>
+  1028→              <p className="mt-1 text-xs text-muted-foreground/70">
+  1029→                Data akan otomatis tampil saat terhubung ke API analytics.
+  1030→              </p>
+  1031→            </div>
+  1032→          </CardContent>
+  1033→        </Card>
+  1034→
+  1035→        {/* Quick Summary */}
+  1036→        <Card>
+  1037→          <CardHeader>
+  1038→            <CardTitle className="text-base">Ringkasan Cepat</CardTitle>
+  1039→            <CardDescription>Statistik penting hari ini</CardDescription>
+  1040→          </CardHeader>
+  1041→          <CardContent className="space-y-4">
+  1042→            <div className="flex items-center justify-between rounded-lg bg-emerald-50 p-3">
+  1043→              <div className="flex items-center gap-2">
+  1044→                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100">
+  1045→                  <TrendingUp className="h-4 w-4 text-emerald-600" />
+  1046→                </div>
+  1047→                <div>
+  1048→                  <p className="text-xs text-muted-foreground">Skor Tertinggi Hari Ini</p>
+  1049→                  <p className="text-sm font-bold text-emerald-700">95.5</p>
+  1050→                </div>
+  1051→              </div>
+  1052→              <span className="text-xs text-emerald-600 font-medium">SMA KN 1 Bandung</span>
+  1053→            </div>
+  1054→            <div className="flex items-center justify-between rounded-lg bg-blue-50 p-3">
+  1055→              <div className="flex items-center gap-2">
+  1056→                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100">
+  1057→                  <Users className="h-4 w-4 text-blue-600" />
+  1058→                </div>
+  1059→                <div>
+  1060→                  <p className="text-xs text-muted-foreground">Pengguna Aktif Hari Ini</p>
+  1061→                  <p className="text-sm font-bold text-blue-700">247</p>
+  1062→                </div>
+  1063→              </div>
+  1064→              <span className="text-xs text-blue-600 font-medium flex items-center gap-0.5">
+  1065→                <ArrowUpRight className="h-3 w-3" />
+  1066→                +12%
+  1067→              </span>
+  1068→            </div>
+  1069→            <div className="flex items-center justify-between rounded-lg bg-amber-50 p-3">
+  1070→              <div className="flex items-center gap-2">
+  1071→                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100">
+  1072→                  <BookOpen className="h-4 w-4 text-amber-600" />
+  1073→                </div>
+  1074→                <div>
+  1075→                  <p className="text-xs text-muted-foreground">Tryout Selesai Hari Ini</p>
+  1076→                  <p className="text-sm font-bold text-amber-700">83</p>
+  1077→                </div>
+  1078→              </div>
+  1079→              <span className="text-xs text-amber-600 font-medium flex items-center gap-0.5">
+  1080→                <ArrowDownRight className="h-3 w-3" />
+  1081→                -5%
+  1082→              </span>
+  1083→            </div>
+  1084→            <div className="flex items-center justify-between rounded-lg bg-purple-50 p-3">
+  1085→              <div className="flex items-center gap-2">
+  1086→                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100">
+  1087→                  <Globe className="h-4 w-4 text-purple-600" />
+  1088→                </div>
+  1089→                <div>
+  1090→                  <p className="text-xs text-muted-foreground">Uptime Platform</p>
+  1091→                  <p className="text-sm font-bold text-purple-700">99.97%</p>
+  1092→                </div>
+  1093→              </div>
+  1094→              <span className="text-xs text-purple-600 font-medium">30 hari</span>
+  1095→            </div>
+  1096→          </CardContent>
+  1097→        </Card>
+  1098→      </div>
+  1099→
+  1100→      {/* Top Performing Schools */}
+  1101→      <Card>
+  1102→        <CardHeader>
+  1103→          <div className="flex items-center justify-between">
+  1104→            <div>
+  1105→              <CardTitle className="text-lg">Sekolah dengan Performa Terbaik</CardTitle>
+  1106→              <CardDescription>Berdasarkan rata-rata skor dan tingkat penyelesaian tryout.</CardDescription>
+  1107→            </div>
+  1108→            <Button
+  1109→              variant="outline"
+  1110→              size="sm"
+  1111→              className="text-xs"
+  1112→              onClick={() => toast.info('Menampilkan laporan lengkap performa sekolah.')}
+  1113→            >
+  1114→              <FileBarChart className="mr-1.5 h-3 w-3" />
+  1115→              Laporan Detail
+  1116→            </Button>
+  1117→          </div>
+  1118→        </CardHeader>
+  1119→        <CardContent className="p-0">
+  1120→          <div className="overflow-x-auto">
+  1121→            <Table>
+  1122→              <TableHeader>
+  1123→                <TableRow className="bg-muted/50">
+  1124→                  <TableHead className="w-[60px]">Peringkat</TableHead>
+  1125→                  <TableHead>Nama Sekolah</TableHead>
+  1126→                  <TableHead className="text-center">Jumlah Siswa</TableHead>
+  1127→                  <TableHead className="text-center">Rata-rata Skor</TableHead>
+  1128→                  <TableHead className="hidden sm:table-cell text-center">Penyelesaian</TableHead>
+  1129→                  <TableHead className="text-center">Plan</TableHead>
+  1130→                </TableRow>
+  1131→              </TableHeader>
+  1132→              <TableBody>
+  1133→                {TOP_SCHOOLS.map((school) => (
+  1134→                  <TableRow key={school.rank}>
+  1135→                    <TableCell>{getRankBadge(school.rank)}</TableCell>
+  1136→                    <TableCell>
+  1137→                      <div className="flex items-center gap-2">
+  1138→                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+  1139→                          <School className="h-4 w-4" />
+  1140→                        </div>
+  1141→                        <span className="font-medium text-sm">{school.name}</span>
+  1142→                      </div>
+  1143→                    </TableCell>
+  1144→                    <TableCell className="text-center text-sm">
+  1145→                      {school.students}
+  1146→                    </TableCell>
+  1147→                    <TableCell className="text-center">
+  1148→                      <span
+  1149→                        className={`font-bold text-sm ${
+  1150→                          school.avgScore >= 75
+  1151→                            ? 'text-emerald-600'
+  1152→                            : school.avgScore >= 70
+  1153→                              ? 'text-amber-600'
+  1154→                              : 'text-orange-600'
+  1155→                        }`}
+  1156→                      >
+  1157→                        {school.avgScore}
+  1158→                      </span>
+  1159→                    </TableCell>
+  1160→                    <TableCell className="hidden sm:table-cell text-center">
+  1161→                      <div className="flex items-center justify-center gap-2">
+  1162→                        <div className="h-2 w-16 overflow-hidden rounded-full bg-muted">
+  1163→                          <div
+  1164→                            className="h-full rounded-full bg-[#1F3864] transition-all"
+  1165→                            style={{ width: `${school.completionRate}%` }}
+  1166→                          />
+  1167→                        </div>
+  1168→                        <span className="text-xs font-medium text-muted-foreground">
+  1169→                          {school.completionRate}%
+  1170→                        </span>
+  1171→                      </div>
+  1172→                    </TableCell>
+  1173→                    <TableCell className="text-center">{getPlanBadge(school.plan)}</TableCell>
+  1174→                  </TableRow>
+  1175→                ))}
+  1176→              </TableBody>
+  1177→            </Table>
+  1178→          </div>
+  1179→        </CardContent>
+  1180→      </Card>
+  1181→    </div>
+  1182→  );
+  1183→}
+  1184→
+  1185→// ═══════════════════════════════════════════════════════════════════════
+  1186→//  5. SettingsView
+  1187→// ═══════════════════════════════════════════════════════════════════════
+  1188→
+  1189→const DEFAULT_FEATURE_FLAGS = [
+  1190→  { key: 'enable_nalar_ai', label: 'NALAR AI Asisten', description: 'Aktifkan fitur bantuan AI untuk menjelaskan pembahasan soal.', enabled: true },
+  1191→  { key: 'enable_diagnostic_test', label: 'Tes Diagnostik', description: 'Izinkan siswa mengerjakan tes awal untuk mengukur kemampuan dasar.', enabled: true },
+  1192→  { key: 'enable_adaptive_practice', label: 'Latihan Adaptif', description: 'Aktifkan sistem latihan yang menyesuaikan tingkat kesulitan otomatis.', enabled: false },
+  1193→  { key: 'enable_leaderboard', label: 'Peringkat Siswa', description: 'Tampilkan papan peringkat di antar siswa dalam satu sekolah.', enabled: true },
+  1194→  { key: 'enable_parent_access', label: 'Akses Orang Tua', description: 'Izinkan orang tua melihat nilai dan progres anak mereka.', enabled: true },
+  1195→  { key: 'enable_bulk_import', label: 'Import Massal', description: 'Izinkan admin sekolah mengimpor data siswa/guru via CSV/Excel.', enabled: true },
+  1196→  { key: 'maintenance_mode', label: 'Mode Maintenance', description: 'Aktifkan mode pemeliharaan. Semua pengguna akan dialihkan ke halaman maintenance.', enabled: false },
+  1197→];
+  1198→
+  1199→export function SettingsView() {
+  1200→  const [appName, setAppName] = useState('PANDAI');
+  1201→  const [appUrl, setAppUrl] = useState('https://pandai.id');
+  1202→  const [senderEmail, setSenderEmail] = useState('noreply@pandai.id');
+  1203→  const [smtpHost, setSmtpHost] = useState('smtp.pandai.id');
+  1204→  const [smtpPort, setSmtpPort] = useState('587');
+  1205→  const [featureFlags, setFeatureFlags] = useState(DEFAULT_FEATURE_FLAGS);
+  1206→  const [saving, setSaving] = useState(false);
+  1207→
+  1208→  function toggleFeature(key: string) {
+  1209→    setFeatureFlags((prev) =>
+  1210→      prev.map((f) => (f.key === key ? { ...f, enabled: !f.enabled } : f))
+  1211→    );
+  1212→  }
+  1213→
+  1214→  function handleSave() {
+  1215→    setSaving(true);
+  1216→    setTimeout(() => {
+  1217→      setSaving(false);
+  1218→      toast.success('Pengaturan berhasil disimpan!');
+  1219→    }, 1500);
+  1220→  }
+  1221→
+  1222→  return (
+  1223→    <div className="space-y-6">
+  1224→      <PageHeader
+  1225→        title="Pengaturan Aplikasi"
+  1226→        description="Konfigurasi pengaturan global platform PANDAI."
+  1227→        action={
+  1228→          <Button
+  1229→            className="bg-[#1F3864] hover:bg-[#152850]"
+  1230→            onClick={handleSave}
+  1231→            disabled={saving}
+  1232→          >
+  1233→            {saving ? (
+  1234→              <>
+  1235→                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+  1236→                Menyimpan...
+  1237→              </>
+  1238→            ) : (
+  1239→              <>
+  1240→                <CheckCircle2 className="mr-2 h-4 w-4" />
+  1241→                Simpan Pengaturan
+  1242→              </>
+  1243→            )}
+  1244→          </Button>
+  1245→        }
+  1246→      />
+  1247→
+  1248→      <div className="grid gap-6 lg:grid-cols-3">
+  1249→        {/* Left Column - Main Settings */}
+  1250→        <div className="lg:col-span-2 space-y-6">
+  1251→          {/* General Settings */}
+  1252→          <Card>
+  1253→            <CardHeader>
+  1254→              <div className="flex items-center gap-2">
+  1255→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+  1256→                  <Globe className="h-4 w-4" />
+  1257→                </div>
+  1258→                <div>
+  1259→                  <CardTitle className="text-base">Pengaturan Umum</CardTitle>
+  1260→                  <CardDescription>Nama aplikasi dan URL dasar platform.</CardDescription>
+  1261→                </div>
+  1262→              </div>
+  1263→            </CardHeader>
+  1264→            <CardContent className="space-y-4">
+  1265→              <div className="grid gap-4 sm:grid-cols-2">
+  1266→                <div className="space-y-2">
+  1267→                  <label className="text-sm font-medium">Nama Aplikasi</label>
+  1268→                  <Input
+  1269→                    value={appName}
+  1270→                    onChange={(e) => setAppName(e.target.value)}
+  1271→                    placeholder="PANDAI"
+  1272→                  />
+  1273→                  <p className="text-xs text-muted-foreground">
+  1274→                    Nama yang ditampilkan di browser tab dan email.
+  1275→                  </p>
+  1276→                </div>
+  1277→                <div className="space-y-2">
+  1278→                  <label className="text-sm font-medium">URL Aplikasi</label>
+  1279→                  <Input
+  1280→                    value={appUrl}
+  1281→                    onChange={(e) => setAppUrl(e.target.value)}
+  1282→                    placeholder="https://pandai.id"
+  1283→                  />
+  1284→                  <p className="text-xs text-muted-foreground">
+  1285→                    URL dasar yang digunakan untuk link di email dan API.
+  1286→                  </p>
+  1287→                </div>
+  1288→              </div>
+  1289→            </CardContent>
+  1290→          </Card>
+  1291→
+  1292→          {/* Email Settings */}
+  1293→          <Card>
+  1294→            <CardHeader>
+  1295→              <div className="flex items-center gap-2">
+  1296→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+  1297→                  <Mail className="h-4 w-4" />
+  1298→                </div>
+  1299→                <div>
+  1300→                  <CardTitle className="text-base">Pengaturan Email</CardTitle>
+  1301→                  <CardDescription>Konfigurasi SMTP untuk pengiriman email notifikasi.</CardDescription>
+  1302→                </div>
+  1303→              </div>
+  1304→            </CardHeader>
+  1305→            <CardContent className="space-y-4">
+  1306→              <div className="grid gap-4 sm:grid-cols-2">
+  1307→                <div className="space-y-2">
+  1308→                  <label className="text-sm font-medium">Email Pengirim</label>
+  1309→                  <Input
+  1310→                    type="email"
+  1311→                    value={senderEmail}
+  1312→                    onChange={(e) => setSenderEmail(e.target.value)}
+  1313→                    placeholder="noreply@pandai.id"
+  1314→                  />
+  1315→                </div>
+  1316→                <div className="space-y-2">
+  1317→                  <label className="text-sm font-medium">SMTP Host</label>
+  1318→                  <Input
+  1319→                    value={smtpHost}
+  1320→                    onChange={(e) => setSmtpHost(e.target.value)}
+  1321→                    placeholder="smtp.pandai.id"
+  1322→                  />
+  1323→                </div>
+  1324→                <div className="space-y-2">
+  1325→                  <label className="text-sm font-medium">SMTP Port</label>
+  1326→                  <Input
+  1327→                    value={smtpPort}
+  1328→                    onChange={(e) => setSmtpPort(e.target.value)}
+  1329→                    placeholder="587"
+  1330→                  />
+  1331→                </div>
+  1332→                <div className="space-y-2">
+  1333→                  <label className="text-sm font-medium">SMTP Password</label>
+  1334→                  <Input
+  1335→                    type="password"
+  1336→                    value="••••••••••"
+  1337→                    readOnly
+  1338→                    placeholder="••••••••••"
+  1339→                  />
+  1340→                  <p className="text-xs text-muted-foreground">
+  1341→                    Password tersimpan dengan aman. Hubungi developer untuk mengubah.
+  1342→                  </p>
+  1343→                </div>
+  1344→              </div>
+  1345→              <div className="flex gap-2">
+  1346→                <Button
+  1347→                  variant="outline"
+  1348→                  size="sm"
+  1349→                  onClick={() => toast.success('Email test berhasil dikirim ke inbox Anda!')}
+  1350→                >
+  1351→                  <Mail className="mr-2 h-3.5 w-3.5" />
+  1352→                  Kirim Email Test
+  1353→                </Button>
+  1354→              </div>
+  1355→            </CardContent>
+  1356→          </Card>
+  1357→
+  1358→          {/* Feature Flags */}
+  1359→          <Card>
+  1360→            <CardHeader>
+  1361→              <div className="flex items-center gap-2">
+  1362→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+  1363→                  <Shield className="h-4 w-4" />
+  1364→                </div>
+  1365→                <div>
+  1366→                  <CardTitle className="text-base">Feature Flags</CardTitle>
+  1367→                  <CardDescription>
+  1368→                    Aktifkan atau nonaktifkan fitur platform secara global.
+  1369→                  </CardDescription>
+  1370→                </div>
+  1371→              </div>
+  1372→            </CardHeader>
+  1373→            <CardContent>
+  1374→              <div className="space-y-1">
+  1375→                {featureFlags.map((flag) => (
+  1376→                  <div
+  1377→                    key={flag.key}
+  1378→                    className="flex flex-col gap-1 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between transition-colors hover:bg-muted/30"
+  1379→                  >
+  1380→                    <div className="space-y-0.5">
+  1381→                      <p className="text-sm font-medium">{flag.label}</p>
+  1382→                      <p className="text-xs text-muted-foreground">
+  1383→                        {flag.description}
+  1384→                      </p>
+  1385→                    </div>
+  1386→                    <button
+  1387→                      type="button"
+  1388→                      role="switch"
+  1389→                      aria-checked={flag.enabled}
+  1390→                      onClick={() => toggleFeature(flag.key)}
+  1391→                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F3864] focus-visible:ring-offset-2 ${
+  1392→                        flag.enabled ? 'bg-[#1F3864]' : 'bg-gray-200'
+  1393→                      }`}
+  1394→                    >
+  1395→                      <span
+  1396→                        className={`pointer-events-none block h-4 w-4 rounded-full bg-white shadow-lg ring-0 transition-transform ${
+  1397→                          flag.enabled ? 'translate-x-5' : 'translate-x-0'
+  1398→                        }`}
+  1399→                      />
+  1400→                    </button>
+  1401→                  </div>
+  1402→                ))}
+  1403→              </div>
+  1404→            </CardContent>
+  1405→          </Card>
+  1406→        </div>
+  1407→
+  1408→        {/* Right Column - System Info */}
+  1409→        <div className="space-y-6">
+  1410→          {/* System Information */}
+  1411→          <Card>
+  1412→            <CardHeader>
+  1413→              <div className="flex items-center gap-2">
+  1414→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+  1415→                  <Server className="h-4 w-4" />
+  1416→                </div>
+  1417→                <div>
+  1418→                  <CardTitle className="text-base">Informasi Sistem</CardTitle>
+  1419→                  <CardDescription>Detail teknis platform.</CardDescription>
+  1420→                </div>
+  1421→              </div>
+  1422→            </CardHeader>
+  1423→            <CardContent>
+  1424→              <div className="space-y-3">
+  1425→                {[
+  1426→                  { label: 'Versi Aplikasi', value: '2.1.0' },
+  1427→                  { label: 'Framework', value: 'Next.js 16' },
+  1428→                  { label: 'Database', value: 'PostgreSQL 16' },
+  1429→                  { label: 'Runtime', value: 'Node.js 22 LTS' },
+  1430→                  { label: 'Cache', value: 'Redis 7' },
+  1431→                  { label: 'Storage', value: 'Cloudflare R2' },
+  1432→                  { label: 'Terakhir Deploy', value: '15 Jan 2025, 09:00' },
+  1433→                ].map((item) => (
+  1434→                  <div
+  1435→                    key={item.label}
+  1436→                    className="flex items-center justify-between rounded-md border px-3 py-2"
+  1437→                  >
+  1438→                    <span className="text-xs text-muted-foreground">{item.label}</span>
+  1439→                    <span className="text-xs font-medium">{item.value}</span>
+  1440→                  </div>
+  1441→                ))}
+  1442→              </div>
+  1443→            </CardContent>
+  1444→          </Card>
+  1445→
+  1446→          {/* Quick Actions */}
+  1447→          <Card>
+  1448→            <CardHeader>
+  1449→              <div className="flex items-center gap-2">
+  1450→                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
+  1451→                  <SettingsIcon className="h-4 w-4" />
+  1452→                </div>
+  1453→                <div>
+  1454→                  <CardTitle className="text-base">Aksi Admin</CardTitle>
+  1455→                  <CardDescription>Tindakan khusus super admin.</CardDescription>
+  1456→                </div>
+  1457→              </div>
+  1458→            </CardHeader>
+  1459→            <CardContent className="space-y-2">
+  1460→              <Button
+  1461→                variant="outline"
+  1462→                className="w-full justify-start gap-2 text-sm"
+  1463→                onClick={() => toast.info('Cache berhasil dibersihkan!')}
+  1464→              >
+  1465→                <RefreshCw className="h-4 w-4" />
+  1466→                Bersihkan Cache
+  1467→              </Button>
+  1468→              <Button
+  1469→                variant="outline"
+  1470→                className="w-full justify-start gap-2 text-sm"
+  1471→                onClick={() => toast.info('Mengirim notifikasi ke semua admin sekolah...')}
+  1472→              >
+  1473→                <Bell className="h-4 w-4" />
+  1474→                Broadcast Notifikasi
+  1475→              </Button>
+  1476→              <Button
+  1477→                variant="outline"
+  1478→                className="w-full justify-start gap-2 text-sm"
+  1479→                onClick={() => toast.info('Memulai backup database...')}
+  1480→              >
+  1481→                <Database className="h-4 w-4" />
+  1482→                Backup Database
+  1483→              </Button>
+  1484→              <div className="pt-2 border-t">
+  1485→                <Button
+  1486→                  variant="destructive"
+  1487→                  className="w-full justify-start gap-2 text-sm"
+  1488→                  onClick={() =>
+  1489→                    toast.error(
+  1490→                      'Fitur ini dinonaktifkan untuk keamanan. Hubungi developer jika diperlukan.'
+  1491→                    )
+  1492→                  }
+  1493→                >
+  1494→                  <AlertCircle className="h-4 w-4" />
+  1495→                  Reset Platform (Danger)
+  1496→                </Button>
+  1497→              </div>
+  1498→            </CardContent>
+  1499→          </Card>
+  1500→
+  1501→          {/* Status Indicator */}
+  1502→          <Card>
+  1503→            <CardHeader className="pb-3">
+  1504→              <CardTitle className="text-base">Status Layanan</CardTitle>
+  1505→            </CardHeader>
+  1506→            <CardContent className="space-y-2">
+  1507→              {[
+  1508→                { name: 'API Server', status: 'operational' },
+  1509→                { name: 'Database', status: 'operational' },
+  1510→                { name: 'Redis Cache', status: 'operational' },
+  1511→                { name: 'File Storage', status: 'operational' },
+  1512→                { name: 'Email Service', status: 'degraded' },
+  1513→              ].map((svc) => (
+  1514→                <div
+  1515→                  key={svc.name}
+  1516→                  className="flex items-center justify-between rounded-md px-3 py-1.5"
+  1517→                >
+  1518→                  <span className="text-xs text-muted-foreground">{svc.name}</span>
+  1519→                  <div className="flex items-center gap-1.5">
+  1520→                    <span
+  1521→                      className={`h-2 w-2 rounded-full ${
+  1522→                        svc.status === 'operational'
+  1523→                          ? 'bg-emerald-500'
+  1524→                          : svc.status === 'degraded'
+  1525→                            ? 'bg-amber-500'
+  1526→                            : 'bg-red-500'
+  1527→                      }`}
+  1528→                    />\n                    <span
+  1529→                      className={`text-xs font-medium ${
+  1530→                        svc.status === 'operational'
+  1531→                          ? 'text-emerald-600'
+  1532→                          : svc.status === 'degraded'
+  1533→                            ? 'text-amber-600'
+  1534→                            : 'text-red-600'
+  1535→                      }`}
+  1536→                    >
+  1537→                      {svc.status === 'operational'
+  1538→                        ? 'Operasional'
+  1539→                        : svc.status === 'degraded'
+  1540→                          ? 'Degrasi'
+  1541→                          : 'Gangguan'}
+  1542→                    </span>
+  1543→                  </div>
+  1544→                </div>
+  1545→              ))}
+  1546→            </CardContent>
+  1547→          </Card>
+  1548→        </div>
+  1549→      </div>
+  1550→    </div>
+  1551→  );
+  1552→}
+  1553→
