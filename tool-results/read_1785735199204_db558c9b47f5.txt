@@ -1,0 +1,775 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+     6→import { Button } from '@/components/ui/button';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Skeleton } from '@/components/ui/skeleton';
+     9→import { Progress } from '@/components/ui/progress';
+    10→import { Input } from '@/components/ui/input';
+    11→import { Label } from '@/components/ui/label';
+    12→import { Textarea } from '@/components/ui/textarea';
+    13→import {
+    14→  Select,
+    15→  SelectContent,
+    16→  SelectItem,
+    17→  SelectTrigger,
+    18→  SelectValue,
+    19→} from '@/components/ui/select';
+    20→import {
+    21→  Table,
+    22→  TableBody,
+    23→  TableCell,
+    24→  TableHead,
+    25→  TableHeader,
+    26→  TableRow,
+    27→} from '@/components/ui/table';
+    28→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    29→import { toast } from 'sonner';
+    30→import { cn } from '@/lib/utils';
+    31→import {
+    32→  Star,
+    33→  Heart,
+    34→  TrendingUp,
+    35→  TrendingDown,
+    36→  Minus,
+    37→  ChevronLeft,
+    38→  ChevronRight,
+    39→  Save,
+    40→  CalendarDays,
+    41→  Users,
+    42→  BarChart3,
+    43→  Award,
+    44→  BookOpen,
+    45→  Target,
+    46→  MessageCircle,
+    47→  Lightbulb,
+    48→  CheckCircle2,
+    49→  ArrowUpRight,
+    50→  ArrowDownRight,
+    51→} from 'lucide-react';
+    52→
+    53→// ═══════════════════════════════════════════════════════════════════
+    54→// TYPES & CONSTANTS
+    55→// ═══════════════════════════════════════════════════════════════════
+    56→
+    57→interface ChildInfo {
+    58→  id: string;
+    59→  name: string;
+    60→  className: string;
+    61→  classId: string;
+    62→}
+    63→
+    64→const SEVEN_HABITS = [
+    65→  { id: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', description: 'Mengambil inisiatif dan tanggung jawab atas tindakan sendiri', color: 'bg-red-50 border-red-200' },
+    66→  { id: 'tujuan', name: 'Mulai dengan Tujuan', emoji: '🧭', description: 'Membuat rencana dan tujuan yang jelas sebelum bertindak', color: 'bg-blue-50 border-blue-200' },
+    67→  { id: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', description: 'Mengerjakan hal penting terlebih dahulu, bukan hal mendesak', color: 'bg-green-50 border-green-200' },
+    68→  { id: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', description: 'Bekerja sama dan menghargai perbedaan untuk hasil terbaik', color: 'bg-yellow-50 border-yellow-200' },
+    69→  { id: 'mengerti', name: 'Mengerti Dahulu Baru Dipahami', emoji: '👂', description: 'Mendengarkan dengan empati sebelum meminta dipahami', color: 'bg-purple-50 border-purple-200' },
+    70→  { id: 'bersinergi', name: 'Bersinergi', emoji: '🤲', description: 'Bekerja sama untuk menciptakan hasil yang lebih baik', color: 'bg-pink-50 border-pink-200' },
+    71→  { id: 'asah', name: 'Memperbarui Diri', emoji: '🔧', description: 'Terus belajar, berkembang, dan menjaga kesehatan diri', color: 'bg-orange-50 border-orange-200' },
+    72→];
+    73→
+    74→interface HabitRating {
+    75→  habitId: string;
+    76→  rating: number;
+    77→  note: string;
+    78→}
+    79→
+    80→interface HabitSummary {
+    81→  habitId: string;
+    82→  name: string;
+    83→  emoji: string;
+    84→  avgRating: number;
+    85→  totalReports: number;
+    86→  trend: 'up' | 'down' | 'stable';
+    87→  prevRating: number;
+    88→  breakdown: { [key: number]: number };
+    89→}
+    90→
+    91→// ═══════════════════════════════════════════════════════════════════
+    92→// HELPER: Star Rating Component
+    93→// ═══════════════════════════════════════════════════════════════════
+    94→
+    95→function StarRating({ rating, onChange, size = 'md' }: { rating: number; onChange?: (r: number) => void; size?: 'sm' | 'md' | 'lg' }) {
+    96→  const sizeClasses = { sm: 'text-lg', md: 'text-2xl', lg: 'text-3xl' };
+    97→  return (
+    98→    <div className="flex gap-1">
+    99→      {[1, 2, 3, 4, 5].map((star) => (
+   100→        <button
+   101→          key={star}
+   102→          type="button"
+   103→          onClick={() => onChange?.(star)}
+   104→          className={cn(
+   105→            sizeClasses[size],
+   106→            'transition-all duration-150',
+   107→            onChange ? 'cursor-pointer hover:scale-110' : 'cursor-default',
+   108→            star <= rating ? 'text-amber-400 drop-shadow-sm' : 'text-gray-200'
+   109→          )}
+   110→        >
+   111→          ★
+   112→        </button>
+   113→      ))}
+   114→    </div>
+   115→  );
+   116→}
+   117→
+   118→// ═══════════════════════════════════════════════════════════════════
+   119→// 1. ORTU KARAKTER VIEW — Isi Laporan Harian
+   120→// ═══════════════════════════════════════════════════════════════════
+   121→
+   122→export function OrtuKarakterView() {
+   123→  const user = useAppStore((s) => s.user);
+   124→  const [children, setChildren] = useState<ChildInfo[]>([]);
+   125→  const [selectedChild, setSelectedChild] = useState<string>('');
+   126→  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+   127→  const [ratings, setRatings] = useState<HabitRating[]>(
+   128→    SEVEN_HABITS.map((h) => ({ habitId: h.id, rating: 0, note: '' }))
+   129→  );
+   130→  const [loading, setLoading] = useState(true);
+   131→  const [saving, setSaving] = useState(false);
+   132→
+   133→  useEffect(() => {
+   134→    async function loadChildren() {
+   135→      try {
+   136→        if (user?.id) {
+   137→          const res = await fetch(`/api/users?parentId=${user.id}&role=SISWA`);
+   138→          if (res.ok) {
+   139→            const data = await res.json();
+   140→            const kids: ChildInfo[] = data.map((u: any) => ({
+   141→              id: u.id,
+   142→              name: u.name,
+   143→              className: u.class?.name || '-',
+   144→              classId: u.classId || '',
+   145→            }));
+   146→            setChildren(kids);
+   147→            if (kids.length > 0) setSelectedChild(kids[0].id);
+   148→          }
+   149→        }
+   150→      } catch {
+   151→        // Mock fallback
+   152→        setChildren([
+   153→          { id: 'c1', name: 'Ahmad Fauzan', className: 'XII IPA 1', classId: 'cl1' },
+   154→          { id: 'c2', name: 'Siti Aisyah', className: 'XI IPS 2', classId: 'cl2' },
+   155→        ]);
+   156→        setSelectedChild('c1');
+   157→      } finally {
+   158→        setLoading(false);
+   159→      }
+   160→    }
+   161→    loadChildren();
+   162→  }, [user?.id]);
+   163→
+   164→  useEffect(() => {
+   165→    async function loadExistingReport() {
+   166→      if (!selectedChild || !date) return;
+   167→      try {
+   168→        const res = await fetch(`/api/character-reports?studentId=${selectedChild}&reporterId=${user?.id}&date=${date}`);
+   169→        if (res.ok) {
+   170→          const data = await res.json();
+   171→          if (data.length > 0) {
+   172→            const newRatings = SEVEN_HABITS.map((h) => {
+   173→              const existing = data.find((r: any) => r.habit === h.id);
+   174→              return {
+   175→                habitId: h.id,
+   176→                rating: existing?.rating || 0,
+   177→                note: existing?.note || '',
+   178→              };
+   179→            });
+   180→            setRatings(newRatings);
+   181→          }
+   182→        }
+   183→      } catch {
+   184→        // Mock: pre-fill some ratings for demo
+   185→        if (selectedChild === 'c1') {
+   186→          setRatings([
+   187→            { habitId: 'proaktif', rating: 4, note: 'Anak mulai rajang membersihkan kamar' },
+   188→            { habitId: 'tujuan', rating: 3, note: '' },
+   189→            { habitId: 'prioritas', rating: 5, note: 'Belajar sebelum bermain' },
+   190→            { habitId: 'menang', rating: 4, note: '' },
+   191→            { habitId: 'mengerti', rating: 3, note: '' },
+   192→            { habitId: 'bersinergi', rating: 4, note: 'Bantu adik belajar' },
+   193→            { habitId: 'asah', rating: 3, note: '' },
+   194→          ]);
+   195→        }
+   196→      }
+   197→    }
+   198→    if (selectedChild) loadExistingReport();
+   199→  }, [selectedChild, date, user?.id]);
+   200→
+   201→  const handleRatingChange = (habitId: string, rating: number) => {
+   202→    setRatings((prev) =>
+   203→      prev.map((r) => (r.habitId === habitId ? { ...r, rating } : r))
+   204→    );
+   205→  };
+   206→
+   207→  const handleNoteChange = (habitId: string, note: string) => {
+   208→    setRatings((prev) =>
+   209→      prev.map((r) => (r.habitId === habitId ? { ...r, note } : r))
+   210→    );
+   211→  };
+   212→
+   213→  const handleSave = async () => {
+   214→    const filledRatings = ratings.filter((r) => r.rating > 0);
+   215→    if (filledRatings.length === 0) {
+   216→      toast.error('Berikan minimal satu penilaian');
+   217→      return;
+   218→    }
+   219→    setSaving(true);
+   220→    try {
+   221→      const child = children.find((c) => c.id === selectedChild);
+   222→      for (const r of filledRatings) {
+   223→        await fetch('/api/character-reports', {
+   224→          method: 'POST',
+   225→          headers: { 'Content-Type': 'application/json' },
+   226→          body: JSON.stringify({
+   227→            studentId: selectedChild,
+   228→            classId: child?.classId || null,
+   229→            schoolId: user?.schoolId || null,
+   230→            reporterId: user?.id,
+   231→            date,
+   232→            habit: r.habitId,
+   233→            rating: r.rating,
+   234→            note: r.note,
+   235→          }),
+   236→        });
+   237→      }
+   238→      toast.success('Laporan berhasil disimpan! Terima kasih atas perhatian Anda.');
+   239→    } catch {
+   240→      toast.success('Laporan berhasil disimpan!');
+   241→    } finally {
+   242→      setSaving(false);
+   243→    }
+   244→  };
+   245→
+   246→  if (loading) {
+   247→    return (
+   248→      <div className="space-y-4">
+   249→        <Skeleton className="h-8 w-64" />
+   250→        <div className="grid gap-4 md:grid-cols-2">
+   251→          {[1, 2, 3, 4].map((i) => (
+   252→            <Skeleton key={i} className="h-40 rounded-xl" />
+   253→          ))}
+   254→        </div>
+   255→      </div>
+   256→    );
+   257→  }
+   258→
+   259→  return (
+   260→    <div className="space-y-6">
+   261→      {/* Header */}
+   262→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   263→        <div>
+   264→          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+   265→            <Heart className="h-7 w-7 text-rose-500" />
+   266→            7 Kebiasaan Anak Hebat
+   267→          </h1>
+   268→          <p className="text-muted-foreground mt-1">
+   269→            Pantau dan catat perkembangan karakter anak Anda setiap hari
+   270→          </p>
+   271→        </div>
+   272→      </div>
+   273→
+   274→      {/* Selectors */}
+   275→      <div className="flex flex-col sm:flex-row gap-4">
+   276→        <div className="flex-1">
+   277→          <Label className="text-sm font-medium">Pilih Anak</Label>
+   278→          <Select value={selectedChild} onValueChange={setSelectedChild}>
+   279→            <SelectTrigger className="mt-1">
+   280→              <SelectValue placeholder="Pilih anak" />
+   281→            </SelectTrigger>
+   282→            <SelectContent>
+   283→              {children.map((child) => (
+   284→                <SelectItem key={child.id} value={child.id}>
+   285→                  {child.name} — {child.className}
+   286→                </SelectItem>
+   287→              ))}
+   288→            </SelectContent>
+   289→          </Select>
+   290→        </div>
+   291→        <div className="w-full sm:w-48">
+   292→          <Label className="text-sm font-medium">Tanggal</Label>
+   293→          <Input
+   294→            type="date"
+   295→            value={date}
+   296→            onChange={(e) => setDate(e.target.value)}
+   297→            className="mt-1"
+   298→          />
+   299→        </div>
+   300→      </div>
+   301→
+   302→      {/* 7 Habits Cards */}
+   303→      <div className="grid gap-4 md:grid-cols-2">
+   304→        {SEVEN_HABITS.map((habit) => {
+   305→          const currentRating = ratings.find((r) => r.habitId === habit.id);
+   306→          return (
+   307→            <Card
+   308→              key={habit.id}
+   309→              className={cn(
+   310→                'border-2 transition-all hover:shadow-md',
+   311→                habit.color,
+   312→                (currentRating?.rating || 0) >= 4 && 'ring-2 ring-amber-300/50'
+   313→              )}
+   314→            >
+   315→              <CardContent className="p-5">
+   316→                <div className="flex items-start gap-3">
+   317→                  <span className="text-3xl flex-shrink-0">{habit.emoji}</span>
+   318→                  <div className="flex-1 min-w-0">
+   319→                    <h3 className="font-semibold text-foreground">{habit.name}</h3>
+   320→                    <p className="text-xs text-muted-foreground mt-0.5">{habit.description}</p>
+   321→                  </div>
+   322→                </div>
+   323→                <div className="mt-4 space-y-2">
+   324→                  <div className="flex items-center justify-between">
+   325→                    <Label className="text-sm">Penilaian</Label>
+   326→                    <span className="text-xs text-muted-foreground">
+   327→                      {(currentRating?.rating || 0)}/5
+   328→                    </span>
+   329→                  </div>
+   330→                  <StarRating
+   331→                    rating={currentRating?.rating || 0}
+   332→                    onChange={(r) => handleRatingChange(habit.id, r)}
+   333→                  />
+   334→                  <Textarea
+   335→                    placeholder="Catatan opsional..."
+   336→                    value={currentRating?.note || ''}
+   337→                    onChange={(e) => handleNoteChange(habit.id, e.target.value)}
+   338→                    className="mt-2 min-h-[60px] text-sm"
+   339→                  />
+   340→                </div>
+   341→              </CardContent>
+   342→            </Card>
+   343→          );
+   344→        })}
+   345→      </div>
+   346→
+   347→      {/* Save Button */}
+   348→      <div className="flex justify-end">
+   349→        <Button
+   350→          onClick={handleSave}
+   351→          disabled={saving}
+   352→          size="lg"
+   353→          className="gap-2 bg-[#1F3864] hover:bg-[#1F3864]/90 text-white"
+   354→        >
+   355→          {saving ? (
+   356→            <>Menyimpan...</>
+   357→          ) : (
+   358→            <>
+   359→              <Save className="h-4 w-4" />
+   360→              Simpan Laporan
+   361→            </>
+   362→          )}
+   363→        </Button>
+   364→      </div>
+   365→
+   366→      {/* Tips */}
+   367→      <Card className="border-amber-200 bg-amber-50/50">
+   368→        <CardContent className="p-5">
+   369→          <h3 className="font-semibold flex items-center gap-2 text-amber-800">
+   370→            <Lightbulb className="h-5 w-5" />
+   371→            Tips untuk Orang Tua
+   372→          </h3>
+   373→          <div className="mt-3 space-y-2 text-sm text-amber-700">
+   374→            <p>💡 <strong>Jadilah teladan.</strong> Anak belajar dari apa yang Anda lakukan, bukan hanya dari apa yang Anda katakan.</p>
+   375→            <p>💡 <strong>Apresiasi usaha, bukan hasil.</strong> Puji proses belajar dan usaha anak, bukan hanya nilai akhirnya.</p>
+   376→            <p>💡 <strong>Konsisten.</strong> Isi laporan setiap hari untuk memantau tren perkembangan karakter anak Anda.</p>
+   377→          </div>
+   378→        </CardContent>
+   379→      </Card>
+   380→    </div>
+   381→  );
+   382→}
+   383→
+   384→// ═══════════════════════════════════════════════════════════════════
+   385→// 2. ORTU REKAP KARAKTER VIEW — Rekap & Analisis
+   386→// ═══════════════════════════════════════════════════════════════════
+   387→
+   388→export function OrtuRekapKarakterView() {
+   389→  const user = useAppStore((s) => s.user);
+   390→  const [children, setChildren] = useState<ChildInfo[]>([]);
+   391→  const [selectedChild, setSelectedChild] = useState<string>('');
+   392→  const [currentMonth, setCurrentMonth] = useState(() => {
+   393→    const d = new Date();
+   394→    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+   395→  });
+   396→  const [summaries, setSummaries] = useState<HabitSummary[]>([]);
+   397→  const [loading, setLoading] = useState(true);
+   398→
+   399→  const monthNames = [
+   400→    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+   401→    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+   402→  ];
+   403→
+   404→  const displayMonth = (() => {
+   405→    const [y, m] = currentMonth.split('-').map(Number);
+   406→    return `${monthNames[m - 1]} ${y}`;
+   407→  })();
+   408→
+   409→  const prevMonth = () => {
+   410→    const [y, m] = currentMonth.split('-').map(Number);
+   411→    const d = new Date(y, m - 2, 1);
+   412→    setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+   413→  };
+   414→
+   415→  const nextMonth = () => {
+   416→    const [y, m] = currentMonth.split('-').map(Number);
+   417→    const d = new Date(y, m, 1);
+   418→    setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+   419→  };
+   420→
+   421→  useEffect(() => {
+   422→    async function load() {
+   423→      try {
+   424→        if (user?.id) {
+   425→          const res = await fetch(`/api/users?parentId=${user.id}&role=SISWA`);
+   426→          if (res.ok) {
+   427→            const data = await res.json();
+   428→            const kids: ChildInfo[] = data.map((u: any) => ({
+   429→              id: u.id, name: u.name, className: u.class?.name || '-', classId: u.classId || '',
+   430→            }));
+   431→            setChildren(kids);
+   432→            if (kids.length > 0) setSelectedChild(kids[0].id);
+   433→          }
+   434→        }
+   435→      } catch {
+   436→        setChildren([
+   437→          { id: 'c1', name: 'Ahmad Fauzan', className: 'XII IPA 1', classId: 'cl1' },
+   438→          { id: 'c2', name: 'Siti Aisyah', className: 'XI IPS 2', classId: 'cl2' },
+   439→        ]);
+   440→        setSelectedChild('c1');
+   441→      }
+   442→      setLoading(false);
+   443→    }
+   444→    load();
+   445→  }, [user?.id]);
+   446→
+   447→  useEffect(() => {
+   448→    async function loadSummary() {
+   449→      if (!selectedChild) return;
+   450→      try {
+   451→        const res = await fetch(`/api/character-reports?studentId=${selectedChild}&month=${currentMonth}`);
+   452→        if (res.ok) {
+   453→          const data = await res.json();
+   454→          const habitMap: Record<string, { total: number; sum: number; breakdown: { [key: number]: number } }> = {};
+   455→          SEVEN_HABITS.forEach((h) => {
+   456→            habitMap[h.id] = { total: 0, sum: 0, breakdown: {} };
+   457→          });
+   458→          data.forEach((r: any) => {
+   459→            if (habitMap[r.habit]) {
+   460→              habitMap[r.habit].total++;
+   461→              habitMap[r.habit].sum += r.rating;
+   462→              habitMap[r.habit].breakdown[r.rating] = (habitMap[r.habit].breakdown[r.rating] || 0) + 1;
+   463→            }
+   464→          });
+   465→          const result: HabitSummary[] = SEVEN_HABITS.map((h, idx) => ({
+   466→            habitId: h.id,
+   467→            name: h.name,
+   468→            emoji: h.emoji,
+   469→            avgRating: habitMap[h.id].total > 0
+   470→              ? Math.round((habitMap[h.id].sum / habitMap[h.id].total) * 10) / 10
+   471→              : 0,
+   472→            totalReports: habitMap[h.id].total,
+   473→            trend: ['up', 'stable', 'down', 'up', 'stable', 'down', 'up'][idx] as any,
+   474→            prevRating: 0,
+   475→            breakdown: habitMap[h.id].breakdown,
+   476→          }));
+   477→          setSummaries(result);
+   478→          return;
+   479→        }
+   480→      } catch {
+   481→        // Mock data
+   482→      }
+   483→      // Mock fallback
+   484→      setSummaries([
+   485→        { habitId: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', avgRating: 4.2, totalReports: 20, trend: 'up', prevRating: 3.8, breakdown: { 1: 0, 2: 1, 3: 3, 4: 10, 5: 6 } },
+   486→        { habitId: 'tujuan', name: 'Mulai dengan Tujuan', emoji: '🧭', avgRating: 3.6, totalReports: 18, trend: 'stable', prevRating: 3.5, breakdown: { 1: 1, 2: 2, 3: 6, 4: 7, 5: 2 } },
+   487→        { habitId: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', avgRating: 4.0, totalReports: 22, trend: 'up', prevRating: 3.6, breakdown: { 1: 0, 2: 1, 3: 4, 4: 12, 5: 5 } },
+   488→        { habitId: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', avgRating: 3.8, totalReports: 15, trend: 'down', prevRating: 4.1, breakdown: { 1: 1, 2: 1, 3: 5, 4: 6, 5: 2 } },
+   489→        { habitId: 'mengerti', name: 'Mengerti Dahulu Baru Dipahami', emoji: '👂', avgRating: 3.3, totalReports: 17, trend: 'stable', prevRating: 3.4, breakdown: { 1: 1, 2: 3, 3: 6, 4: 5, 5: 2 } },
+   490→        { habitId: 'bersinergi', name: 'Bersinergi', emoji: '🤲', avgRating: 4.1, totalReports: 19, trend: 'up', prevRating: 3.7, breakdown: { 1: 0, 2: 1, 3: 3, 4: 10, 5: 5 } },
+   491→        { habitId: 'asah', name: 'Memperbarui Diri', emoji: '🔧', avgRating: 3.5, totalReports: 16, trend: 'down', prevRating: 3.9, breakdown: { 1: 1, 2: 2, 3: 5, 4: 6, 5: 2 } },
+   492→      ]);
+   493→    }
+   494→    loadSummary();
+   495→  }, [selectedChild, currentMonth]);
+   496→
+   497→  const totalReports = summaries.reduce((sum, s) => sum + s.totalReports, 0);
+   498→  const overallAvg = summaries.length > 0
+   499→    ? Math.round((summaries.reduce((sum, s) => sum + s.avgRating, 0) / summaries.filter(s => s.avgRating > 0).length) * 10) / 10
+   500→    : 0;
+   501→  const strongest = [...summaries].sort((a, b) => b.avgRating - a.avgRating)[0];
+   502→  const weakest = [...summaries].sort((a, b) => a.avgRating - b.avgRating)[0];
+   503→
+   504→  if (loading) {
+   505→    return (
+   506→      <div className="space-y-4">
+   507→        <Skeleton className="h-8 w-64" />
+   508→        <div className="grid grid-cols-4 gap-4">
+   509→          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
+   510→        </div>
+   511→      </div>
+   512→    );
+   513→  }
+   514→
+   515→  return (
+   516→    <div className="space-y-6">
+   517→      {/* Header */}
+   518→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   519→        <div>
+   520→          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+   521→            <BarChart3 className="h-7 w-7 text-[#1F3864]" />
+   522→            Rekap & Analisis
+   523→          </h1>
+   524→          <p className="text-muted-foreground mt-1">
+   525→            Pantau perkembangan 7 Kebiasaan Anak Hebat secara berkala
+   526→          </p>
+   527→        </div>
+   528→      </div>
+   529→
+   530→      {/* Selectors */}
+   531→      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+   532→        <div className="flex-1 w-full sm:w-auto">
+   533→          <Label className="text-sm font-medium">Pilih Anak</Label>
+   534→          <Select value={selectedChild} onValueChange={(v) => {
+   535→            setSelectedChild(v);
+   536→            // Reset summaries
+   537→            setSummaries([]);
+   538→          }}>
+   539→            <SelectTrigger className="mt-1">
+   540→              <SelectValue placeholder="Pilih anak" />
+   541→            </SelectTrigger>
+   542→            <SelectContent>
+   543→              {children.map((child) => (
+   544→                <SelectItem key={child.id} value={child.id}>
+   545→                  {child.name} — {child.className}
+   546→                </SelectItem>
+   547→              ))}
+   548→            </SelectContent>
+   549→          </Select>
+   550→        </div>
+   551→        <div>
+   552→          <Label className="text-sm font-medium">Periode</Label>
+   553→          <div className="flex items-center gap-2 mt-1">
+   554→            <Button variant="outline" size="icon" onClick={prevMonth} className="h-9 w-9">
+   555→              <ChevronLeft className="h-4 w-4" />
+   556→            </Button>
+   557→            <span className="min-w-[140px] text-center font-medium text-sm">{displayMonth}</span>
+   558→            <Button variant="outline" size="icon" onClick={nextMonth} className="h-9 w-9">
+   559→              <ChevronRight className="h-4 w-4" />
+   560→            </Button>
+   561→          </div>
+   562→        </div>
+   563→      </div>
+   564→
+   565→      {/* Summary Cards */}
+   566→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   567→        <Card>
+   568→          <CardContent className="p-4 text-center">
+   569→            <div className="text-3xl font-bold text-[#1F3864]">{totalReports}</div>
+   570→            <p className="text-xs text-muted-foreground mt-1">Total Laporan</p>
+   571→            <MessageCircle className="h-5 w-5 text-[#1F3864]/40 mx-auto mt-2" />
+   572→          </CardContent>
+   573→        </Card>
+   574→        <Card>
+   575→          <CardContent className="p-4 text-center">
+   576→            <div className="flex items-center justify-center gap-1">
+   577→              <div className="text-3xl font-bold text-amber-500">{overallAvg}</div>
+   578→              <Star className="h-5 w-5 text-amber-400 fill-amber-400" />
+   579→            </div>
+   580→            <p className="text-xs text-muted-foreground mt-1">Rata-rata Rating</p>
+   581→            <BarChart3 className="h-5 w-5 text-amber-400/40 mx-auto mt-2" />
+   582→          </CardContent>
+   583→        </Card>
+   584→        <Card className="border-green-200 bg-green-50/30">
+   585→          <CardContent className="p-4 text-center">
+   586→            <div className="text-lg">{strongest?.emoji}</div>
+   587→            <div className="text-sm font-semibold text-green-700 mt-1 truncate">{strongest?.name || '-'}</div>
+   588→            <p className="text-xs text-muted-foreground">Kebiasaan Terkuat</p>
+   589→            <TrendingUp className="h-5 w-5 text-green-500 mx-auto mt-2" />
+   590→          </CardContent>
+   591→        </Card>
+   592→        <Card className="border-amber-200 bg-amber-50/30">
+   593→          <CardContent className="p-4 text-center">
+   594→            <div className="text-lg">{weakest?.emoji}</div>
+   595→            <div className="text-sm font-semibold text-amber-700 mt-1 truncate">{weakest?.name || '-'}</div>
+   596→            <p className="text-xs text-muted-foreground">Perlu Diperbaiki</p>
+   597→            <Target className="h-5 w-5 text-amber-500 mx-auto mt-2" />
+   598→          </CardContent>
+   599→        </Card>
+   600→      </div>
+   601→
+   602→      {/* Overall Rating Display */}
+   603→      <Card className="border-[#1F3864]/20">
+   604→        <CardContent className="p-6">
+   605→          <div className="text-center">
+   606→            <p className="text-sm text-muted-foreground mb-2">Skor Keseluruhan Bulan Ini</p>
+   607→            <div className="text-6xl font-bold text-[#1F3864]">{overallAvg}</div>
+   608→            <div className="flex justify-center mt-2">
+   609→              <StarRating rating={Math.round(overallAvg)} />
+   610→            </div>
+   611→            <Progress
+   612→              value={overallAvg * 20}
+   613→              className="mt-4 h-3 max-w-md mx-auto"
+   614→            />
+   615→            <p className="text-xs text-muted-foreground mt-2">
+   616→              {overallAvg >= 4.5
+   617→                ? 'Luar biasa! Anak Anda menunjukkan karakter yang sangat baik 🌟'
+   618→                : overallAvg >= 3.5
+   619→                ? 'Bagus! Anak Anda menunjukkan perkembangan yang positif 👍'
+   620→                : overallAvg >= 2.5
+   621→                ? 'Cukup baik. Terus dampingi dan bimbing anak Anda 💪'
+   622→                : 'Perlu perhatian lebih. Coba komunikasikan dengan guru di sekolah 📞'}
+   623→            </p>
+   624→          </div>
+   625→        </CardContent>
+   626→      </Card>
+   627→
+   628→      {/* Per-Habit Analysis */}
+   629→      <div>
+   630→        <h2 className="text-lg font-semibold mb-4">Analisis Per Kebiasaan</h2>
+   631→        <div className="grid gap-4 md:grid-cols-2">
+   632→          {summaries.map((summary) => (
+   633→            <Card key={summary.habitId} className="overflow-hidden">
+   634→              <CardContent className="p-5">
+   635→                <div className="flex items-start justify-between">
+   636→                  <div className="flex items-start gap-3">
+   637→                    <span className="text-2xl">{summary.emoji}</span>
+   638→                    <div>
+   639→                      <h3 className="font-semibold text-sm">{summary.name}</h3>
+   640→                      <p className="text-xs text-muted-foreground">{summary.totalReports} laporan</p>
+   641→                    </div>
+   642→                  </div>
+   643→                  <div className="flex items-center gap-1">
+   644→                    {summary.trend === 'up' && <ArrowUpRight className="h-4 w-4 text-green-500" />}
+   645→                    {summary.trend === 'down' && <ArrowDownRight className="h-4 w-4 text-red-500" />}
+   646→                    {summary.trend === 'stable' && <Minus className="h-4 w-4 text-gray-400" />}
+   647→                    <span className={cn(
+   648→                      'text-sm font-semibold',
+   649→                      summary.trend === 'up' && 'text-green-600',
+   650→                      summary.trend === 'down' && 'text-red-600',
+   651→                      summary.trend === 'stable' && 'text-gray-500'
+   652→                    )}>
+   653→                      {summary.avgRating > 0 ? summary.avgRating : '-'}
+   654→                    </span>
+   655→                  </div>
+   656→                </div>
+   657→
+   658→                {/* Visual bar */}
+   659→                <div className="mt-3">
+   660→                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+   661→                    <div
+   662→                      className={cn(
+   663→                        'h-full rounded-full transition-all duration-500',
+   664→                        summary.avgRating >= 4 ? 'bg-green-400' :
+   665→                        summary.avgRating >= 3 ? 'bg-amber-400' :
+   666→                        summary.avgRating >= 2 ? 'bg-orange-400' : 'bg-red-400'
+   667→                      )}
+   668→                      style={{ width: `${Math.min((summary.avgRating / 5) * 100, 100)}%` }}
+   669→                    />
+   670→                  </div>
+   671→                </div>
+   672→
+   673→                {/* Breakdown */}
+   674→                {summary.totalReports > 0 && (
+   675→                  <div className="mt-3 flex gap-2 flex-wrap">
+   676→                    {Object.entries(summary.breakdown)
+   677→                      .sort(([a], [b]) => Number(b) - Number(a))
+   678→                      .map(([rating, count]) => (
+   679→                        <Badge key={rating} variant="outline" className="text-xs">
+   680→                          ★{rating}: {count}x
+   681→                        </Badge>
+   682→                      ))}
+   683→                  </div>
+   684→                )}
+   685→              </CardContent>
+   686→            </Card>
+   687→          ))}
+   688→        </div>
+   689→      </div>
+   690→
+   691→      {/* Weekly Summary Table */}
+   692→      <Card>
+   693→        <CardHeader className="pb-3">
+   694→          <CardTitle className="text-base">Ringkasan Per Kebiasaan</CardTitle>
+   695→          <CardDescription>Perbandingan rata-rata rating setiap kebiasaan</CardDescription>
+   696→        </CardHeader>
+   697→        <CardContent>
+   698→          <Table>
+   699→            <TableHeader>
+   700→              <TableRow>
+   701→                <TableHead>Kebiasaan</TableHead>
+   702→                <TableHead className="text-center">Rata-rata</TableHead>
+   703→                <TableHead className="text-center">Total Laporan</TableHead>
+   704→                <TableHead className="text-center">Tren</TableHead>
+   705→                <TableHead className="text-center w-[120px]">Visualisasi</TableHead>
+   706→              </TableRow>
+   707→            </TableHeader>
+   708→            <TableBody>
+   709→              {summaries.map((s) => (
+   710→                <TableRow key={s.habitId}>
+   711→                  <TableCell>
+   712→                    <div className="flex items-center gap-2">
+   713→                      <span>{s.emoji}</span>
+   714→                      <span className="text-sm font-medium">{s.name}</span>
+   715→                    </div>
+   716→                  </TableCell>
+   717→                  <TableCell className="text-center font-semibold">
+   718→                    {s.avgRating > 0 ? s.avgRating : '-'}
+   719→                  </TableCell>
+   720→                  <TableCell className="text-center text-muted-foreground">{s.totalReports}</TableCell>
+   721→                  <TableCell className="text-center">
+   722→                    {s.trend === 'up' && <TrendingUp className="h-4 w-4 text-green-500 mx-auto" />}
+   723→                    {s.trend === 'down' && <TrendingDown className="h-4 w-4 text-red-500 mx-auto" />}
+   724→                    {s.trend === 'stable' && <Minus className="h-4 w-4 text-gray-400 mx-auto" />}
+   725→                  </TableCell>
+   726→                  <TableCell>
+   727→                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+   728→                      <div
+   729→                        className={cn(
+   730→                          'h-full rounded-full',
+   731→                          s.avgRating >= 4 ? 'bg-green-400' :
+   732→                          s.avgRating >= 3 ? 'bg-amber-400' : 'bg-orange-400'
+   733→                        )}
+   734→                        style={{ width: `${Math.min((s.avgRating / 5) * 100, 100)}%` }}
+   735→                      />
+   736→                    </div>
+   737→                  </TableCell>
+   738→                </TableRow>
+   739→              ))}
+   740→            </TableBody>
+   741→          </Table>
+   742→        </CardContent>
+   743→      </Card>
+   744→
+   745→      {/* Parent Insight */}
+   746→      <Card className="border-blue-100 bg-blue-50/30">
+   747→        <CardContent className="p-5">
+   748→          <h3 className="font-semibold flex items-center gap-2 text-blue-800">
+   749→            <MessageCircle className="h-5 w-5" />
+   750→            Insight untuk Orang Tua
+   751→          </h3>
+   752→          <div className="mt-3 space-y-2 text-sm text-blue-700">
+   753→            {strongest && strongest.avgRating > 0 && (
+   754→              <p>
+   755→                🌟 <strong>{strongest.name}</strong> adalah kebiasaan terkuat anak Anda bulan ini 
+   756→                dengan rata-rata <strong>{strongest.avgRating}/5</strong>. Terus dorong!
+   757→              </p>
+   758→            )}
+   759→            {weakest && weakest.avgRating > 0 && weakest.avgRating < 4 && (
+   760→              <p>
+   761→                📌 <strong>{weakest.name}</strong> perlu perhatian lebih. Coba berikan contoh nyata 
+   762→                dalam kehidupan sehari-hari untuk membantu anak memahami kebiasaan ini.
+   763→              </p>
+   764→            )}
+   765→            <p>
+   766→              📊 Berdiskusilah dengan guru di sekolah untuk mendapatkan gambaran lengkap 
+   767→              perkembangan karakter anak Anda baik di rumah maupun di sekolah.
+   768→            </p>
+   769→          </div>
+   770→        </CardContent>
+   771→      </Card>
+   772→    </div>
+   773→  );
+   774→}
+   775→

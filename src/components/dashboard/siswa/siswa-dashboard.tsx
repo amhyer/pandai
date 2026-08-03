@@ -233,7 +233,7 @@ export function SiswaDashboard() {
                   key={idx}
                   variant="outline"
                   className="border-amber-300 bg-white text-amber-800 hover:bg-amber-100 cursor-pointer px-3 py-1.5 text-sm"
-                  onClick={() => navigateTo('practice' as ViewType)}
+                  onClick={() => navigateTo('siswa-tugas' as ViewType)}
                 >
                   <BookOpen className="mr-1.5 h-3.5 w-3.5" />
                   {topic.topic}
@@ -280,7 +280,7 @@ export function SiswaDashboard() {
           subtext={analytics?.rank ? 'di sekolah' : 'belum ada data'}
           isLoading={loading}
           accent="bg-amber-50 text-amber-600"
-          onClick={() => navigateTo('leaderboard' as ViewType)}
+          onClick={() => navigateTo('siswa-nilai' as ViewType)}
         />
       </div>
 
@@ -436,7 +436,7 @@ export function SiswaDashboard() {
             {/* Primary Action */}
             <div
               className="relative overflow-hidden rounded-xl border-2 border-[#1F3864] bg-gradient-to-br from-[#1F3864] to-[#152850] p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
-              onClick={() => navigateTo('diagnostic' as ViewType)}
+              onClick={() => navigateTo('siswa-tugas' as ViewType)}
             >
               <div className="absolute top-2 right-2">
                 <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-[10px]">
@@ -455,7 +455,7 @@ export function SiswaDashboard() {
             {/* Secondary Actions */}
             <div
               className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
-              onClick={() => navigateTo('practice' as ViewType)}
+              onClick={() => navigateTo('siswa-tugas' as ViewType)}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-600 mb-3">
                 <Dumbbell className="h-6 w-6" />
@@ -470,7 +470,7 @@ export function SiswaDashboard() {
 
             <div
               className="rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
-              onClick={() => navigateTo('exams' as ViewType)}
+              onClick={() => navigateTo('siswa-tugas' as ViewType)}
             >
               <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 mb-3">
                 <ClipboardList className="h-6 w-6" />

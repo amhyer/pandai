@@ -87,15 +87,16 @@ export async function POST() {
 
     // ===== USERS =====
     const pw = await hashPassword('password123');
+    const pwOrtu = await hashPassword('123');
 
     // Super Admin
     const superAdmin = await db.user.create({
-      data: { email: 'admin@nalar.id', password: pw, name: 'Admin NALAR', role: 'SUPER_ADMIN', isActive: true },
+      data: { username: 'superadmin@pandai.id', email: 'admin@nalar.id', password: pw, name: 'Admin NALAR', role: 'SUPER_ADMIN', isActive: true },
     });
 
     // Admin Sekolah SMA1
     await db.user.create({
-      data: { email: 'admin@sma1jkt.sch.id', password: pw, name: 'Dra. Siti Rahayu', role: 'ADMIN_SCHOOL', schoolId: sma1.id, isActive: true },
+      data: { username: 'admin.sman1@pandai.id', email: 'admin@sma1jkt.sch.id', password: pw, name: 'Dra. Siti Rahayu', role: 'ADMIN_SCHOOL', schoolId: sma1.id, isActive: true },
     });
     // Admin SMA2
     await db.user.create({
@@ -104,7 +105,7 @@ export async function POST() {
 
     // Guru SMA1
     const guruBindo = await db.user.create({
-      data: { email: 'guru.bindo@sma1jkt.sch.id', password: pw, name: 'Hj. Ratna Dewi, M.Pd', role: 'GURU', schoolId: sma1.id, isActive: true },
+      data: { username: '198504152010011001', nip: '198504152010011001', email: 'guru.bindo@sma1jkt.sch.id', password: pw, name: 'Hj. Ratna Dewi, M.Pd', role: 'GURU', schoolId: sma1.id, isActive: true },
     });
     const guruBing = await db.user.create({
       data: { email: 'guru.bing@sma1jkt.sch.id', password: pw, name: 'Mr. John Smith, M.Ed', role: 'GURU', schoolId: sma1.id, isActive: true },
@@ -135,6 +136,8 @@ export async function POST() {
       const cls = classRecords[i % classRecords.length];
       siswaRecords.push({
         email: `siswa${i + 1}@sma1jkt.sch.id`,
+        username: i === 0 ? '0051234567' : undefined,
+        nisn: i === 0 ? '0051234567' : undefined,
         password: pw,
         name: siswaNames[i],
         role: 'SISWA',
@@ -477,7 +480,7 @@ export async function POST() {
 
     // ===== ORANG TUA ACCOUNT =====
     const ortu1 = await db.user.create({
-      data: { email: 'ortu.ahmad@email.com', password: pw, name: 'Bpk. Hasan Basri', role: 'ORANG_TUA', schoolId: sma1.id, isActive: true },
+      data: { username: 'ahmad', email: 'ortu.ahmad@email.com', password: pwOrtu, name: 'Bpk. Hasan Basri', role: 'ORANG_TUA', schoolId: sma1.id, isActive: true },
     });
     // Link first student to this parent
     if (students.length > 0) {
@@ -495,7 +498,7 @@ export async function POST() {
         adminSekolah: { email: 'admin@sma1jkt.sch.id', password: 'password123' },
         guru: { email: 'guru.bindo@sma1jkt.sch.id', password: 'password123' },
         siswa: { email: 'siswa1@sma1jkt.sch.id', password: 'password123' },
-        orangTua: { email: 'ortu.ahmad@email.com', password: 'password123' },
+        orangTua: { username: 'ahmad', password: '123' },
       },
     });
   } catch (error: any) {

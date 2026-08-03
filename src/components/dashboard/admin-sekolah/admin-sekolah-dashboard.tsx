@@ -221,7 +221,7 @@ export function AdminSekolahDashboard() {
           value={loading ? '' : (analytics?.totalQuestions ?? 0)}
           icon={<BookOpen className="h-5 w-5" />}
           isLoading={loading}
-          onClick={() => navigateTo('questions' as ViewType)}
+          onClick={() => navigateTo('subjects' as ViewType)}
           iconBg="bg-red-50"
           iconColor="text-red-600"
         />
@@ -231,7 +231,7 @@ export function AdminSekolahDashboard() {
           icon={<BarChart3 className="h-5 w-5" />}
           subtext="dari semua tryout"
           isLoading={loading}
-          onClick={() => navigateTo('results' as ViewType)}
+          onClick={() => navigateTo('users' as ViewType)}
           iconBg="bg-purple-50"
           iconColor="text-purple-600"
         />
@@ -241,7 +241,7 @@ export function AdminSekolahDashboard() {
           icon={<Target className="h-5 w-5" />}
           subtext="estimasi"
           isLoading={loading}
-          onClick={() => navigateTo('analytics' as ViewType)}
+          onClick={() => navigateTo('activity-log' as ViewType)}
           iconBg="bg-sky-50"
           iconColor="text-sky-600"
         />
@@ -317,14 +317,14 @@ export function AdminSekolahDashboard() {
             </div>
             <div
               className="flex items-center gap-3 rounded-lg border-2 border-amber-200 bg-amber-50 p-3 cursor-pointer hover:bg-amber-100 transition-all hover:-translate-y-0.5 hover:shadow-md"
-              onClick={() => navigateTo('exams' as ViewType)}
+              onClick={() => navigateTo('teacher-assignments' as ViewType)}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white">
                 <ClipboardList className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-amber-800">Buat Tryout</p>
-                <p className="text-xs text-muted-foreground">Buat paket tryout baru</p>
+                <p className="text-sm font-semibold text-amber-800">Penugasan Guru</p>
+                <p className="text-xs text-muted-foreground">Kelola tugas guru</p>
               </div>
               <ArrowRight className="h-4 w-4 text-amber-400" />
             </div>
@@ -343,14 +343,14 @@ export function AdminSekolahDashboard() {
             </div>
             <div
               className="flex items-center gap-3 rounded-lg border-2 border-purple-200 bg-purple-50 p-3 cursor-pointer hover:bg-purple-100 transition-all hover:-translate-y-0.5 hover:shadow-md"
-              onClick={() => navigateTo('reports' as ViewType)}
+              onClick={() => navigateTo('backup-restore' as ViewType)}
             >
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-500 text-white">
                 <TrendingUp className="h-5 w-5" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-purple-800">Lihat Laporan</p>
-                <p className="text-xs text-muted-foreground">Laporan & analisis</p>
+                <p className="text-sm font-semibold text-purple-800">Backup & Restore</p>
+                <p className="text-xs text-muted-foreground">Cadangkan & pulihkan data</p>
               </div>
               <ArrowRight className="h-4 w-4 text-purple-400" />
             </div>
@@ -366,9 +366,9 @@ export function AdminSekolahDashboard() {
               <CardTitle className="text-lg">Ujian & Tryout Mendatang</CardTitle>
               <CardDescription>Jadwal ujian yang akan datang</CardDescription>
             </div>
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigateTo('exam-assignments' as ViewType)}>
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigateTo('teacher-assignments' as ViewType)}>
               <Calendar className="h-3.5 w-3.5" />
-              Lihat Jadwal
+              Lihat Penugasan
             </Button>
           </div>
         </CardHeader>
@@ -378,7 +378,7 @@ export function AdminSekolahDashboard() {
               <div
                 key={exam.id}
                 className="flex items-center gap-4 rounded-lg border p-3 cursor-pointer hover:bg-muted/50 transition-colors group"
-                onClick={() => navigateTo('exam-assignments' as ViewType)}
+                onClick={() => navigateTo('teacher-assignments' as ViewType)}
               >
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${
                   exam.status === 'in_progress' ? 'bg-emerald-50 text-emerald-600' :

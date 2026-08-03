@@ -570,7 +570,17 @@ export function SiswaTugasView() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            setTasks(data as Task[]);
+            // Map API data to Task interface
+            const mapped: Task[] = data.map((item: any) => ({
+              id: item.id,
+              title: item.title,
+              type: (item.type || 'tugas') as Task['type'],
+              subject: item.subject?.name || 'Umum',
+              dueDate: item.dueDate || '2025-12-31',
+              status: 'menunggu' as const,
+              isUrgent: false,
+            }));
+            setTasks(mapped);
           } else {
             setTasks(MOCK_TASKS);
           }

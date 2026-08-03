@@ -191,7 +191,7 @@ export function GuruDashboard() {
     try {
       setCreating(true);
       // Navigate to question editor with pre-filled subject
-      navigateTo('question-editor' as ViewType);
+      navigateTo('guru-materi' as ViewType);
       toast.success(`Membuat soal ${quickSubject}...`);
     } catch {
       toast.error('Gagal membuat soal');
@@ -220,7 +220,7 @@ export function GuruDashboard() {
           icon={<BookOpen className="h-6 w-6" />}
           subtext="soal di bank soal"
           isLoading={loading}
-          onClick={() => navigateTo('guru-soal' as ViewType)}
+          onClick={() => navigateTo('guru-materi' as ViewType)}
           iconBg="bg-[#1F3864]/10"
           iconColor="text-[#1F3864]"
         />
@@ -230,7 +230,7 @@ export function GuruDashboard() {
           icon={<ClipboardList className="h-6 w-6" />}
           subtext="tryout aktif"
           isLoading={loading}
-          onClick={() => navigateTo('guru-tryout' as ViewType)}
+          onClick={() => navigateTo('guru-tugas' as ViewType)}
           iconBg="bg-amber-50"
           iconColor="text-amber-600"
         />
@@ -356,7 +356,7 @@ export function GuruDashboard() {
           <CardContent className="space-y-3">
             <Button
               className="w-full justify-start gap-2 bg-[#1F3864] hover:bg-[#152850]"
-              onClick={() => navigateTo('question-editor' as ViewType)}
+              onClick={() => navigateTo('guru-materi' as ViewType)}
             >
               <FilePlus className="h-4 w-4" />
               Buat Soal Baru
@@ -364,7 +364,7 @@ export function GuruDashboard() {
             <Button
               variant="outline"
               className="w-full justify-start gap-2"
-              onClick={() => navigateTo('guru-tryout' as ViewType)}
+              onClick={() => navigateTo('guru-tugas' as ViewType)}
             >
               <ClipboardList className="h-4 w-4" />
               Buat Tryout
@@ -372,7 +372,7 @@ export function GuruDashboard() {
             <Button
               variant="outline"
               className="w-full justify-start gap-2"
-              onClick={() => navigateTo('guru-soal' as ViewType)}
+              onClick={() => navigateTo('guru-materi' as ViewType)}
             >
               <BookOpen className="h-4 w-4" />
               Lihat Bank Soal

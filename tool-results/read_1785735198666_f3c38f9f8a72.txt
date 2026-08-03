@@ -1,0 +1,1138 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useMemo, useCallback } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import {
+     6→  Card,
+     7→  CardContent,
+     8→  CardHeader,
+     9→  CardTitle,
+    10→  CardDescription,
+    11→} from '@/components/ui/card';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import {
+    15→  Table,
+    16→  TableBody,
+    17→  TableCell,
+    18→  TableHead,
+    19→  TableHeader,
+    20→  TableRow,
+    21→} from '@/components/ui/table';
+    22→import { Input } from '@/components/ui/input';
+    23→import {
+    24→  Select,
+    25→  SelectContent,
+    26→  SelectItem,
+    27→  SelectTrigger,
+    28→  SelectValue,
+    29→} from '@/components/ui/select';
+    30→import { Skeleton } from '@/components/ui/skeleton';
+    31→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    32→import { Progress } from '@/components/ui/progress';
+    33→import { toast } from 'sonner';
+    34→import { cn } from '@/lib/utils';
+    35→import {
+    36→  BookOpen,
+    37→  Calculator,
+    38→  Atom,
+    39→  FlaskConical,
+    40→  Leaf,
+    41→  Languages,
+    42→  Search,
+    43→  ChevronLeft,
+    44→  ChevronRight,
+    45→  CheckCircle2,
+    46→  Circle,
+    47→  Clock,
+    48→  AlertCircle,
+    49→  FileText,
+    50→  ClipboardList,
+    51→  Timer,
+    52→  PlayCircle,
+    53→  Eye,
+    54→  CalendarDays,
+    55→  TrendingUp,
+    56→  XCircle,
+    57→  ArrowRight,
+    58→  Sparkles,
+    59→  GraduationCap,
+    60→  BookMarked,
+    61→  BookCheck,
+    62→  ChevronDown,
+    63→  ChevronUp,
+    64→  Calendar,
+    65→  UserCheck,
+    66→  BriefcaseMedical,
+    67→  X,
+    68→  BarChart3,
+    69→  Loader2,
+    70→  FileQuestion,
+    71→  Trophy,
+    72→  Target,
+    73→  AlertTriangle,
+    74→} from 'lucide-react';
+    75→
+    76→// ═══════════════════════════════════════════════════════════════════════
+    77→//  SHARED TYPES
+    78→// ═══════════════════════════════════════════════════════════════════════
+    79→
+    80→interface Material {
+    81→  id: string;
+    82→  title: string;
+    83→  description: string;
+    84→  subject: string;
+    85→  date: string;
+    86→  isRead: boolean;
+    87→}
+    88→
+    89→interface SubjectData {
+    90→  id: string;
+    91→  name: string;
+    92→  icon: React.ReactNode;
+    93→  color: string;
+    94→  bgLight: string;
+    95→  borderColor: string;
+    96→  materials: Material[];
+    97→}
+    98→
+    99→interface Task {
+   100→  id: string;
+   101→  title: string;
+   102→  type: 'tugas' | 'kuis' | 'ujian';
+   103→  subject: string;
+   104→  dueDate: string;
+   105→  status: 'menunggu' | 'dikerjakan' | 'selesai' | 'terlambat';
+   106→  isUrgent: boolean;
+   107→  score?: number;
+   108→}
+   109→
+   110→interface AttendanceDay {
+   111→  day: number;
+   112→  status: 'hadir' | 'izin' | 'sakit' | 'alpa' | 'weekend' | 'none';
+   113→}
+   114→
+   115→// ═══════════════════════════════════════════════════════════════════════
+   116→//  BRAND CONSTANTS
+   117→// ═══════════════════════════════════════════════════════════════════════
+   118→
+   119→const BRAND = '#1F3864';
+   120→const BRAND_LIGHT = '#E8EDF5';
+   121→const BRAND_DARK = '#152A4A';
+   122→
+   123→// ═══════════════════════════════════════════════════════════════════════
+   124→//  MOCK DATA
+   125→// ═══════════════════════════════════════════════════════════════════════
+   126→
+   127→const MOCK_SUBJECTS: SubjectData[] = [
+   128→  {
+   129→    id: 'matematika',
+   130→    name: 'Matematika',
+   131→    icon: <Calculator className="h-6 w-6" />,
+   132→    color: 'text-rose-600',
+   133→    bgLight: 'bg-rose-50',
+   134→    borderColor: 'border-rose-200',
+   135→    materials: [
+   136→      { id: 'm1', title: 'Persamaan Kuadrat', description: 'Memahami bentuk umum persamaan kuadrat dan cara menyelesaikannya.', subject: 'Matematika', date: '2025-01-10', isRead: true },
+   137→      { id: 'm2', title: 'Fungsi Kuadrat', description: 'Grafik dan sifat-sifat fungsi kuadrat.', subject: 'Matematika', date: '2025-01-15', isRead: true },
+   138→      { id: 'm3', title: 'Sistem Persamaan Linear', description: 'Metode eliminasi dan substitusi untuk menyelesaikan SPLDV.', subject: 'Matematika', date: '2025-01-20', isRead: false },
+   139→      { id: 'm4', title: 'Logaritma', description: 'Sifat-sifat logaritma dan penerapannya.', subject: 'Matematika', date: '2025-01-25', isRead: false },
+   140→    ],
+   141→  },
+   142→  {
+   143→    id: 'fisika',
+   144→    name: 'Fisika',
+   145→    icon: <Atom className="h-6 w-6" />,
+   146→    color: 'text-blue-600',
+   147→    bgLight: 'bg-blue-50',
+   148→    borderColor: 'border-blue-200',
+   149→    materials: [
+   150→      { id: 'f1', title: 'Hukum Newton', description: 'Tiga hukum gerak Newton dan penerapannya dalam kehidupan sehari-hari.', subject: 'Fisika', date: '2025-01-08', isRead: true },
+   151→      { id: 'f2', title: 'Usaha dan Energi', description: 'Konsep usaha, energi kinetik, dan energi potensial.', subject: 'Fisika', date: '2025-01-14', isRead: true },
+   152→      { id: 'f3', title: 'Momentum dan Impuls', description: 'Hukum kekekalan momentum dan tumbukan.', subject: 'Fisika', date: '2025-01-22', isRead: false },
+   153→    ],
+   154→  },
+   155→  {
+   156→    id: 'kimia',
+   157→    name: 'Kimia',
+   158→    icon: <FlaskConical className="h-6 w-6" />,
+   159→    color: 'text-purple-600',
+   160→    bgLight: 'bg-purple-50',
+   161→    borderColor: 'border-purple-200',
+   162→    materials: [
+   163→      { id: 'k1', title: 'Struktur Atom', description: 'Model atom, partikel penyusun atom, dan konfigurasi elektron.', subject: 'Kimia', date: '2025-01-09', isRead: true },
+   164→      { id: 'k2', title: 'Ikatan Kimia', description: 'Ikatan ion, ikatan kovalen, dan ikatan logam.', subject: 'Kimia', date: '2025-01-16', isRead: true },
+   165→      { id: 'k3', title: 'Sistem Periodik Unsur', description: 'Tren sifat unsur dalam periode dan golongan.', subject: 'Kimia', date: '2025-01-23', isRead: false },
+   166→      { id: 'k4', title: 'Reaksi Kimia', description: 'Jenis-jenis reaksi kimia dan persamaan reaksi.', subject: 'Kimia', date: '2025-01-28', isRead: false },
+   167→    ],
+   168→  },
+   169→  {
+   170→    id: 'biologi',
+   171→    name: 'Biologi',
+   172→    icon: <Leaf className="h-6 w-6" />,
+   173→    color: 'text-green-600',
+   174→    bgLight: 'bg-green-50',
+   175→    borderColor: 'border-green-200',
+   176→    materials: [
+   177→      { id: 'b1', title: 'Sel dan Organel', description: 'Struktur sel prokariotik dan eukariotik beserta fungsinya.', subject: 'Biologi', date: '2025-01-07', isRead: true },
+   178→      { id: 'b2', title: 'Jaringan Tumbuhan', description: 'Jenis-jenis jaringan pada tumbuhan dan fungsinya.', subject: 'Biologi', date: '2025-01-13', isRead: false },
+   179→      { id: 'b3', title: 'Fotosintesis', description: 'Proses fotosintesis dan faktor-faktor yang mempengaruhinya.', subject: 'Biologi', date: '2025-01-19', isRead: false },
+   180→    ],
+   181→  },
+   182→  {
+   183→    id: 'bindo',
+   184→    name: 'Bahasa Indonesia',
+   185→    icon: <BookOpen className="h-6 w-6" />,
+   186→    color: 'text-amber-600',
+   187→    bgLight: 'bg-amber-50',
+   188→    borderColor: 'border-amber-200',
+   189→    materials: [
+   190→      { id: 'bi1', title: 'Teks Eksplanasi', description: 'Struktur dan ciri-ciri teks eksplanasi.', subject: 'Bahasa Indonesia', date: '2025-01-11', isRead: true },
+   191→      { id: 'bi2', title: 'Teks Persuasi', description: 'Teknik persuasi dalam teks dan iklan.', subject: 'Bahasa Indonesia', date: '2025-01-18', isRead: false },
+   192→      { id: 'bi3', title: 'Cerpen dan Unsur Intrinsik', description: 'Menganalisis unsur intrinsik cerpen.', subject: 'Bahasa Indonesia', date: '2025-01-24', isRead: false },
+   193→    ],
+   194→  },
+   195→  {
+   196→    id: 'bing',
+   197→    name: 'Bahasa Inggris',
+   198→    icon: <Languages className="h-6 w-6" />,
+   199→    color: 'text-cyan-600',
+   200→    bgLight: 'bg-cyan-50',
+   201→    borderColor: 'border-cyan-200',
+   202→    materials: [
+   203→      { id: 'be1', title: 'Past Tense & Present Perfect', description: 'Perbedaan penggunaan past tense dan present perfect.', subject: 'Bahasa Inggris', date: '2025-01-12', isRead: true },
+   204→      { id: 'be2', title: 'Passive Voice', description: 'Membuat kalimat pasif dalam berbagai tenses.', subject: 'Bahasa Inggris', date: '2025-01-17', isRead: true },
+   205→      { id: 'be3', title: 'Conditional Sentences', description: 'Tipe 0, 1, 2, dan 3 kalimat bersyarat.', subject: 'Bahasa Inggris', date: '2025-01-26', isRead: false },
+   206→      { id: 'be4', title: 'Analytical Exposition Text', description: 'Struktur dan bahasa teks eksposisi analitis.', subject: 'Bahasa Inggris', date: '2025-01-29', isRead: false },
+   207→    ],
+   208→  },
+   209→];
+   210→
+   211→const MOCK_TASKS: Task[] = [
+   212→  { id: 't1', title: 'Latihan Soal Persamaan Kuadrat', type: 'tugas', subject: 'Matematika', dueDate: '2025-01-20', status: 'selesai', isUrgent: false, score: 85 },
+   213→  { id: 't2', title: 'Kuis Hukum Newton', type: 'kuis', subject: 'Fisika', dueDate: '2025-01-22', status: 'selesai', isUrgent: false, score: 90 },
+   214→  { id: 't3', title: 'Tugas Laporan Praktikum Ikatan Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-28', status: 'menunggu', isUrgent: true },
+   215→  { id: 't4', title: 'Ujian Tengah Semester Biologi', type: 'ujian', subject: 'Biologi', dueDate: '2025-02-01', status: 'menunggu', isUrgent: false },
+   216→  { id: 't5', title: 'Essay Teks Eksplanasi', type: 'tugas', subject: 'Bahasa Indonesia', dueDate: '2025-01-15', status: 'terlambat', isUrgent: false },
+   217→  { id: 't6', title: 'Kuis Passive Voice', type: 'kuis', subject: 'Bahasa Inggris', dueDate: '2025-01-25', status: 'menunggu', isUrgent: true },
+   218→  { id: 't7', title: 'Tugas Analisis Data Fotosintesis', type: 'tugas', subject: 'Biologi', dueDate: '2025-01-30', status: 'dikerjakan', isUrgent: false },
+   219→  { id: 't8', title: 'Tryout UTBK Matematika', type: 'ujian', subject: 'Matematika', dueDate: '2025-02-05', status: 'menunggu', isUrgent: false },
+   220→  { id: 't9', title: 'Kuis Teks Persuasi', type: 'kuis', subject: 'Bahasa Indonesia', dueDate: '2025-01-18', status: 'selesai', isUrgent: false, score: 78 },
+   221→  { id: 't10', title: 'Tugas Reaksi Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-12', status: 'selesai', isUrgent: false, score: 92 },
+   222→];
+   223→
+   224→function generateMockAttendance(year: number, month: number): AttendanceDay[] {
+   225→  const days: AttendanceDay[] = [];
+   226→  const daysInMonth = new Date(year, month + 1, 0).getDate();
+   227→  const statuses: Array<'hadir' | 'izin' | 'sakit' | 'alpa'> = ['hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'izin', 'sakit', 'alpa'];
+   228→  let statusIdx = 0;
+   229→
+   230→  for (let d = 1; d <= daysInMonth; d++) {
+   231→    const date = new Date(year, month, d);
+   232→    const dow = date.getDay();
+   233→    if (dow === 0 || dow === 6) {
+   234→      days.push({ day: d, status: 'weekend' });
+   235→    } else {
+   236→      const s = statuses[statusIdx % statuses.length];
+   237→      days.push({ day: d, status: s });
+   238→      statusIdx++;
+   239→    }
+   240→  }
+   241→  return days;
+   242→}
+   243→
+   244→// ═══════════════════════════════════════════════════════════════════════
+   245→//  1. SISWA MATERI VIEW
+   246→// ═══════════════════════════════════════════════════════════════════════
+   247→
+   248→export function SiswaMateriView() {
+   249→  const { user } = useAppStore();
+   250→  const [subjects, setSubjects] = useState<SubjectData[]>([]);
+   251→  const [isLoading, setIsLoading] = useState(true);
+   252→  const [searchQuery, setSearchQuery] = useState('');
+   253→  const [activeTab, setActiveTab] = useState('semua');
+   254→  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+   255→
+   256→  useEffect(() => {
+   257→    async function fetchMaterials() {
+   258→      setIsLoading(true);
+   259→      try {
+   260→        const params = new URLSearchParams({
+   261→          schoolId: user?.schoolId || '',
+   262→          classId: user?.classId || '',
+   263→          type: 'materi',
+   264→          status: 'published',
+   265→        });
+   266→        const res = await fetch(`/api/materials?${params}`);
+   267→        if (res.ok) {
+   268→          const data = await res.json();
+   269→          if (Array.isArray(data) && data.length > 0) {
+   270→            // Map API data into our subject structure
+   271→            const mapped = MOCK_SUBJECTS.map((subj) => {
+   272→              const apiMaterials = (data as Material[]).filter(
+   273→                (m) => m.subject === subj.name
+   274→              );
+   275→              return apiMaterials.length > 0
+   276→                ? { ...subj, materials: apiMaterials }
+   277→                : subj;
+   278→            });
+   279→            setSubjects(mapped);
+   280→          } else {
+   281→            setSubjects(MOCK_SUBJECTS);
+   282→          }
+   283→        } else {
+   284→          setSubjects(MOCK_SUBJECTS);
+   285→        }
+   286→      } catch {
+   287→        setSubjects(MOCK_SUBJECTS);
+   288→      } finally {
+   289→        setIsLoading(false);
+   290→      }
+   291→    }
+   292→    fetchMaterials();
+   293→  }, [user?.schoolId, user?.classId]);
+   294→
+   295→  const toggleSubject = useCallback((subjectId: string) => {
+   296→    setExpandedSubject((prev) => (prev === subjectId ? null : subjectId));
+   297→  }, []);
+   298→
+   299→  const filteredSubjects = useMemo(() => {
+   300→    return subjects.map((subj) => {
+   301→      let mats = subj.materials;
+   302→
+   303→      // Search filter
+   304→      if (searchQuery.trim()) {
+   305→        const q = searchQuery.toLowerCase();
+   306→        mats = mats.filter(
+   307→          (m) =>
+   308→            m.title.toLowerCase().includes(q) ||
+   309→            m.description.toLowerCase().includes(q)
+   310→        );
+   311→      }
+   312→
+   313→      // Tab filter
+   314→      if (activeTab === 'belum') {
+   315→        mats = mats.filter((m) => !m.isRead);
+   316→      } else if (activeTab === 'selesai') {
+   317→        mats = mats.filter((m) => m.isRead);
+   318→      }
+   319→
+   320→      return { ...subj, materials: mats, filteredCount: mats.length };
+   321→    });
+   322→  }, [subjects, searchQuery, activeTab]);
+   323→
+   324→  const totalMaterials = useMemo(
+   325→    () => subjects.reduce((sum, s) => sum + s.materials.length, 0),
+   326→    [subjects]
+   327→  );
+   328→  const totalRead = useMemo(
+   329→    () => subjects.reduce((sum, s) => sum + s.materials.filter((m) => m.isRead).length, 0),
+   330→    [subjects]
+   331→  );
+   332→  const overallProgress = totalMaterials > 0 ? Math.round((totalRead / totalMaterials) * 100) : 0;
+   333→
+   334→  const handleMarkRead = (materialId: string, subjectId: string) => {
+   335→    setSubjects((prev) =>
+   336→      prev.map((subj) => {
+   337→        if (subj.id !== subjectId) return subj;
+   338→        return {
+   339→          ...subj,
+   340→          materials: subj.materials.map((m) =>
+   341→            m.id === materialId ? { ...m, isRead: true } : m
+   342→          ),
+   343→        };
+   344→      })
+   345→    );
+   346→    toast.success('Materi ditandai sudah dibaca!');
+   347→  };
+   348→
+   349→  if (isLoading) {
+   350→    return (
+   351→      <div className="space-y-6">
+   352→        <Skeleton className="h-44 w-full rounded-2xl" />
+   353→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   354→          {Array.from({ length: 6 }).map((_, i) => (
+   355→            <Skeleton key={i} className="h-36 rounded-xl" />
+   356→          ))}
+   357→        </div>
+   358→      </div>
+   359→    );
+   360→  }
+   361→
+   362→  return (
+   363→    <div className="space-y-6">
+   364→      {/* ── Hero Banner ── */}
+   365→      <div
+   366→        className="relative rounded-2xl overflow-hidden p-6 md:p-8"
+   367→        style={{ background: `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})` }}
+   368→      >
+   369→        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(30%, -30%)' }} />
+   370→        <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full opacity-5" style={{ background: 'white', transform: 'translate(-30%, 30%)' }} />
+   371→        <div className="relative z-10">
+   372→          <div className="flex items-center gap-3 mb-2">
+   373→            <div className="p-2.5 rounded-xl bg-white/15 backdrop-blur-sm">
+   374→              <BookMarked className="h-6 w-6 text-white" />
+   375→            </div>
+   376→            <h1 className="text-2xl md:text-3xl font-bold text-white">Materi Pelajaran</h1>
+   377→          </div>
+   378→          <p className="text-white/80 text-sm md:text-base mb-4">
+   379→            Kelas {user?.className || 'XII IPA'} — Semua materi tersedia untuk dipelajari
+   380→          </p>
+   381→          <div className="flex flex-wrap items-center gap-4 text-white/90 text-sm">
+   382→            <div className="flex items-center gap-1.5">
+   383→              <BookOpen className="h-4 w-4" />
+   384→              <span>{totalMaterials} Materi</span>
+   385→            </div>
+   386→            <div className="flex items-center gap-1.5">
+   387→              <BookCheck className="h-4 w-4" />
+   388→              <span>{totalRead} Selesai</span>
+   389→            </div>
+   390→            <div className="flex items-center gap-1.5">
+   391→              <TrendingUp className="h-4 w-4" />
+   392→              <span>{overallProgress}% Progres</span>
+   393→            </div>
+   394→          </div>
+   395→          <div className="mt-4 w-full max-w-xs">
+   396→            <div className="flex items-center justify-between text-xs text-white/70 mb-1">
+   397→              <span>Progres Keseluruhan</span>
+   398→              <span>{overallProgress}%</span>
+   399→            </div>
+   400→            <div className="h-2 rounded-full bg-white/20 overflow-hidden">
+   401→              <div
+   402→                className="h-full rounded-full bg-white transition-all duration-500"
+   403→                style={{ width: `${overallProgress}%` }}
+   404→              />
+   405→            </div>
+   406→          </div>
+   407→        </div>
+   408→      </div>
+   409→
+   410→      {/* ── Search & Filter ── */}
+   411→      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+   412→        <div className="relative flex-1 max-w-md w-full">
+   413→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   414→          <Input
+   415→            placeholder="Cari materi..."
+   416→            value={searchQuery}
+   417→            onChange={(e) => setSearchQuery(e.target.value)}
+   418→            className="pl-9"
+   419→          />
+   420→        </div>
+   421→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   422→          <TabsList className="h-9">
+   423→            <TabsTrigger value="semua" className="text-xs px-3">Semua</TabsTrigger>
+   424→            <TabsTrigger value="belum" className="text-xs px-3">Belum Dibaca</TabsTrigger>
+   425→            <TabsTrigger value="selesai" className="text-xs px-3">Selesai</TabsTrigger>
+   426→          </TabsList>
+   427→        </Tabs>
+   428→      </div>
+   429→
+   430→      {/* ── Subject Grid ── */}
+   431→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   432→        {filteredSubjects.map((subj) => {
+   433→          const total = subj.materials.length;
+   434→          const completed = subj.materials.filter((m) => m.isRead).length;
+   435→          const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+   436→          const isExpanded = expandedSubject === subj.id;
+   437→
+   438→          return (
+   439→            <div key={subj.id} className="space-y-2">
+   440→              <Card
+   441→                className={cn(
+   442→                  'cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border-2',
+   443→                  isExpanded ? subj.borderColor : 'border-transparent'
+   444→                )}
+   445→                onClick={() => toggleSubject(subj.id)}
+   446→              >
+   447→                <CardContent className="p-4">
+   448→                  <div className="flex items-start gap-3">
+   449→                    <div className={cn('p-2.5 rounded-xl shrink-0', subj.bgLight, subj.color)}>
+   450→                      {subj.icon}
+   451→                    </div>
+   452→                    <div className="flex-1 min-w-0">
+   453→                      <div className="flex items-center justify-between mb-1">
+   454→                        <h3 className="font-semibold text-sm truncate">{subj.name}</h3>
+   455→                        <div className="flex items-center gap-1 text-muted-foreground shrink-0 ml-2">
+   456→                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+   457→                        </div>
+   458→                      </div>
+   459→                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+   460→                        <span>{total} materi</span>
+   461→                        <span className="font-medium" style={{ color: BRAND }}>{completed} selesai</span>
+   462→                      </div>
+   463→                      <div className="flex items-center gap-2">
+   464→                        <Progress value={pct} className="h-2 flex-1" />
+   465→                        <span className="text-xs font-medium" style={{ color: BRAND }}>{pct}%</span>
+   466→                      </div>
+   467→                    </div>
+   468→                  </div>
+   469→                </CardContent>
+   470→              </Card>
+   471→
+   472→              {/* ── Expanded Material List ── */}
+   473→              {isExpanded && (
+   474→                <div className="space-y-2 pl-2">
+   475→                  {subj.materials.length === 0 ? (
+   476→                    <Card className="border-dashed">
+   477→                      <CardContent className="p-4 text-center text-muted-foreground text-sm">
+   478→                        Tidak ada materi yang sesuai filter.
+   479→                      </CardContent>
+   480→                    </Card>
+   481→                  ) : (
+   482→                    subj.materials.map((mat) => (
+   483→                      <Card key={mat.id} className="transition-all duration-150 hover:shadow-md">
+   484→                        <CardContent className="p-4">
+   485→                          <div className="flex items-start gap-3">
+   486→                            <div className={cn('mt-0.5 shrink-0', mat.isRead ? 'text-emerald-500' : 'text-muted-foreground')}>
+   487→                              {mat.isRead ? (
+   488→                                <CheckCircle2 className="h-5 w-5" />
+   489→                              ) : (
+   490→                                <Circle className="h-5 w-5" />
+   491→                              )}
+   492→                            </div>
+   493→                            <div className="flex-1 min-w-0">
+   494→                              <div className="flex items-center gap-2 mb-1">
+   495→                                <h4 className={cn('text-sm font-medium truncate', mat.isRead ? 'text-muted-foreground' : 'font-semibold')}>{mat.title}</h4>
+   496→                                <Badge
+   497→                                  variant={mat.isRead ? 'secondary' : 'default'}
+   498→                                  className={cn('text-[10px] px-1.5 py-0', !mat.isRead && 'bg-amber-500 hover:bg-amber-600 text-white')}
+   499→                                >
+   500→                                  {mat.isRead ? 'Dibaca' : 'Belum'}
+   501→                                </Badge>
+   502→                              </div>
+   503→                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{mat.description}</p>
+   504→                              <div className="flex items-center justify-between">
+   505→                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+   506→                                  <CalendarDays className="h-3 w-3" />
+   507→                                  <span>{new Date(mat.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+   508→                                </div>
+   509→                                {!mat.isRead && (
+   510→                                  <Button
+   511→                                    size="sm"
+   512→                                    className="h-7 text-xs px-3"
+   513→                                    style={{ backgroundColor: BRAND }}
+   514→                                    onClick={(e) => {
+   515→                                      e.stopPropagation();
+   516→                                      handleMarkRead(mat.id, subj.id);
+   517→                                    }}
+   518→                                  >
+   519→                                    <PlayCircle className="h-3.5 w-3.5 mr-1" />
+   520→                                    Mulai Belajar
+   521→                                  </Button>
+   522→                                )}
+   523→                              </div>
+   524→                            </div>
+   525→                          </div>
+   526→                        </CardContent>
+   527→                      </Card>
+   528→                    ))
+   529→                  )}
+   530→                </div>
+   531→              )}
+   532→            </div>
+   533→          );
+   534→        })}
+   535→      </div>
+   536→
+   537→      {/* ── Empty State ── */}
+   538→      {!isLoading && filteredSubjects.every((s) => s.materials.length === 0) && (
+   539→        <div className="text-center py-12">
+   540→          <Search className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+   541→          <h3 className="text-lg font-semibold text-muted-foreground">Tidak ada materi ditemukan</h3>
+   542→          <p className="text-sm text-muted-foreground/70 mt-1">Coba ubah kata kunci pencarian atau filter.</p>
+   543→        </div>
+   544→      )}
+   545→    </div>
+   546→  );
+   547→}
+   548→
+   549→// ═══════════════════════════════════════════════════════════════════════
+   550→//  2. SISWA TUGAS VIEW
+   551→// ═══════════════════════════════════════════════════════════════════════
+   552→
+   553→export function SiswaTugasView() {
+   554→  const { user } = useAppStore();
+   555→  const [tasks, setTasks] = useState<Task[]>([]);
+   556→  const [isLoading, setIsLoading] = useState(true);
+   557→  const [activeTab, setActiveTab] = useState('semua');
+   558→
+   559→  useEffect(() => {
+   560→    async function fetchTasks() {
+   561→      setIsLoading(true);
+   562→      try {
+   563→        const params = new URLSearchParams({
+   564→          schoolId: user?.schoolId || '',
+   565→          classId: user?.classId || '',
+   566→          type: 'tugas',
+   567→          status: 'published',
+   568→        });
+   569→        const res = await fetch(`/api/materials?${params}`);
+   570→        if (res.ok) {
+   571→          const data = await res.json();
+   572→          if (Array.isArray(data) && data.length > 0) {
+   573→            setTasks(data as Task[]);
+   574→          } else {
+   575→            setTasks(MOCK_TASKS);
+   576→          }
+   577→        } else {
+   578→          setTasks(MOCK_TASKS);
+   579→        }
+   580→      } catch {
+   581→        setTasks(MOCK_TASKS);
+   582→      } finally {
+   583→        setIsLoading(false);
+   584→      }
+   585→    }
+   586→    fetchTasks();
+   587→  }, [user?.schoolId, user?.classId]);
+   588→
+   589→  const filteredTasks = useMemo(() => {
+   590→    let filtered = tasks;
+   591→    if (activeTab === 'tugas') filtered = tasks.filter((t) => t.type === 'tugas');
+   592→    else if (activeTab === 'kuis') filtered = tasks.filter((t) => t.type === 'kuis');
+   593→    else if (activeTab === 'ujian') filtered = tasks.filter((t) => t.type === 'ujian');
+   594→    return filtered;
+   595→  }, [tasks, activeTab]);
+   596→
+   597→  const stats = useMemo(() => {
+   598→    const total = tasks.length;
+   599→    const menunggu = tasks.filter((t) => t.status === 'menunggu').length;
+   600→    const selesai = tasks.filter((t) => t.status === 'selesai').length;
+   601→    const terlambat = tasks.filter((t) => t.status === 'terlambat').length;
+   602→    return { total, menunggu, selesai, terlambat };
+   603→  }, [tasks]);
+   604→
+   605→  const getTypeIcon = (type: Task['type']) => {
+   606→    switch (type) {
+   607→      case 'tugas': return <FileText className="h-4 w-4" />;
+   608→      case 'kuis': return <FileQuestion className="h-4 w-4" />;
+   609→      case 'ujian': return <ClipboardList className="h-4 w-4" />;
+   610→    }
+   611→  };
+   612→
+   613→  const getTypeLabel = (type: Task['type']) => {
+   614→    switch (type) {
+   615→      case 'tugas': return 'Tugas';
+   616→      case 'kuis': return 'Kuis';
+   617→      case 'ujian': return 'Ujian';
+   618→    }
+   619→  };
+   620→
+   621→  const getTypeBadgeClass = (type: Task['type']) => {
+   622→    switch (type) {
+   623→      case 'tugas': return 'bg-sky-100 text-sky-700 hover:bg-sky-100';
+   624→      case 'kuis': return 'bg-violet-100 text-violet-700 hover:bg-violet-100';
+   625→      case 'ujian': return 'bg-orange-100 text-orange-700 hover:bg-orange-100';
+   626→    }
+   627→  };
+   628→
+   629→  const getStatusBadge = (status: Task['status']) => {
+   630→    switch (status) {
+   631→      case 'menunggu':
+   632→        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[11px]">Menunggu</Badge>;
+   633→      case 'dikerjakan':
+   634→        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-[11px]">Dikerjakan</Badge>;
+   635→      case 'selesai':
+   636→        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[11px]">Selesai</Badge>;
+   637→      case 'terlambat':
+   638→        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-[11px]">Terlambat</Badge>;
+   639→    }
+   640→  };
+   641→
+   642→  const handleStartTask = (taskId: string) => {
+   643→    setTasks((prev) =>
+   644→      prev.map((t) => (t.id === taskId ? { ...t, status: 'dikerjakan' as const } : t))
+   645→    );
+   646→    toast.success('Tugas dimulai! Semangat mengerjakan! 💪');
+   647→  };
+   648→
+   649→  const handleViewResult = (taskId: string) => {
+   650→    const task = tasks.find((t) => t.id === taskId);
+   651→    toast.info(`Nilai ${task?.title}: ${task?.score}/100`);
+   652→  };
+   653→
+   654→  if (isLoading) {
+   655→    return (
+   656→      <div className="space-y-6">
+   657→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   658→          {Array.from({ length: 4 }).map((_, i) => (
+   659→            <Skeleton key={i} className="h-24 rounded-xl" />
+   660→          ))}
+   661→        </div>
+   662→        <Skeleton className="h-10 w-72 rounded-lg" />
+   663→        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   664→          {Array.from({ length: 6 }).map((_, i) => (
+   665→            <Skeleton key={i} className="h-40 rounded-xl" />
+   666→          ))}
+   667→        </div>
+   668→      </div>
+   669→    );
+   670→  }
+   671→
+   672→  const statCards = [
+   673→    { label: 'Total Tugas', value: stats.total, icon: <ClipboardList className="h-5 w-5" />, bg: 'bg-slate-50', color: 'text-slate-600' },
+   674→    { label: 'Menunggu', value: stats.menunggu, icon: <Clock className="h-5 w-5" />, bg: 'bg-amber-50', color: 'text-amber-600' },
+   675→    { label: 'Selesai', value: stats.selesai, icon: <CheckCircle2 className="h-5 w-5" />, bg: 'bg-emerald-50', color: 'text-emerald-600' },
+   676→    { label: 'Terlambat', value: stats.terlambat, icon: <AlertCircle className="h-5 w-5" />, bg: 'bg-red-50', color: 'text-red-600' },
+   677→  ];
+   678→
+   679→  return (
+   680→    <div className="space-y-6">
+   681→      {/* ── Page Header ── */}
+   682→      <div className="flex items-center gap-3">
+   683→        <div className="p-2.5 rounded-xl" style={{ backgroundColor: BRAND_LIGHT }}>
+   684→          <Target className="h-6 w-6" style={{ color: BRAND }} />
+   685→        </div>
+   686→        <div>
+   687→          <h1 className="text-2xl font-bold" style={{ color: BRAND }}>Tugas & Ujian</h1>
+   688→          <p className="text-sm text-muted-foreground">Kelola dan pantau semua tugasmu di sini</p>
+   689→        </div>
+   690→      </div>
+   691→
+   692→      {/* ── Stat Cards ── */}
+   693→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+   694→        {statCards.map((s) => (
+   695→          <Card key={s.label} className="hover:shadow-md transition-shadow duration-200">
+   696→            <CardContent className="p-4 flex items-center gap-3">
+   697→              <div className={cn('p-2.5 rounded-xl', s.bg, s.color)}>
+   698→                {s.icon}
+   699→              </div>
+   700→              <div>
+   701→                <p className="text-2xl font-bold" style={{ color: BRAND }}>{s.value}</p>
+   702→                <p className="text-xs text-muted-foreground">{s.label}</p>
+   703→              </div>
+   704→            </CardContent>
+   705→          </Card>
+   706→        ))}
+   707→      </div>
+   708→
+   709→      {/* ── Tabs ── */}
+   710→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   711→        <TabsList>
+   712→          <TabsTrigger value="semua">Semua</TabsTrigger>
+   713→          <TabsTrigger value="tugas">Tugas</TabsTrigger>
+   714→          <TabsTrigger value="kuis">Kuis</TabsTrigger>
+   715→          <TabsTrigger value="ujian">Ujian/Tryout</TabsTrigger>
+   716→        </TabsList>
+   717→
+   718→        <TabsContent value={activeTab} className="mt-4">
+   719→          {filteredTasks.length === 0 ? (
+   720→            <div className="text-center py-16">
+   721→              <div className="p-4 rounded-full bg-muted w-fit mx-auto mb-4">
+   722→                <ClipboardList className="h-8 w-8 text-muted-foreground" />
+   723→              </div>
+   724→              <h3 className="text-lg font-semibold text-muted-foreground">Belum ada tugas</h3>
+   725→              <p className="text-sm text-muted-foreground/70 mt-1">
+   726→                {activeTab === 'semua'
+   727→                  ? 'Semua tugas sudah selesai dikerjakan. Kerja bagus!'
+   728→                  : `Tidak ada ${getTypeLabel(activeTab as Task['type'])} untuk saat ini.`}
+   729→              </p>
+   730→            </div>
+   731→          ) : (
+   732→            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   733→              {filteredTasks.map((task) => {
+   734→                const isActionable = task.status === 'menunggu' || task.status === 'dikerjakan';
+   735→                const isCompleted = task.status === 'selesai' || task.status === 'terlambat';
+   736→
+   737→                return (
+   738→                  <Card
+   739→                    key={task.id}
+   740→                    className={cn(
+   741→                      'transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 overflow-hidden',
+   742→                      task.isUrgent && isActionable && 'border-l-4 border-l-red-500'
+   743→                    )}
+   744→                  >
+   745→                    <CardContent className="p-4 md:p-5">
+   746→                      {/* Urgent banner */}
+   747→                      {task.isUrgent && isActionable && (
+   748→                        <div className="flex items-center gap-1.5 text-red-600 text-xs font-medium mb-3">
+   749→                          <AlertTriangle className="h-3.5 w-3.5" />
+   750→                          <span>Segera dikerjakan!</span>
+   751→                        </div>
+   752→                      )}
+   753→
+   754→                      <div className="flex items-start justify-between gap-2 mb-2">
+   755→                        <div className="flex items-center gap-2 flex-wrap">
+   756→                          <Badge className={cn('text-[10px] px-2 py-0.5', getTypeBadgeClass(task.type))}>
+   757→                            {getTypeIcon(task.type)}
+   758→                            <span className="ml-1">{getTypeLabel(task.type)}</span>
+   759→                          </Badge>
+   760→                          {getStatusBadge(task.status)}
+   761→                        </div>
+   762→                        {task.score !== undefined && isCompleted && (
+   763→                          <div className={cn('text-sm font-bold', task.score >= 75 ? 'text-emerald-600' : 'text-red-500')}>
+   764→                            {task.score}
+   765→                          </div>
+   766→                        )}
+   767→                      </div>
+   768→
+   769→                      <h3 className="font-semibold text-sm md:text-base mb-1 line-clamp-2">{task.title}</h3>
+   770→
+   771→                      <div className="space-y-1.5 mb-4 text-xs text-muted-foreground">
+   772→                        <div className="flex items-center gap-1.5">
+   773→                          <BookOpen className="h-3.5 w-3.5" />
+   774→                          <span>{task.subject}</span>
+   775→                        </div>
+   776→                        <div className="flex items-center gap-1.5">
+   777→                          <CalendarDays className="h-3.5 w-3.5" />
+   778→                          <span>
+   779→                            {task.type === 'ujian' ? 'Jadwal' : 'Tenggat'}: {new Date(task.dueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+   780→                          </span>
+   781→                        </div>
+   782→                      </div>
+   783→
+   784→                      <div className="flex justify-end">
+   785→                        {isActionable && (
+   786→                          <Button
+   787→                            size="sm"
+   788→                            className="h-8 text-xs"
+   789→                            style={{ backgroundColor: BRAND }}
+   790→                            onClick={() => handleStartTask(task.id)}
+   791→                          >
+   792→                            {task.status === 'dikerjakan' ? (
+   793→                              <>
+   794→                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+   795→                                Lanjutkan
+   796→                              </>
+   797→                            ) : (
+   798→                              <>
+   799→                                <PlayCircle className="h-3.5 w-3.5 mr-1" />
+   800→                                Mulai Kerjakan
+   801→                              </>
+   802→                            )}
+   803→                          </Button>
+   804→                        )}
+   805→                        {isCompleted && (
+   806→                          <Button
+   807→                            size="sm"
+   808→                            variant="outline"
+   809→                            className="h-8 text-xs"
+   810→                            onClick={() => handleViewResult(task.id)}
+   811→                          >
+   812→                            <Eye className="h-3.5 w-3.5 mr-1" />
+   813→                            Lihat Hasil
+   814→                          </Button>
+   815→                        )}
+   816→                      </div>
+   817→                    </CardContent>
+   818→                  </Card>
+   819→                );
+   820→              })}
+   821→            </div>
+   822→          )}
+   823→        </TabsContent>
+   824→      </Tabs>
+   825→    </div>
+   826→  );
+   827→}
+   828→
+   829→// ═══════════════════════════════════════════════════════════════════════
+   830→//  3. SISWA KEHADIRAN VIEW
+   831→// ═══════════════════════════════════════════════════════════════════════
+   832→
+   833→export function SiswaKehadiranView() {
+   834→  const { user } = useAppStore();
+   835→  const [attendance, setAttendance] = useState<AttendanceDay[]>([]);
+   836→  const [isLoading, setIsLoading] = useState(true);
+   837→  const [currentDate, setCurrentDate] = useState(() => new Date());
+   838→
+   839→  const currentYear = currentDate.getFullYear();
+   840→  const currentMonth = currentDate.getMonth();
+   841→  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+   842→  const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0=Sun
+   843→
+   844→  const monthName = new Date(currentYear, currentMonth).toLocaleDateString('id-ID', {
+   845→    month: 'long',
+   846→    year: 'numeric',
+   847→  });
+   848→
+   849→  useEffect(() => {
+   850→    async function fetchAttendance() {
+   851→      setIsLoading(true);
+   852→      try {
+   853→        const params = new URLSearchParams({
+   854→          studentId: user?.id || '',
+   855→          month: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
+   856→        });
+   857→        const res = await fetch(`/api/attendance?${params}`);
+   858→        if (res.ok) {
+   859→          const data = await res.json();
+   860→          if (Array.isArray(data) && data.length > 0) {
+   861→            setAttendance(data as AttendanceDay[]);
+   862→          } else {
+   863→            setAttendance(generateMockAttendance(currentYear, currentMonth));
+   864→          }
+   865→        } else {
+   866→          setAttendance(generateMockAttendance(currentYear, currentMonth));
+   867→        }
+   868→      } catch {
+   869→        setAttendance(generateMockAttendance(currentYear, currentMonth));
+   870→      } finally {
+   871→        setIsLoading(false);
+   872→      }
+   873→    }
+   874→    fetchAttendance();
+   875→  }, [user?.id, currentYear, currentMonth]);
+   876→
+   877→  const stats = useMemo(() => {
+   878→    const hadir = attendance.filter((a) => a.status === 'hadir').length;
+   879→    const izin = attendance.filter((a) => a.status === 'izin').length;
+   880→    const sakit = attendance.filter((a) => a.status === 'sakit').length;
+   881→    const alpa = attendance.filter((a) => a.status === 'alpa').length;
+   882→    const totalSchoolDays = hadir + izin + sakit + alpa;
+   883→    const pct = totalSchoolDays > 0 ? Math.round((hadir / totalSchoolDays) * 100) : 0;
+   884→    return { hadir, izin, sakit, alpa, totalSchoolDays, pct };
+   885→  }, [attendance]);
+   886→
+   887→  const prevMonth = () => {
+   888→    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+   889→  };
+   890→
+   891→  const nextMonth = () => {
+   892→    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+   893→  };
+   894→
+   895→  const goToToday = () => {
+   896→    setCurrentDate(new Date());
+   897→  };
+   898→
+   899→  const getDayStatus = (day: number): AttendanceDay['status'] => {
+   900→    const found = attendance.find((a) => a.day === day);
+   901→    return found ? found.status : 'none';
+   902→  };
+   903→
+   904→  const getCellColor = (status: AttendanceDay['status']) => {
+   905→    switch (status) {
+   906→      case 'hadir': return 'bg-emerald-500 text-white';
+   907→      case 'izin': return 'bg-blue-500 text-white';
+   908→      case 'sakit': return 'bg-amber-500 text-white';
+   909→      case 'alpa': return 'bg-red-500 text-white';
+   910→      case 'weekend': return 'bg-muted/50 text-muted-foreground/50';
+   911→      default: return 'bg-background text-muted-foreground/30';
+   912→    }
+   913→  };
+   914→
+   915→  // Build calendar grid cells
+   916→  const calendarCells: (number | null)[] = [];
+   917→  for (let i = 0; i < firstDayOfWeek; i++) calendarCells.push(null);
+   918→  for (let d = 1; d <= daysInMonth; d++) calendarCells.push(d);
+   919→
+   920→  const dayLabels = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+   921→
+   922→  if (isLoading) {
+   923→    return (
+   924→      <div className="space-y-6">
+   925→        <Skeleton className="h-10 w-72 rounded-lg" />
+   926→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   927→          {Array.from({ length: 4 }).map((_, i) => (
+   928→            <Skeleton key={i} className="h-24 rounded-xl" />
+   929→          ))}
+   930→        </div>
+   931→        <Skeleton className="h-80 rounded-xl" />
+   932→      </div>
+   933→    );
+   934→  }
+   935→
+   936→  const statItems = [
+   937→    { label: 'Hadir', value: stats.hadir, icon: <UserCheck className="h-5 w-5" />, bg: 'bg-emerald-50', color: 'text-emerald-600' },
+   938→    { label: 'Izin', value: stats.izin, icon: <BriefcaseMedical className="h-5 w-5" />, bg: 'bg-blue-50', color: 'text-blue-600' },
+   939→    { label: 'Sakit', value: stats.sakit, icon: <AlertCircle className="h-5 w-5" />, bg: 'bg-amber-50', color: 'text-amber-600' },
+   940→    { label: 'Alpa', value: stats.alpa, icon: <XCircle className="h-5 w-5" />, bg: 'bg-red-50', color: 'text-red-600' },
+   941→  ];
+   942→
+   943→  const legendItems = [
+   944→    { color: 'bg-emerald-500', label: 'Hadir' },
+   945→    { color: 'bg-blue-500', label: 'Izin' },
+   946→    { color: 'bg-amber-500', label: 'Sakit' },
+   947→    { color: 'bg-red-500', label: 'Alpa' },
+   948→    { color: 'bg-muted/50', label: 'Akhir Pekan' },
+   949→    { color: 'bg-background border', label: 'Tidak Ada Data' },
+   950→  ];
+   951→
+   952→  return (
+   953→    <div className="space-y-6">
+   954→      {/* ── Page Header ── */}
+   955→      <div className="flex items-center gap-3">
+   956→        <div className="p-2.5 rounded-xl" style={{ backgroundColor: BRAND_LIGHT }}>
+   957→          <CalendarDays className="h-6 w-6" style={{ color: BRAND }} />
+   958→        </div>
+   959→        <div>
+   960→          <h1 className="text-2xl font-bold" style={{ color: BRAND }}>Kehadiran Saya</h1>
+   961→          <p className="text-sm text-muted-foreground">Pantau rekam kehadiranmu setiap bulan</p>
+   962→        </div>
+   963→      </div>
+   964→
+   965→      {/* ── Month Selector ── */}
+   966→      <Card>
+   967→        <CardContent className="p-4 flex items-center justify-between">
+   968→          <Button variant="outline" size="icon" onClick={prevMonth} className="h-9 w-9">
+   969→            <ChevronLeft className="h-4 w-4" />
+   970→          </Button>
+   971→          <div className="text-center">
+   972→            <h2 className="text-lg font-bold capitalize" style={{ color: BRAND }}>{monthName}</h2>
+   973→          </div>
+   974→          <div className="flex items-center gap-2">
+   975→            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={goToToday}>
+   976→              Hari Ini
+   977→            </Button>
+   978→            <Button variant="outline" size="icon" onClick={nextMonth} className="h-9 w-9">
+   979→              <ChevronRight className="h-4 w-4" />
+   980→            </Button>
+   981→          </div>
+   982→        </CardContent>
+   983→      </Card>
+   984→
+   985→      {/* ── Summary Stats ── */}
+   986→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+   987→        {statItems.map((s) => (
+   988→          <Card key={s.label} className="hover:shadow-md transition-shadow duration-200">
+   989→            <CardContent className="p-4 flex items-center gap-3">
+   990→              <div className={cn('p-2.5 rounded-xl', s.bg, s.color)}>
+   991→                {s.icon}
+   992→              </div>
+   993→              <div>
+   994→                <p className="text-2xl font-bold" style={{ color: BRAND }}>{s.value}</p>
+   995→                <p className="text-xs text-muted-foreground">{s.label}</p>
+   996→              </div>
+   997→            </CardContent>
+   998→          </Card>
+   999→        ))}
+  1000→      </div>
+  1001→
+  1002→      {/* ── Attendance Percentage ── */}
+  1003→      <Card className="overflow-hidden">
+  1004→        <CardContent className="p-6">
+  1005→          <div className="flex flex-col md:flex-row items-center gap-6">
+  1006→            {/* Circular Progress */}
+  1007→            <div className="relative shrink-0">
+  1008→              <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
+  1009→                <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
+  1010→                <circle
+  1011→                  cx="60" cy="60" r="52" fill="none"
+  1012→                  stroke={stats.pct >= 80 ? '#10B981' : stats.pct >= 60 ? '#F59E0B' : '#EF4444'}
+  1013→                  strokeWidth="8"
+  1014→                  strokeLinecap="round"
+  1015→                  strokeDasharray={`${2 * Math.PI * 52}`}
+  1016→                  strokeDashoffset={`${2 * Math.PI * 52 * (1 - stats.pct / 100)}`}
+  1017→                  className="transition-all duration-700"
+  1018→                />
+  1019→              </svg>
+  1020→              <div className="absolute inset-0 flex items-center justify-center">
+  1021→                <div className="text-center">
+  1022→                  <span className="text-2xl font-bold" style={{ color: BRAND }}>{stats.pct}%</span>
+  1023→                </div>
+  1024→              </div>
+  1025→            </div>
+  1026→
+  1027→            {/* Text summary */}
+  1028→            <div className="flex-1 text-center md:text-left">
+  1029→              <h3 className="text-lg font-bold mb-1" style={{ color: BRAND }}>Persentase Kehadiran</h3>
+  1030→              <p className="text-sm text-muted-foreground mb-3">
+  1031→                Kamu hadir <span className="font-semibold text-emerald-600">{stats.hadir}</span> dari{' '}
+  1032→                <span className="font-semibold">{stats.totalSchoolDays}</span> hari sekolah bulan ini
+  1033→              </p>
+  1034→              {stats.pct >= 90 ? (
+  1035→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
+  1036→                  <Trophy className="h-3.5 w-3.5" />
+  1037→                  Luar biasa! Terus pertahankan!
+  1038→                </div>
+  1039→              ) : stats.pct >= 75 ? (
+  1040→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+  1041→                  <Sparkles className="h-3.5 w-3.5" />
+  1042→                  Bagus! Tingkatkan lagi kehadiranmu.
+  1043→                </div>
+  1044→              ) : (
+  1045→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 text-xs font-medium">
+  1046→                  <AlertTriangle className="h-3.5 w-3.5" />
+  1047→                  Perbaiki kehadiranmu bulan depan.
+  1048→                </div>
+  1049→              )}
+  1050→            </div>
+  1051→          </div>
+  1052→        </CardContent>
+  1053→      </Card>
+  1054→
+  1055→      {/* ── Calendar Grid ── */}
+  1056→      <Card>
+  1057→        <CardHeader className="pb-2">
+  1058→          <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: BRAND }}>
+  1059→            <Calendar className="h-4 w-4" />
+  1060→            Kalender Kehadiran
+  1061→          </CardTitle>
+  1062→          <CardDescription>Klik pada tanggal untuk melihat detail kehadiran</CardDescription>
+  1063→        </CardHeader>
+  1064→        <CardContent className="p-4">
+  1065→          {/* Day labels */}
+  1066→          <div className="grid grid-cols-7 gap-1 mb-1">
+  1067→            {dayLabels.map((d) => (
+  1068→              <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1.5">
+  1069→                {d}
+  1070→              </div>
+  1071→            ))}
+  1072→          </div>
+  1073→
+  1074→          {/* Calendar cells */}
+  1075→          <div className="grid grid-cols-7 gap-1">
+  1076→            {calendarCells.map((day, idx) => {
+  1077→              if (day === null) {
+  1078→                return <div key={`empty-${idx}`} className="aspect-square" />;
+  1079→              }
+  1080→
+  1081→              const status = getDayStatus(day);
+  1082→              const isToday =
+  1083→                day === new Date().getDate() &&
+  1084→                currentMonth === new Date().getMonth() &&
+  1085→                currentYear === new Date().getFullYear();
+  1086→
+  1087→              return (
+  1088→                <button
+  1089→                  key={day}
+  1090→                  className={cn(
+  1091→                    'aspect-square rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-150 hover:scale-110 hover:shadow-md relative',
+  1092→                    getCellColor(status),
+  1093→                    isToday && 'ring-2 ring-offset-2 ring-[#1F3864]'
+  1094→                  )}
+  1095→                  onClick={() => {
+  1096→                    const statusLabels: Record<string, string> = {
+  1097→                      hadir: 'Hadir',
+  1098→                      izin: 'Izin',
+  1099→                      sakit: 'Sakit',
+  1100→                      alpa: 'Alpa',
+  1101→                      weekend: 'Akhir Pekan',
+  1102→                      none: 'Tidak Ada Data',
+  1103→                    };
+  1104→                    toast.info(`${day} ${monthName}: ${statusLabels[status] || status}`);
+  1105→                  }}
+  1106→                  title={
+  1107→                    status === 'hadir' ? 'Hadir' :
+  1108→                    status === 'izin' ? 'Izin' :
+  1109→                    status === 'sakit' ? 'Sakit' :
+  1110→                    status === 'alpa' ? 'Alpa' :
+  1111→                    status === 'weekend' ? 'Akhir Pekan' :
+  1112→                    'Tidak Ada Data'
+  1113→                  }
+  1114→                >
+  1115→                  {day}
+  1116→                  {isToday && (
+  1117→                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full" style={{ backgroundColor: BRAND }} />
+  1118→                  )}
+  1119→                </button>
+  1120→              );
+  1121→            })}
+  1122→          </div>
+  1123→
+  1124→          {/* Legend */}
+  1125→          <div className="flex flex-wrap items-center justify-center gap-3 mt-4 pt-4 border-t">
+  1126→            {legendItems.map((item) => (
+  1127→              <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+  1128→                <span className={cn('w-3 h-3 rounded-sm shrink-0', item.color)} />
+  1129→                <span>{item.label}</span>
+  1130→              </div>
+  1131→            ))}
+  1132→          </div>
+  1133→        </CardContent>
+  1134→      </Card>
+  1135→    </div>
+  1136→  );
+  1137→}
+  1138→

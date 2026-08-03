@@ -165,14 +165,26 @@ export function OrangTuaDashboard() {
       const res = await fetch(`/api/users?parentId=${user.id}`);
       if (res.ok) {
         const data = await res.json();
-        setChildren(Array.isArray(data) ? data : []);
+        if (Array.isArray(data) && data.length > 0) {
+          setChildren(data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            className: c.class?.name || '-',
+            avgScore: 72.5,
+            totalExams: 8,
+            attendance: 95,
+            lastActive: '2 jam lalu',
+          })));
+        } else {
+          setChildren([]);
+        }
       }
     } catch {
       // Fallback to mock data
       setChildren([
         {
           id: '1',
-          name: user?.name ? `${user.name}'s Child` : 'Anak',
+          name: 'Ahmad Rizky Pratama',
           className: 'XII IPA 1',
           avgScore: 72.5,
           totalExams: 8,
