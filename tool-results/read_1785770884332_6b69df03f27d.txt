@@ -1,0 +1,2002 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback, useMemo } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Badge } from '@/components/ui/badge';
+     7→import { Skeleton } from '@/components/ui/skeleton';
+     8→import { Input } from '@/components/ui/input';
+     9→import { Label } from '@/components/ui/label';
+    10→import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+    11→import { toast } from 'sonner';
+    12→import {
+    13→  Dialog,
+    14→  DialogContent,
+    15→  DialogHeader,
+    16→  DialogTitle,
+    17→  DialogFooter,
+    18→  DialogDescription,
+    19→} from '@/components/ui/dialog';
+    20→import {
+    21→  Select,
+    22→  SelectContent,
+    23→  SelectItem,
+    24→  SelectTrigger,
+    25→  SelectValue,
+    26→} from '@/components/ui/select';
+    27→import {
+    28→  AlertDialog,
+    29→  AlertDialogAction,
+    30→  AlertDialogCancel,
+    31→  AlertDialogContent,
+    32→  AlertDialogDescription,
+    33→  AlertDialogFooter,
+    34→  AlertDialogHeader,
+    35→  AlertDialogTitle,
+    36→} from '@/components/ui/alert-dialog';
+    37→import {
+    38→  Plus,
+    39→  Search,
+    40→  Pencil,
+    41→  Trash2,
+    42→  BookOpen,
+    43→  Users,
+    44→  GraduationCap,
+    45→  Database,
+    46→  Download,
+    47→  Upload,
+    48→  HardDrive,
+    49→  Clock,
+    50→  Calendar,
+    51→  AlertTriangle,
+    52→  RefreshCw,
+    53→  Shield,
+    54→  ChevronLeft,
+    55→  ChevronRight,
+    56→  Activity,
+    57→  UserCircle,
+    58→  ClipboardList,
+    59→  FileQuestion,
+    60→  CheckCircle2,
+    61→  FileDown,
+    62→  History,
+    63→  Save,
+    64→  BarChart3,
+    65→  Layers,
+    66→  Archive,
+    67→  AlertCircle,
+    68→  Filter,
+    69→  Loader2,
+    70→  CalendarDays,
+    71→  FolderOpen,
+    72→} from 'lucide-react';
+    73→import { cn } from '@/lib/utils';
+    74→
+    75→// ═══════════════════════════════════════════════════════════════════════
+    76→// TYPES
+    77→// ═══════════════════════════════════════════════════════════════════════
+    78→
+    79→interface Subject {
+    80→  id: string;
+    81→  code: string;
+    82→  name: string;
+    83→  type: 'wajib' | 'pilihan';
+    84→  sortOrder: number;
+    85→}
+    86→
+    87→interface TeacherAssignment {
+    88→  id: string;
+    89→  teacherId: string;
+    90→  teacherName: string;
+    91→  teacherNip: string;
+    92→  subjectId: string;
+    93→  subjectName: string;
+    94→  classId: string;
+    95→  className: string;
+    96→  academicYear: string;
+    97→  semester: string;
+    98→}
+    99→
+   100→interface BackupRecord {
+   101→  id: string;
+   102→  fileName: string;
+   103→  fileSize: string;
+   104→  createdAt: string;
+   105→  records: number;
+   106→}
+   107→
+   108→interface ActivityLog {
+   109→  id: string;
+   110→  timestamp: string;
+   111→  userName: string;
+   112→  action: string;
+   113→  detail: string;
+   114→  module: 'Pengguna' | 'Kelas' | 'Ujian' | 'Soal' | 'Lainnya';
+   115→}
+   116→
+   117→// ═══════════════════════════════════════════════════════════════════════
+   118→// MOCK DATA
+   119→// ═══════════════════════════════════════════════════════════════════════
+   120→
+   121→const MOCK_SUBJECTS: Subject[] = [
+   122→  { id: 's1', code: 'MTK', name: 'Matematika', type: 'wajib', sortOrder: 1 },
+   123→  { id: 's2', code: 'FIS', name: 'Fisika', type: 'pilihan', sortOrder: 2 },
+   124→  { id: 's3', code: 'KIM', name: 'Kimia', type: 'pilihan', sortOrder: 3 },
+   125→  { id: 's4', code: 'BIO', name: 'Biologi', type: 'pilihan', sortOrder: 4 },
+   126→  { id: 's5', code: 'BIN', name: 'Bahasa Indonesia', type: 'wajib', sortOrder: 5 },
+   127→  { id: 's6', code: 'BING', name: 'Bahasa Inggris', type: 'wajib', sortOrder: 6 },
+   128→  { id: 's7', code: 'SEJ', name: 'Sejarah', type: 'pilihan', sortOrder: 7 },
+   129→  { id: 's8', code: 'EKO', name: 'Ekonomi', type: 'pilihan', sortOrder: 8 },
+   130→  { id: 's9', code: 'GEO', name: 'Geografi', type: 'pilihan', sortOrder: 9 },
+   131→  { id: 's10', code: 'SOS', name: 'Sosiologi', type: 'pilihan', sortOrder: 10 },
+   132→];
+   133→
+   134→const MOCK_TEACHERS = [
+   135→  { id: 't1', name: 'Budi Santoso, S.Pd.', nip: '198503152010011002' },
+   136→  { id: 't2', name: 'Siti Rahayu, M.Pd.', nip: '198708222012012003' },
+   137→  { id: 't3', name: 'Ahmad Hidayat, S.Si.', nip: '199001102013011001' },
+   138→  { id: 't4', name: 'Dewi Lestari, S.Pd.', nip: '199205182014022001' },
+   139→  { id: 't5', name: 'Rizky Pratama, M.Si.', nip: '198812032011011004' },
+   140→  { id: 't6', name: 'Nurul Aini, S.Pd.', nip: '199107152015012002' },
+   141→];
+   142→
+   143→const MOCK_CLASS_OPTIONS = [
+   144→  { id: 'c1', name: 'X IPA 1' },
+   145→  { id: 'c2', name: 'X IPA 2' },
+   146→  { id: 'c3', name: 'XI IPA 1' },
+   147→  { id: 'c4', name: 'XI IPA 2' },
+   148→  { id: 'c5', name: 'XII IPA 1' },
+   149→  { id: 'c6', name: 'XII IPA 2' },
+   150→  { id: 'c7', name: 'X IPS 1' },
+   151→  { id: 'c8', name: 'XI IPS 1' },
+   152→  { id: 'c9', name: 'XII IPS 1' },
+   153→];
+   154→
+   155→const MOCK_ASSIGNMENTS: TeacherAssignment[] = [
+   156→  { id: 'ta1', teacherId: 't1', teacherName: 'Budi Santoso, S.Pd.', teacherNip: '198503152010011002', subjectId: 's1', subjectName: 'Matematika', classId: 'c1', className: 'X IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
+   157→  { id: 'ta2', teacherId: 't1', teacherName: 'Budi Santoso, S.Pd.', teacherNip: '198503152010011002', subjectId: 's1', subjectName: 'Matematika', classId: 'c2', className: 'X IPA 2', academicYear: '2024/2025', semester: 'Ganjil' },
+   158→  { id: 'ta3', teacherId: 't2', teacherName: 'Siti Rahayu, M.Pd.', teacherNip: '198708222012012003', subjectId: 's5', subjectName: 'Bahasa Indonesia', classId: 'c1', className: 'X IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
+   159→  { id: 'ta4', teacherId: 't3', teacherName: 'Ahmad Hidayat, S.Si.', teacherNip: '199001102013011001', subjectId: 's2', subjectName: 'Fisika', classId: 'c3', className: 'XI IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
+   160→  { id: 'ta5', teacherId: 't4', teacherName: 'Dewi Lestari, S.Pd.', teacherNip: '199205182014022001', subjectId: 's6', subjectName: 'Bahasa Inggris', classId: 'c5', className: 'XII IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
+   161→  { id: 'ta6', teacherId: 't5', teacherName: 'Rizky Pratama, M.Si.', teacherNip: '198812032011011004', subjectId: 's3', subjectName: 'Kimia', classId: 'c4', className: 'XI IPA 2', academicYear: '2024/2025', semester: 'Ganjil' },
+   162→];
+   163→
+   164→const MOCK_BACKUPS: BackupRecord[] = [
+   165→  { id: 'b1', fileName: 'backup_2025-01-15_083000.db', fileSize: '2.4 MB', createdAt: '2025-01-15 08:30', records: 20 },
+   166→  { id: 'b2', fileName: 'backup_2025-01-10_140000.db', fileSize: '2.3 MB', createdAt: '2025-01-10 14:00', records: 19 },
+   167→  { id: 'b3', fileName: 'backup_2025-01-05_090000.db', fileSize: '2.2 MB', createdAt: '2025-01-05 09:00', records: 18 },
+   168→  { id: 'b4', fileName: 'backup_2024-12-28_160000.db', fileSize: '2.1 MB', createdAt: '2024-12-28 16:00', records: 17 },
+   169→  { id: 'b5', fileName: 'backup_2024-12-20_100000.db', fileSize: '2.0 MB', createdAt: '2024-12-20 10:00', records: 15 },
+   170→];
+   171→
+   172→const MOCK_ACTIVITY_LOGS: ActivityLog[] = [
+   173→  { id: 'al1', timestamp: '2025-01-15 14:32:10', userName: 'Admin Sekolah', action: 'Menambah mata pelajaran', detail: 'Menambahkan mata pelajaran "Seni Budaya" ke sistem', module: 'Lainnya' },
+   174→  { id: 'al2', timestamp: '2025-01-15 13:15:45', userName: 'Budi Santoso, S.Pd.', action: 'Mengedit soal', detail: 'Mengubah soal nomor 5 pada bank soal Matematika', module: 'Soal' },
+   175→  { id: 'al3', timestamp: '2025-01-15 11:08:22', userName: 'Admin Sekolah', action: 'Membuat ujian', detail: 'Membuat ujian "UTS Matematika Ganjil" untuk kelas X IPA 1', module: 'Ujian' },
+   176→  { id: 'al4', timestamp: '2025-01-15 10:45:00', userName: 'Admin Sekolah', action: 'Menambah pengguna', detail: 'Mendaftarkan siswa baru "Ahmad Rizky" ke kelas X IPA 1', module: 'Pengguna' },
+   177→  { id: 'al5', timestamp: '2025-01-14 16:20:33', userName: 'Siti Rahayu, M.Pd.', action: 'Menginput nilai', detail: 'Menginput nilai ulangan harian Bahasa Indonesia kelas X IPA 1', module: 'Kelas' },
+   178→  { id: 'al6', timestamp: '2025-01-14 14:10:18', userName: 'Admin Sekolah', action: 'Mengedit kelas', detail: 'Mengubah nama kelas "X IPA 3" menjadi "X IPA 2"', module: 'Kelas' },
+   179→  { id: 'al7', timestamp: '2025-01-14 11:05:42', userName: 'Ahmad Hidayat, S.Si.', action: 'Menambah soal', detail: 'Menambahkan 10 soal baru ke bank soal Fisika', module: 'Soal' },
+   180→  { id: 'al8', timestamp: '2025-01-14 09:30:00', userName: 'Admin Sekolah', action: 'Menghapus soal', detail: 'Menghapus 3 soal duplikat dari bank soal Kimia', module: 'Soal' },
+   181→  { id: 'al9', timestamp: '2025-01-13 15:45:11', userName: 'Dewi Lestari, S.Pd.', action: 'Membuat ujian', detail: 'Membuat ujian "Kuis Bahasa Inggris Bab 3" untuk kelas XII IPA 1', module: 'Ujian' },
+   182→  { id: 'al10', timestamp: '2025-01-13 13:22:05', userName: 'Admin Sekolah', action: 'Mengedit pengguna', detail: 'Mengubah data NIP guru "Rizky Pratama, M.Si."', module: 'Pengguna' },
+   183→  { id: 'al11', timestamp: '2025-01-13 10:15:30', userName: 'Admin Sekolah', action: 'Menambah kelas', detail: 'Menambahkan kelas baru "XI IPS 2" untuk tahun ajaran 2024/2025', module: 'Kelas' },
+   184→  { id: 'al12', timestamp: '2025-01-12 16:00:00', userName: 'Rizky Pratama, M.Si.', action: 'Mengedit soal', detail: 'Memperbarui 5 soal pada bank soal Kimia dengan pembahasan', module: 'Soal' },
+   185→  { id: 'al13', timestamp: '2025-01-12 14:30:22', userName: 'Admin Sekolah', action: 'Membuat backup', detail: 'Membuat backup database otomatis (2.3 MB, 19 rekaman)', module: 'Lainnya' },
+   186→  { id: 'al14', timestamp: '2025-01-12 11:20:45', userName: 'Nurul Aini, S.Pd.', action: 'Menginput nilai', detail: 'Menginput nilai tugas Biologi kelas XI IPA 1', module: 'Kelas' },
+   187→  { id: 'al15', timestamp: '2025-01-11 09:45:10', userName: 'Admin Sekolah', action: 'Menghapus pengguna', detail: 'Menonaktifkan akun siswa "Dina Safitri" (pindah sekolah)', module: 'Pengguna' },
+   188→  { id: 'al16', timestamp: '2025-01-11 08:30:00', userName: 'Admin Sekolah', action: 'Memulihkan data', detail: 'Memulihkan database dari backup tanggal 2025-01-05', module: 'Lainnya' },
+   189→  { id: 'al17', timestamp: '2025-01-10 15:10:33', userName: 'Budi Santoso, S.Pd.', action: 'Membuat ujian', detail: 'Membuat ujian "UAS Matematika" untuk kelas X IPA 1 & 2', module: 'Ujian' },
+   190→  { id: 'al18', timestamp: '2025-01-10 12:00:00', userName: 'Siti Rahayu, M.Pd.', action: 'Menambah soal', detail: 'Menambahkan 15 soal essay ke bank soal Bahasa Indonesia', module: 'Soal' },
+   191→];
+   192→
+   193→// ═══════════════════════════════════════════════════════════════════════
+   194→// HELPERS
+   195→// ═══════════════════════════════════════════════════════════════════════
+   196→
+   197→const BRAND = '#1F3864';
+   198→
+   199→function getModuleBadgeClasses(module: string): string {
+   200→  switch (module) {
+   201→    case 'Pengguna': return 'bg-violet-50 text-violet-700 border-violet-200';
+   202→    case 'Kelas': return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+   203→    case 'Ujian': return 'bg-amber-50 text-amber-700 border-amber-200';
+   204→    case 'Soal': return 'bg-sky-50 text-sky-700 border-sky-200';
+   205→    default: return 'bg-gray-50 text-gray-600 border-gray-200';
+   206→  }
+   207→}
+   208→
+   209→function getModuleDotColor(module: string): string {
+   210→  switch (module) {
+   211→    case 'Pengguna': return 'bg-violet-500';
+   212→    case 'Kelas': return 'bg-emerald-500';
+   213→    case 'Ujian': return 'bg-amber-500';
+   214→    case 'Soal': return 'bg-sky-500';
+   215→    default: return 'bg-gray-400';
+   216→  }
+   217→}
+   218→
+   219→function getModuleIcon(module: string) {
+   220→  switch (module) {
+   221→    case 'Pengguna': return UserCircle;
+   222→    case 'Kelas': return Users;
+   223→    case 'Ujian': return ClipboardList;
+   224→    case 'Soal': return FileQuestion;
+   225→    default: return Activity;
+   226→  }
+   227→}
+   228→
+   229→function getInitials(name: string): string {
+   230→  return name
+   231→    .split(/[,\s.]+/)
+   232→    .filter(Boolean)
+   233→    .slice(0, 2)
+   234→    .map((w) => w[0])
+   235→    .join('')
+   236→    .toUpperCase();
+   237→}
+   238→
+   239→function getAvatarColor(name: string): string {
+   240→  const colors = [
+   241→    'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
+   242→    'bg-sky-500', 'bg-rose-500', 'bg-teal-500',
+   243→  ];
+   244→  let hash = 0;
+   245→  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+   246→  return colors[Math.abs(hash) % colors.length];
+   247→}
+   248→
+   249→/* GradientIcon — page header icon wrapper */
+   250→function GradientIcon({ children, className }: { children: React.ReactNode; className?: string }) {
+   251→  return (
+   252→    <div
+   253→      className={cn(
+   254→        'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
+   255→        'bg-gradient-to-br from-[#1F3864] to-[#2d5289]',
+   256→        className
+   257→      )}
+   258→    >
+   259→      {children}
+   260→    </div>
+   261→  );
+   262→}
+   263→
+   264→/* GradientStatCard — stat card with gradient accent */
+   265→function GradientStatCard({
+   266→  icon,
+   267→  label,
+   268→  value,
+   269→  gradient,
+   270→  iconBg,
+   271→}: {
+   272→  icon: React.ReactNode;
+   273→  label: string;
+   274→  value: number | string;
+   275→  gradient: string;
+   276→  iconBg?: string;
+   277→}) {
+   278→  return (
+   279→    <div
+   280→      className={cn(
+   281→        'rounded-xl shadow-sm p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5',
+   282→        'border border-white/60',
+   283→        gradient
+   284→      )}
+   285→    >
+   286→      <div className="flex items-center justify-between">
+   287→        <div>
+   288→          <p className="text-sm font-medium text-white/80">{label}</p>
+   289→          <p className="mt-1 text-3xl font-bold text-white">{value}</p>
+   290→        </div>
+   291→        <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm', iconBg)}>
+   292→          {icon}
+   293→        </div>
+   294→      </div>
+   295→    </div>
+   296→  );
+   297→}
+   298→
+   299→/* Empty state helper */
+   300→function EmptyState({ icon: Icon, title, description, action }: { icon: React.ElementType; title: string; description: string; action?: React.ReactNode }) {
+   301→  return (
+   302→    <div className="flex flex-col items-center justify-center py-16 text-center">
+   303→      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/50">
+   304→        <Icon className="h-10 w-10 text-muted-foreground/60" />
+   305→      </div>
+   306→      <p className="mt-4 text-base font-semibold text-foreground">{title}</p>
+   307→      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
+   308→      {action && <div className="mt-4">{action}</div>}
+   309→    </div>
+   310→  );
+   311→}
+   312→
+   313→// ═══════════════════════════════════════════════════════════════════════
+   314→// 1. SUBJECTSVIEW — Mata Pelajaran
+   315→// ═══════════════════════════════════════════════════════════════════════
+   316→
+   317→export function SubjectsView() {
+   318→  const { user } = useAppStore();
+   319→  const [subjects, setSubjects] = useState<Subject[]>([]);
+   320→  const [loading, setLoading] = useState(true);
+   321→  const [search, setSearch] = useState('');
+   322→  const [typeFilter, setTypeFilter] = useState<'semua' | 'wajib' | 'pilihan'>('semua');
+   323→  const [dialogOpen, setDialogOpen] = useState(false);
+   324→  const [deleteOpen, setDeleteOpen] = useState(false);
+   325→  const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
+   326→  const [deletingSubject, setDeletingSubject] = useState<Subject | null>(null);
+   327→  const [formCode, setFormCode] = useState('');
+   328→  const [formName, setFormName] = useState('');
+   329→  const [formType, setFormType] = useState<'wajib' | 'pilihan'>('wajib');
+   330→  const [formOrder, setFormOrder] = useState(1);
+   331→  const [saving, setSaving] = useState(false);
+   332→
+   333→  const fetchSubjects = useCallback(async () => {
+   334→    try {
+   335→      const res = await fetch('/api/subjects');
+   336→      if (res.ok) {
+   337→        const data = await res.json();
+   338→        setSubjects(Array.isArray(data) ? data : data.data ?? []);
+   339→      } else {
+   340→        setSubjects(MOCK_SUBJECTS);
+   341→      }
+   342→    } catch {
+   343→      setSubjects(MOCK_SUBJECTS);
+   344→    } finally {
+   345→      setLoading(false);
+   346→    }
+   347→  }, []);
+   348→
+   349→  useEffect(() => {
+   350→    fetchSubjects();
+   351→  }, [fetchSubjects]);
+   352→
+   353→  const filtered = useMemo(() => {
+   354→    let result = subjects;
+   355→    if (typeFilter !== 'semua') {
+   356→      result = result.filter((s) => s.type === typeFilter);
+   357→    }
+   358→    if (search.trim()) {
+   359→      const q = search.toLowerCase();
+   360→      result = result.filter(
+   361→        (s) =>
+   362→          s.code.toLowerCase().includes(q) ||
+   363→          s.name.toLowerCase().includes(q)
+   364→      );
+   365→    }
+   366→    return result;
+   367→  }, [subjects, search, typeFilter]);
+   368→
+   369→  const wajibCount = subjects.filter((s) => s.type === 'wajib').length;
+   370→  const pilihanCount = subjects.filter((s) => s.type === 'pilihan').length;
+   371→
+   372→  function openAdd() {
+   373→    setEditingSubject(null);
+   374→    setFormCode('');
+   375→    setFormName('');
+   376→    setFormType('wajib');
+   377→    setFormOrder(subjects.length + 1);
+   378→    setDialogOpen(true);
+   379→  }
+   380→
+   381→  function openEdit(s: Subject) {
+   382→    setEditingSubject(s);
+   383→    setFormCode(s.code);
+   384→    setFormName(s.name);
+   385→    setFormType(s.type);
+   386→    setFormOrder(s.sortOrder);
+   387→    setDialogOpen(true);
+   388→  }
+   389→
+   390→  async function handleSave() {
+   391→    if (!formCode.trim() || !formName.trim()) {
+   392→      toast.error('Kode dan Nama mata pelajaran wajib diisi');
+   393→      return;
+   394→    }
+   395→    setSaving(true);
+   396→    try {
+   397→      if (editingSubject) {
+   398→        const res = await fetch(`/api/subjects?id=${editingSubject.id}`, {
+   399→          method: 'PATCH',
+   400→          headers: { 'Content-Type': 'application/json' },
+   401→          body: JSON.stringify({
+   402→            code: formCode.trim(),
+   403→            name: formName.trim(),
+   404→            type: formType,
+   405→            sortOrder: formOrder,
+   406→          }),
+   407→        });
+   408→        if (res.ok) {
+   409→          toast.success('Mata pelajaran berhasil diperbarui');
+   410→          setDialogOpen(false);
+   411→          fetchSubjects();
+   412→          return;
+   413→        }
+   414→      } else {
+   415→        const res = await fetch('/api/subjects', {
+   416→          method: 'POST',
+   417→          headers: { 'Content-Type': 'application/json' },
+   418→          body: JSON.stringify({
+   419→            code: formCode.trim(),
+   420→            name: formName.trim(),
+   421→            type: formType,
+   422→            sortOrder: formOrder,
+   423→          }),
+   424→        });
+   425→        if (res.ok) {
+   426→          toast.success('Mata pelajaran berhasil ditambahkan');
+   427→          setDialogOpen(false);
+   428→          fetchSubjects();
+   429→          return;
+   430→        }
+   431→      }
+   432→    } catch {
+   433→      // fallback
+   434→    }
+   435→    if (editingSubject) {
+   436→      setSubjects((prev) =>
+   437→        prev.map((s) =>
+   438→          s.id === editingSubject.id
+   439→            ? { ...s, code: formCode.trim(), name: formName.trim(), type: formType, sortOrder: formOrder }
+   440→            : s
+   441→        )
+   442→      );
+   443→      toast.success('Mata pelajaran berhasil diperbarui');
+   444→    } else {
+   445→      const newSubject: Subject = {
+   446→        id: `s${Date.now()}`,
+   447→        code: formCode.trim(),
+   448→        name: formName.trim(),
+   449→        type: formType,
+   450→        sortOrder: formOrder,
+   451→      };
+   452→      setSubjects((prev) => [...prev, newSubject]);
+   453→      toast.success('Mata pelajaran berhasil ditambahkan');
+   454→    }
+   455→    setDialogOpen(false);
+   456→    setSaving(false);
+   457→  }
+   458→
+   459→  async function handleDelete() {
+   460→    if (!deletingSubject) return;
+   461→    try {
+   462→      const res = await fetch(`/api/subjects?id=${deletingSubject.id}`, { method: 'DELETE' });
+   463→      if (res.ok) {
+   464→        toast.success('Mata pelajaran berhasil dihapus');
+   465→        setDeleteOpen(false);
+   466→        fetchSubjects();
+   467→        return;
+   468→      }
+   469→    } catch {
+   470→      // fallback
+   471→    }
+   472→    setSubjects((prev) => prev.filter((s) => s.id !== deletingSubject.id));
+   473→    toast.success('Mata pelajaran berhasil dihapus');
+   474→    setDeleteOpen(false);
+   475→    setDeletingSubject(null);
+   476→  }
+   477→
+   478→  if (loading) {
+   479→    return (
+   480→      <div className="space-y-6">
+   481→        <div className="flex items-center gap-3">
+   482→          <Skeleton className="h-11 w-11 rounded-xl" />
+   483→          <div className="space-y-2">
+   484→            <Skeleton className="h-7 w-52" />
+   485→            <Skeleton className="h-4 w-72" />
+   486→          </div>
+   487→        </div>
+   488→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+   489→          {[1, 2, 3].map((i) => (
+   490→            <Skeleton key={i} className="h-28 rounded-xl" />
+   491→          ))}
+   492→        </div>
+   493→        <Skeleton className="h-10 w-full max-w-sm rounded-lg" />
+   494→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   495→          {[1, 2, 3, 4, 5, 6].map((i) => (
+   496→            <Skeleton key={i} className="h-32 rounded-xl" />
+   497→          ))}
+   498→        </div>
+   499→      </div>
+   500→    );
+   501→  }
+   502→
+   503→  return (
+   504→    <div className="space-y-6">
+   505→      {/* Header */}
+   506→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   507→        <div className="flex items-center gap-3">
+   508→          <GradientIcon>
+   509→            <BookOpen className="h-5 w-5" />
+   510→          </GradientIcon>
+   511→          <div>
+   512→            <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
+   513→              Mata Pelajaran
+   514→            </h1>
+   515→            <p className="text-sm text-muted-foreground">
+   516→              Kelola daftar mata pelajaran untuk {user?.schoolName ?? 'sekolah Anda'}
+   517→            </p>
+   518→          </div>
+   519→        </div>
+   520→        <Button
+   521→          onClick={openAdd}
+   522→          className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   523→          style={{ backgroundColor: BRAND }}
+   524→        >
+   525→          <Plus className="h-4 w-4" />
+   526→          Tambah Mapel
+   527→        </Button>
+   528→      </div>
+   529→
+   530→      {/* Stat Cards with Gradient Backgrounds */}
+   531→      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+   532→        <GradientStatCard
+   533→          icon={<BookOpen className="h-6 w-6 text-white" />}
+   534→          label="Total Mata Pelajaran"
+   535→          value={subjects.length}
+   536→          gradient="bg-gradient-to-br from-[#1F3864] to-[#2d5289]"
+   537→        />
+   538→        <GradientStatCard
+   539→          icon={<Layers className="h-6 w-6 text-white" />}
+   540→          label="Wajib"
+   541→          value={wajibCount}
+   542→          gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
+   543→        />
+   544→        <GradientStatCard
+   545→          icon={<BarChart3 className="h-6 w-6 text-white" />}
+   546→          label="Pilihan"
+   547→          value={pilihanCount}
+   548→          gradient="bg-gradient-to-br from-amber-400 to-amber-500"
+   549→        />
+   550→      </div>
+   551→
+   552→      {/* Search + Filter */}
+   553→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+   554→        <div className="relative flex-1 max-w-sm">
+   555→          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   556→          <Input
+   557→            placeholder="Cari kode atau nama mapel..."
+   558→            value={search}
+   559→            onChange={(e) => setSearch(e.target.value)}
+   560→            className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30"
+   561→          />
+   562→        </div>
+   563→        <div className="flex items-center gap-2">
+   564→          {(['semua', 'wajib', 'pilihan'] as const).map((t) => (
+   565→            <button
+   566→              key={t}
+   567→              onClick={() => setTypeFilter(t)}
+   568→              className={cn(
+   569→                'px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
+   570→                typeFilter === t
+   571→                  ? 'text-white shadow-sm'
+   572→                  : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+   573→              )}
+   574→              style={typeFilter === t ? { backgroundColor: BRAND } : undefined}
+   575→            >
+   576→              {t === 'semua' ? 'Semua' : t === 'wajib' ? 'Wajib' : 'Pilihan'}
+   577→            </button>
+   578→          ))}
+   579→        </div>
+   580→      </div>
+   581→
+   582→      {/* Subject Cards Grid */}
+   583→      {filtered.length === 0 ? (
+   584→        <EmptyState
+   585→          icon={BookOpen}
+   586→          title={search || typeFilter !== 'semua' ? 'Tidak ada hasil' : 'Belum ada mata pelajaran'}
+   587→          description={search || typeFilter !== 'semua' ? 'Coba ubah filter atau kata kunci pencarian Anda' : 'Mulai tambahkan mata pelajaran pertama Anda'}
+   588→          action={
+   589→            !search && typeFilter === 'semua' ? (
+   590→              <Button
+   591→                onClick={openAdd}
+   592→                className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   593→                style={{ backgroundColor: BRAND }}
+   594→              >
+   595→                <Plus className="h-4 w-4" />
+   596→                Tambah Mapel
+   597→              </Button>
+   598→            ) : undefined
+   599→          }
+   600→        />
+   601→      ) : (
+   602→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   603→          {filtered.map((s, i) => (
+   604→            <div
+   605→              key={s.id}
+   606→              className="group relative rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+   607→            >
+   608→              <div className="flex items-start justify-between">
+   609→                <div className="flex items-center gap-3">
+   610→                  <div
+   611→                    className={cn(
+   612→                      'flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white shrink-0',
+   613→                      s.type === 'wajib'
+   614→                        ? 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+   615→                        : 'bg-gradient-to-br from-amber-400 to-amber-500'
+   616→                    )}
+   617→                  >
+   618→                    {s.code.slice(0, 2)}
+   619→                  </div>
+   620→                  <div>
+   621→                    <h3 className="font-semibold text-foreground leading-tight">{s.name}</h3>
+   622→                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">{s.code}</p>
+   623→                  </div>
+   624→                </div>
+   625→                <Badge
+   626→                  className={cn(
+   627→                    'rounded-full text-xs font-medium border',
+   628→                    s.type === 'wajib'
+   629→                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+   630→                      : 'bg-amber-50 text-amber-700 border-amber-200'
+   631→                  )}
+   632→                >
+   633→                  {s.type === 'wajib' ? 'Wajib' : 'Pilihan'}
+   634→                </Badge>
+   635→              </div>
+   636→              <div className="mt-4 flex items-center justify-between">
+   637→                <span className="text-xs text-muted-foreground">
+   638→                  Urutan: <span className="font-semibold text-foreground">#{s.sortOrder}</span>
+   639→                </span>
+   640→                <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+   641→                  <Button
+   642→                    variant="ghost"
+   643→                    size="icon"
+   644→                    className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm hover:bg-amber-50"
+   645→                    onClick={() => openEdit(s)}
+   646→                  >
+   647→                    <Pencil className="h-3.5 w-3.5 text-amber-600" />
+   648→                  </Button>
+   649→                  <Button
+   650→                    variant="ghost"
+   651→                    size="icon"
+   652→                    className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm hover:bg-red-50"
+   653→                    onClick={() => {
+   654→                      setDeletingSubject(s);
+   655→                      setDeleteOpen(true);
+   656→                    }}
+   657→                  >
+   658→                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+   659→                  </Button>
+   660→                </div>
+   661→              </div>
+   662→            </div>
+   663→          ))}
+   664→        </div>
+   665→      )}
+   666→
+   667→      {/* Add/Edit Dialog with Rounded Form Inputs */}
+   668→      <Dialog open={dialogOpen} onOpenChange={(open) => !open && setDialogOpen(false)}>
+   669→        <DialogContent className="sm:max-w-md rounded-xl transition-all duration-200">
+   670→          <DialogHeader>
+   671→            <div className="flex items-center gap-3">
+   672→              <GradientIcon className="h-10 w-10">
+   673→                {editingSubject ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+   674→              </GradientIcon>
+   675→              <div>
+   676→                <DialogTitle style={{ color: BRAND }}>
+   677→                  {editingSubject ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran Baru'}
+   678→                </DialogTitle>
+   679→                <DialogDescription className="mt-1">
+   680→                  {editingSubject ? 'Perbarui informasi mata pelajaran di bawah ini.' : 'Isi data mata pelajaran yang akan ditambahkan.'}
+   681→                </DialogDescription>
+   682→              </div>
+   683→            </div>
+   684→          </DialogHeader>
+   685→          <div className="space-y-4 py-2">
+   686→            <div className="space-y-2">
+   687→              <Label htmlFor="subj-code">Kode Mata Pelajaran</Label>
+   688→              <Input
+   689→                id="subj-code"
+   690→                placeholder="cth: MTK, FIS, KIM"
+   691→                value={formCode}
+   692→                onChange={(e) => setFormCode(e.target.value.toUpperCase())}
+   693→                maxLength={10}
+   694→                className="rounded-lg focus-visible:ring-[#1F3864]/30"
+   695→              />
+   696→            </div>
+   697→            <div className="space-y-2">
+   698→              <Label htmlFor="subj-name">Nama Mata Pelajaran</Label>
+   699→              <Input
+   700→                id="subj-name"
+   701→                placeholder="cth: Matematika"
+   702→                value={formName}
+   703→                onChange={(e) => setFormName(e.target.value)}
+   704→                className="rounded-lg focus-visible:ring-[#1F3864]/30"
+   705→              />
+   706→            </div>
+   707→            <div className="space-y-2">
+   708→              <Label htmlFor="subj-type">Tipe</Label>
+   709→              <Select value={formType} onValueChange={(v: 'wajib' | 'pilihan') => setFormType(v)}>
+   710→                <SelectTrigger id="subj-type" className="rounded-lg">
+   711→                  <SelectValue />
+   712→                </SelectTrigger>
+   713→                <SelectContent>
+   714→                  <SelectItem value="wajib">Wajib</SelectItem>
+   715→                  <SelectItem value="pilihan">Pilihan</SelectItem>
+   716→                </SelectContent>
+   717→              </Select>
+   718→            </div>
+   719→            <div className="space-y-2">
+   720→              <Label htmlFor="subj-order">Urutan</Label>
+   721→              <Input
+   722→                id="subj-order"
+   723→                type="number"
+   724→                min={1}
+   725→                value={formOrder}
+   726→                onChange={(e) => setFormOrder(Number(e.target.value) || 1)}
+   727→                className="rounded-lg focus-visible:ring-[#1F3864]/30"
+   728→              />
+   729→            </div>
+   730→          </div>
+   731→          <DialogFooter className="gap-2">
+   732→            <Button variant="outline" onClick={() => setDialogOpen(false)} className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+   733→              Batal
+   734→            </Button>
+   735→            <Button
+   736→              onClick={handleSave}
+   737→              disabled={saving}
+   738→              className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   739→              style={{ backgroundColor: BRAND }}
+   740→            >
+   741→              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+   742→              {saving ? 'Menyimpan...' : editingSubject ? 'Perbarui' : 'Simpan'}
+   743→            </Button>
+   744→          </DialogFooter>
+   745→        </DialogContent>
+   746→      </Dialog>
+   747→
+   748→      {/* Delete AlertDialog */}
+   749→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+   750→        <AlertDialogContent className="rounded-xl">
+   751→          <AlertDialogHeader>
+   752→            <div className="flex items-center gap-3">
+   753→              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50">
+   754→                <Trash2 className="h-5 w-5 text-red-500" />
+   755→              </div>
+   756→              <div>
+   757→                <AlertDialogTitle>Hapus Mata Pelajaran</AlertDialogTitle>
+   758→                <AlertDialogDescription className="mt-1">
+   759→                  Apakah Anda yakin ingin menghapus &quot;{deletingSubject?.name}&quot;? Tindakan ini tidak dapat dibatalkan.
+   760→                </AlertDialogDescription>
+   761→              </div>
+   762→            </div>
+   763→          </AlertDialogHeader>
+   764→          <AlertDialogFooter className="gap-2">
+   765→            <AlertDialogCancel className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</AlertDialogCancel>
+   766→            <AlertDialogAction
+   767→              onClick={handleDelete}
+   768→              className="rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   769→            >
+   770→              Hapus
+   771→            </AlertDialogAction>
+   772→          </AlertDialogFooter>
+   773→        </AlertDialogContent>
+   774→      </AlertDialog>
+   775→    </div>
+   776→  );
+   777→}
+   778→
+   779→// ═══════════════════════════════════════════════════════════════════════
+   780→// 2. TEACHERASSIGNMENTSVIEW — Penugasan Guru
+   781→// ═══════════════════════════════════════════════════════════════════════
+   782→
+   783→export function TeacherAssignmentsView() {
+   784→  const { user } = useAppStore();
+   785→  const [assignments, setAssignments] = useState<TeacherAssignment[]>([]);
+   786→  const [loading, setLoading] = useState(true);
+   787→  const [dialogOpen, setDialogOpen] = useState(false);
+   788→  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
+   789→  const [deleteOpen, setDeleteOpen] = useState(false);
+   790→  const [deletingItem, setDeletingItem] = useState<TeacherAssignment | null>(null);
+   791→  const [saving, setSaving] = useState(false);
+   792→
+   793→  // Search & filter
+   794→  const [search, setSearch] = useState('');
+   795→  const [filterSubject, setFilterSubject] = useState('semua');
+   796→  const [filterClass, setFilterClass] = useState('semua');
+   797→  const [teacherSearch, setTeacherSearch] = useState('');
+   798→
+   799→  // Form state
+   800→  const [formTeacher, setFormTeacher] = useState('');
+   801→  const [formSubject, setFormSubject] = useState('');
+   802→  const [formClass, setFormClass] = useState('');
+   803→  const [formSemester, setFormSemester] = useState('Ganjil');
+   804→
+   805→  // Batch form
+   806→  const [batchTeacher, setBatchTeacher] = useState('');
+   807→  const [batchSubject, setBatchSubject] = useState('');
+   808→  const [batchSemester, setBatchSemester] = useState('Ganjil');
+   809→  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
+   810→
+   811→  const fetchAssignments = useCallback(async () => {
+   812→    try {
+   813→      const schoolId = user?.schoolId ?? '';
+   814→      const res = await fetch(`/api/teacher-assignments?schoolId=${schoolId}`);
+   815→      if (res.ok) {
+   816→        const data = await res.json();
+   817→        setAssignments(Array.isArray(data) ? data : data.data ?? []);
+   818→      } else {
+   819→        setAssignments(MOCK_ASSIGNMENTS);
+   820→      }
+   821→    } catch {
+   822→      setAssignments(MOCK_ASSIGNMENTS);
+   823→    } finally {
+   824→      setLoading(false);
+   825→    }
+   826→  }, [user?.schoolId]);
+   827→
+   828→  useEffect(() => {
+   829→    fetchAssignments();
+   830→  }, [fetchAssignments]);
+   831→
+   832→  const uniqueTeachers = useMemo(() => {
+   833→    const seen = new Set<string>();
+   834→    return MOCK_TEACHERS.filter((t) => {
+   835→      if (seen.has(t.id)) return false;
+   836→      seen.add(t.id);
+   837→      return true;
+   838→    });
+   839→  }, []);
+   840→
+   841→  const filteredTeachers = useMemo(() => {
+   842→    if (!teacherSearch.trim()) return uniqueTeachers;
+   843→    const q = teacherSearch.toLowerCase();
+   844→    return uniqueTeachers.filter(
+   845→      (t) => t.name.toLowerCase().includes(q) || t.nip.includes(q)
+   846→    );
+   847→  }, [uniqueTeachers, teacherSearch]);
+   848→
+   849→  const uniqueSubjects = useMemo(() => {
+   850→    return [...new Set(assignments.map((a) => a.subjectName))].sort();
+   851→  }, [assignments]);
+   852→
+   853→  const uniqueClasses = useMemo(() => {
+   854→    return [...new Set(assignments.map((a) => a.className))].sort();
+   855→  }, [assignments]);
+   856→
+   857→  const activeSubjectCount = useMemo(() => {
+   858→    return new Set(assignments.map((a) => a.subjectId)).size;
+   859→  }, [assignments]);
+   860→
+   861→  const activeClassCount = useMemo(() => {
+   862→    return new Set(assignments.map((a) => a.classId)).size;
+   863→  }, [assignments]);
+   864→
+   865→  const filteredAssignments = useMemo(() => {
+   866→    let result = assignments;
+   867→    if (filterSubject !== 'semua') {
+   868→      result = result.filter((a) => a.subjectName === filterSubject);
+   869→    }
+   870→    if (filterClass !== 'semua') {
+   871→      result = result.filter((a) => a.className === filterClass);
+   872→    }
+   873→    if (search.trim()) {
+   874→      const q = search.toLowerCase();
+   875→      result = result.filter(
+   876→        (a) =>
+   877→          a.teacherName.toLowerCase().includes(q) ||
+   878→          a.subjectName.toLowerCase().includes(q) ||
+   879→          a.className.toLowerCase().includes(q)
+   880→      );
+   881→    }
+   882→    return result;
+   883→  }, [assignments, filterSubject, filterClass, search]);
+   884→
+   885→  function openAdd() {
+   886→    setFormTeacher('');
+   887→    setFormSubject('');
+   888→    setFormClass('');
+   889→    setFormSemester('Ganjil');
+   890→    setDialogOpen(true);
+   891→  }
+   892→
+   893→  function openBatch() {
+   894→    setBatchTeacher('');
+   895→    setBatchSubject('');
+   896→    setBatchSemester('Ganjil');
+   897→    setSelectedClasses([]);
+   898→    setTeacherSearch('');
+   899→    setBatchDialogOpen(true);
+   900→  }
+   901→
+   902→  async function handleSave() {
+   903→    if (!formTeacher || !formSubject || !formClass) {
+   904→      toast.error('Guru, mata pelajaran, dan kelas wajib dipilih');
+   905→      return;
+   906→    }
+   907→    setSaving(true);
+   908→    const teacher = MOCK_TEACHERS.find((t) => t.id === formTeacher);
+   909→    const subject = MOCK_SUBJECTS.find((s) => s.id === formSubject);
+   910→    const cls = MOCK_CLASS_OPTIONS.find((c) => c.id === formClass);
+   911→
+   912→    try {
+   913→      const res = await fetch('/api/teacher-assignments', {
+   914→        method: 'POST',
+   915→        headers: { 'Content-Type': 'application/json' },
+   916→        body: JSON.stringify({
+   917→          schoolId: user?.schoolId,
+   918→          teacherId: formTeacher,
+   919→          subjectId: formSubject,
+   920→          classId: formClass,
+   921→          academicYear: '2024/2025',
+   922→          semester: formSemester,
+   923→        }),
+   924→      });
+   925→      if (res.ok) {
+   926→        toast.success('Penugasan guru berhasil ditambahkan');
+   927→        setDialogOpen(false);
+   928→        fetchAssignments();
+   929→        setSaving(false);
+   930→        return;
+   931→      }
+   932→    } catch {
+   933→      // fallback
+   934→    }
+   935→    const newAssignment: TeacherAssignment = {
+   936→      id: `ta${Date.now()}`,
+   937→      teacherId: formTeacher,
+   938→      teacherName: teacher?.name ?? '-',
+   939→      teacherNip: teacher?.nip ?? '-',
+   940→      subjectId: formSubject,
+   941→      subjectName: subject?.name ?? '-',
+   942→      classId: formClass,
+   943→      className: cls?.name ?? '-',
+   944→      academicYear: '2024/2025',
+   945→      semester: formSemester,
+   946→    };
+   947→    setAssignments((prev) => [...prev, newAssignment]);
+   948→    toast.success('Penugasan guru berhasil ditambahkan');
+   949→    setDialogOpen(false);
+   950→    setSaving(false);
+   951→  }
+   952→
+   953→  async function handleBatchSave() {
+   954→    if (!batchTeacher || !batchSubject || selectedClasses.length === 0) {
+   955→      toast.error('Guru, mata pelajaran, dan minimal 1 kelas wajib dipilih');
+   956→      return;
+   957→    }
+   958→    setSaving(true);
+   959→    const teacher = MOCK_TEACHERS.find((t) => t.id === batchTeacher);
+   960→    const subject = MOCK_SUBJECTS.find((s) => s.id === batchSubject);
+   961→
+   962→    const newAssignments: TeacherAssignment[] = selectedClasses.map((classId) => {
+   963→      const cls = MOCK_CLASS_OPTIONS.find((c) => c.id === classId);
+   964→      return {
+   965→        id: `ta${Date.now()}_${classId}`,
+   966→        teacherId: batchTeacher,
+   967→        teacherName: teacher?.name ?? '-',
+   968→        teacherNip: teacher?.nip ?? '-',
+   969→        subjectId: batchSubject,
+   970→        subjectName: subject?.name ?? '-',
+   971→        classId,
+   972→        className: cls?.name ?? '-',
+   973→        academicYear: '2024/2025',
+   974→        semester: batchSemester,
+   975→      };
+   976→    });
+   977→
+   978→    try {
+   979→      for (const a of newAssignments) {
+   980→        await fetch('/api/teacher-assignments', {
+   981→          method: 'POST',
+   982→          headers: { 'Content-Type': 'application/json' },
+   983→          body: JSON.stringify({
+   984→            schoolId: user?.schoolId,
+   985→            teacherId: a.teacherId,
+   986→            subjectId: a.subjectId,
+   987→            classId: a.classId,
+   988→            academicYear: a.academicYear,
+   989→            semester: a.semester,
+   990→          }),
+   991→        });
+   992→      }
+   993→      toast.success(`${newAssignments.length} penugasan berhasil ditambahkan`);
+   994→      setBatchDialogOpen(false);
+   995→      fetchAssignments();
+   996→      setSaving(false);
+   997→      return;
+   998→    } catch {
+   999→      // fallback
+  1000→    }
+  1001→    setAssignments((prev) => [...prev, ...newAssignments]);
+  1002→    toast.success(`${newAssignments.length} penugasan berhasil ditambahkan`);
+  1003→    setBatchDialogOpen(false);
+  1004→    setSaving(false);
+  1005→  }
+  1006→
+  1007→  async function handleDelete() {
+  1008→    if (!deletingItem) return;
+  1009→    try {
+  1010→      const res = await fetch(`/api/teacher-assignments?id=${deletingItem.id}`, { method: 'DELETE' });
+  1011→      if (res.ok) {
+  1012→        toast.success('Penugasan berhasil dihapus');
+  1013→        setDeleteOpen(false);
+  1014→        fetchAssignments();
+  1015→        return;
+  1016→      }
+  1017→    } catch {
+  1018→      // fallback
+  1019→    }
+  1020→    setAssignments((prev) => prev.filter((a) => a.id !== deletingItem.id));
+  1021→    toast.success('Penugasan berhasil dihapus');
+  1022→    setDeleteOpen(false);
+  1023→    setDeletingItem(null);
+  1024→  }
+  1025→
+  1026→  function toggleBatchClass(classId: string) {
+  1027→    setSelectedClasses((prev) =>
+  1028→      prev.includes(classId) ? prev.filter((c) => c !== classId) : [...prev, classId]
+  1029→    );
+  1030→  }
+  1031→
+  1032→  if (loading) {
+  1033→    return (
+  1034→      <div className="space-y-6">
+  1035→        <div className="flex items-center gap-3">
+  1036→          <Skeleton className="h-11 w-11 rounded-xl" />
+  1037→          <div className="space-y-2">
+  1038→            <Skeleton className="h-7 w-52" />
+  1039→            <Skeleton className="h-4 w-72" />
+  1040→          </div>
+  1041→        </div>
+  1042→        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  1043→          {[1, 2, 3].map((i) => (
+  1044→            <Skeleton key={i} className="h-28 rounded-xl" />
+  1045→          ))}
+  1046→        </div>
+  1047→        <Skeleton className="h-96 rounded-xl" />
+  1048→      </div>
+  1049→    );
+  1050→  }
+  1051→
+  1052→  return (
+  1053→    <div className="space-y-6">
+  1054→      {/* Header */}
+  1055→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  1056→        <div className="flex items-center gap-3">
+  1057→          <GradientIcon>
+  1058→            <Users className="h-5 w-5" />
+  1059→          </GradientIcon>
+  1060→          <div>
+  1061→            <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
+  1062→              Penugasan Guru
+  1063→            </h1>
+  1064→            <p className="text-sm text-muted-foreground">
+  1065→              Assign guru ke mata pelajaran dan kelas
+  1066→            </p>
+  1067→          </div>
+  1068→        </div>
+  1069→        <div className="flex items-center gap-2">
+  1070→          <Button
+  1071→            onClick={openBatch}
+  1072→            variant="outline"
+  1073→            className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1074→          >
+  1075→            <GraduationCap className="h-4 w-4" />
+  1076→            <span className="hidden sm:inline">Batch</span>
+  1077→          </Button>
+  1078→          <Button
+  1079→            onClick={openAdd}
+  1080→            className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1081→            style={{ backgroundColor: BRAND }}
+  1082→          >
+  1083→            <Plus className="h-4 w-4" />
+  1084→            Tugaskan Guru
+  1085→          </Button>
+  1086→        </div>
+  1087→      </div>
+  1088→
+  1089→      {/* Stat Cards with Gradient Backgrounds */}
+  1090→      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+  1091→        <GradientStatCard
+  1092→          icon={<Users className="h-6 w-6 text-white" />}
+  1093→          label="Total Penugasan"
+  1094→          value={assignments.length}
+  1095→          gradient="bg-gradient-to-br from-[#1F3864] to-[#2d5289]"
+  1096→        />
+  1097→        <GradientStatCard
+  1098→          icon={<BookOpen className="h-6 w-6 text-white" />}
+  1099→          label="Mata Pelajaran Aktif"
+  1100→          value={activeSubjectCount}
+  1101→          gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
+  1102→        />
+  1103→        <GradientStatCard
+  1104→          icon={<GraduationCap className="h-6 w-6 text-white" />}
+  1105→          label="Kelas Aktif"
+  1106→          value={activeClassCount}
+  1107→          gradient="bg-gradient-to-br from-amber-400 to-amber-500"
+  1108→        />
+  1109→      </div>
+  1110→
+  1111→      {/* Search + Filter Pills */}
+  1112→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+  1113→        <div className="relative flex-1 max-w-sm">
+  1114→          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+  1115→          <Input
+  1116→            placeholder="Cari guru, mapel, atau kelas..."
+  1117→            value={search}
+  1118→            onChange={(e) => setSearch(e.target.value)}
+  1119→            className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30"
+  1120→          />
+  1121→        </div>
+  1122→        <div className="flex flex-wrap items-center gap-2">
+  1123→          <Select value={filterSubject} onValueChange={(v) => { setFilterSubject(v); }}>
+  1124→            <SelectTrigger className="h-8 w-auto min-w-[130px] rounded-full text-xs border-dashed">
+  1125→              <SelectValue placeholder="Semua Mapel" />
+  1126→            </SelectTrigger>
+  1127→            <SelectContent>
+  1128→              <SelectItem value="semua">Semua Mapel</SelectItem>
+  1129→              {uniqueSubjects.map((s) => (
+  1130→                <SelectItem key={s} value={s}>{s}</SelectItem>
+  1131→              ))}
+  1132→            </SelectContent>
+  1133→          </Select>
+  1134→          <Select value={filterClass} onValueChange={(v) => { setFilterClass(v); }}>
+  1135→            <SelectTrigger className="h-8 w-auto min-w-[120px] rounded-full text-xs border-dashed">
+  1136→              <SelectValue placeholder="Semua Kelas" />
+  1137→            </SelectTrigger>
+  1138→            <SelectContent>
+  1139→              <SelectItem value="semua">Semua Kelas</SelectItem>
+  1140→              {uniqueClasses.map((c) => (
+  1141→                <SelectItem key={c} value={c}>{c}</SelectItem>
+  1142→              ))}
+  1143→            </SelectContent>
+  1144→          </Select>
+  1145→        </div>
+  1146→      </div>
+  1147→
+  1148→      {/* Assignments Table */}
+  1149→      <div className="rounded-xl border shadow-sm overflow-hidden">
+  1150→        <div className="max-h-[520px] overflow-y-auto">
+  1151→          <Table>
+  1152→            <TableHeader>
+  1153→              <TableRow className="hover:bg-transparent" style={{ backgroundColor: `${BRAND}06` }}>
+  1154→                <TableHead className="w-12 text-center">No</TableHead>
+  1155→                <TableHead>Nama Guru</TableHead>
+  1156→                <TableHead className="hidden lg:table-cell">NIP</TableHead>
+  1157→                <TableHead>Mata Pelajaran</TableHead>
+  1158→                <TableHead>Kelas</TableHead>
+  1159→                <TableHead className="hidden md:table-cell">Semester</TableHead>
+  1160→                <TableHead className="text-center">Aksi</TableHead>
+  1161→              </TableRow>
+  1162→            </TableHeader>
+  1163→            <TableBody>
+  1164→              {filteredAssignments.length === 0 ? (
+  1165→                <TableRow>
+  1166→                  <TableCell colSpan={7} className="h-32">
+  1167→                    <EmptyState
+  1168→                      icon={ClipboardList}
+  1169→                      title="Belum ada penugasan"
+  1170→                      description="Mulai tugaskan guru ke mata pelajaran dan kelas"
+  1171→                    />
+  1172→                  </TableCell>
+  1173→                </TableRow>
+  1174→              ) : (
+  1175→                filteredAssignments.map((a, i) => (
+  1176→                  <TableRow key={a.id} className="group even:bg-muted/30 hover:bg-muted/50 transition-colors duration-150">
+  1177→                    <TableCell className="text-center font-medium text-muted-foreground">{i + 1}</TableCell>
+  1178→                    <TableCell>
+  1179→                      <div className="flex items-center gap-2.5">
+  1180→                        <div className={cn('flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white shrink-0', getAvatarColor(a.teacherName))}>
+  1181→                          {getInitials(a.teacherName)}
+  1182→                        </div>
+  1183→                        <span className="font-medium">{a.teacherName}</span>
+  1184→                      </div>
+  1185→                    </TableCell>
+  1186→                    <TableCell className="hidden font-mono text-xs text-muted-foreground lg:table-cell">{a.teacherNip}</TableCell>
+  1187→                    <TableCell>
+  1188→                      <Badge className="rounded-full border-sky-200 bg-sky-50 text-sky-700 text-xs">
+  1189→                        {a.subjectName}
+  1190→                      </Badge>
+  1191→                    </TableCell>
+  1192→                    <TableCell>
+  1193→                      <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700 text-xs">
+  1194→                        {a.className}
+  1195→                      </Badge>
+  1196→                    </TableCell>
+  1197→                    <TableCell className="hidden md:table-cell">
+  1198→                      <Badge className="rounded-full border-gray-200 bg-gray-50 text-gray-600 text-xs">
+  1199→                        {a.semester}
+  1200→                      </Badge>
+  1201→                    </TableCell>
+  1202→                    <TableCell>
+  1203→                      <div className="flex items-center justify-center">
+  1204→                        <Button
+  1205→                          variant="ghost"
+  1206→                          size="icon"
+  1207→                          className="h-8 w-8 rounded-lg opacity-0 transition-all duration-200 group-hover:opacity-100 hover:shadow-sm hover:bg-red-50"
+  1208→                          onClick={() => {
+  1209→                            setDeletingItem(a);
+  1210→                            setDeleteOpen(true);
+  1211→                          }}
+  1212→                        >
+  1213→                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+  1214→                        </Button>
+  1215→                      </div>
+  1216→                    </TableCell>
+  1217→                  </TableRow>
+  1218→                ))
+  1219→              )}
+  1220→            </TableBody>
+  1221→          </Table>
+  1222→        </div>
+  1223→      </div>
+  1224→
+  1225→      {/* Single Assignment Dialog */}
+  1226→      <Dialog open={dialogOpen} onOpenChange={(open) => !open && setDialogOpen(false)}>
+  1227→        <DialogContent className="sm:max-w-md rounded-xl transition-all duration-200">
+  1228→          <DialogHeader>
+  1229→            <div className="flex items-center gap-3">
+  1230→              <GradientIcon className="h-10 w-10">
+  1231→                <Plus className="h-4 w-4" />
+  1232→              </GradientIcon>
+  1233→              <div>
+  1234→                <DialogTitle style={{ color: BRAND }}>Tugaskan Guru</DialogTitle>
+  1235→                <DialogDescription className="mt-1">
+  1236→                  Pilih guru, mata pelajaran, dan kelas untuk penugasan baru.
+  1237→                </DialogDescription>
+  1238→              </div>
+  1239→            </div>
+  1240→          </DialogHeader>
+  1241→          <div className="space-y-4 py-2">
+  1242→            <div className="space-y-2">
+  1243→              <Label>Guru</Label>
+  1244→              <Select value={formTeacher} onValueChange={setFormTeacher}>
+  1245→                <SelectTrigger className="rounded-lg">
+  1246→                  <SelectValue placeholder="Pilih guru..." />
+  1247→                </SelectTrigger>
+  1248→                <SelectContent>
+  1249→                  {uniqueTeachers.map((t) => (
+  1250→                    <SelectItem key={t.id} value={t.id}>
+  1251→                      {t.name} — {t.nip}
+  1252→                    </SelectItem>
+  1253→                  ))}
+  1254→                </SelectContent>
+  1255→              </Select>
+  1256→            </div>
+  1257→            <div className="space-y-2">
+  1258→              <Label>Mata Pelajaran</Label>
+  1259→              <Select value={formSubject} onValueChange={setFormSubject}>
+  1260→                <SelectTrigger className="rounded-lg">
+  1261→                  <SelectValue placeholder="Pilih mata pelajaran..." />
+  1262→                </SelectTrigger>
+  1263→                <SelectContent>
+  1264→                  {MOCK_SUBJECTS.map((s) => (
+  1265→                    <SelectItem key={s.id} value={s.id}>
+  1266→                      {s.name} ({s.code})
+  1267→                    </SelectItem>
+  1268→                  ))}
+  1269→                </SelectContent>
+  1270→              </Select>
+  1271→            </div>
+  1272→            <div className="space-y-2">
+  1273→              <Label>Kelas</Label>
+  1274→              <Select value={formClass} onValueChange={setFormClass}>
+  1275→                <SelectTrigger className="rounded-lg">
+  1276→                  <SelectValue placeholder="Pilih kelas..." />
+  1277→                </SelectTrigger>
+  1278→                <SelectContent>
+  1279→                  {MOCK_CLASS_OPTIONS.map((c) => (
+  1280→                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+  1281→                  ))}
+  1282→                </SelectContent>
+  1283→              </Select>
+  1284→            </div>
+  1285→            <div className="space-y-2">
+  1286→              <Label>Semester</Label>
+  1287→              <Select value={formSemester} onValueChange={setFormSemester}>
+  1288→                <SelectTrigger className="rounded-lg">
+  1289→                  <SelectValue />
+  1290→                </SelectTrigger>
+  1291→                <SelectContent>
+  1292→                  <SelectItem value="Ganjil">Ganjil</SelectItem>
+  1293→                  <SelectItem value="Genap">Genap</SelectItem>
+  1294→                </SelectContent>
+  1295→              </Select>
+  1296→            </div>
+  1297→          </div>
+  1298→          <DialogFooter className="gap-2">
+  1299→            <Button variant="outline" onClick={() => setDialogOpen(false)} className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</Button>
+  1300→            <Button
+  1301→              onClick={handleSave}
+  1302→              disabled={saving}
+  1303→              className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1304→              style={{ backgroundColor: BRAND }}
+  1305→            >
+  1306→              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+  1307→              {saving ? 'Menyimpan...' : 'Simpan'}
+  1308→            </Button>
+  1309→          </DialogFooter>
+  1310→        </DialogContent>
+  1311→      </Dialog>
+  1312→
+  1313→      {/* Batch Assignment Dialog */}
+  1314→      <Dialog open={batchDialogOpen} onOpenChange={(open) => !open && setBatchDialogOpen(false)}>
+  1315→        <DialogContent className="sm:max-w-lg rounded-xl transition-all duration-200">
+  1316→          <DialogHeader>
+  1317→            <div className="flex items-center gap-3">
+  1318→              <GradientIcon className="h-10 w-10">
+  1319→                <GraduationCap className="h-4 w-4" />
+  1320→              </GradientIcon>
+  1321→              <div>
+  1322→                <DialogTitle style={{ color: BRAND }}>Penugasan Batch</DialogTitle>
+  1323→                <DialogDescription className="mt-1">
+  1324→                  Tugaskan satu guru ke beberapa kelas sekaligus.
+  1325→                </DialogDescription>
+  1326→              </div>
+  1327→            </div>
+  1328→          </DialogHeader>
+  1329→          <div className="space-y-4 py-2">
+  1330→            <div className="space-y-2">
+  1331→              <Label>Guru</Label>
+  1332→              <div className="relative">
+  1333→                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+  1334→                <Input
+  1335→                  placeholder="Cari guru..."
+  1336→                  value={teacherSearch}
+  1337→                  onChange={(e) => setTeacherSearch(e.target.value)}
+  1338→                  className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30 mb-2"
+  1339→                />
+  1340→              </div>
+  1341→              <Select value={batchTeacher} onValueChange={setBatchTeacher}>
+  1342→                <SelectTrigger className="rounded-lg">
+  1343→                  <SelectValue placeholder="Pilih guru..." />
+  1344→                </SelectTrigger>
+  1345→                <SelectContent>
+  1346→                  {filteredTeachers.map((t) => (
+  1347→                    <SelectItem key={t.id} value={t.id}>
+  1348→                      {t.name}
+  1349→                    </SelectItem>
+  1350→                  ))}
+  1351→                </SelectContent>
+  1352→              </Select>
+  1353→            </div>
+  1354→            <div className="space-y-2">
+  1355→              <Label>Mata Pelajaran</Label>
+  1356→              <Select value={batchSubject} onValueChange={setBatchSubject}>
+  1357→                <SelectTrigger className="rounded-lg">
+  1358→                  <SelectValue placeholder="Pilih mata pelajaran..." />
+  1359→                </SelectTrigger>
+  1360→                <SelectContent>
+  1361→                  {MOCK_SUBJECTS.map((s) => (
+  1362→                    <SelectItem key={s.id} value={s.id}>
+  1363→                      {s.name} ({s.code})
+  1364→                    </SelectItem>
+  1365→                  ))}
+  1366→                </SelectContent>
+  1367→              </Select>
+  1368→            </div>
+  1369→            <div className="space-y-2">
+  1370→              <Label>Semester</Label>
+  1371→              <Select value={batchSemester} onValueChange={setBatchSemester}>
+  1372→                <SelectTrigger className="rounded-lg">
+  1373→                  <SelectValue />
+  1374→                </SelectTrigger>
+  1375→                <SelectContent>
+  1376→                  <SelectItem value="Ganjil">Ganjil</SelectItem>
+  1377→                  <SelectItem value="Genap">Genap</SelectItem>
+  1378→                </SelectContent>
+  1379→              </Select>
+  1380→            </div>
+  1381→            <div className="space-y-2">
+  1382→              <Label>Pilih Kelas ({selectedClasses.length} dipilih)</Label>
+  1383→              <div className="flex flex-wrap gap-2">
+  1384→                {MOCK_CLASS_OPTIONS.map((c) => (
+  1385→                  <button
+  1386→                    key={c.id}
+  1387→                    onClick={() => toggleBatchClass(c.id)}
+  1388→                    className={cn(
+  1389→                      'px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 cursor-pointer border',
+  1390→                      selectedClasses.includes(c.id)
+  1391→                        ? 'text-white shadow-sm border-transparent'
+  1392→                        : 'bg-white text-muted-foreground hover:bg-muted/80 border-muted'
+  1393→                    )}
+  1394→                    style={selectedClasses.includes(c.id) ? { backgroundColor: BRAND } : undefined}
+  1395→                  >
+  1396→                    {c.name}
+  1397→                  </button>
+  1398→                ))}
+  1399→              </div>
+  1400→            </div>
+  1401→          </div>
+  1402→          <DialogFooter className="gap-2">
+  1403→            <Button variant="outline" onClick={() => setBatchDialogOpen(false)} className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</Button>
+  1404→            <Button
+  1405→              onClick={handleBatchSave}
+  1406→              disabled={saving}
+  1407→              className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1408→              style={{ backgroundColor: BRAND }}
+  1409→            >
+  1410→              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+  1411→              {saving ? 'Menyimpan...' : `Tugaskan ke ${selectedClasses.length} Kelas`}
+  1412→            </Button>
+  1413→          </DialogFooter>
+  1414→        </DialogContent>
+  1415→      </Dialog>
+  1416→
+  1417→      {/* Delete AlertDialog */}
+  1418→      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+  1419→        <AlertDialogContent className="rounded-xl">
+  1420→          <AlertDialogHeader>
+  1421→            <div className="flex items-center gap-3">
+  1422→              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50">
+  1423→                <Trash2 className="h-5 w-5 text-red-500" />
+  1424→              </div>
+  1425→              <div>
+  1426→                <AlertDialogTitle>Hapus Penugasan</AlertDialogTitle>
+  1427→                <AlertDialogDescription className="mt-1">
+  1428→                  Apakah Anda yakin ingin menghapus penugasan &quot;{deletingItem?.teacherName}&quot; untuk
+  1429→                  mata pelajaran &quot;{deletingItem?.subjectName}&quot; di kelas &quot;{deletingItem?.className}&quot;?
+  1430→                </AlertDialogDescription>
+  1431→              </div>
+  1432→            </div>
+  1433→          </AlertDialogHeader>
+  1434→          <AlertDialogFooter className="gap-2">
+  1435→            <AlertDialogCancel className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</AlertDialogCancel>
+  1436→            <AlertDialogAction
+  1437→              onClick={handleDelete}
+  1438→              className="rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1439→            >
+  1440→              Hapus
+  1441→            </AlertDialogAction>
+  1442→          </AlertDialogFooter>
+  1443→        </AlertDialogContent>
+  1444→      </AlertDialog>
+  1445→    </div>
+  1446→  );
+  1447→}
+  1448→
+  1449→// ═══════════════════════════════════════════════════════════════════════
+  1450→// 3. BACKUPRESTOREVIEW — Cadangkan & Pulihkan
+  1451→// ═══════════════════════════════════════════════════════════════════════
+  1452→
+  1453→export function BackupRestoreView() {
+  1454→  const { user } = useAppStore();
+  1455→  const [loading, setLoading] = useState(true);
+  1456→  const [backups, setBackups] = useState<BackupRecord[]>([]);
+  1457→  const [dbSize, setDbSize] = useState('2.4 MB');
+  1458→  const [totalRecords, setTotalRecords] = useState(20);
+  1459→  const [lastBackup, setLastBackup] = useState('15 Januari 2025, 08:30');
+  1460→  const [creating, setCreating] = useState(false);
+  1461→  const [backupProgress, setBackupProgress] = useState(0);
+  1462→  const [downloading, setDownloading] = useState(false);
+  1463→
+  1464→  const tableBreakdown = [
+  1465→    { name: 'Pengguna', count: 8, icon: Users, color: 'text-violet-500' },
+  1466→    { name: 'Kelas', count: 9, icon: GraduationCap, color: 'text-emerald-500' },
+  1467→    { name: 'Mata Pelajaran', count: 10, icon: BookOpen, color: 'text-amber-500' },
+  1468→    { name: 'Penugasan Guru', count: 6, icon: Shield, color: 'text-sky-500' },
+  1469→  ];
+  1470→
+  1471→  const fetchBackups = useCallback(async () => {
+  1472→    try {
+  1473→      const res = await fetch('/api/backup');
+  1474→      if (res.ok) {
+  1475→        const data = await res.json();
+  1476→        if (Array.isArray(data)) {
+  1477→          setBackups(data);
+  1478→        } else if (data.data) {
+  1479→          setBackups(Array.isArray(data.data) ? data.data : []);
+  1480→        }
+  1481→        if (data.dbSize) setDbSize(data.dbSize);
+  1482→        if (data.totalRecords) setTotalRecords(data.totalRecords);
+  1483→        if (data.lastBackup) setLastBackup(data.lastBackup);
+  1484→      } else {
+  1485→        setBackups(MOCK_BACKUPS);
+  1486→      }
+  1487→    } catch {
+  1488→      setBackups(MOCK_BACKUPS);
+  1489→    } finally {
+  1490→      setLoading(false);
+  1491→    }
+  1492→  }, []);
+  1493→
+  1494→  useEffect(() => {
+  1495→    fetchBackups();
+  1496→  }, [fetchBackups]);
+  1497→
+  1498→  async function handleCreateBackup() {
+  1499→    setCreating(true);
+  1500→    setBackupProgress(0);
+  1501→    // Simulate progress
+  1502→    const interval = setInterval(() => {
+  1503→      setBackupProgress((prev) => {
+  1504→        if (prev >= 90) { clearInterval(interval); return 90; }
+  1505→        return prev + Math.random() * 20;
+  1506→      });
+  1507→    }, 200);
+  1508→
+  1509→    try {
+  1510→      const res = await fetch('/api/backup', {
+  1511→        method: 'POST',
+  1512→        headers: { 'Content-Type': 'application/json' },
+  1513→      });
+  1514→      clearInterval(interval);
+  1515→      setBackupProgress(100);
+  1516→      if (res.ok) {
+  1517→        setTimeout(() => {
+  1518→          toast.success('Backup berhasil dibuat!');
+  1519→          fetchBackups();
+  1520→          setCreating(false);
+  1521→          setBackupProgress(0);
+  1522→        }, 500);
+  1523→        return;
+  1524→      }
+  1525→    } catch {
+  1526→      clearInterval(interval);
+  1527→    }
+  1528→    // Mock fallback
+  1529→    const newBackup: BackupRecord = {
+  1530→      id: `b${Date.now()}`,
+  1531→      fileName: `backup_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}.db`,
+  1532→      fileSize: `${(2.4 + Math.random() * 0.5).toFixed(1)} MB`,
+  1533→      createdAt: new Date().toLocaleString('id-ID', {
+  1534→        year: 'numeric', month: '2-digit', day: '2-digit',
+  1535→        hour: '2-digit', minute: '2-digit',
+  1536→      }),
+  1537→      records: totalRecords + 1,
+  1538→    };
+  1539→    setBackupProgress(100);
+  1540→    setTimeout(() => {
+  1541→      setBackups((prev) => [newBackup, ...prev.slice(0, 4)]);
+  1542→      setLastBackup(newBackup.createdAt);
+  1543→      setTotalRecords(newBackup.records);
+  1544→      toast.success('Backup berhasil dibuat!');
+  1545→      setCreating(false);
+  1546→      setBackupProgress(0);
+  1547→    }, 500);
+  1548→  }
+  1549→
+  1550→  async function handleDownload() {
+  1551→    setDownloading(true);
+  1552→    try {
+  1553→      const res = await fetch('/api/backup?action=download');
+  1554→      if (res.ok) {
+  1555→        const blob = await res.blob();
+  1556→        const url = window.URL.createObjectURL(blob);
+  1557→        const a = document.createElement('a');
+  1558→        a.href = url;
+  1559→        a.download = `pandai_backup_${new Date().toISOString().slice(0, 10)}.db`;
+  1560→        document.body.appendChild(a);
+  1561→        a.click();
+  1562→        window.URL.revokeObjectURL(url);
+  1563→        document.body.removeChild(a);
+  1564→        toast.success('Database berhasil diunduh!');
+  1565→        setDownloading(false);
+  1566→        return;
+  1567→      }
+  1568→    } catch {
+  1569→      // fallback
+  1570→    }
+  1571→    toast.info('File backup demo berhasil diunduh (demo mode)');
+  1572→    setDownloading(false);
+  1573→  }
+  1574→
+  1575→  function handleDownloadBackup(backup: BackupRecord) {
+  1576→    toast.info(`Mengunduh ${backup.fileName} (demo mode)`);
+  1577→  }
+  1578→
+  1579→  if (loading) {
+  1580→    return (
+  1581→      <div className="space-y-6">
+  1582→        <div className="flex items-center gap-3">
+  1583→          <Skeleton className="h-11 w-11 rounded-xl" />
+  1584→          <div className="space-y-2">
+  1585→            <Skeleton className="h-7 w-64" />
+  1586→            <Skeleton className="h-4 w-80" />
+  1587→          </div>
+  1588→        </div>
+  1589→        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+  1590→          <Skeleton className="h-80 rounded-xl" />
+  1591→          <Skeleton className="h-80 rounded-xl" />
+  1592→        </div>
+  1593→        <Skeleton className="h-64 rounded-xl" />
+  1594→      </div>
+  1595→    );
+  1596→  }
+  1597→
+  1598→  return (
+  1599→    <div className="space-y-6">
+  1600→      {/* Header */}
+  1601→      <div className="flex items-center gap-3">
+  1602→        <GradientIcon>
+  1603→          <Database className="h-5 w-5" />
+  1604→        </GradientIcon>
+  1605→        <div>
+  1606→          <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
+  1607→            Cadangkan & Pulihkan
+  1608→          </h1>
+  1609→          <p className="text-sm text-muted-foreground">
+  1610→            Kelola backup dan pemulihan data untuk {user?.schoolName ?? 'sekolah Anda'}
+  1611→          </p>
+  1612→        </div>
+  1613→      </div>
+  1614→
+  1615→      {/* Info Cards & Actions */}
+  1616→      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+  1617→        {/* Database Info Card with Soft Accent Border */}
+  1618→        <div className="rounded-xl border-2 border-l-[#1F3864]/20 bg-card shadow-sm p-0 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+  1619→          <div className="bg-gradient-to-r from-[#1F3864] to-[#2d5289] px-6 py-4">
+  1620→            <div className="flex items-center gap-2">
+  1621→              <Database className="h-5 w-5 text-white/80" />
+  1622→              <h3 className="text-base font-semibold text-white">Informasi Database</h3>
+  1623→            </div>
+  1624→          </div>
+  1625→          <div className="p-5 space-y-4">
+  1626→            {/* Last Backup Info Card */}
+  1627→            <div className="rounded-xl bg-emerald-50/60 border border-emerald-100 p-4">
+  1628→              <div className="flex items-center gap-2 mb-1">
+  1629→                <div className="flex h-2 w-2 rounded-full bg-emerald-500" />
+  1630→                <p className="text-xs font-medium text-emerald-700">Backup Terakhir</p>
+  1631→              </div>
+  1632→              <p className="flex items-center gap-2 font-semibold text-foreground">
+  1633→                <Clock className="h-4 w-4 text-emerald-500" />
+  1634→                {lastBackup}
+  1635→              </p>
+  1636→            </div>
+  1637→            <div className="grid grid-cols-2 gap-3">
+  1638→              <div className="rounded-xl bg-muted/30 p-3 text-center">
+  1639→                <p className="text-xs text-muted-foreground">Ukuran</p>
+  1640→                <p className="mt-1 text-xl font-bold" style={{ color: BRAND }}>{dbSize}</p>
+  1641→              </div>
+  1642→              <div className="rounded-xl bg-muted/30 p-3 text-center">
+  1643→                <p className="text-xs text-muted-foreground">Total Rekaman</p>
+  1644→                <p className="mt-1 text-xl font-bold" style={{ color: BRAND }}>{totalRecords}</p>
+  1645→              </div>
+  1646→            </div>
+  1647→            <div className="space-y-2">
+  1648→              <p className="text-xs font-medium text-muted-foreground">Rekaman per Tabel:</p>
+  1649→              <div className="grid grid-cols-2 gap-2">
+  1650→                {tableBreakdown.map((t) => (
+  1651→                  <div
+  1652→                    key={t.name}
+  1653→                    className="flex items-center gap-2 rounded-lg border border-muted/50 bg-white p-2.5 transition-all duration-150 hover:bg-muted/30"
+  1654→                  >
+  1655→                    <t.icon className={cn('h-4 w-4 shrink-0', t.color)} />
+  1656→                    <span className="flex-1 text-xs text-muted-foreground">{t.name}</span>
+  1657→                    <span className="text-xs font-bold" style={{ color: BRAND }}>{t.count}</span>
+  1658→                  </div>
+  1659→                ))}
+  1660→              </div>
+  1661→            </div>
+  1662→          </div>
+  1663→        </div>
+  1664→
+  1665→        {/* Actions Column */}
+  1666→        <div className="space-y-4">
+  1667→          {/* Backup Action Card */}
+  1668→          <div className="rounded-xl border bg-card shadow-sm p-0 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+  1669→            <div className="px-6 py-4 border-b">
+  1670→              <div className="flex items-center gap-2">
+  1671→                <Save className="h-5 w-5" style={{ color: BRAND }} />
+  1672→                <h3 className="text-base font-semibold" style={{ color: BRAND }}>Aksi Backup</h3>
+  1673→              </div>
+  1674→            </div>
+  1675→            <div className="p-5 space-y-4">
+  1676→              <Button
+  1677→                onClick={handleCreateBackup}
+  1678→                disabled={creating}
+  1679→                className="w-full gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1680→                style={{ backgroundColor: BRAND }}
+  1681→              >
+  1682→                {creating ? (
+  1683→                  <Loader2 className="h-4 w-4 animate-spin" />
+  1684→                ) : (
+  1685→                  <Archive className="h-4 w-4" />
+  1686→                )}
+  1687→                {creating ? 'Membuat Backup...' : 'Buat Backup Sekarang'}
+  1688→              </Button>
+  1689→
+  1690→              {/* Progress Bar */}
+  1691→              {creating && (
+  1692→                <div className="space-y-2">
+  1693→                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+  1694→                    <div
+  1695→                      className="h-full rounded-full bg-gradient-to-r from-[#1F3864] to-[#2d5289] transition-all duration-500 ease-out"
+  1696→                      style={{ width: `${Math.min(backupProgress, 100)}%` }}
+  1697→                    />
+  1698→                  </div>
+  1699→                  <p className="text-xs text-center text-muted-foreground">
+  1700→                    {backupProgress < 30 ? 'Mempersiapkan data...' :
+  1701→                     backupProgress < 70 ? 'Mengompresi database...' :
+  1702→                     backupProgress < 100 ? 'Menyelesaikan backup...' : 'Selesai!'}
+  1703→                  </p>
+  1704→                </div>
+  1705→              )}
+  1706→
+  1707→              <p className="text-xs text-muted-foreground">
+  1708→                Membuat salinan database saat ini. Proses ini tidak mengganggu operasional sistem.
+  1709→              </p>
+  1710→
+  1711→              <div className="border-t pt-4">
+  1712→                <Button
+  1713→                  onClick={handleDownload}
+  1714→                  disabled={downloading}
+  1715→                  variant="outline"
+  1716→                  className="w-full gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1717→                >
+  1718→                  {downloading ? (
+  1719→                    <Loader2 className="h-4 w-4 animate-spin" />
+  1720→                  ) : (
+  1721→                    <Download className="h-4 w-4" />
+  1722→                  )}
+  1723→                  {downloading ? 'Mengunduh...' : 'Unduh Database Saat Ini'}
+  1724→                </Button>
+  1725→                <p className="mt-2 text-xs text-muted-foreground">
+  1726→                  Mengunduh file database SQLite untuk disimpan secara lokal.
+  1727→                </p>
+  1728→              </div>
+  1729→            </div>
+  1730→          </div>
+  1731→
+  1732→          {/* Warning Card with Amber Soft Background */}
+  1733→          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 transition-all duration-200">
+  1734→            <div className="flex gap-3">
+  1735→              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+  1736→                <AlertTriangle className="h-5 w-5 text-amber-600" />
+  1737→              </div>
+  1738→              <div>
+  1739→                <p className="text-sm font-semibold text-amber-800">Perhatian: Operasi Pemulihan</p>
+  1740→                <p className="mt-1 text-xs leading-relaxed text-amber-700">
+  1741→                  Pemulihan data akan menimpa seluruh data saat ini dengan data dari backup yang dipilih.
+  1742→                  Pastikan Anda telah membuat backup terbaru sebelum melakukan pemulihan.
+  1743→                </p>
+  1744→              </div>
+  1745→            </div>
+  1746→          </div>
+  1747→
+  1748→          {/* Restore Upload Area */}
+  1749→          <div className="rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/20 p-6 text-center transition-all duration-200 hover:border-muted-foreground/40 hover:bg-muted/30">
+  1750→            <div className="flex flex-col items-center gap-3">
+  1751→              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/50">
+  1752→                <Upload className="h-6 w-6 text-muted-foreground" />
+  1753→              </div>
+  1754→              <div>
+  1755→                <p className="text-sm font-semibold text-foreground">Pulihkan dari File</p>
+  1756→                <p className="mt-1 text-xs text-muted-foreground">
+  1757→                  Seret & lepas file backup .db di sini, atau klik untuk memilih
+  1758→                </p>
+  1759→              </div>
+  1760→              <Button
+  1761→                variant="outline"
+  1762→                size="sm"
+  1763→                className="gap-2 rounded-full transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1764→                onClick={() => toast.info('Fitur upload pemulihan akan segera tersedia')}
+  1765→              >
+  1766→                <FolderOpen className="h-3.5 w-3.5" />
+  1767→                Pilih File
+  1768→              </Button>
+  1769→            </div>
+  1770→          </div>
+  1771→        </div>
+  1772→      </div>
+  1773→
+  1774→      {/* Backup History — Timeline Style */}
+  1775→      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+  1776→        <div className="px-6 py-4 border-b">
+  1777→          <div className="flex items-center gap-2">
+  1778→            <History className="h-5 w-5" style={{ color: BRAND }} />
+  1779→            <h3 className="text-base font-semibold" style={{ color: BRAND }}>Riwayat Backup</h3>
+  1780→          </div>
+  1781→          <p className="mt-1 text-xs text-muted-foreground">5 backup terakhir yang tersedia</p>
+  1782→        </div>
+  1783→        <div className="p-5">
+  1784→          {backups.length === 0 ? (
+  1785→            <EmptyState
+  1786→              icon={HardDrive}
+  1787→              title="Belum ada riwayat backup"
+  1788→              description="Buat backup pertama Anda untuk mulai melacak riwayat"
+  1789→            />
+  1790→          ) : (
+  1791→            <div className="relative space-y-0">
+  1792→              {/* Timeline line */}
+  1793→              <div className="absolute left-[19px] top-3 bottom-3 w-px bg-border" />
+  1794→
+  1795→              {backups.map((b, i) => (
+  1796→                <div
+  1797→                  key={b.id}
+  1798→                  className={cn(
+  1799→                    'relative flex gap-4 py-3 transition-all duration-200 rounded-xl px-3 -mx-3',
+  1800→                    'hover:bg-muted/30 group'
+  1801→                  )}
+  1802→                >
+  1803→                  {/* Timeline dot */}
+  1804→                  <div className={cn(
+  1805→                    'relative z-10 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-sm',
+  1806→                    i === 0 ? 'bg-emerald-500' : 'bg-muted-foreground/20'
+  1807→                  )}>
+  1808→                    {i === 0 ? (
+  1809→                      <CheckCircle2 className="h-4 w-4 text-white" />
+  1810→                    ) : (
+  1811→                      <HardDrive className="h-4 w-4 text-muted-foreground" />
+  1812→                    )}
+  1813→                  </div>
+  1814→
+  1815→                  {/* Content */}
+  1816→                  <div className="flex-1 min-w-0">
+  1817→                    <div className="flex items-start justify-between gap-2">
+  1818→                      <div>
+  1819→                        <p className="text-sm font-semibold text-foreground truncate">{b.fileName}</p>
+  1820→                        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+  1821→                          <span className="flex items-center gap-1">
+  1822→                            <Calendar className="h-3 w-3" />
+  1823→                            {b.createdAt}
+  1824→                          </span>
+  1825→                          <Badge className="rounded-full bg-muted/60 text-muted-foreground text-[10px] px-2 border-0">
+  1826→                            {b.fileSize}
+  1827→                          </Badge>
+  1828→                          <Badge className="rounded-full bg-muted/60 text-muted-foreground text-[10px] px-2 border-0">
+  1829→                            {b.records} rekaman
+  1830→                          </Badge>
+  1831→                        </div>
+  1832→                      </div>
+  1833→                      <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+  1834→                        <Button
+  1835→                          variant="ghost"
+  1836→                          size="sm"
+  1837→                          className="h-7 gap-1 text-xs rounded-lg transition-all duration-200 hover:shadow-sm"
+  1838→                          onClick={() => handleDownloadBackup(b)}
+  1839→                        >
+  1840→                          <FileDown className="h-3.5 w-3.5" />
+  1841→                          <span className="hidden sm:inline">Unduh</span>
+  1842→                        </Button>
+  1843→                        <Button
+  1844→                          variant="ghost"
+  1845→                          size="sm"
+  1846→                          className="h-7 gap-1 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all duration-200 hover:shadow-sm"
+  1847→                          onClick={() => toast.info('Fitur pemulihan akan segera tersedia')}
+  1848→                        >
+  1849→                          <Upload className="h-3.5 w-3.5" />
+  1850→                          <span className="hidden sm:inline">Pulihkan</span>
+  1851→                        </Button>
+  1852→                      </div>
+  1853→                    </div>
+  1854→                  </div>
+  1855→                </div>
+  1856→              ))}
+  1857→            </div>
+  1858→          )}
+  1859→        </div>
+  1860→      </div>
+  1861→
+  1862→      {/* Danger Warning Card */}
+  1863→      <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 transition-all duration-200">
+  1864→        <div className="flex gap-3">
+  1865→          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
+  1866→            <AlertCircle className="h-5 w-5 text-red-500" />
+  1867→          </div>
+  1868→          <div>
+  1869→            <p className="text-sm font-semibold text-red-800">Zona Bahaya</p>
+  1870→            <p className="mt-1 text-xs leading-relaxed text-red-700">
+  1871→              Operasi pemulihan data bersifat irreversibel. Pastikan Anda memiliki backup terbaru sebelum
+  1872→              melakukan pemulihan dari file eksternal. Data yang tidak kompatibel dapat menyebabkan kerusakan sistem.
+  1873→            </p>
+  1874→          </div>
+  1875→        </div>
+  1876→      </div>
+  1877→    </div>
+  1878→  );
+  1879→}
+  1880→
+  1881→// ═══════════════════════════════════════════════════════════════════════
+  1882→// 4. ACTIVITYLOGVIEW — Log Aktivitas
+  1883→// ═══════════════════════════════════════════════════════════════════════
+  1884→
+  1885→const ITEMS_PER_PAGE = 8;
+  1886→
+  1887→function useDebounce(value: string, delay: number): string {
+  1888→  const [debounced, setDebounced] = useState(value);
+  1889→  useEffect(() => {
+  1890→    const timer = setTimeout(() => setDebounced(value), delay);
+  1891→    return () => clearTimeout(timer);
+  1892→  }, [value, delay]);
+  1893→  return debounced;
+  1894→}
+  1895→
+  1896→export function ActivityLogView() {
+  1897→  const { user } = useAppStore();
+  1898→  const [logs, setLogs] = useState<ActivityLog[]>([]);
+  1899→  const [loading, setLoading] = useState(true);
+  1900→  const [activeFilter, setActiveFilter] = useState('Semua');
+  1901→  const [page, setPage] = useState(1);
+  1902→  const [searchInput, setSearchInput] = useState('');
+  1903→  const [dateFrom, setDateFrom] = useState('');
+  1904→  const [dateTo, setDateTo] = useState('');
+  1905→
+  1906→  const debouncedSearch = useDebounce(searchInput, 300);
+  1907→
+  1908→  const fetchLogs = useCallback(async () => {
+  1909→    try {
+  1910→      const schoolId = user?.schoolId ?? '';
+  1911→      const res = await fetch(`/api/activity-logs?schoolId=${schoolId}&limit=50&offset=0`);
+  1912→      if (res.ok) {
+  1913→        const data = await res.json();
+  1914→        if (Array.isArray(data)) {
+  1915→          setLogs(data);
+  1916→        } else if (data.data) {
+  1917→          setLogs(Array.isArray(data.data) ? data.data : []);
+  1918→        }
+  1919→      } else {
+  1920→        setLogs(MOCK_ACTIVITY_LOGS);
+  1921→      }
+  1922→    } catch {
+  1923→      setLogs(MOCK_ACTIVITY_LOGS);
+  1924→    } finally {
+  1925→      setLoading(false);
+  1926→    }
+  1927→  }, [user?.schoolId]);
+  1928→
+  1929→  useEffect(() => {
+  1930→    fetchLogs();
+  1931→  }, [fetchLogs]);
+  1932→
+  1933→  const filteredLogs = useMemo(() => {
+  1934→    let result = logs;
+  1935→    if (activeFilter !== 'Semua') {
+  1936→      result = result.filter((l) => l.module === activeFilter);
+  1937→    }
+  1938→    if (debouncedSearch.trim()) {
+  1939→      const q = debouncedSearch.toLowerCase();
+  1940→      result = result.filter(
+  1941→        (l) =>
+  1942→          l.userName.toLowerCase().includes(q) ||
+  1943→          l.action.toLowerCase().includes(q) ||
+  1944→          l.detail.toLowerCase().includes(q)
+  1945→      );
+  1946→    }
+  1947→    if (dateFrom) {
+  1948→      result = result.filter((l) => l.timestamp >= dateFrom);
+  1949→    }
+  1950→    if (dateTo) {
+  1951→      const to = dateTo + ' 23:59:59';
+  1952→      result = result.filter((l) => l.timestamp <= to);
+  1953→    }
+  1954→    return result;
+  1955→  }, [logs, activeFilter, debouncedSearch, dateFrom, dateTo]);
+  1956→
+  1957→  const totalPages = Math.max(1, Math.ceil(filteredLogs.length / ITEMS_PER_PAGE));
+  1958→  const paginatedLogs = filteredLogs.slice(
+  1959→    (page - 1) * ITEMS_PER_PAGE,
+  1960→    page * ITEMS_PER_PAGE
+  1961→  );
+  1962→
+  1963→  useEffect(() => {
+  1964→    setPage(1);
+  1965→  }, [activeFilter, debouncedSearch, dateFrom, dateTo]);
+  1966→
+  1967→  const moduleCounts = useMemo(() => {
+  1968→    const counts: Record<string, number> = { Semua: logs.length };
+  1969→    for (const l of logs) {
+  1970→      counts[l.module] = (counts[l.module] ?? 0) + 1;
+  1971→    }
+  1972→    return counts;
+  1973→  }, [logs]);
+  1974→
+  1975→  const filterOptions = ['Semua', 'Pengguna', 'Kelas', 'Ujian', 'Soal', 'Lainnya'];
+  1976→
+  1977→  if (loading) {
+  1978→    return (
+  1979→      <div className="space-y-6">
+  1980→        <div className="flex items-center gap-3">
+  1981→          <Skeleton className="h-11 w-11 rounded-xl" />
+  1982→          <div className="space-y-2">
+  1983→            <Skeleton className="h-7 w-48" />
+  1984→            <Skeleton className="h-4 w-72" />
+  1985→          </div>
+  1986→        </div>
+  1987→        <div className="flex gap-2">
+  1988→          {[1, 2, 3, 4, 5].map((i) => (
+  1989→            <Skeleton key={i} className="h-8 w-24 rounded-full" />
+  1990→          ))}
+  1991→        </div>
+  1992→        <Skeleton className="h-96 rounded-xl" />
+  1993→      </div>
+  1994→    );
+  1995→  }
+  1996→
+  1997→  return (
+  1998→    <div className="space-y-6">
+  1999→      {/* Header */}
+  2000→      <div className="flex items-center gap-3">
+
+[showing lines 1-2000 of 2216; use offset=2001 with limit to continue reading]

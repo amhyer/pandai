@@ -160,8 +160,8 @@ function scoreGradeLabel(score: number) {
   return 'Perlu Ditingkatkan';
 }
 
-function getInitials(name: string) {
-  return name
+function getInitials(name?: string) {
+  return (name || '-')
     .split(' ')
     .map((n) => n[0])
     .join('')

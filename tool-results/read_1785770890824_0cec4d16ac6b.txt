@@ -1,0 +1,1548 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useMemo, useCallback } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import {
+     6→  Card,
+     7→  CardContent,
+     8→  CardHeader,
+     9→  CardTitle,
+    10→  CardDescription,
+    11→} from '@/components/ui/card';
+    12→import { Button } from '@/components/ui/button';
+    13→import { Badge } from '@/components/ui/badge';
+    14→import {
+    15→  Table,
+    16→  TableBody,
+    17→  TableCell,
+    18→  TableHead,
+    19→  TableHeader,
+    20→  TableRow,
+    21→} from '@/components/ui/table';
+    22→import { Input } from '@/components/ui/input';
+    23→import {
+    24→  Select,
+    25→  SelectContent,
+    26→  SelectItem,
+    27→  SelectTrigger,
+    28→  SelectValue,
+    29→} from '@/components/ui/select';
+    30→import { Skeleton } from '@/components/ui/skeleton';
+    31→import { Progress } from '@/components/ui/progress';
+    32→import { toast } from 'sonner';
+    33→import { cn } from '@/lib/utils';
+    34→import {
+    35→  BookOpen,
+    36→  Calculator,
+    37→  Atom,
+    38→  FlaskConical,
+    39→  Leaf,
+    40→  Languages,
+    41→  Search,
+    42→  ChevronLeft,
+    43→  ChevronRight,
+    44→  CheckCircle2,
+    45→  Circle,
+    46→  Clock,
+    47→  AlertCircle,
+    48→  FileText,
+    49→  ClipboardList,
+    50→  Timer,
+    51→  PlayCircle,
+    52→  Eye,
+    53→  CalendarDays,
+    54→  TrendingUp,
+    55→  XCircle,
+    56→  Sparkles,
+    57→  GraduationCap,
+    58→  BookMarked,
+    59→  BookCheck,
+    60→  ChevronDown,
+    61→  ChevronUp,
+    62→  Calendar,
+    63→  UserCheck,
+    64→  BriefcaseMedical,
+    65→  BarChart3,
+    66→  Loader2,
+    67→  FileQuestion,
+    68→  Trophy,
+    69→  Target,
+    70→  AlertTriangle,
+    71→  RefreshCw,
+    72→  ArrowRight,
+    73→  BookOpenCheck,
+    74→} from 'lucide-react';
+    75→
+    76→// ═══════════════════════════════════════════════════════════════════════
+    77→//  SHARED TYPES
+    78→// ═══════════════════════════════════════════════════════════════════════
+    79→
+    80→interface Material {
+    81→  id: string;
+    82→  title: string;
+    83→  description: string;
+    84→  subject: string;
+    85→  date: string;
+    86→  isRead: boolean;
+    87→  content?: string;
+    88→}
+    89→
+    90→interface SubjectData {
+    91→  id: string;
+    92→  name: string;
+    93→  icon: React.ReactNode;
+    94→  color: string;
+    95→  bgLight: string;
+    96→  borderColor: string;
+    97→  gradientFrom: string;
+    98→  gradientTo: string;
+    99→  materials: Material[];
+   100→}
+   101→
+   102→interface Task {
+   103→  id: string;
+   104→  title: string;
+   105→  type: 'tugas' | 'kuis' | 'ujian';
+   106→  subject: string;
+   107→  dueDate: string;
+   108→  status: 'menunggu' | 'dikerjakan' | 'selesai' | 'terlambat';
+   109→  isUrgent: boolean;
+   110→  score?: number;
+   111→}
+   112→
+   113→interface AttendanceDay {
+   114→  day: number;
+   115→  status: 'hadir' | 'izin' | 'sakit' | 'alpa' | 'weekend' | 'none';
+   116→  date?: string;
+   117→  note?: string;
+   118→}
+   119→
+   120→// ═══════════════════════════════════════════════════════════════════════
+   121→//  BRAND & SUBJECT CONSTANTS
+   122→// ═══════════════════════════════════════════════════════════════════════
+   123→
+   124→const BRAND = '#1F3864';
+   125→const BRAND_LIGHT = '#E8EDF5';
+   126→const BRAND_DARK = '#152A4A';
+   127→
+   128→// Subject colors per spec: Matematika=emerald, Fisika=sky, Kimia=amber, Biologi=green, B.Indonesia=orange, B.Inggris=purple
+   129→const SUBJECT_CONFIGS = [
+   130→  { id: 'matematika', name: 'Matematika', icon: <Calculator className="h-5 w-5" />, color: 'text-emerald-700', bgLight: 'bg-emerald-50', borderColor: 'border-emerald-300', gradientFrom: 'from-emerald-500', gradientTo: 'to-emerald-600', ringColor: 'ring-emerald-200' },
+   131→  { id: 'fisika', name: 'Fisika', icon: <Atom className="h-5 w-5" />, color: 'text-sky-700', bgLight: 'bg-sky-50', borderColor: 'border-sky-300', gradientFrom: 'from-sky-500', gradientTo: 'to-sky-600', ringColor: 'ring-sky-200' },
+   132→  { id: 'kimia', name: 'Kimia', icon: <FlaskConical className="h-5 w-5" />, color: 'text-amber-700', bgLight: 'bg-amber-50', borderColor: 'border-amber-300', gradientFrom: 'from-amber-500', gradientTo: 'to-amber-600', ringColor: 'ring-amber-200' },
+   133→  { id: 'biologi', name: 'Biologi', icon: <Leaf className="h-5 w-5" />, color: 'text-green-700', bgLight: 'bg-green-50', borderColor: 'border-green-300', gradientFrom: 'from-green-500', gradientTo: 'to-green-600', ringColor: 'ring-green-200' },
+   134→  { id: 'bindo', name: 'Bahasa Indonesia', icon: <BookOpen className="h-5 w-5" />, color: 'text-orange-700', bgLight: 'bg-orange-50', borderColor: 'border-orange-300', gradientFrom: 'from-orange-500', gradientTo: 'to-orange-600', ringColor: 'ring-orange-200' },
+   135→  { id: 'bing', name: 'Bahasa Inggris', icon: <Languages className="h-5 w-5" />, color: 'text-purple-700', bgLight: 'bg-purple-50', borderColor: 'border-purple-300', gradientFrom: 'from-purple-500', gradientTo: 'to-purple-600', ringColor: 'ring-purple-200' },
+   136→];
+   137→
+   138→// ═══════════════════════════════════════════════════════════════════════
+   139→//  MOCK DATA
+   140→// ═══════════════════════════════════════════════════════════════════════
+   141→
+   142→const MOCK_SUBJECTS: SubjectData[] = SUBJECT_CONFIGS.map((cfg, idx) => ({
+   143→  ...cfg,
+   144→  materials: idx === 0
+   145→    ? [
+   146→        { id: 'm1', title: 'Persamaan Kuadrat', description: 'Memahami bentuk umum persamaan kuadrat dan cara menyelesaikannya. Termasuk rumus abc dan faktorisasi.', subject: 'Matematika', date: '2025-01-10', isRead: true, content: 'Persamaan kuadrat adalah persamaan polinomial berderajat dua. Bentuk umumnya adalah ax² + bx + c = 0, di mana a ≠ 0.' },
+   147→        { id: 'm2', title: 'Fungsi Kuadrat', description: 'Grafik dan sifat-sifat fungsi kuadrat termasuk titik puncak dan sumbu simetri.', subject: 'Matematika', date: '2025-01-15', isRead: true, content: 'Fungsi kuadrat memiliki grafik berbentuk parabola. Titik puncak berada di x = -b/2a.' },
+   148→        { id: 'm3', title: 'Sistem Persamaan Linear', description: 'Metode eliminasi dan substitusi untuk menyelesaikan SPLDV.', subject: 'Matematika', date: '2025-01-20', isRead: false, content: 'SPLDV dapat diselesaikan dengan eliminasi, substitusi, atau metode grafik.' },
+   149→        { id: 'm4', title: 'Logaritma', description: 'Sifat-sifat logaritma dan penerapannya dalam perhitungan.', subject: 'Matematika', date: '2025-01-25', isRead: false, content: 'Logaritma adalah invers dari eksponen. Sifat utama: log(ab) = log a + log b.' },
+   150→      ]
+   151→    : idx === 1
+   152→      ? [
+   153→          { id: 'f1', title: 'Hukum Newton', description: 'Tiga hukum gerak Newton dan penerapannya.', subject: 'Fisika', date: '2025-01-08', isRead: true },
+   154→          { id: 'f2', title: 'Usaha dan Energi', description: 'Konsep usaha, energi kinetik, dan energi potensial.', subject: 'Fisika', date: '2025-01-14', isRead: true },
+   155→          { id: 'f3', title: 'Momentum dan Impuls', description: 'Hukum kekekalan momentum dan tumbukan.', subject: 'Fisika', date: '2025-01-22', isRead: false },
+   156→        ]
+   157→      : idx === 2
+   158→        ? [
+   159→            { id: 'k1', title: 'Struktur Atom', description: 'Model atom, partikel penyusun atom, dan konfigurasi elektron.', subject: 'Kimia', date: '2025-01-09', isRead: true },
+   160→            { id: 'k2', title: 'Ikatan Kimia', description: 'Ikatan ion, ikatan kovalen, dan ikatan logam.', subject: 'Kimia', date: '2025-01-16', isRead: true },
+   161→            { id: 'k3', title: 'Sistem Periodik Unsur', description: 'Tren sifat unsur dalam periode dan golongan.', subject: 'Kimia', date: '2025-01-23', isRead: false },
+   162→            { id: 'k4', title: 'Reaksi Kimia', description: 'Jenis-jenis reaksi kimia dan persamaan reaksi.', subject: 'Kimia', date: '2025-01-28', isRead: false },
+   163→          ]
+   164→        : idx === 3
+   165→          ? [
+   166→              { id: 'b1', title: 'Sel dan Organel', description: 'Struktur sel prokariotik dan eukariotik beserta fungsinya.', subject: 'Biologi', date: '2025-01-07', isRead: true },
+   167→              { id: 'b2', title: 'Jaringan Tumbuhan', description: 'Jenis-jenis jaringan pada tumbuhan dan fungsinya.', subject: 'Biologi', date: '2025-01-13', isRead: false },
+   168→              { id: 'b3', title: 'Fotosintesis', description: 'Proses fotosintesis dan faktor-faktor yang mempengaruhinya.', subject: 'Biologi', date: '2025-01-19', isRead: false },
+   169→            ]
+   170→          : idx === 4
+   171→            ? [
+   172→                { id: 'bi1', title: 'Teks Eksplanasi', description: 'Struktur dan ciri-ciri teks eksplanasi.', subject: 'Bahasa Indonesia', date: '2025-01-11', isRead: true },
+   173→                { id: 'bi2', title: 'Teks Persuasi', description: 'Teknik persuasi dalam teks dan iklan.', subject: 'Bahasa Indonesia', date: '2025-01-18', isRead: false },
+   174→                { id: 'bi3', title: 'Cerpen dan Unsur Intrinsik', description: 'Menganalisis unsur intrinsik cerpen.', subject: 'Bahasa Indonesia', date: '2025-01-24', isRead: false },
+   175→              ]
+   176→            : [
+   177→                { id: 'be1', title: 'Past Tense & Present Perfect', description: 'Perbedaan penggunaan past tense dan present perfect.', subject: 'Bahasa Inggris', date: '2025-01-12', isRead: true },
+   178→                { id: 'be2', title: 'Passive Voice', description: 'Membuat kalimat pasif dalam berbagai tenses.', subject: 'Bahasa Inggris', date: '2025-01-17', isRead: true },
+   179→                { id: 'be3', title: 'Conditional Sentences', description: 'Tipe 0, 1, 2, dan 3 kalimat bersyarat.', subject: 'Bahasa Inggris', date: '2025-01-26', isRead: false },
+   180→                { id: 'be4', title: 'Analytical Exposition Text', description: 'Struktur dan bahasa teks eksposisi analitis.', subject: 'Bahasa Inggris', date: '2025-01-29', isRead: false },
+   181→              ],
+   182→}));
+   183→
+   184→const MOCK_TASKS: Task[] = [
+   185→  { id: 't1', title: 'Latihan Soal Persamaan Kuadrat', type: 'tugas', subject: 'Matematika', dueDate: '2025-01-20', status: 'selesai', isUrgent: false, score: 85 },
+   186→  { id: 't2', title: 'Kuis Hukum Newton', type: 'kuis', subject: 'Fisika', dueDate: '2025-01-22', status: 'selesai', isUrgent: false, score: 90 },
+   187→  { id: 't3', title: 'Tugas Laporan Praktikum Ikatan Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-28', status: 'menunggu', isUrgent: true },
+   188→  { id: 't4', title: 'Ujian Tengah Semester Biologi', type: 'ujian', subject: 'Biologi', dueDate: '2025-02-01', status: 'menunggu', isUrgent: false },
+   189→  { id: 't5', title: 'Essay Teks Eksplanasi', type: 'tugas', subject: 'Bahasa Indonesia', dueDate: '2025-01-15', status: 'terlambat', isUrgent: false },
+   190→  { id: 't6', title: 'Kuis Passive Voice', type: 'kuis', subject: 'Bahasa Inggris', dueDate: '2025-01-25', status: 'menunggu', isUrgent: true },
+   191→  { id: 't7', title: 'Tugas Analisis Data Fotosintesis', type: 'tugas', subject: 'Biologi', dueDate: '2025-01-30', status: 'dikerjakan', isUrgent: false },
+   192→  { id: 't8', title: 'Tryout UTBK Matematika', type: 'ujian', subject: 'Matematika', dueDate: '2025-02-05', status: 'menunggu', isUrgent: false },
+   193→  { id: 't9', title: 'Kuis Teks Persuasi', type: 'kuis', subject: 'Bahasa Indonesia', dueDate: '2025-01-18', status: 'selesai', isUrgent: false, score: 78 },
+   194→  { id: 't10', title: 'Tugas Reaksi Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-12', status: 'selesai', isUrgent: false, score: 92 },
+   195→];
+   196→
+   197→function generateMockAttendance(year: number, month: number): AttendanceDay[] {
+   198→  const days: AttendanceDay[] = [];
+   199→  const daysInMonth = new Date(year, month + 1, 0).getDate();
+   200→  const statuses: Array<'hadir' | 'izin' | 'sakit' | 'alpa'> = ['hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'izin', 'sakit', 'alpa'];
+   201→  const notes: Record<string, string> = { izin: 'Keperluan keluarga', sakit: 'Demam', alpa: 'Tanpa keterangan' };
+   202→  let statusIdx = 0;
+   203→  for (let d = 1; d <= daysInMonth; d++) {
+   204→    const date = new Date(year, month, d);
+   205→    const dow = date.getDay();
+   206→    if (dow === 0 || dow === 6) {
+   207→      days.push({ day: d, status: 'weekend', date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` });
+   208→    } else {
+   209→      const s = statuses[statusIdx % statuses.length];
+   210→      days.push({ day: d, status: s, date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, note: notes[s] || '' });
+   211→      statusIdx++;
+   212→    }
+   213→  }
+   214→  return days;
+   215→}
+   216→
+   217→// ═══════════════════════════════════════════════════════════════════════
+   218→//  SHARED HELPERS
+   219→// ═══════════════════════════════════════════════════════════════════════
+   220→
+   221→function GradientIcon({ children, className }: { children: React.ReactNode; className?: string }) {
+   222→  return (
+   223→    <div className={cn('p-2.5 rounded-xl bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white shadow-sm', className)}>
+   224→      {children}
+   225→    </div>
+   226→  );
+   227→}
+   228→
+   229→function getSubjectConfig(name: string) {
+   230→  return SUBJECT_CONFIGS.find((s) => s.name === name) || SUBJECT_CONFIGS[0];
+   231→}
+   232→
+   233→// ═══════════════════════════════════════════════════════════════════════
+   234→//  1. SISWA MATERI VIEW
+   235→// ═══════════════════════════════════════════════════════════════════════
+   236→
+   237→export function SiswaMateriView() {
+   238→  const { user } = useAppStore();
+   239→  const [subjects, setSubjects] = useState<SubjectData[]>([]);
+   240→  const [isLoading, setIsLoading] = useState(true);
+   241→  const [searchQuery, setSearchQuery] = useState('');
+   242→  const [activeFilter, setActiveFilter] = useState('semua');
+   243→  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+   244→  const [expandedMaterial, setExpandedMaterial] = useState<string | null>(null);
+   245→
+   246→  useEffect(() => {
+   247→    async function fetchMaterials() {
+   248→      setIsLoading(true);
+   249→      try {
+   250→        const params = new URLSearchParams({
+   251→          schoolId: user?.schoolId || '',
+   252→          classId: user?.classId || '',
+   253→          type: 'materi',
+   254→          status: 'published',
+   255→        });
+   256→        const res = await fetch(`/api/materials?${params}`);
+   257→        if (res.ok) {
+   258→          const data = await res.json();
+   259→          if (Array.isArray(data) && data.length > 0) {
+   260→            const mapped = MOCK_SUBJECTS.map((subj) => {
+   261→              const apiMaterials = (data as Material[]).filter(
+   262→                (m: any) => m.subject === subj.name || m.subject?.name === subj.name
+   263→              );
+   264→              return apiMaterials.length > 0
+   265→                ? { ...subj, materials: apiMaterials.map((m: any) => ({
+   266→                    id: m.id,
+   267→                    title: m.title,
+   268→                    description: m.description || '',
+   269→                    subject: typeof m.subject === 'string' ? m.subject : m.subject?.name || subj.name,
+   270→                    date: m.createdAt || m.date || '2025-01-01',
+   271→                    isRead: false,
+   272→                    content: m.content || '',
+   273→                  })) }
+   274→                : subj;
+   275→            });
+   276→            setSubjects(mapped);
+   277→          } else {
+   278→            setSubjects(MOCK_SUBJECTS);
+   279→          }
+   280→        } else {
+   281→          setSubjects(MOCK_SUBJECTS);
+   282→        }
+   283→      } catch {
+   284→        setSubjects(MOCK_SUBJECTS);
+   285→      } finally {
+   286→        setIsLoading(false);
+   287→      }
+   288→    }
+   289→    fetchMaterials();
+   290→  }, [user?.schoolId, user?.classId]);
+   291→
+   292→  const toggleSubject = useCallback((subjectId: string) => {
+   293→    setExpandedSubject((prev) => (prev === subjectId ? null : subjectId));
+   294→    if (expandedSubject === subjectId) setExpandedMaterial(null);
+   295→  }, [expandedSubject]);
+   296→
+   297→  const toggleMaterial = useCallback((materialId: string) => {
+   298→    setExpandedMaterial((prev) => (prev === materialId ? null : materialId));
+   299→  }, []);
+   300→
+   301→  const filteredSubjects = useMemo(() => {
+   302→    return subjects
+   303→      .map((subj) => {
+   304→        let mats = [...subj.materials];
+   305→        if (searchQuery.trim()) {
+   306→          const q = searchQuery.toLowerCase();
+   307→          mats = mats.filter(
+   308→            (m) => m.title.toLowerCase().includes(q) || m.description.toLowerCase().includes(q)
+   309→          );
+   310→        }
+   311→        if (activeFilter === 'belum') {
+   312→          mats = mats.filter((m) => !m.isRead);
+   313→        } else if (activeFilter === 'selesai') {
+   314→          mats = mats.filter((m) => m.isRead);
+   315→        }
+   316→        return { ...subj, materials: mats };
+   317→      })
+   318→      .filter((s) => s.materials.length > 0 || activeFilter === 'semua' && !searchQuery.trim());
+   319→  }, [subjects, searchQuery, activeFilter]);
+   320→
+   321→  const totalMaterials = useMemo(
+   322→    () => subjects.reduce((sum, s) => sum + s.materials.length, 0),
+   323→    [subjects]
+   324→  );
+   325→  const totalRead = useMemo(
+   326→    () => subjects.reduce((sum, s) => sum + s.materials.filter((m) => m.isRead).length, 0),
+   327→    [subjects]
+   328→  );
+   329→  const overallProgress = totalMaterials > 0 ? Math.round((totalRead / totalMaterials) * 100) : 0;
+   330→
+   331→  const filterPills = [
+   332→    { key: 'semua', label: 'Semua' },
+   333→    { key: 'selesai', label: 'Sudah Dibaca' },
+   334→    { key: 'belum', label: 'Belum Dibaca' },
+   335→  ];
+   336→
+   337→  const handleMarkRead = (materialId: string, subjectId: string) => {
+   338→    setSubjects((prev) =>
+   339→      prev.map((subj) => {
+   340→        if (subj.id !== subjectId) return subj;
+   341→        return {
+   342→          ...subj,
+   343→          materials: subj.materials.map((m) =>
+   344→            m.id === materialId ? { ...m, isRead: true } : m
+   345→          ),
+   346→        };
+   347→      })
+   348→    );
+   349→    toast.success('Materi ditandai sudah dibaca!');
+   350→  };
+   351→
+   352→  const handleRefresh = async () => {
+   353→    setIsLoading(true);
+   354→    toast.loading('Memuat ulang materi...', { id: 'refresh-materi' });
+   355→    await new Promise((r) => setTimeout(r, 600));
+   356→    setIsLoading(false);
+   357→    toast.success('Materi berhasil dimuat ulang', { id: 'refresh-materi' });
+   358→  };
+   359→
+   360→  if (isLoading) {
+   361→    return (
+   362→      <div className="space-y-6">
+   363→        <Skeleton className="h-40 w-full rounded-xl" />
+   364→        <div className="flex gap-2">
+   365→          <Skeleton className="h-9 w-24 rounded-full" />
+   366→          <Skeleton className="h-9 w-28 rounded-full" />
+   367→          <Skeleton className="h-9 w-28 rounded-full" />
+   368→        </div>
+   369→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   370→          {Array.from({ length: 6 }).map((_, i) => (
+   371→            <Skeleton key={i} className="h-44 rounded-xl" />
+   372→          ))}
+   373→        </div>
+   374→      </div>
+   375→    );
+   376→  }
+   377→
+   378→  return (
+   379→    <div className="space-y-6">
+   380→      {/* ── Hero Banner ── */}
+   381→      <div className="relative rounded-xl overflow-hidden p-6 md:p-8 shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})` }}>
+   382→        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(30%, -30%)' }} />
+   383→        <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full opacity-5" style={{ background: 'white', transform: 'translate(-30%, 30%)' }} />
+   384→        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   385→          <div className="flex items-center gap-3">
+   386→            <GradientIcon><BookMarked className="h-6 w-6" /></GradientIcon>
+   387→            <div>
+   388→              <h1 className="text-2xl md:text-3xl font-bold text-white">Materi Pelajaran</h1>
+   389→              <p className="text-white/80 text-sm mt-0.5">Kelas {user?.className || 'XII IPA'} — Semua materi tersedia</p>
+   390→            </div>
+   391→          </div>
+   392→          <div className="flex items-center gap-3">
+   393→            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+   394→              <BookOpen className="h-4 w-4 text-white/80" />
+   395→              <span className="text-white text-sm font-medium">{totalRead}/{totalMaterials}</span>
+   396→            </div>
+   397→            <Button
+   398→              variant="ghost"
+   399→              size="icon"
+   400→              className="h-9 w-9 rounded-full text-white/80 hover:text-white hover:bg-white/20 transition-all duration-200"
+   401→              onClick={handleRefresh}
+   402→            >
+   403→              <RefreshCw className="h-4 w-4" />
+   404→            </Button>
+   405→          </div>
+   406→        </div>
+   407→        {/* Progress bar */}
+   408→        <div className="relative z-10 mt-4">
+   409→          <div className="flex items-center justify-between text-xs text-white/70 mb-1.5">
+   410→            <span>Progres Keseluruhan</span>
+   411→            <span className="font-semibold text-white">{overallProgress}%</span>
+   412→          </div>
+   413→          <div className="h-2.5 rounded-full bg-white/20 overflow-hidden">
+   414→            <div
+   415→              className="h-full rounded-full bg-white transition-all duration-700 ease-out"
+   416→              style={{ width: `${overallProgress}%` }}
+   417→            />
+   418→          </div>
+   419→        </div>
+   420→      </div>
+   421→
+   422→      {/* ── Search & Filter ── */}
+   423→      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+   424→        <div className="relative flex-1 max-w-md w-full">
+   425→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   426→          <Input
+   427→            placeholder="Cari materi..."
+   428→            value={searchQuery}
+   429→            onChange={(e) => setSearchQuery(e.target.value)}
+   430→            className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30 h-10"
+   431→          />
+   432→        </div>
+   433→        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+   434→          {filterPills.map((pill) => (
+   435→            <button
+   436→              key={pill.key}
+   437→              onClick={() => setActiveFilter(pill.key)}
+   438→              className={cn(
+   439→                'px-4 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer',
+   440→                activeFilter === pill.key
+   441→                  ? 'bg-[#1F3864] text-white shadow-sm'
+   442→                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   443→              )}
+   444→            >
+   445→              {pill.label}
+   446→            </button>
+   447→          ))}
+   448→        </div>
+   449→      </div>
+   450→
+   451→      {/* ── Subject Filter Pills (horizontal scroll) ── */}
+   452→      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+   453→        <button
+   454→          onClick={() => setExpandedSubject(null)}
+   455→          className={cn(
+   456→            'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0',
+   457→            !expandedSubject
+   458→              ? 'bg-[#1F3864] text-white shadow-sm'
+   459→              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   460→          )}
+   461→        >
+   462→          <GraduationCap className="h-3.5 w-3.5" />
+   463→          Semua Mapel
+   464→        </button>
+   465→        {subjects.map((subj) => {
+   466→          const total = subj.materials.length;
+   467→          const completed = subj.materials.filter((m) => m.isRead).length;
+   468→          const cfg = getSubjectConfig(subj.name);
+   469→          return (
+   470→            <button
+   471→              key={subj.id}
+   472→              onClick={() => setExpandedSubject(expandedSubject === subj.id ? null : subj.id)}
+   473→              className={cn(
+   474→                'flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer shrink-0',
+   475→                expandedSubject === subj.id
+   476→                  ? cn('bg-gradient-to-r text-white shadow-sm', cfg.gradientFrom, cfg.gradientTo)
+   477→                  : cn('bg-muted text-muted-foreground hover:bg-muted/80')
+   478→              )}
+   479→            >
+   480→              {subj.icon}
+   481→              <span>{subj.name}</span>
+   482→              <span className="ml-0.5 opacity-70">{completed}/{total}</span>
+   483→            </button>
+   484→          );
+   485→        })}
+   486→      </div>
+   487→
+   488→      {/* ── Subject Cards ── */}
+   489→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   490→        {filteredSubjects.map((subj) => {
+   491→          const total = subj.materials.length;
+   492→          const readCount = subj.materials.filter((m) => m.isRead).length;
+   493→          const unreadCount = total - readCount;
+   494→          const pct = total > 0 ? Math.round((readCount / total) * 100) : 0;
+   495→          const isExpanded = expandedSubject === subj.id;
+   496→          const cfg = getSubjectConfig(subj.name);
+   497→
+   498→          return (
+   499→            <div key={subj.id} className="space-y-3">
+   500→              <Card
+   501→                className={cn(
+   502→                  'rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 cursor-pointer overflow-hidden border',
+   503→                  isExpanded ? cfg.borderColor : 'border-transparent'
+   504→                )}
+   505→                onClick={() => toggleSubject(subj.id)}
+   506→              >
+   507→                <CardContent className="p-4">
+   508→                  <div className="flex items-start gap-3">
+   509→                    <div className={cn('p-3 rounded-xl shrink-0 bg-gradient-to-br text-white shadow-sm', cfg.gradientFrom, cfg.gradientTo)}>
+   510→                      {subj.icon}
+   511→                    </div>
+   512→                    <div className="flex-1 min-w-0">
+   513→                      <div className="flex items-center justify-between mb-1">
+   514→                        <h3 className="font-semibold text-sm truncate">{subj.name}</h3>
+   515→                        <div className="flex items-center text-muted-foreground shrink-0 ml-2">
+   516→                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+   517→                        </div>
+   518→                      </div>
+   519→                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2.5">
+   520→                        <span className="flex items-center gap-1">
+   521→                          <BookCheck className="h-3 w-3 text-emerald-500" />
+   522→                          {readCount} dibaca
+   523→                        </span>
+   524→                        {unreadCount > 0 && (
+   525→                          <span className="flex items-center gap-1">
+   526→                            <Circle className="h-3 w-3 text-amber-400" />
+   527→                            {unreadCount} belum
+   528→                          </span>
+   529→                        )}
+   530→                      </div>
+   531→                      <div className="flex items-center gap-2.5">
+   532→                        <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+   533→                          <div
+   534→                            className={cn('h-full rounded-full transition-all duration-700 ease-out bg-gradient-to-r', cfg.gradientFrom, cfg.gradientTo)}
+   535→                            style={{ width: `${pct}%` }}
+   536→                          />
+   537→                        </div>
+   538→                        <span className={cn('text-xs font-bold min-w-[32px] text-right', cfg.color)}>{pct}%</span>
+   539→                      </div>
+   540→                    </div>
+   541→                  </div>
+   542→                </CardContent>
+   543→              </Card>
+   544→
+   545→              {/* ── Expanded Material List ── */}
+   546→              <div
+   547→                className={cn(
+   548→                  'overflow-hidden transition-all duration-300 ease-in-out',
+   549→                  isExpanded ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0'
+   550→                )}
+   551→              >
+   552→                <div className="space-y-2 pl-1">
+   553→                  {subj.materials.length === 0 ? (
+   554→                    <div className="rounded-xl border border-dashed p-6 text-center">
+   555→                      <Search className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+   556→                      <p className="text-sm text-muted-foreground">Tidak ada materi yang sesuai filter.</p>
+   557→                    </div>
+   558→                  ) : (
+   559→                    subj.materials.map((mat) => {
+   560→                      const isMatExpanded = expandedMaterial === mat.id;
+   561→                      return (
+   562→                        <Card
+   563→                          key={mat.id}
+   564→                          className={cn(
+   565→                            'rounded-xl shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden',
+   566→                            mat.isRead ? 'border-l-3 border-l-emerald-400' : 'border-l-3 border-l-amber-400',
+   567→                            isMatExpanded && 'ring-1 ring-muted'
+   568→                          )}
+   569→                        >
+   570→                          <CardContent className="p-4">
+   571→                            <div className="flex items-start gap-3">
+   572→                              <div className={cn('mt-0.5 shrink-0', mat.isRead ? 'text-emerald-500' : 'text-muted-foreground/40')}>
+   573→                                {mat.isRead ? (
+   574→                                  <CheckCircle2 className="h-5 w-5" />
+   575→                                ) : (
+   576→                                  <Circle className="h-5 w-5" />
+   577→                                )}
+   578→                              </div>
+   579→                              <div className="flex-1 min-w-0">
+   580→                                <div className="flex items-center gap-2 mb-1">
+   581→                                  <h4 className={cn('text-sm truncate', mat.isRead ? 'text-muted-foreground' : 'font-semibold')}>{mat.title}</h4>
+   582→                                  <Badge
+   583→                                    className={cn(
+   584→                                      'text-[10px] px-2 py-0 rounded-full',
+   585→                                      mat.isRead
+   586→                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100'
+   587→                                        : 'bg-amber-100 text-amber-700 hover:bg-amber-100'
+   588→                                    )}
+   589→                                  >
+   590→                                    {mat.isRead ? 'Dibaca' : 'Baru'}
+   591→                                  </Badge>
+   592→                                </div>
+   593→                                <p className={cn('text-xs text-muted-foreground mb-2.5', !isMatExpanded && 'line-clamp-2', isMatExpanded && 'line-clamp-none')}>{mat.description}</p>
+   594→
+   595→                                {/* Expanded content */}
+   596→                                {isMatExpanded && mat.content && (
+   597→                                  <div className="mb-3 p-3 rounded-lg bg-muted/40 border border-muted/60 text-sm text-muted-foreground leading-relaxed animate-in fade-in slide-in-from-top-1 duration-200">
+   598→                                    {mat.content}
+   599→                                  </div>
+   600→                                )}
+   601→
+   602→                                <div className="flex items-center justify-between">
+   603→                                  <button
+   604→                                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+   605→                                    onClick={(e) => { e.stopPropagation(); toggleMaterial(mat.id); }}
+   606→                                  >
+   607→                                    <CalendarDays className="h-3 w-3" />
+   608→                                    <span>{new Date(mat.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+   609→                                    {mat.content && (
+   610→                                      <span className="ml-1">
+   611→                                        {isMatExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+   612→                                      </span>
+   613→                                    )}
+   614→                                  </button>
+   615→                                  {!mat.isRead && (
+   616→                                    <Button
+   617→                                      size="sm"
+   618→                                      className="h-7 text-xs px-3 rounded-lg bg-[#1F3864] hover:bg-[#2d5289] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   619→                                      onClick={(e) => {
+   620→                                        e.stopPropagation();
+   621→                                        handleMarkRead(mat.id, subj.id);
+   622→                                      }}
+   623→                                    >
+   624→                                      <PlayCircle className="h-3.5 w-3.5 mr-1" />
+   625→                                      Mulai Belajar
+   626→                                    </Button>
+   627→                                  )}
+   628→                                </div>
+   629→                              </div>
+   630→                            </div>
+   631→                          </CardContent>
+   632→                        </Card>
+   633→                      );
+   634→                    })
+   635→                  )}
+   636→                </div>
+   637→              </div>
+   638→            </div>
+   639→          );
+   640→        })}
+   641→      </div>
+   642→
+   643→      {/* ── Empty State ── */}
+   644→      {!isLoading && filteredSubjects.every((s) => s.materials.length === 0) && (
+   645→        <div className="text-center py-16">
+   646→          <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+   647→            <Search className="h-8 w-8 text-muted-foreground/40" />
+   648→          </div>
+   649→          <h3 className="text-lg font-semibold text-muted-foreground">Tidak ada materi ditemukan</h3>
+   650→          <p className="text-sm text-muted-foreground/70 mt-1">Coba ubah kata kunci pencarian atau filter.</p>
+   651→        </div>
+   652→      )}
+   653→    </div>
+   654→  );
+   655→}
+   656→
+   657→// ═══════════════════════════════════════════════════════════════════════
+   658→//  2. SISWA TUGAS VIEW
+   659→// ═══════════════════════════════════════════════════════════════════════
+   660→
+   661→function getCountdown(dueDate: string): string {
+   662→  const now = new Date();
+   663→  const due = new Date(dueDate);
+   664→  const diffMs = due.getTime() - now.getTime();
+   665→  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+   666→  if (diffDays < 0) return `Terlambat ${Math.abs(diffDays)} hari`;
+   667→  if (diffDays === 0) return 'Hari ini';
+   668→  if (diffDays === 1) return 'Besok';
+   669→  if (diffDays <= 7) return `${diffDays} hari lagi`;
+   670→  return `${Math.ceil(diffDays / 7)} minggu lagi`;
+   671→}
+   672→
+   673→function getDueUrgency(dueDate: string): 'overdue' | 'today' | 'soon' | 'future' {
+   674→  const now = new Date();
+   675→  const due = new Date(dueDate);
+   676→  const diffMs = due.getTime() - now.getTime();
+   677→  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+   678→  if (diffDays < 0) return 'overdue';
+   679→  if (diffDays === 0) return 'today';
+   680→  if (diffDays <= 3) return 'soon';
+   681→  return 'future';
+   682→}
+   683→
+   684→export function SiswaTugasView() {
+   685→  const { user } = useAppStore();
+   686→  const [tasks, setTasks] = useState<Task[]>([]);
+   687→  const [isLoading, setIsLoading] = useState(true);
+   688→  const [typeFilter, setTypeFilter] = useState('semua');
+   689→  const [statusFilter, setStatusFilter] = useState('semua');
+   690→
+   691→  useEffect(() => {
+   692→    async function fetchTasks() {
+   693→      setIsLoading(true);
+   694→      try {
+   695→        const params = new URLSearchParams({
+   696→          schoolId: user?.schoolId || '',
+   697→          classId: user?.classId || '',
+   698→          type: 'tugas',
+   699→          status: 'published',
+   700→        });
+   701→        const res = await fetch(`/api/materials?${params}`);
+   702→        if (res.ok) {
+   703→          const data = await res.json();
+   704→          if (Array.isArray(data) && data.length > 0) {
+   705→            const mapped: Task[] = data.map((item: any) => ({
+   706→              id: item.id,
+   707→              title: item.title,
+   708→              type: (item.type || 'tugas') as Task['type'],
+   709→              subject: item.subject?.name || 'Umum',
+   710→              dueDate: item.dueDate || '2025-12-31',
+   711→              status: 'menunggu' as const,
+   712→              isUrgent: false,
+   713→            }));
+   714→            setTasks(mapped);
+   715→          } else {
+   716→            setTasks(MOCK_TASKS);
+   717→          }
+   718→        } else {
+   719→          setTasks(MOCK_TASKS);
+   720→        }
+   721→      } catch {
+   722→        setTasks(MOCK_TASKS);
+   723→      } finally {
+   724→        setIsLoading(false);
+   725→      }
+   726→    }
+   727→    fetchTasks();
+   728→  }, [user?.schoolId, user?.classId]);
+   729→
+   730→  const filteredTasks = useMemo(() => {
+   731→    let filtered = tasks;
+   732→    if (typeFilter !== 'semua') filtered = filtered.filter((t) => t.type === typeFilter);
+   733→    if (statusFilter !== 'semua') filtered = filtered.filter((t) => t.status === statusFilter);
+   734→    return filtered;
+   735→  }, [tasks, typeFilter, statusFilter]);
+   736→
+   737→  const stats = useMemo(() => {
+   738→    const total = tasks.length;
+   739→    const menunggu = tasks.filter((t) => t.status === 'menunggu').length;
+   740→    const dikerjakan = tasks.filter((t) => t.status === 'dikerjakan').length;
+   741→    const selesai = tasks.filter((t) => t.status === 'selesai').length;
+   742→    const terlambat = tasks.filter((t) => t.status === 'terlambat').length;
+   743→    const completionPct = total > 0 ? Math.round(((selesai + terlambat) / total) * 100) : 0;
+   744→    return { total, menunggu, dikerjakan, selesai, terlambat, completionPct };
+   745→  }, [tasks]);
+   746→
+   747→  const getTypeIcon = (type: Task['type']) => {
+   748→    switch (type) {
+   749→      case 'tugas': return <FileText className="h-3.5 w-3.5" />;
+   750→      case 'kuis': return <FileQuestion className="h-3.5 w-3.5" />;
+   751→      case 'ujian': return <ClipboardList className="h-3.5 w-3.5" />;
+   752→    }
+   753→  };
+   754→
+   755→  const getTypeLabel = (type: Task['type']) => {
+   756→    switch (type) {
+   757→      case 'tugas': return 'Tugas';
+   758→      case 'kuis': return 'Kuis';
+   759→      case 'ujian': return 'Ujian';
+   760→    }
+   761→  };
+   762→
+   763→  const getTypeBadgeClass = (type: Task['type']) => {
+   764→    switch (type) {
+   765→      case 'tugas': return 'bg-sky-100 text-sky-700 hover:bg-sky-100';
+   766→      case 'kuis': return 'bg-violet-100 text-violet-700 hover:bg-violet-100';
+   767→      case 'ujian': return 'bg-orange-100 text-orange-700 hover:bg-orange-100';
+   768→    }
+   769→  };
+   770→
+   771→  const getBorderClass = (type: Task['type']) => {
+   772→    switch (type) {
+   773→      case 'tugas': return 'border-l-sky-400';
+   774→      case 'kuis': return 'border-l-violet-400';
+   775→      case 'ujian': return 'border-l-orange-400';
+   776→    }
+   777→  };
+   778→
+   779→  const getStatusBadge = (status: Task['status']) => {
+   780→    switch (status) {
+   781→      case 'menunggu':
+   782→        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[11px] rounded-full">Menunggu</Badge>;
+   783→      case 'dikerjakan':
+   784→        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-[11px] rounded-full">Dikerjakan</Badge>;
+   785→      case 'selesai':
+   786→        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[11px] rounded-full">Selesai</Badge>;
+   787→      case 'terlambat':
+   788→        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-[11px] rounded-full">Terlambat</Badge>;
+   789→    }
+   790→  };
+   791→
+   792→  const getUrgencyBadge = (dueDate: string, status: Task['status']) => {
+   793→    if (status === 'selesai' || status === 'terlambat') return null;
+   794→    const urgency = getDueUrgency(dueDate);
+   795→    const countdown = getCountdown(dueDate);
+   796→    switch (urgency) {
+   797→      case 'overdue':
+   798→        return (
+   799→          <span className="flex items-center gap-1 text-[11px] font-medium text-red-600">
+   800→            <AlertTriangle className="h-3 w-3" />
+   801→            {countdown}
+   802→          </span>
+   803→        );
+   804→      case 'today':
+   805→        return (
+   806→          <span className="flex items-center gap-1 text-[11px] font-medium text-amber-600">
+   807→            <Timer className="h-3 w-3" />
+   808→            {countdown}
+   809→          </span>
+   810→        );
+   811→      case 'soon':
+   812→        return (
+   813→          <span className="flex items-center gap-1 text-[11px] font-medium text-orange-500">
+   814→            <Clock className="h-3 w-3" />
+   815→            {countdown}
+   816→          </span>
+   817→        );
+   818→      case 'future':
+   819→        return (
+   820→          <span className="flex items-center gap-1 text-[11px] text-emerald-600">
+   821→            <Clock className="h-3 w-3" />
+   822→            {countdown}
+   823→          </span>
+   824→        );
+   825→    }
+   826→  };
+   827→
+   828→  const handleStartTask = (taskId: string) => {
+   829→    setTasks((prev) =>
+   830→      prev.map((t) => (t.id === taskId ? { ...t, status: 'dikerjakan' as const } : t))
+   831→    );
+   832→    toast.success('Tugas dimulai! Semangat mengerjakan!');
+   833→  };
+   834→
+   835→  const handleViewResult = (taskId: string) => {
+   836→    const task = tasks.find((t) => t.id === taskId);
+   837→    toast.info(`Nilai ${task?.title}: ${task?.score}/100`);
+   838→  };
+   839→
+   840→  if (isLoading) {
+   841→    return (
+   842→      <div className="space-y-6">
+   843→        <Skeleton className="h-36 w-full rounded-xl" />
+   844→        <div className="flex gap-2">
+   845→          {Array.from({ length: 4 }).map((_, i) => (
+   846→            <Skeleton key={i} className="h-8 w-20 rounded-full" />
+   847→          ))}
+   848→        </div>
+   849→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   850→          {Array.from({ length: 4 }).map((_, i) => (
+   851→            <Skeleton key={i} className="h-24 rounded-xl" />
+   852→          ))}
+   853→        </div>
+   854→        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   855→          {Array.from({ length: 4 }).map((_, i) => (
+   856→            <Skeleton key={i} className="h-44 rounded-xl" />
+   857→          ))}
+   858→        </div>
+   859→      </div>
+   860→    );
+   861→  }
+   862→
+   863→  const typePills = [
+   864→    { key: 'semua', label: 'Semua' },
+   865→    { key: 'tugas', label: 'Tugas' },
+   866→    { key: 'kuis', label: 'Kuis' },
+   867→    { key: 'ujian', label: 'Ujian' },
+   868→  ];
+   869→
+   870→  const statusPills = [
+   871→    { key: 'semua', label: 'Semua Status' },
+   872→    { key: 'menunggu', label: 'Menunggu' },
+   873→    { key: 'dikerjakan', label: 'Dikerjakan' },
+   874→    { key: 'selesai', label: 'Selesai' },
+   875→    { key: 'terlambat', label: 'Terlambat' },
+   876→  ];
+   877→
+   878→  return (
+   879→    <div className="space-y-6">
+   880→      {/* ── Page Header ── */}
+   881→      <div className="relative rounded-xl overflow-hidden p-6 md:p-8 shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})` }}>
+   882→        <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(30%, -30%)' }} />
+   883→        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   884→          <div className="flex items-center gap-3">
+   885→            <GradientIcon><Target className="h-6 w-6" /></GradientIcon>
+   886→            <div>
+   887→              <h1 className="text-2xl md:text-3xl font-bold text-white">Tugas & Ujian</h1>
+   888→              <p className="text-white/80 text-sm mt-0.5">Kelola dan pantau semua tugasmu</p>
+   889→            </div>
+   890→          </div>
+   891→          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+   892→            <TrendingUp className="h-4 w-4 text-white/80" />
+   893→            <span className="text-white text-sm font-medium">{stats.completionPct}% selesai</span>
+   894→          </div>
+   895→        </div>
+   896→        {/* Completion progress bar */}
+   897→        <div className="relative z-10 mt-4">
+   898→          <div className="flex items-center justify-between text-xs text-white/70 mb-1.5">
+   899→            <span>Progres Penyelesaian</span>
+   900→            <span className="font-semibold text-white">{stats.selesai + stats.terlambat} dari {stats.total} tugas</span>
+   901→          </div>
+   902→          <div className="h-2.5 rounded-full bg-white/20 overflow-hidden">
+   903→            <div
+   904→              className="h-full rounded-full bg-white transition-all duration-700 ease-out"
+   905→              style={{ width: `${stats.completionPct}%` }}
+   906→            />
+   907→          </div>
+   908→        </div>
+   909→      </div>
+   910→
+   911→      {/* ── Stat Cards ── */}
+   912→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+   913→        {[
+   914→          { label: 'Total Tugas', value: stats.total, icon: <ClipboardList className="h-5 w-5" />, bg: 'bg-slate-50', color: 'text-slate-600', ring: 'ring-slate-200' },
+   915→          { label: 'Menunggu', value: stats.menunggu, icon: <Clock className="h-5 w-5" />, bg: 'bg-amber-50', color: 'text-amber-600', ring: 'ring-amber-200' },
+   916→          { label: 'Selesai', value: stats.selesai, icon: <CheckCircle2 className="h-5 w-5" />, bg: 'bg-emerald-50', color: 'text-emerald-600', ring: 'ring-emerald-200' },
+   917→          { label: 'Terlambat', value: stats.terlambat, icon: <AlertCircle className="h-5 w-5" />, bg: 'bg-red-50', color: 'text-red-600', ring: 'ring-red-200' },
+   918→        ].map((s) => (
+   919→          <Card key={s.label} className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+   920→            <CardContent className="p-4 flex items-center gap-3">
+   921→              <div className={cn('p-2.5 rounded-xl', s.bg, s.color)}>
+   922→                {s.icon}
+   923→              </div>
+   924→              <div>
+   925→                <p className="text-2xl font-bold" style={{ color: BRAND }}>{s.value}</p>
+   926→                <p className="text-xs text-muted-foreground">{s.label}</p>
+   927→              </div>
+   928→            </CardContent>
+   929→          </Card>
+   930→        ))}
+   931→      </div>
+   932→
+   933→      {/* ── Filter Pills ── */}
+   934→      <div className="space-y-3">
+   935→        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+   936→          <span className="text-xs text-muted-foreground font-medium shrink-0">Tipe:</span>
+   937→          {typePills.map((pill) => (
+   938→            <button
+   939→              key={pill.key}
+   940→              onClick={() => setTypeFilter(pill.key)}
+   941→              className={cn(
+   942→                'px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer',
+   943→                typeFilter === pill.key
+   944→                  ? 'bg-[#1F3864] text-white shadow-sm'
+   945→                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   946→              )}
+   947→            >
+   948→              {pill.label}
+   949→            </button>
+   950→          ))}
+   951→        </div>
+   952→        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+   953→          <span className="text-xs text-muted-foreground font-medium shrink-0">Status:</span>
+   954→          {statusPills.map((pill) => (
+   955→            <button
+   956→              key={pill.key}
+   957→              onClick={() => setStatusFilter(pill.key)}
+   958→              className={cn(
+   959→                'px-3 py-1.5 text-xs font-medium rounded-full whitespace-nowrap transition-all duration-200 cursor-pointer',
+   960→                statusFilter === pill.key
+   961→                  ? 'bg-[#1F3864] text-white shadow-sm'
+   962→                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+   963→              )}
+   964→            >
+   965→              {pill.label}
+   966→            </button>
+   967→          ))}
+   968→        </div>
+   969→      </div>
+   970→
+   971→      {/* ── Task Cards ── */}
+   972→      {filteredTasks.length === 0 ? (
+   973→        <div className="text-center py-16">
+   974→          <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+   975→            <ClipboardList className="h-8 w-8 text-muted-foreground/40" />
+   976→          </div>
+   977→          <h3 className="text-lg font-semibold text-muted-foreground">Tidak ada tugas ditemukan</h3>
+   978→          <p className="text-sm text-muted-foreground/70 mt-1">
+   979→            {typeFilter !== 'semua' || statusFilter !== 'semua'
+   980→              ? 'Coba ubah filter untuk melihat tugas lainnya.'
+   981→              : 'Semua tugas sudah selesai. Kerja bagus!'}
+   982→          </p>
+   983→        </div>
+   984→      ) : (
+   985→        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   986→          {filteredTasks.map((task) => {
+   987→            const isActionable = task.status === 'menunggu' || task.status === 'dikerjakan';
+   988→            const isCompleted = task.status === 'selesai' || task.status === 'terlambat';
+   989→            const urgency = getDueUrgency(task.dueDate);
+   990→
+   991→            return (
+   992→              <Card
+   993→                key={task.id}
+   994→                className={cn(
+   995→                  'rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border-l-4',
+   996→                  getBorderClass(task.type),
+   997→                  task.isUrgent && isActionable && 'ring-1 ring-red-200'
+   998→                )}
+   999→              >
+  1000→                <CardContent className="p-4 md:p-5">
+  1001→                  {/* Urgent banner */}
+  1002→                  {task.isUrgent && isActionable && (
+  1003→                    <div className="flex items-center gap-1.5 text-red-600 text-xs font-medium mb-3">
+  1004→                      <AlertTriangle className="h-3.5 w-3.5" />
+  1005→                      <span>Segera dikerjakan!</span>
+  1006→                    </div>
+  1007→                  )}
+  1008→
+  1009→                  <div className="flex items-start justify-between gap-2 mb-2">
+  1010→                    <div className="flex items-center gap-2 flex-wrap">
+  1011→                      <Badge className={cn('text-[10px] px-2 py-0.5 rounded-full', getTypeBadgeClass(task.type))}>
+  1012→                        {getTypeIcon(task.type)}
+  1013→                        <span className="ml-1">{getTypeLabel(task.type)}</span>
+  1014→                      </Badge>
+  1015→                      {getStatusBadge(task.status)}
+  1016→                    </div>
+  1017→                    {task.score !== undefined && isCompleted && (
+  1018→                      <div className={cn('text-sm font-bold px-2 py-0.5 rounded-full', task.score >= 75 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>
+  1019→                        {task.score}
+  1020→                      </div>
+  1021→                    )}
+  1022→                  </div>
+  1023→
+  1024→                  <h3 className="font-semibold text-sm md:text-base mb-2 line-clamp-2">{task.title}</h3>
+  1025→
+  1026→                  <div className="space-y-1.5 mb-4 text-xs text-muted-foreground">
+  1027→                    <div className="flex items-center gap-1.5">
+  1028→                      <BookOpen className="h-3.5 w-3.5" />
+  1029→                      <span>{task.subject}</span>
+  1030→                    </div>
+  1031→                    <div className="flex items-center gap-1.5">
+  1032→                      <CalendarDays className="h-3.5 w-3.5" />
+  1033→                      <span>
+  1034→                        {task.type === 'ujian' ? 'Jadwal' : 'Tenggat'}: {new Date(task.dueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+  1035→                      </span>
+  1036→                      {getUrgencyBadge(task.dueDate, task.status)}
+  1037→                    </div>
+  1038→                  </div>
+  1039→
+  1040→                  <div className="flex justify-end">
+  1041→                    {isActionable && task.status === 'menunggu' && (
+  1042→                      <Button
+  1043→                        size="sm"
+  1044→                        className="h-8 text-xs rounded-lg bg-[#1F3864] hover:bg-[#2d5289] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1045→                        onClick={() => handleStartTask(task.id)}
+  1046→                      >
+  1047→                        <PlayCircle className="h-3.5 w-3.5 mr-1" />
+  1048→                        Mulai
+  1049→                      </Button>
+  1050→                    )}
+  1051→                    {isActionable && task.status === 'dikerjakan' && (
+  1052→                      <Button
+  1053→                        size="sm"
+  1054→                        className="h-8 text-xs rounded-lg bg-sky-600 hover:bg-sky-700 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1055→                        onClick={() => handleStartTask(task.id)}
+  1056→                      >
+  1057→                        <Loader2 className="h-3.5 w-3.5 mr-1" />
+  1058→                        Lanjut
+  1059→                      </Button>
+  1060→                    )}
+  1061→                    {isCompleted && (
+  1062→                      <Button
+  1063→                        size="sm"
+  1064→                        variant="outline"
+  1065→                        className="h-8 text-xs rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1066→                        onClick={() => handleViewResult(task.id)}
+  1067→                      >
+  1068→                        <Eye className="h-3.5 w-3.5 mr-1" />
+  1069→                        Lihat Hasil
+  1070→                      </Button>
+  1071→                    )}
+  1072→                  </div>
+  1073→                </CardContent>
+  1074→              </Card>
+  1075→            );
+  1076→          })}
+  1077→        </div>
+  1078→      )}
+  1079→    </div>
+  1080→  );
+  1081→}
+  1082→
+  1083→// ═══════════════════════════════════════════════════════════════════════
+  1084→//  3. SISWA KEHADIRAN VIEW
+  1085→// ═══════════════════════════════════════════════════════════════════════
+  1086→
+  1087→function PercentageRing({ percentage, size = 140, strokeWidth = 10, color = '#10B981' }: { percentage: number; size?: number; strokeWidth?: number; color?: string }) {
+  1088→  const radius = (size - strokeWidth) / 2;
+  1089→  const circumference = 2 * Math.PI * radius;
+  1090→  const offset = circumference * (1 - percentage / 100);
+  1091→
+  1092→  return (
+  1093→    <div className="relative" style={{ width: size, height: size }}>
+  1094→      {/* Outer ring - background */}
+  1095→      <svg width={size} height={size} className="transform -rotate-90">
+  1096→        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="currentColor" strokeWidth={strokeWidth} className="text-muted/20" />
+  1097→        <circle
+  1098→          cx={size / 2} cy={size / 2} r={radius} fill="none"
+  1099→          stroke={color}
+  1100→          strokeWidth={strokeWidth}
+  1101→          strokeLinecap="round"
+  1102→          strokeDasharray={circumference}
+  1103→          strokeDashoffset={offset}
+  1104→          className="transition-all duration-1000 ease-out"
+  1105→        />
+  1106→      </svg>
+  1107→      {/* Inner decorative ring */}
+  1108→      <div
+  1109→        className="absolute rounded-full border-2 border-dashed border-muted/30"
+  1110→        style={{
+  1111→          top: strokeWidth + 8,
+  1112→          left: strokeWidth + 8,
+  1113→          right: strokeWidth + 8,
+  1114→          bottom: strokeWidth + 8,
+  1115→        }}
+  1116→      />
+  1117→      {/* Center text */}
+  1118→      <div className="absolute inset-0 flex items-center justify-center">
+  1119→        <div className="text-center">
+  1120→          <span className="text-2xl font-bold" style={{ color: BRAND }}>{percentage}%</span>
+  1121→          <p className="text-[10px] text-muted-foreground mt-0.5">Kehadiran</p>
+  1122→        </div>
+  1123→      </div>
+  1124→    </div>
+  1125→  );
+  1126→}
+  1127→
+  1128→export function SiswaKehadiranView() {
+  1129→  const { user } = useAppStore();
+  1130→  const [attendance, setAttendance] = useState<AttendanceDay[]>([]);
+  1131→  const [isLoading, setIsLoading] = useState(true);
+  1132→  const [currentDate, setCurrentDate] = useState(() => new Date());
+  1133→  const [selectedClass, setSelectedClass] = useState('XII IPA 1');
+  1134→  const [selectedPeriod, setSelectedPeriod] = useState('2024/2025 - Semester 2');
+  1135→
+  1136→  const currentYear = currentDate.getFullYear();
+  1137→  const currentMonth = currentDate.getMonth();
+  1138→  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  1139→  const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay();
+  1140→
+  1141→  const monthName = new Date(currentYear, currentMonth).toLocaleDateString('id-ID', {
+  1142→    month: 'long',
+  1143→    year: 'numeric',
+  1144→  });
+  1145→
+  1146→  useEffect(() => {
+  1147→    async function fetchAttendance() {
+  1148→      setIsLoading(true);
+  1149→      try {
+  1150→        const params = new URLSearchParams({
+  1151→          studentId: user?.id || '',
+  1152→          month: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
+  1153→        });
+  1154→        const res = await fetch(`/api/attendance?${params}`);
+  1155→        if (res.ok) {
+  1156→          const data = await res.json();
+  1157→          if (Array.isArray(data) && data.length > 0) {
+  1158→            setAttendance(data as AttendanceDay[]);
+  1159→          } else {
+  1160→            setAttendance(generateMockAttendance(currentYear, currentMonth));
+  1161→          }
+  1162→        } else {
+  1163→          setAttendance(generateMockAttendance(currentYear, currentMonth));
+  1164→        }
+  1165→      } catch {
+  1166→        setAttendance(generateMockAttendance(currentYear, currentMonth));
+  1167→      } finally {
+  1168→        setIsLoading(false);
+  1169→      }
+  1170→    }
+  1171→    fetchAttendance();
+  1172→  }, [user?.id, currentYear, currentMonth]);
+  1173→
+  1174→  const stats = useMemo(() => {
+  1175→    const hadir = attendance.filter((a) => a.status === 'hadir').length;
+  1176→    const izin = attendance.filter((a) => a.status === 'izin').length;
+  1177→    const sakit = attendance.filter((a) => a.status === 'sakit').length;
+  1178→    const alpa = attendance.filter((a) => a.status === 'alpa').length;
+  1179→    const totalSchoolDays = hadir + izin + sakit + alpa;
+  1180→    const pct = totalSchoolDays > 0 ? Math.round((hadir / totalSchoolDays) * 100) : 0;
+  1181→    return { hadir, izin, sakit, alpa, totalSchoolDays, pct };
+  1182→  }, [attendance]);
+  1183→
+  1184→  const prevMonth = () => {
+  1185→    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  1186→  };
+  1187→
+  1188→  const nextMonth = () => {
+  1189→    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  1190→  };
+  1191→
+  1192→  const goToToday = () => {
+  1193→    setCurrentDate(new Date());
+  1194→  };
+  1195→
+  1196→  const getDayStatus = (day: number): AttendanceDay['status'] => {
+  1197→    const found = attendance.find((a) => a.day === day);
+  1198→    return found ? found.status : 'none';
+  1199→  };
+  1200→
+  1201→  const getDayData = (day: number): AttendanceDay | undefined => {
+  1202→    return attendance.find((a) => a.day === day);
+  1203→  };
+  1204→
+  1205→  // Timeline entries: reversed so most recent first
+  1206→  const timelineEntries = useMemo(() => {
+  1207→    return attendance
+  1208→      .filter((a) => a.status !== 'weekend' && a.status !== 'none')
+  1209→      .sort((a, b) => b.day - a.day)
+  1210→      .slice(0, 10);
+  1211→  }, [attendance]);
+  1212→
+  1213→  const getTimelineDotColor = (status: AttendanceDay['status']) => {
+  1214→    switch (status) {
+  1215→      case 'hadir': return 'bg-emerald-500';
+  1216→      case 'izin': return 'bg-sky-500';
+  1217→      case 'sakit': return 'bg-amber-500';
+  1218→      case 'alpa': return 'bg-red-500';
+  1219→      default: return 'bg-muted';
+  1220→    }
+  1221→  };
+  1222→
+  1223→  const getTimelineLineColor = (status: AttendanceDay['status']) => {
+  1224→    switch (status) {
+  1225→      case 'hadir': return 'border-l-emerald-400';
+  1226→      case 'izin': return 'border-l-sky-400';
+  1227→      case 'sakit': return 'border-l-amber-400';
+  1228→      case 'alpa': return 'border-l-red-400';
+  1229→      default: return 'border-l-muted';
+  1230→    }
+  1231→  };
+  1232→
+  1233→  const getCalendarDotColor = (status: AttendanceDay['status']) => {
+  1234→    switch (status) {
+  1235→      case 'hadir': return 'bg-emerald-500';
+  1236→      case 'izin': return 'bg-sky-500';
+  1237→      case 'sakit': return 'bg-amber-500';
+  1238→      case 'alpa': return 'bg-red-500';
+  1239→      default: return 'bg-transparent';
+  1240→    }
+  1241→  };
+  1242→
+  1243→  const getCalendarCellBg = (status: AttendanceDay['status']) => {
+  1244→    switch (status) {
+  1245→      case 'weekend': return 'bg-muted/40';
+  1246→      default: return 'bg-background';
+  1247→    }
+  1248→  };
+  1249→
+  1250→  // Build calendar grid cells
+  1251→  const calendarCells: (number | null)[] = [];
+  1252→  for (let i = 0; i < firstDayOfWeek; i++) calendarCells.push(null);
+  1253→  for (let d = 1; d <= daysInMonth; d++) calendarCells.push(d);
+  1254→
+  1255→  const dayLabels = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+  1256→
+  1257→  if (isLoading) {
+  1258→    return (
+  1259→      <div className="space-y-6">
+  1260→        <Skeleton className="h-36 w-full rounded-xl" />
+  1261→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+  1262→          {Array.from({ length: 4 }).map((_, i) => (
+  1263→            <Skeleton key={i} className="h-24 rounded-xl" />
+  1264→          ))}
+  1265→        </div>
+  1266→        <Skeleton className="h-80 rounded-xl" />
+  1267→        <Skeleton className="h-64 rounded-xl" />
+  1268→      </div>
+  1269→    );
+  1270→  }
+  1271→
+  1272→  const ringColor = stats.pct >= 80 ? '#10B981' : stats.pct >= 60 ? '#F59E0B' : '#EF4444';
+  1273→
+  1274→  return (
+  1275→    <div className="space-y-6">
+  1276→      {/* ── Page Header ── */}
+  1277→      <div className="relative rounded-xl overflow-hidden p-6 md:p-8 shadow-sm" style={{ background: `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})` }}>
+  1278→        <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(30%, -30%)' }} />
+  1279→        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+  1280→          <div className="flex items-center gap-3">
+  1281→            <GradientIcon><CalendarDays className="h-6 w-6" /></GradientIcon>
+  1282→            <div>
+  1283→              <h1 className="text-2xl md:text-3xl font-bold text-white">Kehadiran Saya</h1>
+  1284→              <p className="text-white/80 text-sm mt-0.5">Pantau rekam kehadiranmu setiap bulan</p>
+  1285→            </div>
+  1286→          </div>
+  1287→          <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
+  1288→            <UserCheck className="h-4 w-4 text-white/80" />
+  1289→            <span className="text-white text-sm font-medium">{stats.hadir} hari hadir</span>
+  1290→          </div>
+  1291→        </div>
+  1292→      </div>
+  1293→
+  1294→      {/* ── Filters: Class & Period ── */}
+  1295→      <div className="flex flex-col sm:flex-row gap-3">
+  1296→        <Select value={selectedClass} onValueChange={setSelectedClass}>
+  1297→          <SelectTrigger className="w-full sm:w-48 rounded-lg">
+  1298→            <SelectValue placeholder="Pilih Kelas" />
+  1299→          </SelectTrigger>
+  1300→          <SelectContent>
+  1301→            <SelectItem value="XII IPA 1">XII IPA 1</SelectItem>
+  1302→            <SelectItem value="XII IPA 2">XII IPA 2</SelectItem>
+  1303→            <SelectItem value="XII IPS 1">XII IPS 1</SelectItem>
+  1304→          </SelectContent>
+  1305→        </Select>
+  1306→        <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+  1307→          <SelectTrigger className="w-full sm:w-64 rounded-lg">
+  1308→            <SelectValue placeholder="Pilih Periode" />
+  1309→          </SelectTrigger>
+  1310→          <SelectContent>
+  1311→            <SelectItem value="2024/2025 - Semester 2">2024/2025 - Semester 2</SelectItem>
+  1312→            <SelectItem value="2024/2025 - Semester 1">2024/2025 - Semester 1</SelectItem>
+  1313→            <SelectItem value="2023/2024 - Semester 2">2023/2024 - Semester 2</SelectItem>
+  1314→          </SelectContent>
+  1315→        </Select>
+  1316→      </div>
+  1317→
+  1318→      {/* ── Month Selector ── */}
+  1319→      <Card className="rounded-xl shadow-sm">
+  1320→        <CardContent className="p-4 flex items-center justify-between">
+  1321→          <Button variant="outline" size="icon" onClick={prevMonth} className="h-9 w-9 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+  1322→            <ChevronLeft className="h-4 w-4" />
+  1323→          </Button>
+  1324→          <div className="text-center">
+  1325→            <h2 className="text-lg font-bold capitalize" style={{ color: BRAND }}>{monthName}</h2>
+  1326→          </div>
+  1327→          <div className="flex items-center gap-2">
+  1328→            <Button variant="ghost" size="sm" className="h-8 text-xs rounded-full transition-all duration-200" onClick={goToToday}>
+  1329→              Hari Ini
+  1330→            </Button>
+  1331→            <Button variant="outline" size="icon" onClick={nextMonth} className="h-9 w-9 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+  1332→              <ChevronRight className="h-4 w-4" />
+  1333→            </Button>
+  1334→          </div>
+  1335→        </CardContent>
+  1336→      </Card>
+  1337→
+  1338→      {/* ── Summary Stats ── */}
+  1339→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+  1340→        {[
+  1341→          { label: 'Hadir', value: stats.hadir, icon: <UserCheck className="h-5 w-5" />, bg: 'bg-emerald-50', color: 'text-emerald-600' },
+  1342→          { label: 'Izin', value: stats.izin, icon: <BriefcaseMedical className="h-5 w-5" />, bg: 'bg-sky-50', color: 'text-sky-600' },
+  1343→          { label: 'Sakit', value: stats.sakit, icon: <AlertCircle className="h-5 w-5" />, bg: 'bg-amber-50', color: 'text-amber-600' },
+  1344→          { label: 'Alpa', value: stats.alpa, icon: <XCircle className="h-5 w-5" />, bg: 'bg-red-50', color: 'text-red-600' },
+  1345→        ].map((s) => (
+  1346→          <Card key={s.label} className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+  1347→            <CardContent className="p-4 flex items-center gap-3">
+  1348→              <div className={cn('p-2.5 rounded-xl', s.bg, s.color)}>
+  1349→                {s.icon}
+  1350→              </div>
+  1351→              <div>
+  1352→                <p className="text-2xl font-bold" style={{ color: BRAND }}>{s.value}</p>
+  1353→                <p className="text-xs text-muted-foreground">{s.label}</p>
+  1354→              </div>
+  1355→            </CardContent>
+  1356→          </Card>
+  1357→        ))}
+  1358→      </div>
+  1359→
+  1360→      {/* ── Attendance Percentage Ring & Summary ── */}
+  1361→      <Card className="rounded-xl shadow-sm overflow-hidden">
+  1362→        <CardContent className="p-6">
+  1363→          <div className="flex flex-col md:flex-row items-center gap-6">
+  1364→            <PercentageRing percentage={stats.pct} color={ringColor} size={150} strokeWidth={12} />
+  1365→            <div className="flex-1 text-center md:text-left">
+  1366→              <h3 className="text-lg font-bold mb-1" style={{ color: BRAND }}>Persentase Kehadiran</h3>
+  1367→              <p className="text-sm text-muted-foreground mb-4">
+  1368→                Kamu hadir <span className="font-semibold text-emerald-600">{stats.hadir}</span> dari{' '}
+  1369→                <span className="font-semibold">{stats.totalSchoolDays}</span> hari sekolah bulan ini
+  1370→              </p>
+  1371→              {stats.pct >= 90 ? (
+  1372→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
+  1373→                  <Trophy className="h-3.5 w-3.5" />
+  1374→                  Luar biasa! Terus pertahankan!
+  1375→                </div>
+  1376→              ) : stats.pct >= 75 ? (
+  1377→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+  1378→                  <Sparkles className="h-3.5 w-3.5" />
+  1379→                  Bagus! Tingkatkan lagi kehadiranmu.
+  1380→                </div>
+  1381→              ) : (
+  1382→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 text-xs font-medium">
+  1383→                  <AlertTriangle className="h-3.5 w-3.5" />
+  1384→                  Perbaiki kehadiranmu bulan depan.
+  1385→                </div>
+  1386→              )}
+  1387→            </div>
+  1388→          </div>
+  1389→        </CardContent>
+  1390→      </Card>
+  1391→
+  1392→      {/* ── Calendar Grid with Colored Dots ── */}
+  1393→      <Card className="rounded-xl shadow-sm">
+  1394→        <CardHeader className="pb-2">
+  1395→          <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: BRAND }}>
+  1396→            <Calendar className="h-4 w-4" />
+  1397→            Kalender Kehadiran
+  1398→          </CardTitle>
+  1399→          <CardDescription>Klik tanggal untuk melihat detail</CardDescription>
+  1400→        </CardHeader>
+  1401→        <CardContent className="p-4">
+  1402→          {/* Day labels */}
+  1403→          <div className="grid grid-cols-7 gap-1.5 mb-1.5">
+  1404→            {dayLabels.map((d) => (
+  1405→              <div key={d} className="text-center text-xs font-medium text-muted-foreground py-2">
+  1406→                {d}
+  1407→              </div>
+  1408→            ))}
+  1409→          </div>
+  1410→
+  1411→          {/* Calendar cells with colored dots */}
+  1412→          <div className="grid grid-cols-7 gap-1.5">
+  1413→            {calendarCells.map((day, idx) => {
+  1414→              if (day === null) {
+  1415→                return <div key={`empty-${idx}`} className="aspect-square" />;
+  1416→              }
+  1417→
+  1418→              const status = getDayStatus(day);
+  1419→              const isToday =
+  1420→                day === new Date().getDate() &&
+  1421→                currentMonth === new Date().getMonth() &&
+  1422→                currentYear === new Date().getFullYear();
+  1423→
+  1424→              return (
+  1425→                <button
+  1426→                  key={day}
+  1427→                  className={cn(
+  1428→                    'aspect-square rounded-xl flex flex-col items-center justify-center text-xs font-medium transition-all duration-200 hover:shadow-md hover:scale-105 relative cursor-pointer',
+  1429→                    getCalendarCellBg(status),
+  1430→                    isToday && 'ring-2 ring-offset-2 ring-[#1F3864] bg-[#1F3864]/5',
+  1431→                    status === 'weekend' && 'text-muted-foreground/40',
+  1432→                    status === 'none' && 'text-muted-foreground/30'
+  1433→                  )}
+  1434→                  onClick={() => {
+  1435→                    const statusLabels: Record<string, string> = {
+  1436→                      hadir: 'Hadir', izin: 'Izin', sakit: 'Sakit', alpa: 'Alpa',
+  1437→                      weekend: 'Akhir Pekan', none: 'Tidak Ada Data',
+  1438→                    };
+  1439→                    const data = getDayData(day);
+  1440→                    toast.info(`${day} ${monthName}: ${statusLabels[status] || status}${data?.note ? ` — ${data.note}` : ''}`);
+  1441→                  }}
+  1442→                >
+  1443→                  <span className={cn(
+  1444→                    'text-sm',
+  1445→                    status === 'hadir' && 'text-foreground',
+  1446→                    status === 'izin' && 'text-sky-700',
+  1447→                    status === 'sakit' && 'text-amber-700',
+  1448→                    status === 'alpa' && 'text-red-700'
+  1449→                  )}>
+  1450→                    {day}
+  1451→                  </span>
+  1452→                  {/* Colored dot indicator */}
+  1453→                  {status !== 'weekend' && status !== 'none' && (
+  1454→                    <span className={cn('w-1.5 h-1.5 rounded-full mt-0.5', getCalendarDotColor(status))} />
+  1455→                  )}
+  1456→                  {isToday && (
+  1457→                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[#1F3864]" />
+  1458→                  )}
+  1459→                </button>
+  1460→              );
+  1461→            })}
+  1462→          </div>
+  1463→
+  1464→          {/* Legend */}
+  1465→          <div className="flex flex-wrap items-center justify-center gap-4 mt-5 pt-4 border-t">
+  1466→            {[
+  1467→              { color: 'bg-emerald-500', label: 'Hadir' },
+  1468→              { color: 'bg-sky-500', label: 'Izin' },
+  1469→              { color: 'bg-amber-500', label: 'Sakit' },
+  1470→              { color: 'bg-red-500', label: 'Alpa' },
+  1471→              { color: 'bg-muted/40', label: 'Akhir Pekan' },
+  1472→            ].map((item) => (
+  1473→              <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+  1474→                <span className={cn('w-2.5 h-2.5 rounded-full shrink-0', item.color)} />
+  1475→                <span>{item.label}</span>
+  1476→              </div>
+  1477→            ))}
+  1478→          </div>
+  1479→        </CardContent>
+  1480→      </Card>
+  1481→
+  1482→      {/* ── Timeline Detail List ── */}
+  1483→      <Card className="rounded-xl shadow-sm">
+  1484→        <CardHeader className="pb-2">
+  1485→          <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: BRAND }}>
+  1486→            <BarChart3 className="h-4 w-4" />
+  1487→            Riwayat Kehadiran Terbaru
+  1488→          </CardTitle>
+  1489→          <CardDescription>10 entri terakhir bulan ini</CardDescription>
+  1490→        </CardHeader>
+  1491→        <CardContent className="p-4">
+  1492→          {timelineEntries.length === 0 ? (
+  1493→            <div className="text-center py-8">
+  1494→              <div className="h-16 w-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-3">
+  1495→                <CalendarDays className="h-6 w-6 text-muted-foreground/40" />
+  1496→              </div>
+  1497→              <p className="text-sm text-muted-foreground">Belum ada data kehadiran.</p>
+  1498→            </div>
+  1499→          ) : (
+  1500→            <div className="space-y-0 max-h-96 overflow-y-auto">
+  1501→              {timelineEntries.map((entry, idx) => {
+  1502→                const statusLabels: Record<string, { label: string; color: string }> = {
+  1503→                  hadir: { label: 'Hadir', color: 'bg-emerald-100 text-emerald-700' },
+  1504→                  izin: { label: 'Izin', color: 'bg-sky-100 text-sky-700' },
+  1505→                  sakit: { label: 'Sakit', color: 'bg-amber-100 text-amber-700' },
+  1506→                  alpa: { label: 'Alpa', color: 'bg-red-100 text-red-700' },
+  1507→                };
+  1508→                const info = statusLabels[entry.status] || { label: entry.status, color: 'bg-muted text-muted-foreground' };
+  1509→                const dayDate = entry.date
+  1510→                  ? new Date(entry.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })
+  1511→                  : `${entry.day} ${monthName}`;
+  1512→
+  1513→                return (
+  1514→                  <div key={entry.day} className="flex gap-3">
+  1515→                    {/* Timeline line & dot */}
+  1516→                    <div className="flex flex-col items-center">
+  1517→                      <div className={cn('w-3 h-3 rounded-full shrink-0 mt-1.5', getTimelineDotColor(entry.status))} />
+  1518→                      {idx < timelineEntries.length - 1 && (
+  1519→                        <div className="w-0.5 flex-1 bg-muted/40 my-1" />
+  1520→                      )}
+  1521→                    </div>
+  1522→                    {/* Content card */}
+  1523→                    <div className={cn(
+  1524→                      'flex-1 rounded-xl border-l-3 p-3 mb-3 transition-all duration-200 hover:shadow-sm',
+  1525→                      getTimelineLineColor(entry.status),
+  1526→                      'bg-card'
+  1527→                    )}>
+  1528→                      <div className="flex items-center justify-between mb-1">
+  1529→                        <span className="text-xs font-medium text-muted-foreground">{dayDate}</span>
+  1530→                        <span className={cn('text-[10px] px-2 py-0.5 rounded-full font-medium', info.color)}>
+  1531→                          {info.label}
+  1532→                        </span>
+  1533→                      </div>
+  1534→                      {entry.note && (
+  1535→                        <p className="text-xs text-muted-foreground">{entry.note}</p>
+  1536→                      )}
+  1537→                    </div>
+  1538→                  </div>
+  1539→                );
+  1540→              })}
+  1541→            </div>
+  1542→          )}
+  1543→        </CardContent>
+  1544→      </Card>
+  1545→    </div>
+  1546→  );
+  1547→}
+  1548→

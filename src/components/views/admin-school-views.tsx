@@ -265,13 +265,13 @@ function AddClassDialog({
   });
 
   // Reset form when dialog opens or editData changes
-  useEffect(() => {
-    if (open && editData) {
-      setForm({ name: editData.name, grade: editData.grade, academicYear: editData.academicYear });
-    } else if (open) {
-      setForm({ name: '', grade: '10', academicYear: '2024/2025' });
+  const formKey = editData?.id ?? 'new';
+  const [form, setForm] = useState<ClassFormData>(() => {
+    if (editData) {
+      return { name: editData.name, grade: editData.grade, academicYear: editData.academicYear };
     }
-  }, [open, editData]);
+    return { name: '', grade: '10', academicYear: '2024/2025' };
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

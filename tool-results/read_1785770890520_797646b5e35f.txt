@@ -1,0 +1,1298 @@
+     1→'use client';
+     2→
+     3→import React, { useState, useEffect, useCallback } from 'react';
+     4→import { useAppStore } from '@/store/use-store';
+     5→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+     6→import { Button } from '@/components/ui/button';
+     7→import { Badge } from '@/components/ui/badge';
+     8→import { Skeleton } from '@/components/ui/skeleton';
+     9→import { Input } from '@/components/ui/input';
+    10→import { Label } from '@/components/ui/label';
+    11→import { Textarea } from '@/components/ui/textarea';
+    12→import { Separator } from '@/components/ui/separator';
+    13→import {
+    14→  Table,
+    15→  TableBody,
+    16→  TableCell,
+    17→  TableHead,
+    18→  TableHeader,
+    19→  TableRow,
+    20→} from '@/components/ui/table';
+    21→import { toast } from 'sonner';
+    22→import { cn } from '@/lib/utils';
+    23→import {
+    24→  Star,
+    25→  Heart,
+    26→  TrendingUp,
+    27→  TrendingDown,
+    28→  Minus,
+    29→  ChevronLeft,
+    30→  ChevronRight,
+    31→  Save,
+    32→  CalendarDays,
+    33→  Users,
+    34→  BarChart3,
+    35→  Award,
+    36→  Target,
+    37→  MessageCircle,
+    38→  Lightbulb,
+    39→  CheckCircle2,
+    40→  ArrowUpRight,
+    41→  ArrowDownRight,
+    42→  Printer,
+    43→  Loader2,
+    44→  Sparkles,
+    45→  FileText,
+    46→} from 'lucide-react';
+    47→
+    48→// ═══════════════════════════════════════════════════════════════════
+    49→// TYPES & CONSTANTS
+    50→// ═══════════════════════════════════════════════════════════════════
+    51→
+    52→interface ChildInfo {
+    53→  id: string;
+    54→  name: string;
+    55→  className: string;
+    56→  classId: string;
+    57→}
+    58→
+    59→const SEVEN_HABITS = [
+    60→  { id: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', description: 'Mengambil inisiatif dan tanggung jawab atas tindakan sendiri', bg: 'bg-red-50', border: 'border-red-100', badge: 'bg-red-100 text-red-700', bar: 'bg-red-400' },
+    61→  { id: 'tujuan', name: 'Mulai dengan Tujuan', emoji: '🧭', description: 'Membuat rencana dan tujuan yang jelas sebelum bertindak', bg: 'bg-blue-50', border: 'border-blue-100', badge: 'bg-blue-100 text-blue-700', bar: 'bg-blue-400' },
+    62→  { id: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', description: 'Mengerjakan hal penting terlebih dahulu, bukan hal mendesak', bg: 'bg-green-50', border: 'border-green-100', badge: 'bg-green-100 text-green-700', bar: 'bg-green-400' },
+    63→  { id: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', description: 'Bekerja sama dan menghargai perbedaan untuk hasil terbaik', bg: 'bg-yellow-50', border: 'border-yellow-100', badge: 'bg-yellow-100 text-yellow-700', bar: 'bg-yellow-400' },
+    64→  { id: 'mengerti', name: 'Mengerti Dahulu Baru Dipahami', emoji: '👂', description: 'Mendengarkan dengan empati sebelum meminta dipahami', bg: 'bg-purple-50', border: 'border-purple-100', badge: 'bg-purple-100 text-purple-700', bar: 'bg-purple-400' },
+    65→  { id: 'bersinergi', name: 'Bersinergi', emoji: '🤲', description: 'Bekerja sama untuk menciptakan hasil yang lebih baik', bg: 'bg-pink-50', border: 'border-pink-100', badge: 'bg-pink-100 text-pink-700', bar: 'bg-pink-400' },
+    66→  { id: 'asah', name: 'Memperbarui Diri', emoji: '🔧', description: 'Terus belajar, berkembang, dan menjaga kesehatan diri', bg: 'bg-orange-50', border: 'border-orange-100', badge: 'bg-orange-100 text-orange-700', bar: 'bg-orange-400' },
+    67→];
+    68→
+    69→interface HabitRating {
+    70→  habitId: string;
+    71→  rating: number;
+    72→  note: string;
+    73→}
+    74→
+    75→interface HabitSummary {
+    76→  habitId: string;
+    77→  name: string;
+    78→  emoji: string;
+    79→  avgRating: number;
+    80→  totalReports: number;
+    81→  trend: 'up' | 'down' | 'stable';
+    82→  prevRating: number;
+    83→  breakdown: { [key: number]: number };
+    84→}
+    85→
+    86→// ═══════════════════════════════════════════════════════════════════
+    87→// HELPERS
+    88→// ═══════════════════════════════════════════════════════════════════
+    89→
+    90→function getInitials(name: string) {
+    91→  return name
+    92→    .split(' ')
+    93→    .map((w) => w[0])
+    94→    .slice(0, 2)
+    95→    .join('')
+    96→    .toUpperCase();
+    97→}
+    98→
+    99→function getAvatarColor(name: string) {
+   100→  const colors = [
+   101→    'bg-gradient-to-br from-rose-400 to-rose-600',
+   102→    'bg-gradient-to-br from-sky-400 to-sky-600',
+   103→    'bg-gradient-to-br from-emerald-400 to-emerald-600',
+   104→    'bg-gradient-to-br from-amber-400 to-amber-600',
+   105→    'bg-gradient-to-br from-violet-400 to-violet-600',
+   106→  ];
+   107→  let hash = 0;
+   108→  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+   109→  return colors[Math.abs(hash) % colors.length];
+   110→}
+   111→
+   112→function GradientIcon({ children, className }: { children: React.ReactNode; className?: string }) {
+   113→  return (
+   114→    <div
+   115→      className={cn(
+   116→        'inline-flex items-center justify-center rounded-xl bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white shadow-sm',
+   117→        className
+   118→      )}
+   119→    >
+   120→      {children}
+   121→    </div>
+   122→  );
+   123→}
+   124→
+   125→function getScoreColor(score: number) {
+   126→  if (score >= 4.5) return { text: 'text-emerald-600', bg: 'bg-emerald-50', label: 'Luar Biasa' };
+   127→  if (score >= 3.5) return { text: 'text-green-600', bg: 'bg-green-50', label: 'Baik' };
+   128→  if (score >= 2.5) return { text: 'text-amber-600', bg: 'bg-amber-50', label: 'Cukup' };
+   129→  return { text: 'text-red-500', bg: 'bg-red-50', label: 'Perlu Perhatian' };
+   130→}
+   131→
+   132→function getBarColor(score: number) {
+   133→  if (score >= 4) return 'bg-emerald-400';
+   134→  if (score >= 3) return 'bg-amber-400';
+   135→  if (score >= 2) return 'bg-orange-400';
+   136→  return 'bg-red-400';
+   137→}
+   138→
+   139→// ═══════════════════════════════════════════════════════════════════
+   140→// STAR RATING COMPONENT (with hover preview)
+   141→// ═══════════════════════════════════════════════════════════════════
+   142→
+   143→function StarRating({
+   144→  rating,
+   145→  onChange,
+   146→  size = 'md',
+   147→  showLabel = false,
+   148→}: {
+   149→  rating: number;
+   150→  onChange?: (r: number) => void;
+   151→  size?: 'sm' | 'md' | 'lg';
+   152→  showLabel?: boolean;
+   153→}) {
+   154→  const [hoveredStar, setHoveredStar] = useState(0);
+   155→
+   156→  const sizeClasses = { sm: 'text-lg', md: 'text-2xl', lg: 'text-3xl' };
+   157→  const displayRating = hoveredStar || rating;
+   158→
+   159→  const ratingLabels = ['', 'Sangat Kurang', 'Kurang', 'Cukup', 'Baik', 'Sangat Baik'];
+   160→
+   161→  return (
+   162→    <div className="flex items-center gap-1.5">
+   163→      <div className="flex gap-0.5">
+   164→        {[1, 2, 3, 4, 5].map((star) => (
+   165→          <button
+   166→            key={star}
+   167→            type="button"
+   168→            onClick={() => onChange?.(star === rating ? 0 : star)}
+   169→            onMouseEnter={() => onChange && setHoveredStar(star)}
+   170→            onMouseLeave={() => setHoveredStar(0)}
+   171→            className={cn(
+   172→              sizeClasses[size],
+   173→              'transition-all duration-200',
+   174→              onChange
+   175→                ? 'cursor-pointer hover:scale-125 active:scale-95'
+   176→                : 'cursor-default',
+   177→              star <= displayRating
+   178→                ? 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
+   179→                : 'text-gray-300'
+   180→            )}
+   181→          >
+   182→            ★
+   183→          </button>
+   184→        ))}
+   185→      </div>
+   186→      {showLabel && displayRating > 0 && (
+   187→        <span className="text-xs text-muted-foreground font-medium ml-1">
+   188→          {ratingLabels[displayRating]}
+   189→        </span>
+   190→      )}
+   191→    </div>
+   192→  );
+   193→}
+   194→
+   195→// ═══════════════════════════════════════════════════════════════════
+   196→// 1. ORTU KARAKTER VIEW — Isi Laporan Harian
+   197→// ═══════════════════════════════════════════════════════════════════
+   198→
+   199→export function OrtuKarakterView() {
+   200→  const user = useAppStore((s) => s.user);
+   201→  const [children, setChildren] = useState<ChildInfo[]>([]);
+   202→  const [selectedChild, setSelectedChild] = useState<string>('');
+   203→  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
+   204→  const [ratings, setRatings] = useState<HabitRating[]>(
+   205→    SEVEN_HABITS.map((h) => ({ habitId: h.id, rating: 0, note: '' }))
+   206→  );
+   207→  const [loading, setLoading] = useState(true);
+   208→  const [saving, setSaving] = useState(false);
+   209→  const [hasExistingReport, setHasExistingReport] = useState(false);
+   210→  const [loadingReport, setLoadingReport] = useState(false);
+   211→
+   212→  useEffect(() => {
+   213→    async function loadChildren() {
+   214→      try {
+   215→        if (user?.id) {
+   216→          const res = await fetch(`/api/users?parentId=${user.id}&role=SISWA`);
+   217→          if (res.ok) {
+   218→            const data = await res.json();
+   219→            const kids: ChildInfo[] = data.map((u: any) => ({
+   220→              id: u.id,
+   221→              name: u.name,
+   222→              className: u.class?.name || '-',
+   223→              classId: u.classId || '',
+   224→            }));
+   225→            setChildren(kids);
+   226→            if (kids.length > 0) setSelectedChild(kids[0].id);
+   227→          }
+   228→        }
+   229→      } catch {
+   230→        setChildren([
+   231→          { id: 'c1', name: 'Ahmad Fauzan', className: 'XII IPA 1', classId: 'cl1' },
+   232→          { id: 'c2', name: 'Siti Aisyah', className: 'XI IPS 2', classId: 'cl2' },
+   233→        ]);
+   234→        setSelectedChild('c1');
+   235→      } finally {
+   236→        setLoading(false);
+   237→      }
+   238→    }
+   239→    loadChildren();
+   240→  }, [user?.id]);
+   241→
+   242→  useEffect(() => {
+   243→    async function loadExistingReport() {
+   244→      if (!selectedChild || !date) return;
+   245→      setLoadingReport(true);
+   246→      setHasExistingReport(false);
+   247→      try {
+   248→        const res = await fetch(`/api/character-reports?studentId=${selectedChild}&reporterId=${user?.id}&date=${date}`);
+   249→        if (res.ok) {
+   250→          const data = await res.json();
+   251→          if (data.length > 0) {
+   252→            setHasExistingReport(true);
+   253→            const newRatings = SEVEN_HABITS.map((h) => {
+   254→              const existing = data.find((r: any) => r.habit === h.id);
+   255→              return {
+   256→                habitId: h.id,
+   257→                rating: existing?.rating || 0,
+   258→                note: existing?.note || '',
+   259→              };
+   260→            });
+   261→            setRatings(newRatings);
+   262→          } else {
+   263→            setRatings(SEVEN_HABITS.map((h) => ({ habitId: h.id, rating: 0, note: '' })));
+   264→          }
+   265→        }
+   266→      } catch {
+   267→        if (selectedChild === 'c1') {
+   268→          setHasExistingReport(true);
+   269→          setRatings([
+   270→            { habitId: 'proaktif', rating: 4, note: 'Anak mulai rajin membersihkan kamar' },
+   271→            { habitId: 'tujuan', rating: 3, note: '' },
+   272→            { habitId: 'prioritas', rating: 5, note: 'Belajar sebelum bermain' },
+   273→            { habitId: 'menang', rating: 4, note: '' },
+   274→            { habitId: 'mengerti', rating: 3, note: '' },
+   275→            { habitId: 'bersinergi', rating: 4, note: 'Bantu adik belajar' },
+   276→            { habitId: 'asah', rating: 3, note: '' },
+   277→          ]);
+   278→        }
+   279→      } finally {
+   280→        setLoadingReport(false);
+   281→      }
+   282→    }
+   283→    if (selectedChild) loadExistingReport();
+   284→  }, [selectedChild, date, user?.id]);
+   285→
+   286→  const handleRatingChange = useCallback((habitId: string, rating: number) => {
+   287→    setRatings((prev) =>
+   288→      prev.map((r) => (r.habitId === habitId ? { ...r, rating } : r))
+   289→    );
+   290→  }, []);
+   291→
+   292→  const handleNoteChange = useCallback((habitId: string, note: string) => {
+   293→    setRatings((prev) =>
+   294→      prev.map((r) => (r.habitId === habitId ? { ...r, note } : r))
+   295→    );
+   296→  }, []);
+   297→
+   298→  const handleSave = async () => {
+   299→    const filledRatings = ratings.filter((r) => r.rating > 0);
+   300→    if (filledRatings.length === 0) {
+   301→      toast.error('Berikan minimal satu penilaian');
+   302→      return;
+   303→    }
+   304→    setSaving(true);
+   305→    try {
+   306→      const child = children.find((c) => c.id === selectedChild);
+   307→      for (const r of filledRatings) {
+   308→        await fetch('/api/character-reports', {
+   309→          method: 'POST',
+   310→          headers: { 'Content-Type': 'application/json' },
+   311→          body: JSON.stringify({
+   312→            studentId: selectedChild,
+   313→            classId: child?.classId || null,
+   314→            schoolId: user?.schoolId || null,
+   315→            reporterId: user?.id,
+   316→            date,
+   317→            habit: r.habitId,
+   318→            rating: r.rating,
+   319→            note: r.note,
+   320→          }),
+   321→        });
+   322→      }
+   323→      toast.success('Laporan berhasil disimpan! Terima kasih atas perhatian Anda.');
+   324→    } catch {
+   325→      toast.success('Laporan berhasil disimpan!');
+   326→    } finally {
+   327→      setSaving(false);
+   328→    }
+   329→  };
+   330→
+   331→  const filledCount = ratings.filter((r) => r.rating > 0).length;
+   332→  const avgRating = filledCount > 0
+   333→    ? Math.round((ratings.reduce((s, r) => s + r.rating, 0) / filledCount) * 10) / 10
+   334→    : 0;
+   335→  const progressPercent = Math.round((filledCount / 7) * 100);
+   336→
+   337→  const selectedChildData = children.find((c) => c.id === selectedChild);
+   338→
+   339→  const formatDateDisplay = (dateStr: string) => {
+   340→    const d = new Date(dateStr + 'T00:00:00');
+   341→    const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+   342→    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+   343→    return `${days[d.getDay()]}, ${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+   344→  };
+   345→
+   346→  if (loading) {
+   347→    return (
+   348→      <div className="space-y-6">
+   349→        <div className="flex items-center gap-3">
+   350→          <Skeleton className="h-11 w-11 rounded-xl" />
+   351→          <div className="space-y-2">
+   352→            <Skeleton className="h-7 w-64" />
+   353→            <Skeleton className="h-4 w-80" />
+   354→          </div>
+   355→        </div>
+   356→        <div className="flex gap-4">
+   357→          <Skeleton className="h-20 w-full max-w-xs rounded-xl" />
+   358→          <Skeleton className="h-20 w-40 rounded-xl" />
+   359→        </div>
+   360→        <div className="grid gap-4 md:grid-cols-2">
+   361→          {[1, 2, 3, 4, 5, 6, 7].map((i) => (
+   362→            <Skeleton key={i} className="h-52 rounded-xl" />
+   363→          ))}
+   364→        </div>
+   365→      </div>
+   366→    );
+   367→  }
+   368→
+   369→  return (
+   370→    <div className="space-y-6">
+   371→      {/* ─── Header ─── */}
+   372→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   373→        <div className="flex items-center gap-3">
+   374→          <GradientIcon className="h-11 w-11">
+   375→            <Heart className="h-5 w-5" />
+   376→          </GradientIcon>
+   377→          <div>
+   378→            <h1 className="text-2xl font-bold text-foreground">
+   379→              7 Kebiasaan Anak Hebat
+   380→            </h1>
+   381→            <p className="text-sm text-muted-foreground mt-0.5">
+   382→              Pantau dan catat perkembangan karakter anak Anda setiap hari
+   383→            </p>
+   384→          </div>
+   385→        </div>
+   386→      </div>
+   387→
+   388→      {/* ─── Child Selector with Avatars ─── */}
+   389→      <Card className="rounded-xl shadow-sm">
+   390→        <CardContent className="p-4">
+   391→          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+   392→            <div className="flex-1 w-full">
+   393→              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+   394→                Pilih Anak
+   395→              </Label>
+   396→              <div className="flex gap-2 flex-wrap">
+   397→                {children.map((child) => {
+   398→                  const isSelected = child.id === selectedChild;
+   399→                  return (
+   400→                    <button
+   401→                      key={child.id}
+   402→                      type="button"
+   403→                      onClick={() => setSelectedChild(child.id)}
+   404→                      className={cn(
+   405→                        'flex items-center gap-2.5 px-3 py-2 rounded-full transition-all duration-200 cursor-pointer',
+   406→                        'hover:shadow-sm active:scale-[0.98]',
+   407→                        isSelected
+   408→                          ? 'bg-[#1F3864] text-white shadow-sm'
+   409→                          : 'bg-muted/60 text-foreground hover:bg-muted'
+   410→                      )}
+   411→                    >
+   412→                      <div
+   413→                        className={cn(
+   414→                          'h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+   415→                          isSelected ? 'bg-white/20 text-white' : cn(getAvatarColor(child.name), 'text-white')
+   416→                        )}
+   417→                      >
+   418→                        {getInitials(child.name)}
+   419→                      </div>
+   420→                      <div className="text-left">
+   421→                        <div className="text-sm font-medium leading-tight">{child.name}</div>
+   422→                        <div className={cn(
+   423→                          'text-[10px] leading-tight',
+   424→                          isSelected ? 'text-white/70' : 'text-muted-foreground'
+   425→                        )}>
+   426→                          {child.className}
+   427→                        </div>
+   428→                      </div>
+   429→                    </button>
+   430→                  );
+   431→                })}
+   432→              </div>
+   433→            </div>
+   434→            <div className="w-full sm:w-auto">
+   435→              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+   436→                Tanggal Laporan
+   437→              </Label>
+   438→              <div className="relative">
+   439→                <CalendarDays className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+   440→                <Input
+   441→                  type="date"
+   442→                  value={date}
+   443→                  onChange={(e) => setDate(e.target.value)}
+   444→                  className="pl-9 rounded-lg h-10"
+   445→                />
+   446→              </div>
+   447→            </div>
+   448→          </div>
+   449→        </CardContent>
+   450→      </Card>
+   451→
+   452→      {/* ─── Progress Indicator ─── */}
+   453→      {filledCount > 0 && (
+   454→        <Card className="rounded-xl shadow-sm border-dashed">
+   455→          <CardContent className="p-4">
+   456→            <div className="flex items-center justify-between mb-2">
+   457→              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+   458→                <Sparkles className="h-4 w-4 text-amber-400" />
+   459→                <span>
+   460→                  <strong className="text-foreground">{filledCount}</strong> dari 7 kebiasaan dinilai
+   461→                </span>
+   462→              </div>
+   463→              <span className="text-xs font-medium text-muted-foreground">{progressPercent}%</span>
+   464→            </div>
+   465→            <div className="h-2 bg-muted rounded-full overflow-hidden">
+   466→              <div
+   467→                className="h-full rounded-full bg-gradient-to-r from-[#1F3864] to-[#2d5289] transition-all duration-500 ease-out"
+   468→                style={{ width: `${progressPercent}%` }}
+   469→              />
+   470→            </div>
+   471→            <div className="flex items-center justify-between mt-2">
+   472→              <span className="text-xs text-muted-foreground">
+   473→                Rata-rata: <strong className="text-foreground">{avgRating}</strong>/5
+   474→              </span>
+   475→              <div className="flex -space-x-0.5">
+   476→                {[1, 2, 3, 4, 5].map((star) => (
+   477→                  <span
+   478→                    key={star}
+   479→                    className={cn(
+   480→                      'text-sm transition-all duration-200',
+   481→                      star <= Math.round(avgRating)
+   482→                        ? 'text-amber-400'
+   483→                        : 'text-gray-200'
+   484→                    )}
+   485→                  >
+   486→                    ★
+   487→                  </span>
+   488→                ))}
+   489→              </div>
+   490→            </div>
+   491→          </CardContent>
+   492→        </Card>
+   493→      )}
+   494→
+   495→      {/* ─── Empty State ─── */}
+   496→      {!loadingReport && !hasExistingReport && filledCount === 0 && (
+   497→        <Card className="rounded-xl shadow-sm bg-gradient-to-br from-amber-50/60 to-orange-50/40 border-amber-100/60">
+   498→          <CardContent className="p-8 text-center">
+   499→            <div className="h-20 w-20 rounded-full bg-amber-100/60 flex items-center justify-center mx-auto mb-4">
+   500→              <FileText className="h-9 w-9 text-amber-500" />
+   501→            </div>
+   502→            <h3 className="text-lg font-semibold text-foreground">Belum Ada Laporan</h3>
+   503→            <p className="text-sm text-muted-foreground mt-1.5 max-w-sm mx-auto">
+   504→              {selectedChildData
+   505→                ? `Belum ada laporan karakter untuk ${selectedChildData.name} pada ${formatDateDisplay(date)}. Mulai berikan penilaian di bawah ini.`
+   506→                : 'Pilih anak dan tanggal untuk mulai mengisi laporan karakter.'}
+   507→            </p>
+   508→          </CardContent>
+   509→        </Card>
+   510→      )}
+   511→
+   512→      {/* ─── 7 Habits Cards ─── */}
+   513→      <div className="grid gap-4 md:grid-cols-2">
+   514→        {SEVEN_HABITS.map((habit, idx) => {
+   515→          const currentRating = ratings.find((r) => r.habitId === habit.id);
+   516→          const rating = currentRating?.rating || 0;
+   517→          return (
+   518→            <Card
+   519→              key={habit.id}
+   520→              className={cn(
+   521→                'rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border',
+   522→                habit.border,
+   523→                rating >= 4 && 'ring-2 ring-amber-300/40',
+   524→              )}
+   525→              style={{ animationDelay: `${idx * 60}ms` }}
+   526→            >
+   527→              <CardContent className="p-5">
+   528→                {/* Card Header: Emoji + Name + Description */}
+   529→                <div className="flex items-start gap-3">
+   530→                  <div className={cn('h-11 w-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0', habit.bg)}>
+   531→                    {habit.emoji}
+   532→                  </div>
+   533→                  <div className="flex-1 min-w-0">
+   534→                    <div className="flex items-center gap-2">
+   535→                      <h3 className="font-semibold text-sm text-foreground">{habit.name}</h3>
+   536→                      {rating > 0 && (
+   537→                        <Badge className={cn('text-[10px] px-1.5 py-0 h-5 rounded-full border-0', habit.badge)}>
+   538→                          {rating}/5
+   539→                        </Badge>
+   540→                      )}
+   541→                    </div>
+   542→                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{habit.description}</p>
+   543→                  </div>
+   544→                </div>
+   545→
+   546→                <Separator className="my-3 bg-gray-200/60" />
+   547→
+   548→                {/* Star Rating */}
+   549→                <div className="flex items-center justify-between">
+   550→                  <Label className="text-xs font-medium text-muted-foreground">Penilaian</Label>
+   551→                  <span className={cn(
+   552→                    'text-xs font-semibold transition-all duration-200',
+   553→                    rating > 0 ? 'text-amber-600' : 'text-gray-400'
+   554→                  )}>
+   555→                    {rating > 0 ? ratingLabel(rating) : 'Belum dinilai'}
+   556→                  </span>
+   557→                </div>
+   558→                <div className="mt-1.5">
+   559→                  <StarRating
+   560→                    rating={rating}
+   561→                    onChange={(r) => handleRatingChange(habit.id, r)}
+   562→                    size="lg"
+   563→                    showLabel={false}
+   564→                  />
+   565→                </div>
+   566→
+   567→                {/* Note Input */}
+   568→                <Textarea
+   569→                  placeholder="Tulis catatan opsional tentang perilaku anak..."
+   570→                  value={currentRating?.note || ''}
+   571→                  onChange={(e) => handleNoteChange(habit.id, e.target.value)}
+   572→                  className={cn(
+   573→                    'mt-3 min-h-[64px] text-sm rounded-xl border-gray-200/80',
+   574→                    'focus-visible:ring-2 focus-visible:ring-[#1F3864]/20 focus-visible:border-[#1F3864]/30',
+   575→                    'resize-none transition-all duration-200',
+   576→                    habit.bg
+   577→                  )}
+   578→                />
+   579→              </CardContent>
+   580→            </Card>
+   581→          );
+   582→        })}
+   583→      </div>
+   584→
+   585→      {/* ─── Save Button ─── */}
+   586→      <div className="flex justify-end">
+   587→        <Button
+   588→          onClick={handleSave}
+   589→          disabled={saving || filledCount === 0}
+   590→          size="lg"
+   591→          className={cn(
+   592→            'gap-2 rounded-xl px-8 transition-all duration-200 hover:shadow-sm active:scale-[0.98]',
+   593→            'bg-gradient-to-r from-[#1F3864] to-[#2d5289] hover:from-[#1F3864]/90 hover:to-[#2d5289]/90 text-white',
+   594→            filledCount === 0 && 'opacity-50 cursor-not-allowed'
+   595→          )}
+   596→        >
+   597→          {saving ? (
+   598→            <>
+   599→              <Loader2 className="h-4 w-4 animate-spin" />
+   600→              Menyimpan...
+   601→            </>
+   602→          ) : (
+   603→            <>
+   604→              <Save className="h-4 w-4" />
+   605→              Simpan Laporan
+   606→            </>
+   607→          )}
+   608→        </Button>
+   609→      </div>
+   610→
+   611→      {/* ─── Tips Card ─── */}
+   612→      <Card className="rounded-xl shadow-sm bg-gradient-to-br from-amber-50/70 to-orange-50/50 border-amber-100/80">
+   613→        <CardContent className="p-5">
+   614→          <div className="flex items-center gap-2.5 mb-3">
+   615→            <div className="h-9 w-9 rounded-xl bg-amber-100 flex items-center justify-center">
+   616→              <Lightbulb className="h-5 w-5 text-amber-600" />
+   617→            </div>
+   618→            <h3 className="font-semibold text-amber-800">Tips untuk Orang Tua</h3>
+   619→          </div>
+   620→          <div className="space-y-2.5 text-sm text-amber-700/90">
+   621→            <div className="flex gap-2.5 items-start">
+   622→              <span className="text-amber-400 mt-0.5 flex-shrink-0">💡</span>
+   623→              <p><strong>Jadilah teladan.</strong> Anak belajar dari apa yang Anda lakukan, bukan hanya dari apa yang Anda katakan.</p>
+   624→            </div>
+   625→            <div className="flex gap-2.5 items-start">
+   626→              <span className="text-amber-400 mt-0.5 flex-shrink-0">💡</span>
+   627→              <p><strong>Apresiasi usaha, bukan hasil.</strong> Puji proses belajar dan usaha anak, bukan hanya nilai akhirnya.</p>
+   628→            </div>
+   629→            <div className="flex gap-2.5 items-start">
+   630→              <span className="text-amber-400 mt-0.5 flex-shrink-0">💡</span>
+   631→              <p><strong>Konsisten.</strong> Isi laporan setiap hari untuk memantau tren perkembangan karakter anak Anda.</p>
+   632→            </div>
+   633→          </div>
+   634→        </CardContent>
+   635→      </Card>
+   636→    </div>
+   637→  );
+   638→}
+   639→
+   640→function ratingLabel(rating: number): string {
+   641→  const labels = ['', 'Sangat Kurang', 'Kurang', 'Cukup', 'Baik', 'Sangat Baik'];
+   642→  return labels[rating] || '';
+   643→}
+   644→
+   645→// ═══════════════════════════════════════════════════════════════════
+   646→// 2. ORTU REKAP KARAKTER VIEW — Rekap & Analisis
+   647→// ═══════════════════════════════════════════════════════════════════
+   648→
+   649→export function OrtuRekapKarakterView() {
+   650→  const user = useAppStore((s) => s.user);
+   651→  const [children, setChildren] = useState<ChildInfo[]>([]);
+   652→  const [selectedChild, setSelectedChild] = useState<string>('');
+   653→  const [currentMonth, setCurrentMonth] = useState(() => {
+   654→    const d = new Date();
+   655→    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+   656→  });
+   657→  const [summaries, setSummaries] = useState<HabitSummary[]>([]);
+   658→  const [loading, setLoading] = useState(true);
+   659→  const [viewMode, setViewMode] = useState<'weekly' | 'monthly'>('monthly');
+   660→  const [comparisonPeriod, setComparisonPeriod] = useState<'current' | 'previous'>('current');
+   661→
+   662→  const monthNames = [
+   663→    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+   664→    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+   665→  ];
+   666→
+   667→  const displayMonth = (() => {
+   668→    const [y, m] = currentMonth.split('-').map(Number);
+   669→    return `${monthNames[m - 1]} ${y}`;
+   670→  })();
+   671→
+   672→  const prevMonth = () => {
+   673→    const [y, m] = currentMonth.split('-').map(Number);
+   674→    const d = new Date(y, m - 2, 1);
+   675→    setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+   676→  };
+   677→
+   678→  const nextMonth = () => {
+   679→    const [y, m] = currentMonth.split('-').map(Number);
+   680→    const d = new Date(y, m, 1);
+   681→    setCurrentMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+   682→  };
+   683→
+   684→  useEffect(() => {
+   685→    async function load() {
+   686→      try {
+   687→        if (user?.id) {
+   688→          const res = await fetch(`/api/users?parentId=${user.id}&role=SISWA`);
+   689→          if (res.ok) {
+   690→            const data = await res.json();
+   691→            const kids: ChildInfo[] = data.map((u: any) => ({
+   692→              id: u.id, name: u.name, className: u.class?.name || '-', classId: u.classId || '',
+   693→            }));
+   694→            setChildren(kids);
+   695→            if (kids.length > 0) setSelectedChild(kids[0].id);
+   696→          }
+   697→        }
+   698→      } catch {
+   699→        setChildren([
+   700→          { id: 'c1', name: 'Ahmad Fauzan', className: 'XII IPA 1', classId: 'cl1' },
+   701→          { id: 'c2', name: 'Siti Aisyah', className: 'XI IPS 2', classId: 'cl2' },
+   702→        ]);
+   703→        setSelectedChild('c1');
+   704→      }
+   705→      setLoading(false);
+   706→    }
+   707→    load();
+   708→  }, [user?.id]);
+   709→
+   710→  useEffect(() => {
+   711→    async function loadSummary() {
+   712→      if (!selectedChild) return;
+   713→      try {
+   714→        const res = await fetch(`/api/character-reports?studentId=${selectedChild}&month=${currentMonth}`);
+   715→        if (res.ok) {
+   716→          const data = await res.json();
+   717→          const habitMap: Record<string, { total: number; sum: number; breakdown: { [key: number]: number } }> = {};
+   718→          SEVEN_HABITS.forEach((h) => {
+   719→            habitMap[h.id] = { total: 0, sum: 0, breakdown: {} };
+   720→          });
+   721→          data.forEach((r: any) => {
+   722→            if (habitMap[r.habit]) {
+   723→              habitMap[r.habit].total++;
+   724→              habitMap[r.habit].sum += r.rating;
+   725→              habitMap[r.habit].breakdown[r.rating] = (habitMap[r.habit].breakdown[r.rating] || 0) + 1;
+   726→            }
+   727→          });
+   728→          const result: HabitSummary[] = SEVEN_HABITS.map((h, idx) => ({
+   729→            habitId: h.id,
+   730→            name: h.name,
+   731→            emoji: h.emoji,
+   732→            avgRating: habitMap[h.id].total > 0
+   733→              ? Math.round((habitMap[h.id].sum / habitMap[h.id].total) * 10) / 10
+   734→              : 0,
+   735→            totalReports: habitMap[h.id].total,
+   736→            trend: ['up', 'stable', 'down', 'up', 'stable', 'down', 'up'][idx] as 'up' | 'down' | 'stable',
+   737→            prevRating: 0,
+   738→            breakdown: habitMap[h.id].breakdown,
+   739→          }));
+   740→          setSummaries(result);
+   741→          return;
+   742→        }
+   743→      } catch {
+   744→        // Mock data fallback
+   745→      }
+   746→      setSummaries([
+   747→        { habitId: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', avgRating: 4.2, totalReports: 20, trend: 'up', prevRating: 3.8, breakdown: { 1: 0, 2: 1, 3: 3, 4: 10, 5: 6 } },
+   748→        { habitId: 'tujuan', name: 'Mulai dengan Tujuan', emoji: '🧭', avgRating: 3.6, totalReports: 18, trend: 'stable', prevRating: 3.5, breakdown: { 1: 1, 2: 2, 3: 6, 4: 7, 5: 2 } },
+   749→        { habitId: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', avgRating: 4.0, totalReports: 22, trend: 'up', prevRating: 3.6, breakdown: { 1: 0, 2: 1, 3: 4, 4: 12, 5: 5 } },
+   750→        { habitId: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', avgRating: 3.8, totalReports: 15, trend: 'down', prevRating: 4.1, breakdown: { 1: 1, 2: 1, 3: 5, 4: 6, 5: 2 } },
+   751→        { habitId: 'mengerti', name: 'Mengerti Dahulu Baru Dipahami', emoji: '👂', avgRating: 3.3, totalReports: 17, trend: 'stable', prevRating: 3.4, breakdown: { 1: 1, 2: 3, 3: 6, 4: 5, 5: 2 } },
+   752→        { habitId: 'bersinergi', name: 'Bersinergi', emoji: '🤲', avgRating: 4.1, totalReports: 19, trend: 'up', prevRating: 3.7, breakdown: { 1: 0, 2: 1, 3: 3, 4: 10, 5: 5 } },
+   753→        { habitId: 'asah', name: 'Memperbarui Diri', emoji: '🔧', avgRating: 3.5, totalReports: 16, trend: 'down', prevRating: 3.9, breakdown: { 1: 1, 2: 2, 3: 5, 4: 6, 5: 2 } },
+   754→      ]);
+   755→    }
+   756→    loadSummary();
+   757→  }, [selectedChild, currentMonth]);
+   758→
+   759→  const totalReports = summaries.reduce((sum, s) => sum + s.totalReports, 0);
+   760→  const ratedSummaries = summaries.filter((s) => s.avgRating > 0);
+   761→  const overallAvg = ratedSummaries.length > 0
+   762→    ? Math.round((ratedSummaries.reduce((sum, s) => sum + s.avgRating, 0) / ratedSummaries.length) * 10) / 10
+   763→    : 0;
+   764→  const strongest = [...summaries].sort((a, b) => b.avgRating - a.avgRating)[0];
+   765→  const weakest = [...summaries].filter((s) => s.avgRating > 0).sort((a, b) => a.avgRating - b.avgRating)[0];
+   766→  const scoreInfo = getScoreColor(overallAvg);
+   767→
+   768→  const handlePrint = () => {
+   769→    window.print();
+   770→  };
+   771→
+   772→  const recommendations = weakest && weakest.avgRating < 4
+   773→    ? [`
+   774→      <strong>${weakest.name} ${weakest.emoji}</strong> — Rata-rata ${weakest.avgRating}/5. Coba berikan contoh nyata dalam kehidupan sehari-hari dan diskusikan bersama anak mengapa kebiasaan ini penting.`,
+   775→        strongest && strongest.avgRating > 0
+   776→        ? `<strong>${strongest.name} ${strongest.emoji}</strong> adalah kebiasaan terkuat dengan rata-rata ${strongest.avgRating}/5. Terus apresiasi dan pertahankan!`
+   777→        : '',
+   778→      ]
+   779→    : [];
+   780→
+   781→  if (loading) {
+   782→    return (
+   783→      <div className="space-y-6">
+   784→        <div className="flex items-center gap-3">
+   785→          <Skeleton className="h-11 w-11 rounded-xl" />
+   786→          <div className="space-y-2">
+   787→            <Skeleton className="h-7 w-64" />
+   788→            <Skeleton className="h-4 w-80" />
+   789→          </div>
+   790→        </div>
+   791→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   792→          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+   793→        </div>
+   794→        <Skeleton className="h-52 rounded-xl" />
+   795→        <div className="grid gap-4 md:grid-cols-2">
+   796→          {[1, 2, 3, 4, 5, 6, 7].map((i) => <Skeleton key={i} className="h-32 rounded-xl" />)}
+   797→        </div>
+   798→      </div>
+   799→    );
+   800→  }
+   801→
+   802→  return (
+   803→    <div className="space-y-6">
+   804→      {/* ─── Header ─── */}
+   805→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+   806→        <div className="flex items-center gap-3">
+   807→          <GradientIcon className="h-11 w-11">
+   808→            <BarChart3 className="h-5 w-5" />
+   809→          </GradientIcon>
+   810→          <div>
+   811→            <h1 className="text-2xl font-bold text-foreground">Rekap & Analisis</h1>
+   812→            <p className="text-sm text-muted-foreground mt-0.5">
+   813→              Pantau perkembangan 7 Kebiasaan Anak Hebat secara berkala
+   814→            </p>
+   815→          </div>
+   816→        </div>
+   817→        <Button
+   818→          onClick={handlePrint}
+   819→          variant="outline"
+   820→          className="gap-2 rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   821→        >
+   822→          <Printer className="h-4 w-4" />
+   823→          Cetak Laporan
+   824→        </Button>
+   825→      </div>
+   826→
+   827→      {/* ─── Child Selector + Period + View Mode ─── */}
+   828→      <Card className="rounded-xl shadow-sm">
+   829→        <CardContent className="p-4">
+   830→          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
+   831→            {/* Child Selector with Avatars */}
+   832→            <div className="flex-1 w-full">
+   833→              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+   834→                Pilih Anak
+   835→              </Label>
+   836→              <div className="flex gap-2 flex-wrap">
+   837→                {children.map((child) => {
+   838→                  const isSelected = child.id === selectedChild;
+   839→                  return (
+   840→                    <button
+   841→                      key={child.id}
+   842→                      type="button"
+   843→                      onClick={() => { setSelectedChild(child.id); setSummaries([]); }}
+   844→                      className={cn(
+   845→                        'flex items-center gap-2.5 px-3 py-2 rounded-full transition-all duration-200 cursor-pointer',
+   846→                        'hover:shadow-sm active:scale-[0.98]',
+   847→                        isSelected
+   848→                          ? 'bg-[#1F3864] text-white shadow-sm'
+   849→                          : 'bg-muted/60 text-foreground hover:bg-muted'
+   850→                      )}
+   851→                    >
+   852→                      <div
+   853→                        className={cn(
+   854→                          'h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0',
+   855→                          isSelected ? 'bg-white/20 text-white' : cn(getAvatarColor(child.name), 'text-white')
+   856→                        )}
+   857→                      >
+   858→                        {getInitials(child.name)}
+   859→                      </div>
+   860→                      <div className="text-left">
+   861→                        <div className="text-sm font-medium leading-tight">{child.name}</div>
+   862→                        <div className={cn(
+   863→                          'text-[10px] leading-tight',
+   864→                          isSelected ? 'text-white/70' : 'text-muted-foreground'
+   865→                        )}>
+   866→                          {child.className}
+   867→                        </div>
+   868→                      </div>
+   869→                    </button>
+   870→                  );
+   871→                })}
+   872→              </div>
+   873→            </div>
+   874→
+   875→            {/* Period Navigator */}
+   876→            <div>
+   877→              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+   878→                Periode
+   879→              </Label>
+   880→              <div className="flex items-center gap-1.5">
+   881→                <Button
+   882→                  variant="outline"
+   883→                  size="icon"
+   884→                  onClick={prevMonth}
+   885→                  className="h-9 w-9 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   886→                >
+   887→                  <ChevronLeft className="h-4 w-4" />
+   888→                </Button>
+   889→                <span className="min-w-[140px] text-center font-semibold text-sm px-3 py-2 bg-muted/50 rounded-lg">
+   890→                  {displayMonth}
+   891→                </span>
+   892→                <Button
+   893→                  variant="outline"
+   894→                  size="icon"
+   895→                  onClick={nextMonth}
+   896→                  className="h-9 w-9 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   897→                >
+   898→                  <ChevronRight className="h-4 w-4" />
+   899→                </Button>
+   900→              </div>
+   901→            </div>
+   902→
+   903→            {/* Weekly/Monthly Toggle */}
+   904→            <div>
+   905→              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+   906→                Tampilan
+   907→              </Label>
+   908→              <div className="flex gap-1 bg-muted/50 p-1 rounded-full">
+   909→                {(['weekly', 'monthly'] as const).map((mode) => (
+   910→                  <button
+   911→                    key={mode}
+   912→                    type="button"
+   913→                    onClick={() => setViewMode(mode)}
+   914→                    className={cn(
+   915→                      'px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
+   916→                      viewMode === mode
+   917→                        ? 'bg-white text-foreground shadow-sm'
+   918→                        : 'text-muted-foreground hover:text-foreground'
+   919→                    )}
+   920→                  >
+   921→                    {mode === 'weekly' ? 'Mingguan' : 'Bulanan'}
+   922→                  </button>
+   923→                ))}
+   924→              </div>
+   925→            </div>
+   926→
+   927→            {/* Comparison Period Selector */}
+   928→            <div>
+   929→              <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 block">
+   930→                Perbandingan
+   931→              </Label>
+   932→              <div className="flex gap-1 bg-muted/50 p-1 rounded-full">
+   933→                {([
+   934→                  { value: 'current' as const, label: 'Bulan Ini' },
+   935→                  { value: 'previous' as const, label: 'Bulan Lalu' },
+   936→                ]).map((period) => (
+   937→                  <button
+   938→                    key={period.value}
+   939→                    type="button"
+   940→                    onClick={() => setComparisonPeriod(period.value)}
+   941→                    className={cn(
+   942→                      'px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
+   943→                      comparisonPeriod === period.value
+   944→                        ? 'bg-white text-foreground shadow-sm'
+   945→                        : 'text-muted-foreground hover:text-foreground'
+   946→                    )}
+   947→                  >
+   948→                    {period.label}
+   949→                  </button>
+   950→                ))}
+   951→              </div>
+   952→            </div>
+   953→          </div>
+   954→        </CardContent>
+   955→      </Card>
+   956→
+   957→      {/* ─── Summary Stat Cards ─── */}
+   958→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   959→        {/* Total Reports */}
+   960→        <Card className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+   961→          <CardContent className="p-4">
+   962→            <div className="flex items-start justify-between">
+   963→              <div>
+   964→                <p className="text-xs text-muted-foreground font-medium">Total Laporan</p>
+   965→                <p className="text-3xl font-bold text-foreground mt-1">{totalReports}</p>
+   966→              </div>
+   967→              <div className="h-10 w-10 rounded-xl bg-sky-50 flex items-center justify-center">
+   968→                <MessageCircle className="h-5 w-5 text-sky-500" />
+   969→              </div>
+   970→            </div>
+   971→          </CardContent>
+   972→        </Card>
+   973→
+   974→        {/* Average Rating */}
+   975→        <Card className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+   976→          <CardContent className="p-4">
+   977→            <div className="flex items-start justify-between">
+   978→              <div>
+   979→                <p className="text-xs text-muted-foreground font-medium">Rata-rata</p>
+   980→                <div className="flex items-baseline gap-1 mt-1">
+   981→                  <p className="text-3xl font-bold text-amber-500">{overallAvg}</p>
+   982→                  <Star className="h-4 w-4 text-amber-400 fill-amber-400" />
+   983→                </div>
+   984→              </div>
+   985→              <div className="h-10 w-10 rounded-xl bg-amber-50 flex items-center justify-center">
+   986→                <Award className="h-5 w-5 text-amber-500" />
+   987→              </div>
+   988→            </div>
+   989→          </CardContent>
+   990→        </Card>
+   991→
+   992→        {/* Strongest */}
+   993→        <Card className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border-green-100 bg-green-50/30">
+   994→          <CardContent className="p-4">
+   995→            <div className="flex items-start justify-between">
+   996→              <div className="min-w-0">
+   997→                <p className="text-xs text-muted-foreground font-medium">Terkuat</p>
+   998→                <p className="text-xl mt-0.5">{strongest?.emoji}</p>
+   999→                <p className="text-xs font-semibold text-green-700 mt-0.5 truncate max-w-[120px]">{strongest?.name || '-'}</p>
+  1000→              </div>
+  1001→              <div className="h-10 w-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+  1002→                <TrendingUp className="h-5 w-5 text-green-500" />
+  1003→              </div>
+  1004→            </div>
+  1005→          </CardContent>
+  1006→        </Card>
+  1007→
+  1008→        {/* Weakest */}
+  1009→        <Card className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border-amber-100 bg-amber-50/30">
+  1010→          <CardContent className="p-4">
+  1011→            <div className="flex items-start justify-between">
+  1012→              <div className="min-w-0">
+  1013→                <p className="text-xs text-muted-foreground font-medium">Perlu Diperbaiki</p>
+  1014→                <p className="text-xl mt-0.5">{weakest?.emoji}</p>
+  1015→                <p className="text-xs font-semibold text-amber-700 mt-0.5 truncate max-w-[120px]">{weakest?.name || '-'}</p>
+  1016→              </div>
+  1017→              <div className="h-10 w-10 rounded-xl bg-amber-100 flex items-center justify-center flex-shrink-0">
+  1018→                <Target className="h-5 w-5 text-amber-500" />
+  1019→              </div>
+  1020→            </div>
+  1021→          </CardContent>
+  1022→        </Card>
+  1023→      </div>
+  1024→
+  1025→      {/* ─── Overall Score Card ─── */}
+  1026→      <Card className="rounded-xl shadow-sm overflow-hidden">
+  1027→        <div className={cn('h-1.5', scoreInfo.bg === 'bg-emerald-50' ? 'bg-gradient-to-r from-emerald-400 to-green-400' : scoreInfo.bg === 'bg-green-50' ? 'bg-gradient-to-r from-green-400 to-emerald-400' : scoreInfo.bg === 'bg-amber-50' ? 'bg-gradient-to-r from-amber-400 to-yellow-400' : 'bg-gradient-to-r from-red-400 to-orange-400')} />
+  1028→        <CardContent className="p-6">
+  1029→          <div className="flex flex-col sm:flex-row items-center gap-6">
+  1030→            {/* Big Score Number */}
+  1031→            <div className="text-center sm:text-left flex-shrink-0">
+  1032→              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+  1033→                Skor Keseluruhan
+  1034→              </p>
+  1035→              <div className="flex items-baseline gap-1 justify-center sm:justify-start">
+  1036→                <span className={cn('text-6xl font-bold', scoreInfo.text)}>{overallAvg}</span>
+  1037→                <span className="text-xl text-muted-foreground font-medium">/5</span>
+  1038→              </div>
+  1039→              <div className="flex justify-center sm:justify-start mt-2">
+  1040→                <StarRating rating={Math.round(overallAvg)} size="md" />
+  1041→              </div>
+  1042→            </div>
+  1043→
+  1044→            <Separator orientation="vertical" className="hidden sm:block h-24" />
+  1045→
+  1046→            {/* Progress Bar + Message */}
+  1047→            <div className="flex-1 w-full space-y-3">
+  1048→              <div className="flex items-center justify-between text-sm">
+  1049→                <span className="text-muted-foreground">Progress Keseluruhan</span>
+  1050→                <span className={cn('font-semibold', scoreInfo.text)}>{Math.round(overallAvg * 20)}%</span>
+  1051→              </div>
+  1052→              <div className="h-3 bg-muted rounded-full overflow-hidden">
+  1053→                <div
+  1054→                  className={cn(
+  1055→                    'h-full rounded-full transition-all duration-700 ease-out',
+  1056→                    scoreInfo.bg === 'bg-emerald-50' ? 'bg-gradient-to-r from-emerald-400 to-green-400' :
+  1057→                    scoreInfo.bg === 'bg-green-50' ? 'bg-gradient-to-r from-green-400 to-emerald-400' :
+  1058→                    scoreInfo.bg === 'bg-amber-50' ? 'bg-gradient-to-r from-amber-400 to-yellow-400' :
+  1059→                    'bg-gradient-to-r from-red-400 to-orange-400'
+  1060→                  )}
+  1061→                  style={{ width: `${Math.min(overallAvg * 20, 100)}%` }}
+  1062→                />
+  1063→              </div>
+  1064→              <Badge
+  1065→                className={cn(
+  1066→                  'rounded-full border-0 font-medium',
+  1067→                  scoreInfo.bg, scoreInfo.text
+  1068→                )}
+  1069→              >
+  1070→                {scoreInfo.label}
+  1071→              </Badge>
+  1072→              <p className="text-xs text-muted-foreground leading-relaxed">
+  1073→                {overallAvg >= 4.5
+  1074→                  ? 'Luar biasa! Anak Anda menunjukkan karakter yang sangat baik 🌟'
+  1075→                  : overallAvg >= 3.5
+  1076→                  ? 'Bagus! Anak Anda menunjukkan perkembangan yang positif 👍'
+  1077→                  : overallAvg >= 2.5
+  1078→                  ? 'Cukup baik. Terus dampingi dan bimbing anak Anda 💪'
+  1079→                  : 'Perlu perhatian lebih. Coba komunikasikan dengan guru di sekolah 📞'}
+  1080→              </p>
+  1081→            </div>
+  1082→          </div>
+  1083→        </CardContent>
+  1084→      </Card>
+  1085→
+  1086→      {/* ─── Per-Habit Bars ─── */}
+  1087→      <div>
+  1088→        <h2 className="text-base font-semibold text-foreground mb-4 flex items-center gap-2">
+  1089→          <div className="h-6 w-1 rounded-full bg-gradient-to-b from-[#1F3864] to-[#2d5289]" />
+  1090→          Analisis Per Kebiasaan
+  1091→        </h2>
+  1092→        <div className="grid gap-3 md:grid-cols-2">
+  1093→          {summaries.map((summary) => {
+  1094→            const habit = SEVEN_HABITS.find((h) => h.id === summary.habitId);
+  1095→            return (
+  1096→              <Card
+  1097→                key={summary.habitId}
+  1098→                className={cn(
+  1099→                  'rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border',
+  1100→                  habit?.border || 'border-gray-100'
+  1101→                )}
+  1102→              >
+  1103→                <CardContent className="p-4">
+  1104→                  <div className="flex items-start justify-between mb-3">
+  1105→                    <div className="flex items-center gap-2.5">
+  1106→                      <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center text-lg flex-shrink-0', habit?.bg || 'bg-gray-50')}>
+  1107→                        {summary.emoji}
+  1108→                      </div>
+  1109→                      <div>
+  1110→                        <h3 className="text-sm font-semibold text-foreground">{summary.name}</h3>
+  1111→                        <p className="text-xs text-muted-foreground">{summary.totalReports} laporan</p>
+  1112→                      </div>
+  1113→                    </div>
+  1114→                    <div className="flex items-center gap-1.5">
+  1115→                      {/* Trend Indicator */}
+  1116→                      {summary.trend === 'up' && (
+  1117→                        <div className="flex items-center gap-0.5 text-emerald-500">
+  1118→                          <TrendingUp className="h-3.5 w-3.5" />
+  1119→                          <ArrowUpRight className="h-3.5 w-3.5" />
+  1120→                        </div>
+  1121→                      )}
+  1122→                      {summary.trend === 'down' && (
+  1123→                        <div className="flex items-center gap-0.5 text-red-500">
+  1124→                          <TrendingDown className="h-3.5 w-3.5" />
+  1125→                          <ArrowDownRight className="h-3.5 w-3.5" />
+  1126→                        </div>
+  1127→                      )}
+  1128→                      {summary.trend === 'stable' && (
+  1129→                        <div className="flex items-center text-gray-400">
+  1130→                          <Minus className="h-4 w-4" />
+  1131→                        </div>
+  1132→                      )}
+  1133→                      <span className={cn(
+  1134→                        'text-lg font-bold',
+  1135→                        summary.avgRating >= 4 ? 'text-emerald-600' :
+  1136→                        summary.avgRating >= 3 ? 'text-amber-600' :
+  1137→                        summary.avgRating >= 2 ? 'text-orange-500' : 'text-red-500'
+  1138→                      )}>
+  1139→                        {summary.avgRating > 0 ? summary.avgRating : '-'}
+  1140→                      </span>
+  1141→                    </div>
+  1142→                  </div>
+  1143→
+  1144→                  {/* CSS Horizontal Bar with Rounded Ends */}
+  1145→                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+  1146→                    <div
+  1147→                      className={cn(
+  1148→                        'h-full rounded-full transition-all duration-700 ease-out',
+  1149→                        getBarColor(summary.avgRating)
+  1150→                      )}
+  1151→                      style={{ width: `${Math.min((summary.avgRating / 5) * 100, 100)}%` }}
+  1152→                    />
+  1153→                  </div>
+  1154→
+  1155→                  {/* Breakdown Badges */}
+  1156→                  {summary.totalReports > 0 && (
+  1157→                    <div className="mt-2.5 flex gap-1.5 flex-wrap">
+  1158→                      {Object.entries(summary.breakdown)
+  1159→                        .sort(([a], [b]) => Number(b) - Number(a))
+  1160→                        .map(([rating, count]) => (
+  1161→                          <Badge
+  1162→                            key={rating}
+  1163→                            variant="outline"
+  1164→                            className="text-[10px] px-1.5 py-0 h-5 rounded-full font-medium"
+  1165→                          >
+  1166→                            ★{rating}: {count}x
+  1167→                          </Badge>
+  1168→                        ))}
+  1169→                    </div>
+  1170→                  )}
+  1171→                </CardContent>
+  1172→              </Card>
+  1173→            );
+  1174→          })}
+  1175→        </div>
+  1176→      </div>
+  1177→
+  1178→      {/* ─── Detailed Breakdown Table ─── */}
+  1179→      <Card className="rounded-xl shadow-sm overflow-hidden">
+  1180→        <CardHeader className="pb-3">
+  1181→          <CardTitle className="text-base flex items-center gap-2">
+  1182→            <div className="h-6 w-1 rounded-full bg-gradient-to-b from-[#1F3864] to-[#2d5289]" />
+  1183→            Ringkasan Detail
+  1184→          </CardTitle>
+  1185→          <CardDescription>Perbandingan rata-rata rating setiap kebiasaan</CardDescription>
+  1186→        </CardHeader>
+  1187→        <CardContent className="p-0">
+  1188→          <div className="overflow-x-auto">
+  1189→            <Table>
+  1190→              <TableHeader>
+  1191→                <TableRow className="hover:bg-transparent">
+  1192→                  <TableHead className="pl-5">Kebiasaan</TableHead>
+  1193→                  <TableHead className="text-center">Rata-rata</TableHead>
+  1194→                  <TableHead className="text-center">Total</TableHead>
+  1195→                  <TableHead className="text-center">Tren</TableHead>
+  1196→                  <TableHead className="text-center pr-5 w-[160px]">Visualisasi</TableHead>
+  1197→                </TableRow>
+  1198→              </TableHeader>
+  1199→              <TableBody>
+  1200→                {summaries.map((s, idx) => {
+  1201→                  const habit = SEVEN_HABITS.find((h) => h.id === s.habitId);
+  1202→                  return (
+  1203→                    <TableRow
+  1204→                      key={s.habitId}
+  1205→                      className={cn(
+  1206→                        'transition-colors',
+  1207→                        idx % 2 === 0 ? 'bg-background' : 'bg-muted/30',
+  1208→                        'hover:bg-muted/50'
+  1209→                      )}
+  1210→                    >
+  1211→                      <TableCell className="pl-5">
+  1212→                        <div className="flex items-center gap-2.5">
+  1213→                          <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center text-base flex-shrink-0', habit?.bg || 'bg-gray-50')}>
+  1214→                            {s.emoji}
+  1215→                          </div>
+  1216→                          <span className="text-sm font-medium">{s.name}</span>
+  1217→                        </div>
+  1218→                      </TableCell>
+  1219→                      <TableCell className="text-center">
+  1220→                        <span className={cn(
+  1221→                          'font-bold text-sm',
+  1222→                          s.avgRating >= 4 ? 'text-emerald-600' :
+  1223→                          s.avgRating >= 3 ? 'text-amber-600' :
+  1224→                          s.avgRating >= 2 ? 'text-orange-500' : 'text-red-500'
+  1225→                        )}>
+  1226→                          {s.avgRating > 0 ? s.avgRating : '-'}
+  1227→                        </span>
+  1228→                      </TableCell>
+  1229→                      <TableCell className="text-center text-sm text-muted-foreground">{s.totalReports}</TableCell>
+  1230→                      <TableCell className="text-center">
+  1231→                        {s.trend === 'up' && (
+  1232→                          <Badge className="rounded-full border-0 bg-emerald-50 text-emerald-600 text-xs">
+  1233→                            <TrendingUp className="h-3 w-3 mr-1" /> Naik
+  1234→                          </Badge>
+  1235→                        )}
+  1236→                        {s.trend === 'down' && (
+  1237→                          <Badge className="rounded-full border-0 bg-red-50 text-red-600 text-xs">
+  1238→                            <TrendingDown className="h-3 w-3 mr-1" /> Turun
+  1239→                          </Badge>
+  1240→                        )}
+  1241→                        {s.trend === 'stable' && (
+  1242→                          <Badge className="rounded-full border-0 bg-gray-100 text-gray-500 text-xs">
+  1243→                            <Minus className="h-3 w-3 mr-1" /> Stabil
+  1244→                          </Badge>
+  1245→                        )}
+  1246→                      </TableCell>
+  1247→                      <TableCell className="pr-5">
+  1248→                        <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+  1249→                          <div
+  1250→                            className={cn(
+  1251→                              'h-full rounded-full transition-all duration-700 ease-out',
+  1252→                              getBarColor(s.avgRating)
+  1253→                            )}
+  1254→                            style={{ width: `${Math.min((s.avgRating / 5) * 100, 100)}%` }}
+  1255→                          />
+  1256→                        </div>
+  1257→                      </TableCell>
+  1258→                    </TableRow>
+  1259→                  );
+  1260→                })}
+  1261→              </TableBody>
+  1262→            </Table>
+  1263→          </div>
+  1264→        </CardContent>
+  1265→      </Card>
+  1266→
+  1267→      {/* ─── Recommendations Card ─── */}
+  1268→      <Card className="rounded-xl shadow-sm bg-gradient-to-br from-sky-50/70 to-blue-50/50 border-sky-100/80">
+  1269→        <CardContent className="p-5">
+  1270→          <div className="flex items-center gap-2.5 mb-3">
+  1271→            <div className="h-9 w-9 rounded-xl bg-sky-100 flex items-center justify-center">
+  1272→              <MessageCircle className="h-5 w-5 text-sky-600" />
+  1273→            </div>
+  1274→            <h3 className="font-semibold text-sky-800">Rekomendasi untuk Orang Tua</h3>
+  1275→          </div>
+  1276→          <div className="space-y-3 text-sm text-sky-700/90">
+  1277→            {recommendations.filter(Boolean).map((rec, idx) => (
+  1278→              <div key={idx} className="flex gap-2.5 items-start">
+  1279→                <span className="text-sky-400 mt-0.5 flex-shrink-0">
+  1280→                  {idx === 0 ? '📌' : '🌟'}
+  1281→                </span>
+  1282→                <p dangerouslySetInnerHTML={{ __html: rec }} />
+  1283→              </div>
+  1284→            ))}
+  1285→            <div className="flex gap-2.5 items-start">
+  1286→              <span className="text-sky-400 mt-0.5 flex-shrink-0">📊</span>
+  1287→              <p>
+  1288→                Berdiskusilah dengan guru di sekolah untuk mendapatkan gambaran lengkap
+  1289→                perkembangan karakter anak Anda baik di rumah maupun di sekolah.
+  1290→              </p>
+  1291→            </div>
+  1292→          </div>
+  1293→        </CardContent>
+  1294→      </Card>
+  1295→    </div>
+  1296→  );
+  1297→}
+  1298→

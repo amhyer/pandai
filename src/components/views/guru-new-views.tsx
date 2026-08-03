@@ -123,7 +123,7 @@ function todayStr() { return new Date().toISOString().split('T')[0]; }
 function currentMonth() { return String(new Date().getMonth() + 1).padStart(2, '0'); }
 function formatDate(d: string) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); }
 function formatDateShort(d: string) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); }
-function getInitials(name: string) { return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2); }
+function getInitials(name?: string) { return (name || '-').split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2); }
 
 function getCountdown(dueDate: string): { text: string; urgent: boolean } {
   const now = new Date(); now.setHours(0, 0, 0, 0);
@@ -725,8 +725,8 @@ export function GuruRekapKehadiranView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<Calendar className="w-5 h-5" />} label="Total Hari Efektif" value={totalHari} bg="bg-[#1F3864]/10" color="text-[#1F3864]" />
         <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Rata-rata Kehadiran" value={`${avgKehadiran}%`} bg="bg-emerald-50" color="text-emerald-600" />
-        <StatCard icon={<FileText className="w-5 h-5" />} label="Sering Izin" value={seringIzin ? seringIzin.studentName.split(' ')[0] : '-'} bg="bg-blue-50" color="text-blue-600" sub={seringIzin ? `${seringIzin.izin}x` : ''} />
-        <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Sering Alpa" value={seringAlpa ? seringAlpa.studentName.split(' ')[0] : '-'} bg="bg-red-50" color="text-red-600" sub={seringAlpa ? `${seringAlpa.alpa}x` : ''} />
+        <StatCard icon={<FileText className="w-5 h-5" />} label="Sering Izin" value={seringIzin ? (seringIzin.studentName || '-').split(' ')[0] : '-'} bg="bg-blue-50" color="text-blue-600" sub={seringIzin ? `${seringIzin.izin}x` : ''} />
+        <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Sering Alpa" value={seringAlpa ? (seringAlpa.studentName || '-').split(' ')[0] : '-'} bg="bg-red-50" color="text-red-600" sub={seringAlpa ? `${seringAlpa.alpa}x` : ''} />
       </div>
 
       {/* Table with percentage bars */}

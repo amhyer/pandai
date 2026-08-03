@@ -226,8 +226,8 @@ function getModuleIcon(module: string) {
   }
 }
 
-function getInitials(name: string): string {
-  return name
+function getInitials(name?: string): string {
+  return (name || '-')
     .split(/[,\s.]+/)
     .filter(Boolean)
     .slice(0, 2)
@@ -236,13 +236,13 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
-function getAvatarColor(name: string): string {
+function getAvatarColor(name?: string): string {
   const colors = [
     'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
     'bg-sky-500', 'bg-rose-500', 'bg-teal-500',
   ];
   let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 }
 
@@ -814,7 +814,21 @@ export function TeacherAssignmentsView() {
       const res = await fetch(`/api/teacher-assignments?schoolId=${schoolId}`);
       if (res.ok) {
         const data = await res.json();
-        setAssignments(Array.isArray(data) ? data : data.data ?? []);
+        // Map API nested response to flat structure expected by UI
+        const mapped: TeacherAssignment[] = (Array.isArray(data) ? data : data.data ?? []).map((a: Record<string, unknown>) => ({
+          id: a.id,
+          teacherId: a.teacherId,
+          teacherName: (a.teacher as Record<string, string> | null)?.name ?? a.teacherName ?? '-',
+          teacherNip: (a.teacher as Record<string, string> | null)?.nip ?? a.teacherNip ?? '-',
+          subjectId: a.subjectId,
+          subjectName: (a.subject as Record<string, string> | null)?.name ?? a.subjectName ?? '-',
+          classId: a.classId,
+          className: (a.class as Record<string, string> | null)?.name ?? a.className ?? '-',
+          academicYear: a.academicYear ?? '2024/2025',
+          semester: a.semester ?? 'Ganjil',
+          schoolId: a.schoolId,
+        }));
+        setAssignments(mapped.length > 0 ? mapped : MOCK_ASSIGNMENTS);
       } else {
         setAssignments(MOCK_ASSIGNMENTS);
       }
@@ -1910,12 +1924,16 @@ export function ActivityLogView() {
       const schoolId = user?.schoolId ?? '';
       const res = await fetch(`/api/activity-logs?schoolId=${schoolId}&limit=50&offset=0`);
       if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data)) {
-          setLogs(data);
-        } else if (data.data) {
-          setLogs(Array.isArray(data.data) ? data.data : []);
-        }
+        const json = await res.json();
+        const rawData: ActivityLog[] = (Array.isArray(json) ? json : json.data ?? []).map((l: Record<string, unknown>) => ({
+          id: l.id ?? String(Math.random()),
+          timestamp: (l.createdAt as string) ?? (l.timestamp as string) ?? new Date().toISOString(),
+          userName: (l.user as Record<string, string> | null)?.name ?? l.userName ?? 'Sistem',
+          action: (l.action as string) ?? '',
+          detail: (l.detail as string) ?? '-',
+          module: (l.module as ActivityLog['module']) ?? 'Lainnya',
+        }));
+        setLogs(rawData.length > 0 ? rawData : MOCK_ACTIVITY_LOGS);
       } else {
         setLogs(MOCK_ACTIVITY_LOGS);
       }
@@ -1939,9 +1957,9 @@ export function ActivityLogView() {
       const q = debouncedSearch.toLowerCase();
       result = result.filter(
         (l) =>
-          l.userName.toLowerCase().includes(q) ||
-          l.action.toLowerCase().includes(q) ||
-          l.detail.toLowerCase().includes(q)
+          (l.userName || '').toLowerCase().includes(q) ||
+          (l.action || '').toLowerCase().includes(q) ||
+          (l.detail || '').toLowerCase().includes(q)
       );
     }
     if (dateFrom) {
