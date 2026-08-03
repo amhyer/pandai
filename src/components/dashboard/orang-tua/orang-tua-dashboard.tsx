@@ -29,6 +29,9 @@ import {
   Bell,
   Shield,
   MessageSquare,
+  ChevronRight,
+  Star,
+  Users,
 } from 'lucide-react';
 
 // ─── Types ─────────────────────────────────────────────────────────
@@ -48,7 +51,9 @@ interface Tip {
   icon: React.ReactNode;
   title: string;
   description: string;
-  color: string;
+  gradientFrom: string;
+  gradientTo: string;
+  iconBg?: string;
 }
 
 // ─── Stat Card ──────────────────────────────────────────────────────
@@ -60,30 +65,38 @@ interface StatCardProps {
   subtext?: string;
   isLoading?: boolean;
   onClick?: () => void;
-  iconBg?: string;
-  iconColor?: string;
+  gradientFrom?: string;
+  gradientTo?: string;
 }
 
-function StatCard({ title, value, icon, subtext, isLoading, onClick, iconBg, iconColor }: StatCardProps) {
+function StatCard({ title, value, icon, subtext, isLoading, onClick, gradientFrom, gradientTo }: StatCardProps) {
   return (
     <Card
-      className={`cursor-pointer hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 group`}
+      className={`rounded-xl shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden group`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => { if (e.key === 'Enter' || e.key === ' ') onClick(); } : undefined}
     >
-      <CardContent className="flex items-start gap-4 p-4 sm:p-6">
-        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${iconBg ?? 'bg-[#1F3864]/10 text-[#1F3864]'} ${iconColor ?? ''}`}>
-          {icon}
-        </div>
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-muted-foreground group-hover:text-foreground transition-colors">{title}</p>
-          {isLoading ? (
-            <Skeleton className="h-8 w-16" />
-          ) : (
-            <p className="text-2xl font-bold">{value}</p>
-          )}
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1.5">
+            {isLoading ? (
+              <>
+                <Skeleton className="h-3.5 w-24 mb-2 rounded" />
+                <Skeleton className="h-8 w-16 rounded" />
+              </>
+            ) : (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground group-hover:text-foreground transition-colors">{title}</p>
+                <p className="text-2xl font-bold">{value}</p>
+                {subtext && <p className="text-xs text-muted-foreground mt-0.5">{subtext}</p>}
+              </>
+            )}
+          </div>
+          <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br text-white shadow-sm ${gradientFrom && gradientTo ? `${gradientFrom} ${gradientTo}` : 'from-[#1F3864] to-[#2d5289]'}`}>
+            {icon}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -94,14 +107,14 @@ function StatCard({ title, value, icon, subtext, isLoading, onClick, iconBg, ico
 
 function AnimatedProgressBar({ value, label, color, delay }: { value: number; label: string; color: string; delay: number }) {
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{label}</span>
-        <span className="text-xs font-semibold" style={{ color }}>{value}%</span>
+        <span className="text-xs text-muted-foreground font-medium">{label}</span>
+        <span className="text-xs font-bold" style={{ color }}>{value}%</span>
       </div>
-      <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
+      <div className="h-3 w-full rounded-full bg-muted/50 overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-1000 ease-out"
+          className="h-full rounded-full transition-all duration-1000 ease-out shadow-sm"
           style={{
             width: `${Math.min(value, 100)}%`,
             backgroundColor: color,
@@ -113,6 +126,37 @@ function AnimatedProgressBar({ value, label, color, delay }: { value: number; la
   );
 }
 
+// ─── Quick Action Card ──────────────────────────────────────────────
+
+function QuickActionCard({ icon, label, description, onClick, color, badge }: {
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  onClick: () => void;
+  color: string;
+  badge?: string;
+}) {
+  return (
+    <button
+      className="flex flex-col items-center gap-3 rounded-xl border border-border/60 bg-white p-5 shadow-sm cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 active:scale-[0.98] group text-center"
+      onClick={onClick}
+    >
+      <div className={`relative flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br ${color} text-white shadow-sm group-hover:scale-105 transition-transform duration-200`}>
+        {icon}
+        {badge && (
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-[8px] text-white font-bold shadow-sm">
+            {badge}
+          </span>
+        )}
+      </div>
+      <div>
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5 leading-tight">{description}</p>
+      </div>
+    </button>
+  );
+}
+
 // ─── Main Component ─────────────────────────────────────────────────
 
 export function OrangTuaDashboard() {
@@ -121,35 +165,43 @@ export function OrangTuaDashboard() {
   const [children, setChildren] = useState<ChildData[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Parent tips
+  // Current date helper
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  // Parent tips with enhanced styling
   const tips: Tip[] = [
     {
       id: '1',
       icon: <Lightbulb className="h-4 w-4" />,
       title: 'Dukung rutinitas belajar',
       description: 'Bantu anak membuat jadwal belajar teratur. 30-45 menit per sesi lebih efektif daripada belajar bertele-tele.',
-      color: 'bg-amber-50 text-amber-600 border-amber-200',
+      gradientFrom: 'from-amber-400',
+      gradientTo: 'to-amber-500',
     },
     {
       id: '2',
       icon: <Heart className="h-4 w-4" />,
       title: 'Pujikan usaha, bukan hanya hasil',
       description: 'Fokus pada proses belajar anak. Apresiasi konsistensi dan usaha keras.',
-      color: 'bg-red-50 text-red-600 border-red-200',
+      gradientFrom: 'from-red-400',
+      gradientTo: 'to-red-500',
     },
     {
       id: '3',
       icon: <Shield className="h-4 w-4" />,
       title: 'Jaga kesehatan anak',
       description: 'Pastikan anak cukup tidur (7-8 jam) dan makan bergizi sebelum ujian/tryout.',
-      color: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+      gradientFrom: 'from-emerald-500',
+      gradientTo: 'to-emerald-600',
     },
     {
       id: '4',
       icon: <MessageSquare className="h-4 w-4" />,
       title: 'Komunikasi dengan guru',
       description: 'Rutin cek perkembangan anak dan diskusikan strategi bersama guru di sekolah.',
-      color: 'bg-[#1F3864]/10 text-[#1F3864] border-[#1F3864]/20',
+      gradientFrom: 'from-[#1F3864]',
+      gradientTo: 'to-[#2d5289]',
     },
   ];
 
@@ -198,25 +250,34 @@ export function OrangTuaDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Welcome Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">
-          Selamat Datang, {user?.name ?? 'Orang Tua'} 👋
-        </h1>
-        <p className="text-muted-foreground">
-          Pantau perkembangan belajar anak Anda di sini.
-        </p>
+    <div className="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen -m-4 sm:-m-6 lg:-m-8 p-4 sm:p-6 lg:p-8 space-y-6">
+      {/* ── Welcome Header ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3 flex-wrap">
+            <h1 className="text-2xl font-bold tracking-tight text-[#1F3864]">
+              Selamat Datang, {user?.name ?? 'Orang Tua'} ✨
+            </h1>
+            <Badge className="rounded-full bg-gradient-to-r from-[#1F3864] to-[#2d5289] text-white border-0 shadow-sm text-xs px-3 py-0.5">
+              <Users className="mr-1 h-3 w-3" />
+              Orang Tua
+            </Badge>
+          </div>
+          <p className="text-sm text-muted-foreground">{dateStr}</p>
+          <p className="text-sm text-muted-foreground">
+            Pantau perkembangan belajar anak Anda. Dukung mereka meraih prestasi terbaik! 🌟
+          </p>
+        </div>
       </div>
 
-      {/* Summary Stats */}
+      {/* ── Summary Stats ── */}
       {loading ? (
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
-            <Card key={i}>
-              <CardContent className="p-4">
-                <Skeleton className="h-4 w-24 mb-2" />
-                <Skeleton className="h-8 w-16" />
+            <Card key={i} className="rounded-xl shadow-sm">
+              <CardContent className="p-5">
+                <Skeleton className="h-3.5 w-24 mb-2 rounded" />
+                <Skeleton className="h-8 w-16 rounded" />
               </CardContent>
             </Card>
           ))}
@@ -228,8 +289,8 @@ export function OrangTuaDashboard() {
             value={children.length}
             icon={<GraduationCap className="h-5 w-5" />}
             onClick={() => navigateTo('ortu-nilai' as ViewType)}
-            iconBg="bg-[#1F3864]/10"
-            iconColor="text-[#1F3864]"
+            gradientFrom="from-[#1F3864]"
+            gradientTo="to-[#2d5289]"
           />
           <StatCard
             title="Rata-rata Skor"
@@ -238,8 +299,8 @@ export function OrangTuaDashboard() {
               : '-'}
             icon={<Target className="h-5 w-5" />}
             onClick={() => navigateTo('ortu-nilai' as ViewType)}
-            iconBg="bg-amber-50"
-            iconColor="text-amber-600"
+            gradientFrom="from-amber-400"
+            gradientTo="to-amber-500"
           />
           <StatCard
             title="Total Tryout"
@@ -248,8 +309,8 @@ export function OrangTuaDashboard() {
               : 0}
             icon={<ClipboardList className="h-5 w-5" />}
             onClick={() => navigateTo('ortu-kuis' as ViewType)}
-            iconBg="bg-emerald-50"
-            iconColor="text-emerald-600"
+            gradientFrom="from-emerald-500"
+            gradientTo="to-emerald-600"
           />
           <StatCard
             title="Kehadiran"
@@ -258,47 +319,68 @@ export function OrangTuaDashboard() {
               : '-'}
             icon={<UserCheck className="h-5 w-5" />}
             onClick={() => navigateTo('ortu-kehadiran' as ViewType)}
-            iconBg="bg-sky-50"
-            iconColor="text-sky-600"
+            gradientFrom="from-sky-500"
+            gradientTo="to-sky-600"
           />
         </div>
       )}
 
-      {/* Children Cards */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Perkembangan Anak</CardTitle>
-          <CardDescription>Status belajar anak-anak Anda</CardDescription>
+      {/* ── Children Cards ── */}
+      <Card className="rounded-xl shadow-sm border-border/60">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <GraduationCap className="h-5 w-5 text-[#1F3864]" />
+                Perkembangan Anak
+              </CardTitle>
+              <CardDescription className="mt-1">Status belajar anak-anak Anda</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-xl shadow-sm gap-1.5 hover:shadow-md transition-all duration-200 active:scale-[0.98]"
+              onClick={() => navigateTo('ortu-nilai' as ViewType)}
+            >
+              Lihat Detail
+              <ChevronRight className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
             <div className="space-y-4">
-              <Skeleton className="h-32 w-full" />
-              <Skeleton className="h-32 w-full" />
+              <Skeleton className="h-40 w-full rounded-xl" />
+              <Skeleton className="h-40 w-full rounded-xl" />
             </div>
           ) : children.length > 0 ? (
             <div className="grid gap-4 sm:grid-cols-2">
               {children.map((child) => (
                 <div
                   key={child.id}
-                  className="rounded-xl border p-4 space-y-4 hover:border-[#1F3864]/30 hover:shadow-md transition-all duration-200 cursor-pointer hover:-translate-y-0.5"
+                  className="rounded-xl border border-border/60 bg-white p-5 space-y-4 hover:border-[#1F3864]/30 hover:shadow-md transition-all duration-200 cursor-pointer hover:-translate-y-0.5"
                   onClick={() => navigateTo('ortu-nilai' as ViewType)}
                 >
                   <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-base">{child.name}</h3>
-                      {child.className && (
-                        <p className="text-sm text-muted-foreground">{child.className}</p>
-                      )}
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white shadow-sm">
+                        <span className="text-sm font-bold">{child.name.charAt(0)}</span>
+                      </div>
+                      <div>
+                        <h3 className="font-semibold text-base">{child.name}</h3>
+                        {child.className && (
+                          <p className="text-xs text-muted-foreground">{child.className}</p>
+                        )}
+                      </div>
                     </div>
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <Badge className="rounded-full bg-emerald-100 text-emerald-700 border-0 text-[10px] px-2.5 py-0.5 font-semibold">
                       <CheckCircle2 className="mr-1 h-3 w-3" />
                       Aktif
                     </Badge>
                   </div>
 
                   {/* Animated Progress Bars */}
-                  <div className="space-y-2.5">
+                  <div className="space-y-3">
                     <AnimatedProgressBar
                       value={child.avgScore}
                       label="Rata-rata Skor"
@@ -319,13 +401,14 @@ export function OrangTuaDashboard() {
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="flex items-center gap-1">
+                  <div className="flex items-center justify-between pt-2 border-t border-border/40">
+                    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       Terakhir aktif: {child.lastActive}
                     </span>
-                    <span className="flex items-center gap-1 text-[#1F3864] font-medium">
-                      Lihat Detail <ArrowRight className="h-3 w-3" />
+                    <span className="flex items-center gap-1 text-xs text-[#1F3864] font-semibold hover:text-[#2d5289] transition-colors">
+                      Lihat Detail
+                      <ArrowRight className="h-3 w-3" />
                     </span>
                   </div>
                 </div>
@@ -345,41 +428,50 @@ export function OrangTuaDashboard() {
         </CardContent>
       </Card>
 
-      {/* Notifications / Tips */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-[#1F3864]" />
-            <CardTitle className="text-lg">Tips untuk Orang Tua</CardTitle>
-          </div>
-          <CardDescription>Saran untuk mendukung belajar anak di rumah</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {tips.map((tip) => (
-              <div
-                key={tip.id}
-                className={`rounded-lg border p-4 space-y-2 ${tip.color} hover:shadow-sm transition-all cursor-pointer`}
-              >
-                <div className="flex items-center gap-2">
-                  {tip.icon}
-                  <p className="text-sm font-semibold">{tip.title}</p>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{tip.description}</p>
+      {/* ── Tips Card ── */}
+      <Card className="rounded-xl shadow-sm border-border/60 overflow-hidden">
+        <div className="bg-gradient-to-r from-[#1F3864]/5 via-amber-50/50 to-[#1F3864]/5">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-sm">
+                <Bell className="h-4.5 w-4.5" />
               </div>
-            ))}
-          </div>
-        </CardContent>
+              <div>
+                <CardTitle className="text-lg">Tips untuk Orang Tua</CardTitle>
+                <CardDescription className="text-xs">Saran untuk mendukung belajar anak di rumah</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {tips.map((tip) => (
+                <div
+                  key={tip.id}
+                  className="rounded-xl border border-border/40 bg-white p-4 space-y-2.5 hover:shadow-md transition-all duration-200 cursor-pointer hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${tip.gradientFrom} ${tip.gradientTo} text-white shadow-sm`}>
+                      {tip.icon}
+                    </div>
+                    <p className="text-sm font-semibold">{tip.title}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed pl-[42px]">{tip.description}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </div>
       </Card>
 
-      {/* Quick Actions */}
+      {/* ── Quick Actions ── */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div
-          className="relative overflow-hidden rounded-xl border-2 border-[#1F3864] bg-gradient-to-br from-[#1F3864] to-[#152850] p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
+        {/* Primary Action */}
+        <button
+          className="relative overflow-hidden rounded-xl border-2 border-[#1F3864] bg-gradient-to-br from-[#1F3864] to-[#152850] p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 active:scale-[0.98] group text-left"
           onClick={() => navigateTo('ortu-nilai' as ViewType)}
         >
-          <div className="absolute top-2 right-2">
-            <Badge className="bg-white/20 text-white border-white/30 hover:bg-white/30 text-[10px]">
+          <div className="absolute top-3 right-3">
+            <Badge className="rounded-full bg-white/20 text-white border-white/30 text-[10px] px-2.5 py-0.5">
               <TrendingUp className="mr-1 h-3 w-3" />
               Aktif
             </Badge>
@@ -389,36 +481,51 @@ export function OrangTuaDashboard() {
           <p className="text-sm text-white/60 mt-1">Lihat nilai dan perkembangan anak</p>
           <div className="mt-3 flex items-center gap-1 text-xs text-white/50 group-hover:text-white/80 transition-colors">
             <span>Lihat detail</span>
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
-        <div
-          className="rounded-xl border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
+        </button>
+
+        <button
+          className="rounded-xl border-2 border-amber-200/60 bg-gradient-to-br from-amber-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 active:scale-[0.98] group text-left"
           onClick={() => navigateTo('ortu-materi' as ViewType)}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-100 text-amber-600 mb-3">
-            <BookOpen className="h-6 w-6" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-sm mb-3">
+            <BookOpen className="h-5 w-5" />
           </div>
           <h3 className="text-lg font-bold text-amber-800">Materi Pelajaran</h3>
           <p className="text-sm text-muted-foreground mt-1">Materi yang dipelajari anak</p>
           <div className="mt-3 flex items-center gap-1 text-xs text-amber-600/60 group-hover:text-amber-600 transition-colors">
             <span>Lihat materi</span>
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
           </div>
-        </div>
-        <div
-          className="rounded-xl border-2 border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 group"
+        </button>
+
+        <button
+          className="rounded-xl border-2 border-emerald-200/60 bg-gradient-to-br from-emerald-50 to-white p-5 cursor-pointer hover:-translate-y-1 hover:shadow-lg transition-all duration-200 active:scale-[0.98] group text-left"
           onClick={() => navigateTo('ortu-kuis' as ViewType)}
         >
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600 mb-3">
-            <ClipboardList className="h-6 w-6" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-sm mb-3">
+            <ClipboardList className="h-5 w-5" />
           </div>
           <h3 className="text-lg font-bold text-emerald-800">Riwayat Pengerjaan</h3>
           <p className="text-sm text-muted-foreground mt-1">Tryout dan latihan anak</p>
           <div className="mt-3 flex items-center gap-1 text-xs text-emerald-600/60 group-hover:text-emerald-600 transition-colors">
             <span>Lihat riwayat</span>
-            <ArrowRight className="h-3 w-3" />
+            <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
           </div>
+        </button>
+      </div>
+
+      {/* ── Encouragement Banner ── */}
+      <div className="rounded-xl bg-gradient-to-r from-[#1F3864]/5 to-amber-50/50 border border-[#1F3864]/10 p-4 flex items-start gap-3">
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white shadow-sm">
+          <Star className="h-4.5 w-4.5" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-[#1F3864]">Dukungan Anda Sangat Berarti 🏠</p>
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+            Peran orang tua sebagai pendukung belajar sangat penting. Dengan memantau dan memberikan dorongan positif, Anda membantu anak mencapai potensi terbaiknya.
+          </p>
         </div>
       </div>
     </div>

@@ -2,14 +2,12 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/store/use-store';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -60,17 +58,17 @@ import {
   ClipboardList,
   FileQuestion,
   CheckCircle2,
-  XCircle,
   FileDown,
   History,
-  Info,
   Save,
   BarChart3,
   Layers,
   Archive,
   AlertCircle,
-  ChevronDown,
   Filter,
+  Loader2,
+  CalendarDays,
+  FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -208,6 +206,16 @@ function getModuleBadgeClasses(module: string): string {
   }
 }
 
+function getModuleDotColor(module: string): string {
+  switch (module) {
+    case 'Pengguna': return 'bg-violet-500';
+    case 'Kelas': return 'bg-emerald-500';
+    case 'Ujian': return 'bg-amber-500';
+    case 'Soal': return 'bg-sky-500';
+    default: return 'bg-gray-400';
+  }
+}
+
 function getModuleIcon(module: string) {
   switch (module) {
     case 'Pengguna': return UserCircle;
@@ -216,6 +224,90 @@ function getModuleIcon(module: string) {
     case 'Soal': return FileQuestion;
     default: return Activity;
   }
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(/[,\s.]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase();
+}
+
+function getAvatarColor(name: string): string {
+  const colors = [
+    'bg-violet-500', 'bg-emerald-500', 'bg-amber-500',
+    'bg-sky-500', 'bg-rose-500', 'bg-teal-500',
+  ];
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  return colors[Math.abs(hash) % colors.length];
+}
+
+/* GradientIcon — page header icon wrapper */
+function GradientIcon({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={cn(
+        'flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white shadow-sm',
+        'bg-gradient-to-br from-[#1F3864] to-[#2d5289]',
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+/* GradientStatCard — stat card with gradient accent */
+function GradientStatCard({
+  icon,
+  label,
+  value,
+  gradient,
+  iconBg,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+  gradient: string;
+  iconBg?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        'rounded-xl shadow-sm p-5 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5',
+        'border border-white/60',
+        gradient
+      )}
+    >
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-white/80">{label}</p>
+          <p className="mt-1 text-3xl font-bold text-white">{value}</p>
+        </div>
+        <div className={cn('flex h-12 w-12 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm', iconBg)}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Empty state helper */
+function EmptyState({ icon: Icon, title, description, action }: { icon: React.ElementType; title: string; description: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted/50">
+        <Icon className="h-10 w-10 text-muted-foreground/60" />
+      </div>
+      <p className="mt-4 text-base font-semibold text-foreground">{title}</p>
+      <p className="mt-1 max-w-sm text-sm text-muted-foreground">{description}</p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -227,6 +319,7 @@ export function SubjectsView() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'semua' | 'wajib' | 'pilihan'>('semua');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<Subject | null>(null);
@@ -258,15 +351,20 @@ export function SubjectsView() {
   }, [fetchSubjects]);
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return subjects;
-    const q = search.toLowerCase();
-    return subjects.filter(
-      (s) =>
-        s.code.toLowerCase().includes(q) ||
-        s.name.toLowerCase().includes(q) ||
-        s.type.toLowerCase().includes(q)
-    );
-  }, [subjects, search]);
+    let result = subjects;
+    if (typeFilter !== 'semua') {
+      result = result.filter((s) => s.type === typeFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (s) =>
+          s.code.toLowerCase().includes(q) ||
+          s.name.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [subjects, search, typeFilter]);
 
   const wajibCount = subjects.filter((s) => s.type === 'wajib').length;
   const pilihanCount = subjects.filter((s) => s.type === 'pilihan').length;
@@ -332,9 +430,8 @@ export function SubjectsView() {
         }
       }
     } catch {
-      // fallback: update local state
+      // fallback
     }
-    // Mock fallback
     if (editingSubject) {
       setSubjects((prev) =>
         prev.map((s) =>
@@ -381,16 +478,24 @@ export function SubjectsView() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-10 w-36" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-52" />
+            <Skeleton className="h-4 w-72" />
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
-        <Skeleton className="h-96" />
+        <Skeleton className="h-10 w-full max-w-sm rounded-lg" />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Skeleton key={i} className="h-32 rounded-xl" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -399,159 +504,183 @@ export function SubjectsView() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
-            Mata Pelajaran
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Kelola daftar mata pelajaran untuk {user?.schoolName ?? 'sekolah Anda'}
-          </p>
+        <div className="flex items-center gap-3">
+          <GradientIcon>
+            <BookOpen className="h-5 w-5" />
+          </GradientIcon>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
+              Mata Pelajaran
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Kelola daftar mata pelajaran untuk {user?.schoolName ?? 'sekolah Anda'}
+            </p>
+          </div>
         </div>
-        <Button onClick={openAdd} className="gap-2" style={{ backgroundColor: BRAND }}>
+        <Button
+          onClick={openAdd}
+          className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+          style={{ backgroundColor: BRAND }}
+        >
           <Plus className="h-4 w-4" />
           Tambah Mapel
         </Button>
       </div>
 
-      {/* Stats */}
+      {/* Stat Cards with Gradient Backgrounds */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="border-l-4" style={{ borderLeftColor: BRAND }}>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${BRAND}15` }}>
-              <BookOpen className="h-6 w-6" style={{ color: BRAND }} />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Mata Pelajaran</p>
-              <p className="text-2xl font-bold" style={{ color: BRAND }}>{subjects.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
-              <Layers className="h-6 w-6 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Wajib</p>
-              <p className="text-2xl font-bold text-emerald-600">{wajibCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-amber-500">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-amber-50">
-              <BarChart3 className="h-6 w-6 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Pilihan</p>
-              <p className="text-2xl font-bold text-amber-600">{pilihanCount}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <GradientStatCard
+          icon={<BookOpen className="h-6 w-6 text-white" />}
+          label="Total Mata Pelajaran"
+          value={subjects.length}
+          gradient="bg-gradient-to-br from-[#1F3864] to-[#2d5289]"
+        />
+        <GradientStatCard
+          icon={<Layers className="h-6 w-6 text-white" />}
+          label="Wajib"
+          value={wajibCount}
+          gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
+        />
+        <GradientStatCard
+          icon={<BarChart3 className="h-6 w-6 text-white" />}
+          label="Pilihan"
+          value={pilihanCount}
+          gradient="bg-gradient-to-br from-amber-400 to-amber-500"
+        />
       </div>
 
-      {/* Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="relative max-w-sm">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Cari kode atau nama mapel..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {/* Search + Filter */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Cari kode atau nama mapel..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          {(['semua', 'wajib', 'pilihan'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(t)}
+              className={cn(
+                'px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
+                typeFilter === t
+                  ? 'text-white shadow-sm'
+                  : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+              )}
+              style={typeFilter === t ? { backgroundColor: BRAND } : undefined}
+            >
+              {t === 'semua' ? 'Semua' : t === 'wajib' ? 'Wajib' : 'Pilihan'}
+            </button>
+          ))}
+        </div>
+      </div>
 
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="max-h-[480px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent" style={{ backgroundColor: `${BRAND}08` }}>
-                  <TableHead className="w-12 text-center">No</TableHead>
-                  <TableHead>Kode</TableHead>
-                  <TableHead>Nama</TableHead>
-                  <TableHead>Tipe</TableHead>
-                  <TableHead className="text-center">Urutan</TableHead>
-                  <TableHead className="text-center">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      {search ? 'Tidak ada mata pelajaran yang cocok' : 'Belum ada mata pelajaran'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filtered.map((s, i) => (
-                    <TableRow key={s.id} className="group">
-                      <TableCell className="text-center font-medium text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell>
-                        <span className="rounded-md bg-gray-100 px-2 py-1 font-mono text-xs font-semibold">
-                          {s.code}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-medium">{s.name}</TableCell>
-                      <TableCell>
-                        <Badge
-                          className={cn(
-                            'border text-xs font-medium',
-                            s.type === 'wajib'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-amber-50 text-amber-700 border-amber-200'
-                          )}
-                        >
-                          {s.type === 'wajib' ? 'Wajib' : 'Pilihan'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center">{s.sortOrder}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => openEdit(s)}
-                          >
-                            <Pencil className="h-4 w-4 text-muted-foreground group-hover:text-amber-600" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              setDeletingSubject(s);
-                              setDeleteOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-muted-foreground group-hover:text-red-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Subject Cards Grid */}
+      {filtered.length === 0 ? (
+        <EmptyState
+          icon={BookOpen}
+          title={search || typeFilter !== 'semua' ? 'Tidak ada hasil' : 'Belum ada mata pelajaran'}
+          description={search || typeFilter !== 'semua' ? 'Coba ubah filter atau kata kunci pencarian Anda' : 'Mulai tambahkan mata pelajaran pertama Anda'}
+          action={
+            !search && typeFilter === 'semua' ? (
+              <Button
+                onClick={openAdd}
+                className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                style={{ backgroundColor: BRAND }}
+              >
+                <Plus className="h-4 w-4" />
+                Tambah Mapel
+              </Button>
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((s, i) => (
+            <div
+              key={s.id}
+              className="group relative rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5"
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div
+                    className={cn(
+                      'flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold text-white shrink-0',
+                      s.type === 'wajib'
+                        ? 'bg-gradient-to-br from-emerald-500 to-emerald-600'
+                        : 'bg-gradient-to-br from-amber-400 to-amber-500'
+                    )}
+                  >
+                    {s.code.slice(0, 2)}
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-foreground leading-tight">{s.name}</h3>
+                    <p className="mt-0.5 font-mono text-xs text-muted-foreground">{s.code}</p>
+                  </div>
+                </div>
+                <Badge
+                  className={cn(
+                    'rounded-full text-xs font-medium border',
+                    s.type === 'wajib'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-amber-50 text-amber-700 border-amber-200'
+                  )}
+                >
+                  {s.type === 'wajib' ? 'Wajib' : 'Pilihan'}
+                </Badge>
+              </div>
+              <div className="mt-4 flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  Urutan: <span className="font-semibold text-foreground">#{s.sortOrder}</span>
+                </span>
+                <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm hover:bg-amber-50"
+                    onClick={() => openEdit(s)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-amber-600" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm hover:bg-red-50"
+                    onClick={() => {
+                      setDeletingSubject(s);
+                      setDeleteOpen(true);
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-      {/* Add/Edit Dialog */}
+      {/* Add/Edit Dialog with Rounded Form Inputs */}
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && setDialogOpen(false)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-xl transition-all duration-200">
           <DialogHeader>
-            <DialogTitle style={{ color: BRAND }}>
-              {editingSubject ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran Baru'}
-            </DialogTitle>
-            <DialogDescription>
-              {editingSubject ? 'Perbarui informasi mata pelajaran di bawah ini.' : 'Isi data mata pelajaran yang akan ditambahkan.'}
-            </DialogDescription>
+            <div className="flex items-center gap-3">
+              <GradientIcon className="h-10 w-10">
+                {editingSubject ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              </GradientIcon>
+              <div>
+                <DialogTitle style={{ color: BRAND }}>
+                  {editingSubject ? 'Edit Mata Pelajaran' : 'Tambah Mata Pelajaran Baru'}
+                </DialogTitle>
+                <DialogDescription className="mt-1">
+                  {editingSubject ? 'Perbarui informasi mata pelajaran di bawah ini.' : 'Isi data mata pelajaran yang akan ditambahkan.'}
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
@@ -562,6 +691,7 @@ export function SubjectsView() {
                 value={formCode}
                 onChange={(e) => setFormCode(e.target.value.toUpperCase())}
                 maxLength={10}
+                className="rounded-lg focus-visible:ring-[#1F3864]/30"
               />
             </div>
             <div className="space-y-2">
@@ -571,12 +701,13 @@ export function SubjectsView() {
                 placeholder="cth: Matematika"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
+                className="rounded-lg focus-visible:ring-[#1F3864]/30"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="subj-type">Tipe</Label>
               <Select value={formType} onValueChange={(v: 'wajib' | 'pilihan') => setFormType(v)}>
-                <SelectTrigger id="subj-type">
+                <SelectTrigger id="subj-type" className="rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -593,14 +724,21 @@ export function SubjectsView() {
                 min={1}
                 value={formOrder}
                 onChange={(e) => setFormOrder(Number(e.target.value) || 1)}
+                className="rounded-lg focus-visible:ring-[#1F3864]/30"
               />
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
               Batal
             </Button>
-            <Button onClick={handleSave} disabled={saving} style={{ backgroundColor: BRAND }}>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              style={{ backgroundColor: BRAND }}
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? 'Menyimpan...' : editingSubject ? 'Perbarui' : 'Simpan'}
             </Button>
           </DialogFooter>
@@ -609,18 +747,25 @@ export function SubjectsView() {
 
       {/* Delete AlertDialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Mata Pelajaran</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus mata pelajaran &quot;{deletingSubject?.name}&quot;? Tindakan ini tidak dapat dibatalkan.
-            </AlertDialogDescription>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50">
+                <Trash2 className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <AlertDialogTitle>Hapus Mata Pelajaran</AlertDialogTitle>
+                <AlertDialogDescription className="mt-1">
+                  Apakah Anda yakin ingin menghapus &quot;{deletingSubject?.name}&quot;? Tindakan ini tidak dapat dibatalkan.
+                </AlertDialogDescription>
+              </div>
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
             >
               Hapus
             </AlertDialogAction>
@@ -640,15 +785,28 @@ export function TeacherAssignmentsView() {
   const [assignments, setAssignments] = useState<TeacherAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [batchDialogOpen, setBatchDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deletingItem, setDeletingItem] = useState<TeacherAssignment | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Search & filter
+  const [search, setSearch] = useState('');
+  const [filterSubject, setFilterSubject] = useState('semua');
+  const [filterClass, setFilterClass] = useState('semua');
+  const [teacherSearch, setTeacherSearch] = useState('');
 
   // Form state
   const [formTeacher, setFormTeacher] = useState('');
   const [formSubject, setFormSubject] = useState('');
   const [formClass, setFormClass] = useState('');
   const [formSemester, setFormSemester] = useState('Ganjil');
+
+  // Batch form
+  const [batchTeacher, setBatchTeacher] = useState('');
+  const [batchSubject, setBatchSubject] = useState('');
+  const [batchSemester, setBatchSemester] = useState('Ganjil');
+  const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
   const fetchAssignments = useCallback(async () => {
     try {
@@ -680,15 +838,21 @@ export function TeacherAssignmentsView() {
     });
   }, []);
 
+  const filteredTeachers = useMemo(() => {
+    if (!teacherSearch.trim()) return uniqueTeachers;
+    const q = teacherSearch.toLowerCase();
+    return uniqueTeachers.filter(
+      (t) => t.name.toLowerCase().includes(q) || t.nip.includes(q)
+    );
+  }, [uniqueTeachers, teacherSearch]);
+
   const uniqueSubjects = useMemo(() => {
-    const subjectIds = new Set(assignments.map((a) => a.subjectId));
-    const all = [...MOCK_SUBJECTS];
-    return all.filter((s) => subjectIds.has(s.id) || true).slice(0, 10);
+    return [...new Set(assignments.map((a) => a.subjectName))].sort();
   }, [assignments]);
 
   const uniqueClasses = useMemo(() => {
-    return MOCK_CLASS_OPTIONS;
-  }, []);
+    return [...new Set(assignments.map((a) => a.className))].sort();
+  }, [assignments]);
 
   const activeSubjectCount = useMemo(() => {
     return new Set(assignments.map((a) => a.subjectId)).size;
@@ -698,12 +862,41 @@ export function TeacherAssignmentsView() {
     return new Set(assignments.map((a) => a.classId)).size;
   }, [assignments]);
 
+  const filteredAssignments = useMemo(() => {
+    let result = assignments;
+    if (filterSubject !== 'semua') {
+      result = result.filter((a) => a.subjectName === filterSubject);
+    }
+    if (filterClass !== 'semua') {
+      result = result.filter((a) => a.className === filterClass);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      result = result.filter(
+        (a) =>
+          a.teacherName.toLowerCase().includes(q) ||
+          a.subjectName.toLowerCase().includes(q) ||
+          a.className.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [assignments, filterSubject, filterClass, search]);
+
   function openAdd() {
     setFormTeacher('');
     setFormSubject('');
     setFormClass('');
     setFormSemester('Ganjil');
     setDialogOpen(true);
+  }
+
+  function openBatch() {
+    setBatchTeacher('');
+    setBatchSubject('');
+    setBatchSemester('Ganjil');
+    setSelectedClasses([]);
+    setTeacherSearch('');
+    setBatchDialogOpen(true);
   }
 
   async function handleSave() {
@@ -739,7 +932,6 @@ export function TeacherAssignmentsView() {
     } catch {
       // fallback
     }
-    // Mock fallback
     const newAssignment: TeacherAssignment = {
       id: `ta${Date.now()}`,
       teacherId: formTeacher,
@@ -755,6 +947,60 @@ export function TeacherAssignmentsView() {
     setAssignments((prev) => [...prev, newAssignment]);
     toast.success('Penugasan guru berhasil ditambahkan');
     setDialogOpen(false);
+    setSaving(false);
+  }
+
+  async function handleBatchSave() {
+    if (!batchTeacher || !batchSubject || selectedClasses.length === 0) {
+      toast.error('Guru, mata pelajaran, dan minimal 1 kelas wajib dipilih');
+      return;
+    }
+    setSaving(true);
+    const teacher = MOCK_TEACHERS.find((t) => t.id === batchTeacher);
+    const subject = MOCK_SUBJECTS.find((s) => s.id === batchSubject);
+
+    const newAssignments: TeacherAssignment[] = selectedClasses.map((classId) => {
+      const cls = MOCK_CLASS_OPTIONS.find((c) => c.id === classId);
+      return {
+        id: `ta${Date.now()}_${classId}`,
+        teacherId: batchTeacher,
+        teacherName: teacher?.name ?? '-',
+        teacherNip: teacher?.nip ?? '-',
+        subjectId: batchSubject,
+        subjectName: subject?.name ?? '-',
+        classId,
+        className: cls?.name ?? '-',
+        academicYear: '2024/2025',
+        semester: batchSemester,
+      };
+    });
+
+    try {
+      for (const a of newAssignments) {
+        await fetch('/api/teacher-assignments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            schoolId: user?.schoolId,
+            teacherId: a.teacherId,
+            subjectId: a.subjectId,
+            classId: a.classId,
+            academicYear: a.academicYear,
+            semester: a.semester,
+          }),
+        });
+      }
+      toast.success(`${newAssignments.length} penugasan berhasil ditambahkan`);
+      setBatchDialogOpen(false);
+      fetchAssignments();
+      setSaving(false);
+      return;
+    } catch {
+      // fallback
+    }
+    setAssignments((prev) => [...prev, ...newAssignments]);
+    toast.success(`${newAssignments.length} penugasan berhasil ditambahkan`);
+    setBatchDialogOpen(false);
     setSaving(false);
   }
 
@@ -777,19 +1023,28 @@ export function TeacherAssignmentsView() {
     setDeletingItem(null);
   }
 
+  function toggleBatchClass(classId: string) {
+    setSelectedClasses((prev) =>
+      prev.includes(classId) ? prev.filter((c) => c !== classId) : [...prev, classId]
+    );
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-10 w-48" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-52" />
+            <Skeleton className="h-4 w-72" />
+          </div>
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-24" />
+            <Skeleton key={i} className="h-28 rounded-xl" />
           ))}
         </div>
-        <Skeleton className="h-96" />
+        <Skeleton className="h-96 rounded-xl" />
       </div>
     );
   }
@@ -798,144 +1053,196 @@ export function TeacherAssignmentsView() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
-            Penugasan Guru
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Assign guru ke mata pelajaran dan kelas untuk {user?.schoolName ?? 'sekolah Anda'}
-          </p>
+        <div className="flex items-center gap-3">
+          <GradientIcon>
+            <Users className="h-5 w-5" />
+          </GradientIcon>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
+              Penugasan Guru
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Assign guru ke mata pelajaran dan kelas
+            </p>
+          </div>
         </div>
-        <Button onClick={openAdd} className="gap-2" style={{ backgroundColor: BRAND }}>
-          <Plus className="h-4 w-4" />
-          Tugaskan Guru
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={openBatch}
+            variant="outline"
+            className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+          >
+            <GraduationCap className="h-4 w-4" />
+            <span className="hidden sm:inline">Batch</span>
+          </Button>
+          <Button
+            onClick={openAdd}
+            className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+            style={{ backgroundColor: BRAND }}
+          >
+            <Plus className="h-4 w-4" />
+            Tugaskan Guru
+          </Button>
+        </div>
       </div>
 
-      {/* Stats */}
+      {/* Stat Cards with Gradient Backgrounds */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="border-l-4" style={{ borderLeftColor: BRAND }}>
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${BRAND}15` }}>
-              <Users className="h-6 w-6" style={{ color: BRAND }} />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Total Guru Terassign</p>
-              <p className="text-2xl font-bold" style={{ color: BRAND }}>{assignments.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-emerald-50">
-              <BookOpen className="h-6 w-6 text-emerald-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Mata Pelajaran</p>
-              <p className="text-2xl font-bold text-emerald-600">{activeSubjectCount}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-l-4 border-l-amber-500">
-          <CardContent className="flex items-center gap-4 p-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-amber-50">
-              <GraduationCap className="h-6 w-6 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Kelas Aktif</p>
-              <p className="text-2xl font-bold text-amber-600">{activeClassCount}</p>
-            </div>
-          </CardContent>
-        </Card>
+        <GradientStatCard
+          icon={<Users className="h-6 w-6 text-white" />}
+          label="Total Penugasan"
+          value={assignments.length}
+          gradient="bg-gradient-to-br from-[#1F3864] to-[#2d5289]"
+        />
+        <GradientStatCard
+          icon={<BookOpen className="h-6 w-6 text-white" />}
+          label="Mata Pelajaran Aktif"
+          value={activeSubjectCount}
+          gradient="bg-gradient-to-br from-emerald-500 to-emerald-600"
+        />
+        <GradientStatCard
+          icon={<GraduationCap className="h-6 w-6 text-white" />}
+          label="Kelas Aktif"
+          value={activeClassCount}
+          gradient="bg-gradient-to-br from-amber-400 to-amber-500"
+        />
       </div>
 
-      {/* Table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold">Daftar Penugasan</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="max-h-[480px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent" style={{ backgroundColor: `${BRAND}08` }}>
-                  <TableHead className="w-12 text-center">No</TableHead>
-                  <TableHead>Nama Guru</TableHead>
-                  <TableHead className="hidden lg:table-cell">NIP</TableHead>
-                  <TableHead>Mata Pelajaran</TableHead>
-                  <TableHead>Kelas</TableHead>
-                  <TableHead className="hidden md:table-cell">Tahun Ajaran</TableHead>
-                  <TableHead className="hidden md:table-cell">Semester</TableHead>
-                  <TableHead className="text-center">Aksi</TableHead>
+      {/* Search + Filter Pills */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Cari guru, mapel, atau kelas..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select value={filterSubject} onValueChange={(v) => { setFilterSubject(v); }}>
+            <SelectTrigger className="h-8 w-auto min-w-[130px] rounded-full text-xs border-dashed">
+              <SelectValue placeholder="Semua Mapel" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="semua">Semua Mapel</SelectItem>
+              {uniqueSubjects.map((s) => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={filterClass} onValueChange={(v) => { setFilterClass(v); }}>
+            <SelectTrigger className="h-8 w-auto min-w-[120px] rounded-full text-xs border-dashed">
+              <SelectValue placeholder="Semua Kelas" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="semua">Semua Kelas</SelectItem>
+              {uniqueClasses.map((c) => (
+                <SelectItem key={c} value={c}>{c}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Assignments Table */}
+      <div className="rounded-xl border shadow-sm overflow-hidden">
+        <div className="max-h-[520px] overflow-y-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="hover:bg-transparent" style={{ backgroundColor: `${BRAND}06` }}>
+                <TableHead className="w-12 text-center">No</TableHead>
+                <TableHead>Nama Guru</TableHead>
+                <TableHead className="hidden lg:table-cell">NIP</TableHead>
+                <TableHead>Mata Pelajaran</TableHead>
+                <TableHead>Kelas</TableHead>
+                <TableHead className="hidden md:table-cell">Semester</TableHead>
+                <TableHead className="text-center">Aksi</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredAssignments.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-32">
+                    <EmptyState
+                      icon={ClipboardList}
+                      title="Belum ada penugasan"
+                      description="Mulai tugaskan guru ke mata pelajaran dan kelas"
+                    />
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assignments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                      Belum ada penugasan guru
+              ) : (
+                filteredAssignments.map((a, i) => (
+                  <TableRow key={a.id} className="group even:bg-muted/30 hover:bg-muted/50 transition-colors duration-150">
+                    <TableCell className="text-center font-medium text-muted-foreground">{i + 1}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn('flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white shrink-0', getAvatarColor(a.teacherName))}>
+                          {getInitials(a.teacherName)}
+                        </div>
+                        <span className="font-medium">{a.teacherName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden font-mono text-xs text-muted-foreground lg:table-cell">{a.teacherNip}</TableCell>
+                    <TableCell>
+                      <Badge className="rounded-full border-sky-200 bg-sky-50 text-sky-700 text-xs">
+                        {a.subjectName}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className="rounded-full border-emerald-200 bg-emerald-50 text-emerald-700 text-xs">
+                        {a.className}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <Badge className="rounded-full border-gray-200 bg-gray-50 text-gray-600 text-xs">
+                        {a.semester}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-center">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 rounded-lg opacity-0 transition-all duration-200 group-hover:opacity-100 hover:shadow-sm hover:bg-red-50"
+                          onClick={() => {
+                            setDeletingItem(a);
+                            setDeleteOpen(true);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  assignments.map((a, i) => (
-                    <TableRow key={a.id} className="group">
-                      <TableCell className="text-center font-medium text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell className="font-medium">{a.teacherName}</TableCell>
-                      <TableCell className="hidden font-mono text-xs text-muted-foreground lg:table-cell">{a.teacherNip}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="border-sky-200 bg-sky-50 text-sky-700">
-                          {a.subjectName}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-700">
-                          {a.className}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="hidden text-muted-foreground md:table-cell">{a.academicYear}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        <Badge variant="outline" className="border-gray-200 bg-gray-50 text-gray-600">
-                          {a.semester}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => {
-                              setDeletingItem(a);
-                              setDeleteOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-muted-foreground group-hover:text-red-600" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
 
-      {/* Add Dialog */}
+      {/* Single Assignment Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => !open && setDialogOpen(false)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md rounded-xl transition-all duration-200">
           <DialogHeader>
-            <DialogTitle style={{ color: BRAND }}>Tugaskan Guru</DialogTitle>
-            <DialogDescription>
-              Pilih guru, mata pelajaran, dan kelas untuk penugasan baru.
-            </DialogDescription>
+            <div className="flex items-center gap-3">
+              <GradientIcon className="h-10 w-10">
+                <Plus className="h-4 w-4" />
+              </GradientIcon>
+              <div>
+                <DialogTitle style={{ color: BRAND }}>Tugaskan Guru</DialogTitle>
+                <DialogDescription className="mt-1">
+                  Pilih guru, mata pelajaran, dan kelas untuk penugasan baru.
+                </DialogDescription>
+              </div>
+            </div>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
               <Label>Guru</Label>
               <Select value={formTeacher} onValueChange={setFormTeacher}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Pilih guru..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -950,7 +1257,7 @@ export function TeacherAssignmentsView() {
             <div className="space-y-2">
               <Label>Mata Pelajaran</Label>
               <Select value={formSubject} onValueChange={setFormSubject}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Pilih mata pelajaran..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -965,11 +1272,11 @@ export function TeacherAssignmentsView() {
             <div className="space-y-2">
               <Label>Kelas</Label>
               <Select value={formClass} onValueChange={setFormClass}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-lg">
                   <SelectValue placeholder="Pilih kelas..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {uniqueClasses.map((c) => (
+                  {MOCK_CLASS_OPTIONS.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -978,7 +1285,7 @@ export function TeacherAssignmentsView() {
             <div className="space-y-2">
               <Label>Semester</Label>
               <Select value={formSemester} onValueChange={setFormSemester}>
-                <SelectTrigger>
+                <SelectTrigger className="rounded-lg">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -989,9 +1296,119 @@ export function TeacherAssignmentsView() {
             </div>
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
-            <Button onClick={handleSave} disabled={saving} style={{ backgroundColor: BRAND }}>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              style={{ backgroundColor: BRAND }}
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
               {saving ? 'Menyimpan...' : 'Simpan'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Assignment Dialog */}
+      <Dialog open={batchDialogOpen} onOpenChange={(open) => !open && setBatchDialogOpen(false)}>
+        <DialogContent className="sm:max-w-lg rounded-xl transition-all duration-200">
+          <DialogHeader>
+            <div className="flex items-center gap-3">
+              <GradientIcon className="h-10 w-10">
+                <GraduationCap className="h-4 w-4" />
+              </GradientIcon>
+              <div>
+                <DialogTitle style={{ color: BRAND }}>Penugasan Batch</DialogTitle>
+                <DialogDescription className="mt-1">
+                  Tugaskan satu guru ke beberapa kelas sekaligus.
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Guru</Label>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Cari guru..."
+                  value={teacherSearch}
+                  onChange={(e) => setTeacherSearch(e.target.value)}
+                  className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30 mb-2"
+                />
+              </div>
+              <Select value={batchTeacher} onValueChange={setBatchTeacher}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue placeholder="Pilih guru..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredTeachers.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Mata Pelajaran</Label>
+              <Select value={batchSubject} onValueChange={setBatchSubject}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue placeholder="Pilih mata pelajaran..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOCK_SUBJECTS.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name} ({s.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Semester</Label>
+              <Select value={batchSemester} onValueChange={setBatchSemester}>
+                <SelectTrigger className="rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Ganjil">Ganjil</SelectItem>
+                  <SelectItem value="Genap">Genap</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Pilih Kelas ({selectedClasses.length} dipilih)</Label>
+              <div className="flex flex-wrap gap-2">
+                {MOCK_CLASS_OPTIONS.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => toggleBatchClass(c.id)}
+                    className={cn(
+                      'px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-200 cursor-pointer border',
+                      selectedClasses.includes(c.id)
+                        ? 'text-white shadow-sm border-transparent'
+                        : 'bg-white text-muted-foreground hover:bg-muted/80 border-muted'
+                    )}
+                    style={selectedClasses.includes(c.id) ? { backgroundColor: BRAND } : undefined}
+                  >
+                    {c.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setBatchDialogOpen(false)} className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</Button>
+            <Button
+              onClick={handleBatchSave}
+              disabled={saving}
+              className="gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              style={{ backgroundColor: BRAND }}
+            >
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {saving ? 'Menyimpan...' : `Tugaskan ke ${selectedClasses.length} Kelas`}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -999,18 +1416,26 @@ export function TeacherAssignmentsView() {
 
       {/* Delete AlertDialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Hapus Penugasan</AlertDialogTitle>
-            <AlertDialogDescription>
-              Apakah Anda yakin ingin menghapus penugasan &quot;{deletingItem?.teacherName}&quot; untuk mata pelajaran &quot;{deletingItem?.subjectName}&quot; di kelas &quot;{deletingItem?.className}&quot;?
-            </AlertDialogDescription>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-red-50">
+                <Trash2 className="h-5 w-5 text-red-500" />
+              </div>
+              <div>
+                <AlertDialogTitle>Hapus Penugasan</AlertDialogTitle>
+                <AlertDialogDescription className="mt-1">
+                  Apakah Anda yakin ingin menghapus penugasan &quot;{deletingItem?.teacherName}&quot; untuk
+                  mata pelajaran &quot;{deletingItem?.subjectName}&quot; di kelas &quot;{deletingItem?.className}&quot;?
+                </AlertDialogDescription>
+              </div>
+            </div>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Batal</AlertDialogCancel>
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-red-600 text-white hover:bg-red-700"
+              className="rounded-lg bg-red-600 text-white hover:bg-red-700 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
             >
               Hapus
             </AlertDialogAction>
@@ -1033,13 +1458,14 @@ export function BackupRestoreView() {
   const [totalRecords, setTotalRecords] = useState(20);
   const [lastBackup, setLastBackup] = useState('15 Januari 2025, 08:30');
   const [creating, setCreating] = useState(false);
+  const [backupProgress, setBackupProgress] = useState(0);
   const [downloading, setDownloading] = useState(false);
 
   const tableBreakdown = [
-    { name: 'Pengguna', count: 8, icon: Users },
-    { name: 'Kelas', count: 9, icon: GraduationCap },
-    { name: 'Mata Pelajaran', count: 10, icon: BookOpen },
-    { name: 'Penugasan Guru', count: 6, icon: Shield },
+    { name: 'Pengguna', count: 8, icon: Users, color: 'text-violet-500' },
+    { name: 'Kelas', count: 9, icon: GraduationCap, color: 'text-emerald-500' },
+    { name: 'Mata Pelajaran', count: 10, icon: BookOpen, color: 'text-amber-500' },
+    { name: 'Penugasan Guru', count: 6, icon: Shield, color: 'text-sky-500' },
   ];
 
   const fetchBackups = useCallback(async () => {
@@ -1071,19 +1497,33 @@ export function BackupRestoreView() {
 
   async function handleCreateBackup() {
     setCreating(true);
+    setBackupProgress(0);
+    // Simulate progress
+    const interval = setInterval(() => {
+      setBackupProgress((prev) => {
+        if (prev >= 90) { clearInterval(interval); return 90; }
+        return prev + Math.random() * 20;
+      });
+    }, 200);
+
     try {
       const res = await fetch('/api/backup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
+      clearInterval(interval);
+      setBackupProgress(100);
       if (res.ok) {
-        toast.success('Backup berhasil dibuat!');
-        fetchBackups();
-        setCreating(false);
+        setTimeout(() => {
+          toast.success('Backup berhasil dibuat!');
+          fetchBackups();
+          setCreating(false);
+          setBackupProgress(0);
+        }, 500);
         return;
       }
     } catch {
-      // fallback
+      clearInterval(interval);
     }
     // Mock fallback
     const newBackup: BackupRecord = {
@@ -1096,11 +1536,15 @@ export function BackupRestoreView() {
       }),
       records: totalRecords + 1,
     };
-    setBackups((prev) => [newBackup, ...prev.slice(0, 4)]);
-    setLastBackup(newBackup.createdAt);
-    setTotalRecords(newBackup.records);
-    toast.success('Backup berhasil dibuat!');
-    setCreating(false);
+    setBackupProgress(100);
+    setTimeout(() => {
+      setBackups((prev) => [newBackup, ...prev.slice(0, 4)]);
+      setLastBackup(newBackup.createdAt);
+      setTotalRecords(newBackup.records);
+      toast.success('Backup berhasil dibuat!');
+      setCreating(false);
+      setBackupProgress(0);
+    }, 500);
   }
 
   async function handleDownload() {
@@ -1135,12 +1579,18 @@ export function BackupRestoreView() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <Skeleton className="h-64" />
-          <Skeleton className="h-64" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-64" />
+            <Skeleton className="h-4 w-80" />
+          </div>
         </div>
-        <Skeleton className="h-64" />
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <Skeleton className="h-80 rounded-xl" />
+          <Skeleton className="h-80 rounded-xl" />
+        </div>
+        <Skeleton className="h-64 rounded-xl" />
       </div>
     );
   }
@@ -1148,93 +1598,125 @@ export function BackupRestoreView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
-          Cadangkan & Pulihkan
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Kelola backup dan pemulihan data untuk {user?.schoolName ?? 'sekolah Anda'}
-        </p>
+      <div className="flex items-center gap-3">
+        <GradientIcon>
+          <Database className="h-5 w-5" />
+        </GradientIcon>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
+            Cadangkan & Pulihkan
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Kelola backup dan pemulihan data untuk {user?.schoolName ?? 'sekolah Anda'}
+          </p>
+        </div>
       </div>
 
       {/* Info Cards & Actions */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {/* Database Info */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-base" style={{ color: BRAND }}>
-              <Database className="h-5 w-5" />
-              Informasi Database
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Ukuran Database</p>
-                <p className="mt-1 text-lg font-bold" style={{ color: BRAND }}>{dbSize}</p>
-              </div>
-              <div className="rounded-lg border p-3">
-                <p className="text-xs text-muted-foreground">Total Rekaman</p>
-                <p className="mt-1 text-lg font-bold" style={{ color: BRAND }}>{totalRecords}</p>
-              </div>
+        {/* Database Info Card with Soft Accent Border */}
+        <div className="rounded-xl border-2 border-l-[#1F3864]/20 bg-card shadow-sm p-0 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+          <div className="bg-gradient-to-r from-[#1F3864] to-[#2d5289] px-6 py-4">
+            <div className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-white/80" />
+              <h3 className="text-base font-semibold text-white">Informasi Database</h3>
             </div>
-            <div className="rounded-lg border p-3">
-              <p className="text-xs text-muted-foreground">Backup Terakhir</p>
-              <p className="mt-1 flex items-center gap-2 font-semibold">
+          </div>
+          <div className="p-5 space-y-4">
+            {/* Last Backup Info Card */}
+            <div className="rounded-xl bg-emerald-50/60 border border-emerald-100 p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <div className="flex h-2 w-2 rounded-full bg-emerald-500" />
+                <p className="text-xs font-medium text-emerald-700">Backup Terakhir</p>
+              </div>
+              <p className="flex items-center gap-2 font-semibold text-foreground">
                 <Clock className="h-4 w-4 text-emerald-500" />
                 {lastBackup}
               </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-xl bg-muted/30 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Ukuran</p>
+                <p className="mt-1 text-xl font-bold" style={{ color: BRAND }}>{dbSize}</p>
+              </div>
+              <div className="rounded-xl bg-muted/30 p-3 text-center">
+                <p className="text-xs text-muted-foreground">Total Rekaman</p>
+                <p className="mt-1 text-xl font-bold" style={{ color: BRAND }}>{totalRecords}</p>
+              </div>
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Rekaman per Tabel:</p>
               <div className="grid grid-cols-2 gap-2">
                 {tableBreakdown.map((t) => (
-                  <div key={t.name} className="flex items-center gap-2 rounded-md border p-2">
-                    <t.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                    <span className="flex-1 text-xs">{t.name}</span>
+                  <div
+                    key={t.name}
+                    className="flex items-center gap-2 rounded-lg border border-muted/50 bg-white p-2.5 transition-all duration-150 hover:bg-muted/30"
+                  >
+                    <t.icon className={cn('h-4 w-4 shrink-0', t.color)} />
+                    <span className="flex-1 text-xs text-muted-foreground">{t.name}</span>
                     <span className="text-xs font-bold" style={{ color: BRAND }}>{t.count}</span>
                   </div>
                 ))}
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        {/* Actions */}
+        {/* Actions Column */}
         <div className="space-y-4">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base" style={{ color: BRAND }}>
-                <Save className="h-5 w-5" />
-                Aksi Backup
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+          {/* Backup Action Card */}
+          <div className="rounded-xl border bg-card shadow-sm p-0 overflow-hidden transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+            <div className="px-6 py-4 border-b">
+              <div className="flex items-center gap-2">
+                <Save className="h-5 w-5" style={{ color: BRAND }} />
+                <h3 className="text-base font-semibold" style={{ color: BRAND }}>Aksi Backup</h3>
+              </div>
+            </div>
+            <div className="p-5 space-y-4">
               <Button
                 onClick={handleCreateBackup}
                 disabled={creating}
-                className="w-full gap-2"
+                className="w-full gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
                 style={{ backgroundColor: BRAND }}
               >
                 {creating ? (
-                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Archive className="h-4 w-4" />
                 )}
                 {creating ? 'Membuat Backup...' : 'Buat Backup Sekarang'}
               </Button>
+
+              {/* Progress Bar */}
+              {creating && (
+                <div className="space-y-2">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[#1F3864] to-[#2d5289] transition-all duration-500 ease-out"
+                      style={{ width: `${Math.min(backupProgress, 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-xs text-center text-muted-foreground">
+                    {backupProgress < 30 ? 'Mempersiapkan data...' :
+                     backupProgress < 70 ? 'Mengompresi database...' :
+                     backupProgress < 100 ? 'Menyelesaikan backup...' : 'Selesai!'}
+                  </p>
+                </div>
+              )}
+
               <p className="text-xs text-muted-foreground">
                 Membuat salinan database saat ini. Proses ini tidak mengganggu operasional sistem.
               </p>
+
               <div className="border-t pt-4">
                 <Button
                   onClick={handleDownload}
                   disabled={downloading}
                   variant="outline"
-                  className="w-full gap-2"
+                  className="w-full gap-2 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
                 >
                   {downloading ? (
-                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Download className="h-4 w-4" />
                   )}
@@ -1244,96 +1726,154 @@ export function BackupRestoreView() {
                   Mengunduh file database SQLite untuk disimpan secara lokal.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          {/* Warning Card */}
-          <Card className="border-amber-200 bg-amber-50">
-            <CardContent className="flex gap-3 p-4">
-              <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          {/* Warning Card with Amber Soft Background */}
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 transition-all duration-200">
+            <div className="flex gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                <AlertTriangle className="h-5 w-5 text-amber-600" />
+              </div>
               <div>
                 <p className="text-sm font-semibold text-amber-800">Perhatian: Operasi Pemulihan</p>
-                <p className="mt-1 text-xs text-amber-700">
+                <p className="mt-1 text-xs leading-relaxed text-amber-700">
                   Pemulihan data akan menimpa seluruh data saat ini dengan data dari backup yang dipilih.
-                  Pastikan Anda telah membuat backup terbaru sebelum melakukan pemulihan. Tindakan ini tidak dapat dibatalkan.
+                  Pastikan Anda telah membuat backup terbaru sebelum melakukan pemulihan.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+
+          {/* Restore Upload Area */}
+          <div className="rounded-xl border-2 border-dashed border-muted-foreground/25 bg-muted/20 p-6 text-center transition-all duration-200 hover:border-muted-foreground/40 hover:bg-muted/30">
+            <div className="flex flex-col items-center gap-3">
+              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted/50">
+                <Upload className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Pulihkan dari File</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Seret & lepas file backup .db di sini, atau klik untuk memilih
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2 rounded-full transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                onClick={() => toast.info('Fitur upload pemulihan akan segera tersedia')}
+              >
+                <FolderOpen className="h-3.5 w-3.5" />
+                Pilih File
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Backup History */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-base" style={{ color: BRAND }}>
-            <History className="h-5 w-5" />
-            Riwayat Backup (5 Terakhir)
-          </CardTitle>
-          <CardDescription>Daftar backup yang tersedia untuk diunduh atau dipulihkan</CardDescription>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="max-h-[360px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent" style={{ backgroundColor: `${BRAND}08` }}>
-                  <TableHead className="w-12 text-center">No</TableHead>
-                  <TableHead>Nama File</TableHead>
-                  <TableHead>Waktu</TableHead>
-                  <TableHead className="text-center">Ukuran</TableHead>
-                  <TableHead className="text-center">Rekaman</TableHead>
-                  <TableHead className="text-center">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {backups.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                      Belum ada riwayat backup
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  backups.map((b, i) => (
-                    <TableRow key={b.id} className="group">
-                      <TableCell className="text-center font-medium text-muted-foreground">{i + 1}</TableCell>
-                      <TableCell className="max-w-[200px] truncate font-mono text-xs">{b.fileName}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{b.createdAt}</TableCell>
-                      <TableCell className="text-center">
-                        <Badge variant="outline" className="border-gray-200 bg-gray-50">
-                          {b.fileSize}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-center font-medium">{b.records}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs"
-                            onClick={() => handleDownloadBackup(b)}
-                          >
-                            <FileDown className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Unduh</span>
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 gap-1 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                            onClick={() => toast.info('Fitur pemulihan akan segera tersedia')}
-                          >
-                            <Upload className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Pulihkan</span>
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+      {/* Backup History — Timeline Style */}
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b">
+          <div className="flex items-center gap-2">
+            <History className="h-5 w-5" style={{ color: BRAND }} />
+            <h3 className="text-base font-semibold" style={{ color: BRAND }}>Riwayat Backup</h3>
           </div>
-        </CardContent>
-      </Card>
+          <p className="mt-1 text-xs text-muted-foreground">5 backup terakhir yang tersedia</p>
+        </div>
+        <div className="p-5">
+          {backups.length === 0 ? (
+            <EmptyState
+              icon={HardDrive}
+              title="Belum ada riwayat backup"
+              description="Buat backup pertama Anda untuk mulai melacak riwayat"
+            />
+          ) : (
+            <div className="relative space-y-0">
+              {/* Timeline line */}
+              <div className="absolute left-[19px] top-3 bottom-3 w-px bg-border" />
+
+              {backups.map((b, i) => (
+                <div
+                  key={b.id}
+                  className={cn(
+                    'relative flex gap-4 py-3 transition-all duration-200 rounded-xl px-3 -mx-3',
+                    'hover:bg-muted/30 group'
+                  )}
+                >
+                  {/* Timeline dot */}
+                  <div className={cn(
+                    'relative z-10 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-sm',
+                    i === 0 ? 'bg-emerald-500' : 'bg-muted-foreground/20'
+                  )}>
+                    {i === 0 ? (
+                      <CheckCircle2 className="h-4 w-4 text-white" />
+                    ) : (
+                      <HardDrive className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </div>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="text-sm font-semibold text-foreground truncate">{b.fileName}</p>
+                        <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {b.createdAt}
+                          </span>
+                          <Badge className="rounded-full bg-muted/60 text-muted-foreground text-[10px] px-2 border-0">
+                            {b.fileSize}
+                          </Badge>
+                          <Badge className="rounded-full bg-muted/60 text-muted-foreground text-[10px] px-2 border-0">
+                            {b.records} rekaman
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs rounded-lg transition-all duration-200 hover:shadow-sm"
+                          onClick={() => handleDownloadBackup(b)}
+                        >
+                          <FileDown className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Unduh</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all duration-200 hover:shadow-sm"
+                          onClick={() => toast.info('Fitur pemulihan akan segera tersedia')}
+                        >
+                          <Upload className="h-3.5 w-3.5" />
+                          <span className="hidden sm:inline">Pulihkan</span>
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Danger Warning Card */}
+      <div className="rounded-xl border border-red-200 bg-red-50/50 p-4 transition-all duration-200">
+        <div className="flex gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-red-100">
+            <AlertCircle className="h-5 w-5 text-red-500" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-red-800">Zona Bahaya</p>
+            <p className="mt-1 text-xs leading-relaxed text-red-700">
+              Operasi pemulihan data bersifat irreversibel. Pastikan Anda memiliki backup terbaru sebelum
+              melakukan pemulihan dari file eksternal. Data yang tidak kompatibel dapat menyebabkan kerusakan sistem.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1342,14 +1882,28 @@ export function BackupRestoreView() {
 // 4. ACTIVITYLOGVIEW — Log Aktivitas
 // ═══════════════════════════════════════════════════════════════════════
 
-const ITEMS_PER_PAGE = 10;
+const ITEMS_PER_PAGE = 8;
+
+function useDebounce(value: string, delay: number): string {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+  return debounced;
+}
 
 export function ActivityLogView() {
   const { user } = useAppStore();
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('Semua');
+  const [activeFilter, setActiveFilter] = useState('Semua');
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+
+  const debouncedSearch = useDebounce(searchInput, 300);
 
   const fetchLogs = useCallback(async () => {
     try {
@@ -1377,9 +1931,28 @@ export function ActivityLogView() {
   }, [fetchLogs]);
 
   const filteredLogs = useMemo(() => {
-    if (activeTab === 'Semua') return logs;
-    return logs.filter((l) => l.module === activeTab);
-  }, [logs, activeTab]);
+    let result = logs;
+    if (activeFilter !== 'Semua') {
+      result = result.filter((l) => l.module === activeFilter);
+    }
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
+      result = result.filter(
+        (l) =>
+          l.userName.toLowerCase().includes(q) ||
+          l.action.toLowerCase().includes(q) ||
+          l.detail.toLowerCase().includes(q)
+      );
+    }
+    if (dateFrom) {
+      result = result.filter((l) => l.timestamp >= dateFrom);
+    }
+    if (dateTo) {
+      const to = dateTo + ' 23:59:59';
+      result = result.filter((l) => l.timestamp <= to);
+    }
+    return result;
+  }, [logs, activeFilter, debouncedSearch, dateFrom, dateTo]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / ITEMS_PER_PAGE));
   const paginatedLogs = filteredLogs.slice(
@@ -1387,24 +1960,36 @@ export function ActivityLogView() {
     page * ITEMS_PER_PAGE
   );
 
-  // Reset page when tab changes
   useEffect(() => {
     setPage(1);
-  }, [activeTab]);
+  }, [activeFilter, debouncedSearch, dateFrom, dateTo]);
 
-  const dateRange = useMemo(() => {
-    if (logs.length === 0) return '-';
-    const first = logs[logs.length - 1].timestamp;
-    const last = logs[0].timestamp;
-    return `${first} — ${last}`;
+  const moduleCounts = useMemo(() => {
+    const counts: Record<string, number> = { Semua: logs.length };
+    for (const l of logs) {
+      counts[l.module] = (counts[l.module] ?? 0) + 1;
+    }
+    return counts;
   }, [logs]);
+
+  const filterOptions = ['Semua', 'Pengguna', 'Kelas', 'Ujian', 'Soal', 'Lainnya'];
 
   if (loading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-8 w-64" />
-        <Skeleton className="h-10 w-full" />
-        <Skeleton className="h-96" />
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-11 w-11 rounded-xl" />
+          <div className="space-y-2">
+            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-4 w-72" />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Skeleton key={i} className="h-8 w-24 rounded-full" />
+          ))}
+        </div>
+        <Skeleton className="h-96 rounded-xl" />
       </div>
     );
   }
@@ -1412,153 +1997,219 @@ export function ActivityLogView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
-          Log Aktivitas
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Pantau seluruh aktivitas yang terjadi di {user?.schoolName ?? 'sekolah Anda'}
-        </p>
+      <div className="flex items-center gap-3">
+        <GradientIcon>
+          <Activity className="h-5 w-5" />
+        </GradientIcon>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight" style={{ color: BRAND }}>
+            Log Aktivitas
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Pantau seluruh aktivitas yang terjadi di {user?.schoolName ?? 'sekolah Anda'}
+          </p>
+        </div>
       </div>
 
-      {/* Date Range */}
-      <Card>
-        <CardContent className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>Periode: <strong className="text-foreground">{dateRange}</strong></span>
-          </div>
-          <div className="flex items-center gap-2 text-sm">
-            <Activity className="h-4 w-4 text-emerald-500" />
-            <span className="text-muted-foreground">Total: <strong className="text-foreground">{filteredLogs.length} aktivitas</strong></span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Module Filter Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full flex-wrap">
-          <TabsTrigger value="Semua" className="gap-1.5">
-            <Filter className="h-3.5 w-3.5" />
-            Semua
-          </TabsTrigger>
-          <TabsTrigger value="Pengguna" className="gap-1.5">
-            <UserCircle className="h-3.5 w-3.5" />
-            Pengguna
-          </TabsTrigger>
-          <TabsTrigger value="Kelas" className="gap-1.5">
-            <Users className="h-3.5 w-3.5" />
-            Kelas
-          </TabsTrigger>
-          <TabsTrigger value="Ujian" className="gap-1.5">
-            <ClipboardList className="h-3.5 w-3.5" />
-            Ujian
-          </TabsTrigger>
-          <TabsTrigger value="Soal" className="gap-1.5">
-            <FileQuestion className="h-3.5 w-3.5" />
-            Soal
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Logs Table */}
-        <Card className="mt-4">
-          <CardContent className="p-0">
-            <div className="max-h-[520px] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent" style={{ backgroundColor: `${BRAND}08` }}>
-                    <TableHead className="w-44">Waktu</TableHead>
-                    <TableHead className="w-44">Pengguna</TableHead>
-                    <TableHead className="w-44">Aksi</TableHead>
-                    <TableHead className="hidden lg:table-cell">Detail</TableHead>
-                    <TableHead className="text-center">Modul</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedLogs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
-                        Tidak ada log aktivitas untuk modul ini
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    paginatedLogs.map((log) => {
-                      const ModuleIcon = getModuleIcon(log.module);
-                      return (
-                        <TableRow key={log.id}>
-                          <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
-                            <div className="flex items-center gap-1.5">
-                              <Clock className="h-3.5 w-3.5 shrink-0" />
-                              {log.timestamp}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm font-medium">{log.userName}</TableCell>
-                          <TableCell className="text-sm">{log.action}</TableCell>
-                          <TableCell className="hidden max-w-[300px] truncate text-xs text-muted-foreground lg:table-cell">
-                            {log.detail}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-center">
-                              <Badge
-                                variant="outline"
-                                className={cn('gap-1 text-xs', getModuleBadgeClasses(log.module))}
-                              >
-                                <ModuleIcon className="h-3 w-3" />
-                                {log.module}
-                              </Badge>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t px-4 py-3">
-                <p className="text-sm text-muted-foreground">
-                  Halaman {page} dari {totalPages} ({filteredLogs.length} data)
-                </p>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                    <Button
-                      key={p}
-                      variant={p === page ? 'default' : 'outline'}
-                      size="icon"
-                      className={cn('h-8 w-8 text-xs', p === page && 'text-white')}
-                      style={p === page ? { backgroundColor: BRAND } : undefined}
-                      onClick={() => setPage(p)}
-                    >
-                      {p}
-                    </Button>
-                  ))}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+      {/* Filter Pills */}
+      <div className="flex flex-wrap gap-2">
+        {filterOptions.map((opt) => (
+          <button
+            key={opt}
+            onClick={() => setActiveFilter(opt)}
+            className={cn(
+              'inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-full transition-all duration-200 cursor-pointer',
+              activeFilter === opt
+                ? 'text-white shadow-sm'
+                : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
             )}
-          </CardContent>
-        </Card>
-      </Tabs>
+            style={activeFilter === opt ? { backgroundColor: BRAND } : undefined}
+          >
+            {opt === 'Semua' && <Filter className="h-3.5 w-3.5" />}
+            {opt === 'Pengguna' && <UserCircle className="h-3.5 w-3.5" />}
+            {opt === 'Kelas' && <Users className="h-3.5 w-3.5" />}
+            {opt === 'Ujian' && <ClipboardList className="h-3.5 w-3.5" />}
+            {opt === 'Soal' && <FileQuestion className="h-3.5 w-3.5" />}
+            {opt === 'Lainnya' && <Activity className="h-3.5 w-3.5" />}
+            {opt}
+            <span className={cn(
+              'ml-0.5 text-xs px-1.5 py-0.5 rounded-full',
+              activeFilter === opt
+                ? 'bg-white/20 text-white'
+                : 'bg-muted text-muted-foreground'
+            )}>
+              {moduleCounts[opt] ?? 0}
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Search + Date Range Filter */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Cari aktivitas..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            className="pl-9 rounded-lg focus-visible:ring-[#1F3864]/30"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-muted-foreground shrink-0" />
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className="h-9 w-auto rounded-lg text-xs focus-visible:ring-[#1F3864]/30"
+          />          <span className="text-xs text-muted-foreground">—</span>
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className="h-9 w-auto rounded-lg text-xs focus-visible:ring-[#1F3864]/30"
+          />
+          {(dateFrom || dateTo) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 rounded-lg text-xs text-muted-foreground hover:text-foreground"
+              onClick={() => { setDateFrom(''); setDateTo(''); }}
+            >
+              Reset
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Timeline Log Entries */}
+      <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+        <div className="px-6 py-3 border-b flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Activity className="h-4 w-4 text-emerald-500" />
+            <span>
+              <strong className="text-foreground">{filteredLogs.length}</strong> aktivitas ditemukan
+            </span>
+          </div>
+          {totalPages > 1 && (
+            <div className="text-xs text-muted-foreground">
+              Halaman {page} dari {totalPages}
+            </div>
+          )}
+        </div>
+
+        <div className="p-5">
+          {paginatedLogs.length === 0 ? (
+            <EmptyState
+              icon={Search}
+              title="Tidak ada aktivitas ditemukan"
+              description="Coba ubah filter atau kata kunci pencarian Anda"
+            />
+          ) : (
+            <div className="relative space-y-0">
+              {/* Timeline connecting line */}
+              <div className="absolute left-[19px] top-3 bottom-3 w-px bg-border" />
+
+              {paginatedLogs.map((log, idx) => {
+                const isLast = idx === paginatedLogs.length - 1;
+                return (
+                  <div
+                    key={log.id}
+                    className={cn(
+                      'relative flex gap-4 transition-all duration-200 rounded-xl px-3 -mx-3',
+                      isLast ? 'pb-0' : 'pb-1',
+                      'hover:bg-muted/30 group'
+                    )}
+                  >
+                    {/* Colored dot */}
+                    <div className={cn(
+                      'relative z-10 mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white shadow-sm',
+                      getModuleDotColor(log.module)
+                    )}>
+                      <span className="text-[10px] font-bold text-white">
+                        {log.module.slice(0, 2).toUpperCase()}
+                      </span>
+                    </div>
+
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 py-1">
+                      <div className="flex items-start gap-3">
+                        {/* User avatar initials */}
+                        <div className={cn(
+                          'flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white',
+                          getAvatarColor(log.userName)
+                        )}>
+                          {getInitials(log.userName)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-foreground">{log.userName}</span>
+                            <Badge
+                              className={cn('rounded-full text-[10px] font-medium border', getModuleBadgeClasses(log.module))}
+                            >
+                              {log.module}
+                            </Badge>
+                          </div>
+                          <p className="mt-0.5 text-sm font-medium text-foreground/90">{log.action}</p>
+                          <p className="mt-0.5 text-xs text-muted-foreground truncate">{log.detail}</p>
+                          <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground/70">
+                            <Clock className="h-3 w-3" />
+                            {log.timestamp}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Pagination with Smooth Transitions */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between border-t px-6 py-3">
+            <p className="text-sm text-muted-foreground">
+              Menampilkan {(page - 1) * ITEMS_PER_PAGE + 1}–{Math.min(page * ITEMS_PER_PAGE, filteredLogs.length)} dari {filteredLogs.length}
+            </p>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <Button
+                  key={p}
+                  variant={p === page ? 'default' : 'outline'}
+                  size="icon"
+                  className={cn(
+                    'h-8 w-8 text-xs rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]',
+                    p === page && 'text-white'
+                  )}
+                  style={p === page ? { backgroundColor: BRAND } : undefined}
+                  onClick={() => setPage(p)}
+                >
+                  {p}
+                </Button>
+              ))}
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

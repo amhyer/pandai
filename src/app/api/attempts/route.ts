@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       where,
       include: {
         user: { select: { id: true, name: true } },
-        answers: { include: { question: { include: { subject: true } } } },
+        answers: true,
       },
       orderBy: { startedAt: 'desc' },
     });

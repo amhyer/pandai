@@ -644,9 +644,15 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           {/* Right side */}
           <div className="ml-auto flex items-center gap-2">
             {/* Notification bell */}
-            <Button variant="ghost" size="icon" className="relative" aria-label="Notifikasi">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative hover:bg-muted transition-colors duration-200"
+              aria-label="Notifikasi"
+              onClick={() => navigateTo('notifications')}
+            >
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
             </Button>
 
             {/* User dropdown */}
@@ -686,8 +692,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </header>
 
         {/* ── Main Content ── */}
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-4 sm:p-6">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
         </main>
       </div>
     </div>

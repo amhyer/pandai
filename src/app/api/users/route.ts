@@ -246,6 +246,24 @@ export async function PATCH(request: Request) {
   }
 }
 
+// PUT /api/users — Profile update (uses id from body, accepts name/email/phone)
+export async function PUT(request: Request) {
+  try {
+    const { id, name, email, phone } = await request.json();
+    if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    const data: Record<string, string> = {};
+    if (name !== undefined) data.name = name;
+    if (email !== undefined) data.email = email;
+    if (phone !== undefined) data.phone = phone;
+
+    const user = await db.user.update({ where: { id }, data });
+    return NextResponse.json(user);
+  } catch (error) {
+    return NextResponse.json({ error: 'Gagal memperbarui profil' }, { status: 500 });
+  }
+}
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

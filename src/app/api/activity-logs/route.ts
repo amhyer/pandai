@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
     const schoolId = searchParams.get('schoolId');
     const userId = searchParams.get('userId');
     const module_ = searchParams.get('module');
+    const category = searchParams.get('category'); // alias for module
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
@@ -15,6 +16,7 @@ export async function GET(req: NextRequest) {
     if (schoolId) where.schoolId = schoolId;
     if (userId) where.userId = userId;
     if (module_) where.module = module_;
+    if (category) where.module = category;
 
     const [logs, total] = await Promise.all([
       db.activityLog.findMany({

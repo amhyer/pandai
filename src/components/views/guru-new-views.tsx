@@ -1,5 +1,5 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAppStore } from '@/store/use-store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -7,12 +7,13 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -20,6 +21,8 @@ import {
   CheckCircle2, CircleDot, Save, Star, BookOpen, AlertTriangle, TrendingUp,
   ChevronDown, ChevronUp, UserCheck, UserX, Stethoscope, ClipboardList,
   Download, Printer, CalendarClock, Sparkles, Calendar,
+  Loader2, ArrowUpDown, BookMarked, Heart, Target, Lightbulb, Handshake, Ear,
+  Team, Wrench, BookHeart, GraduationCap,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -34,13 +37,13 @@ interface HabitRating { habit: string; rating: number; note: string; }
 interface JournalEntry { id: string; date: string; className: string; subject: string; topic: string; activities: string; notes: string; }
 
 const HABITS = [
-  { key: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', desc: 'Mengambil inisiatif dan bertanggung jawab' },
-  { key: 'tujuan', name: 'Memulai dengan Tujuan', emoji: '🧭', desc: 'Menentukan tujuan sebelum bertindak' },
-  { key: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', desc: 'Mengutamakan hal penting, bukan mendesak' },
-  { key: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', desc: 'Mencari solusi saling menguntungkan' },
-  { key: 'mengerti', name: 'Mengerti lalu Dierti', emoji: '👂', desc: 'Mendengarkan orang lain terlebih dahulu' },
-  { key: 'sinergi', name: 'Bersinergi', emoji: '🤲', desc: 'Bekerja sama mencapai hasil terbaik' },
-  { key: 'asah', name: 'Asah Gergaji', emoji: '🔧', desc: 'Terus belajar dan mengembangkan diri' },
+  { key: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', desc: 'Mengambil inisiatif dan bertanggung jawab', color: 'bg-rose-50 border-rose-200 text-rose-800', iconBg: 'bg-rose-100', barColor: 'bg-rose-400' },
+  { key: 'tujuan', name: 'Memulai dengan Tujuan', emoji: '🧭', desc: 'Menentukan tujuan sebelum bertindak', color: 'bg-sky-50 border-sky-200 text-sky-800', iconBg: 'bg-sky-100', barColor: 'bg-sky-400' },
+  { key: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', desc: 'Mengutamakan hal penting, bukan mendesak', color: 'bg-amber-50 border-amber-200 text-amber-800', iconBg: 'bg-amber-100', barColor: 'bg-amber-400' },
+  { key: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', desc: 'Mencari solusi saling menguntungkan', color: 'bg-emerald-50 border-emerald-200 text-emerald-800', iconBg: 'bg-emerald-100', barColor: 'bg-emerald-400' },
+  { key: 'mengerti', name: 'Mengerti lalu Dierti', emoji: '👂', desc: 'Mendengarkan orang lain terlebih dahulu', color: 'bg-violet-50 border-violet-200 text-violet-800', iconBg: 'bg-violet-100', barColor: 'bg-violet-400' },
+  { key: 'sinergi', name: 'Bersinergi', emoji: '🤲', desc: 'Bekerja sama mencapai hasil terbaik', color: 'bg-teal-50 border-teal-200 text-teal-800', iconBg: 'bg-teal-100', barColor: 'bg-teal-400' },
+  { key: 'asah', name: 'Asah Gergaji', emoji: '🔧', desc: 'Terus belajar dan mengembangkan diri', color: 'bg-orange-50 border-orange-200 text-orange-800', iconBg: 'bg-orange-100', barColor: 'bg-orange-400' },
 ];
 
 const MOCK_CLASSES = [
@@ -119,51 +122,95 @@ const MONTHS = [
 function todayStr() { return new Date().toISOString().split('T')[0]; }
 function currentMonth() { return String(new Date().getMonth() + 1).padStart(2, '0'); }
 function formatDate(d: string) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }); }
+function formatDateShort(d: string) { return new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' }); }
+function getInitials(name: string) { return name.split(' ').map((w) => w[0]).join('').toUpperCase().slice(0, 2); }
+
+function getCountdown(dueDate: string): { text: string; urgent: boolean } {
+  const now = new Date(); now.setHours(0, 0, 0, 0);
+  const due = new Date(dueDate); due.setHours(0, 0, 0, 0);
+  const diff = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return { text: `${Math.abs(diff)} hari lalu`, urgent: true };
+  if (diff === 0) return { text: 'Hari ini', urgent: true };
+  if (diff <= 3) return { text: `${diff} hari lagi`, urgent: true };
+  if (diff <= 7) return { text: `${diff} hari lagi`, urgent: false };
+  return { text: `${diff} hari lagi`, urgent: false };
+}
 
 // ═══════════════════════════════════════════════════════════════════
 // SHARED UI COMPONENTS
 // ═══════════════════════════════════════════════════════════════════
 
-function statusBadge(status: string) {
-  const map: Record<string, { cls: string; label: string }> = {
-    published: { cls: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0', label: 'Aktif' },
-    completed: { cls: 'bg-gray-100 text-gray-600 hover:bg-gray-100 border-0', label: 'Selesai' },
-    draft: { cls: 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-0', label: 'Draft' },
-    late: { cls: 'bg-red-100 text-red-700 hover:bg-red-100 border-0', label: 'Terlambat' },
-  };
-  const v = map[status];
-  return v ? <Badge className={v.cls}>{v.label}</Badge> : <Badge variant="secondary">{status}</Badge>;
+function GradientIcon({ children, className }: { children: React.ReactNode; className?: string }) {
+  return <div className={cn('p-2.5 rounded-xl bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white shadow-sm', className)}>{children}</div>;
 }
 
-function typeBadge(type: string) {
-  const map: Record<string, string> = { tugas: 'border-blue-300 text-blue-700', quiz: 'border-purple-300 text-purple-700', ujian: 'border-orange-300 text-orange-700' };
-  return <Badge variant="outline" className={map[type] ?? ''}>{type === 'tugas' ? 'Tugas' : type === 'quiz' ? 'Kuis' : 'Ujian'}</Badge>;
-}
-
-function kehadiranBadge(status: string) {
-  const map: Record<string, string> = { Hadir: 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-0', Izin: 'bg-blue-100 text-blue-700 hover:bg-blue-100 border-0', Sakit: 'bg-amber-100 text-amber-700 hover:bg-amber-100 border-0', Alpa: 'bg-red-100 text-red-700 hover:bg-red-100 border-0' };
-  return <Badge className={map[status] ?? ''}>{status}</Badge>;
-}
-
-function StarRating({ value, onChange, size = 'md' }: { value: number; onChange?: (v: number) => void; size?: 'sm' | 'md' }) {
-  const sz = size === 'sm' ? 'w-5 h-5' : 'w-7 h-7';
+function PageHeader({ icon, title, description, action }: { icon: React.ReactNode; title: string; description: string; action?: React.ReactNode }) {
   return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map((s) => (
-        <button key={s} type="button" onClick={() => onChange?.(s)} className={cn('transition-colors', !onChange && 'cursor-default')} aria-label={`${s} bintang`}>
-          <Star className={cn(sz, s <= value ? 'text-amber-400 fill-amber-400' : 'text-gray-300')} />
-        </button>
-      ))}
+    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex items-center gap-3">
+        <GradientIcon>{icon}</GradientIcon>
+        <div>
+          <h1 className="text-2xl font-bold text-[#1F3864]">{title}</h1>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      {action}
     </div>
   );
 }
 
-function StatCard({ icon, label, value, bg, color, sub }: { icon: React.ReactNode; label: string; value: string | number; bg: string; color: string; sub?: string }) {
+function StatusBadge({ status }: { status: string }) {
+  const map: Record<string, { cls: string; label: string }> = {
+    published: { cls: 'bg-emerald-100 text-emerald-700', label: 'Aktif' },
+    completed: { cls: 'bg-gray-100 text-gray-600', label: 'Selesai' },
+    draft: { cls: 'bg-amber-100 text-amber-700', label: 'Draft' },
+    late: { cls: 'bg-red-100 text-red-700', label: 'Terlambat' },
+  };
+  const v = map[status];
+  return v ? <Badge className={cn('rounded-full border-0 px-3 py-0.5 text-xs font-medium', v.cls)}>{v.label}</Badge> : <Badge variant="secondary" className="rounded-full">{status}</Badge>;
+}
+
+function TypeBadge({ type }: { type: string }) {
+  const map: Record<string, { cls: string; label: string }> = {
+    tugas: { cls: 'bg-blue-100 text-blue-700', label: 'Tugas' },
+    quiz: { cls: 'bg-amber-100 text-amber-700', label: 'Kuis' },
+    ujian: { cls: 'bg-purple-100 text-purple-700', label: 'Ujian' },
+  };
+  const v = map[type];
+  return v ? <Badge className={cn('rounded-full border-0 px-3 py-0.5 text-xs font-medium', v.cls)}>{v.label}</Badge> : <Badge variant="outline">{type}</Badge>;
+}
+
+function KehadiranBadge({ status }: { status: string }) {
+  const map: Record<string, string> = { Hadir: 'bg-emerald-100 text-emerald-700', Izin: 'bg-blue-100 text-blue-700', Sakit: 'bg-amber-100 text-amber-700', Alpa: 'bg-red-100 text-red-700' };
+  return <Badge className={cn('rounded-full border-0 px-3 py-0.5 text-xs font-medium', map[status] ?? '')}>{status}</Badge>;
+}
+
+function StarRating({ value, onChange, size = 'md', readonly = false }: { value: number; onChange?: (v: number) => void; size?: 'sm' | 'md'; readonly?: boolean }) {
+  const [hover, setHover] = useState(0);
+  const sz = size === 'sm' ? 'w-4 h-4' : 'w-6 h-6';
   return (
-    <Card className="hover:shadow-md transition-all duration-200 hover:-translate-y-0.5">
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((s) => {
+        const filled = s <= (hover || value);
+        return (
+          <button key={s} type="button" disabled={readonly}
+            onClick={() => onChange?.(s)} onMouseEnter={() => !readonly && setHover(s)} onMouseLeave={() => !readonly && setHover(0)}
+            className={cn('transition-all duration-150', !onChange && 'cursor-default', onChange && 'hover:scale-110 active:scale-95 cursor-pointer')}
+            aria-label={`${s} bintang`}>
+            <Star className={cn(sz, filled ? 'text-amber-400 fill-amber-400 drop-shadow-sm' : 'text-gray-200', !readonly && 'hover:text-amber-300')} />
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function StatCard({ icon, label, value, bg, color, sub, iconElement }: { icon?: React.ReactNode; label: string; value: string | number; bg: string; color: string; sub?: string; iconElement?: React.ReactNode }) {
+  return (
+    <Card className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
       <CardContent className="p-4">
         <div className="flex items-center gap-3">
-          <div className={cn('p-2.5 rounded-xl', bg, color)}>{icon}</div>
+          <div className={cn('p-2.5 rounded-xl shrink-0', bg, color)}>{icon}</div>
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground truncate">{label}</p>
             <p className={cn('text-xl font-bold', color)}>{value}</p>
@@ -172,6 +219,44 @@ function StatCard({ icon, label, value, bg, color, sub }: { icon: React.ReactNod
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+function SoftStatCard({ icon, label, value, bg, color, sub }: { icon: React.ReactNode; label: string; value: string | number; bg: string; color: string; sub?: string }) {
+  return (
+    <Card className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={cn('p-2 rounded-lg shrink-0', bg, color)}>{icon}</div>
+          <div className="min-w-0">
+            <p className="text-xs text-muted-foreground truncate">{label}</p>
+            <p className={cn('text-lg font-bold', color)}>{value}</p>
+            {sub && <p className="text-xs text-muted-foreground">{sub}</p>}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FilterPill({ label, active, onClick, color }: { label: string; active: boolean; onClick: () => void; color?: string }) {
+  return (
+    <button onClick={onClick}
+      className={cn('rounded-full px-4 py-1.5 text-sm font-medium transition-all duration-200 cursor-pointer',
+        active
+          ? cn('text-white shadow-sm', color || 'bg-[#1F3864]')
+          : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+      )}>{label}</button>
+  );
+}
+
+function EmptyState({ icon, message, action }: { icon: React.ReactNode; message: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <div className="h-20 w-20 rounded-full bg-muted/50 flex items-center justify-center mb-4 text-muted-foreground/50">{icon}</div>
+      <p className="text-muted-foreground text-sm max-w-xs">{message}</p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
   );
 }
 
@@ -193,7 +278,8 @@ function ViewSkeleton() {
 export function GuruTugasView() {
   const user = useAppStore((s) => s.user);
   const [items, setItems] = useState<TugasItem[]>(MOCK_TUGAS);
-  const [activeTab, setActiveTab] = useState('semua');
+  const [typeFilter, setTypeFilter] = useState('semua');
+  const [statusFilter, setStatusFilter] = useState('semua');
   const [search, setSearch] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -203,7 +289,6 @@ export function GuruTugasView() {
   const [saving, setSaving] = useState(false);
   const fetchedRef = useRef(false);
 
-  // Attempt API fetch on mount — only update if API returns data
   useEffect(() => {
     if (fetchedRef.current) return;
     fetchedRef.current = true;
@@ -227,16 +312,15 @@ export function GuruTugasView() {
   }, [user?.schoolId, user?.id]);
 
   const filtered = items.filter((i) => {
-    if (activeTab !== 'semua' && i.type !== activeTab) return false;
+    if (typeFilter !== 'semua' && i.type !== typeFilter) return false;
+    if (statusFilter !== 'semua' && i.status !== statusFilter) return false;
     if (search && !i.title.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
   const stats = {
-    total: items.length,
-    aktif: items.filter((i) => i.status === 'published').length,
-    selesai: items.filter((i) => i.status === 'completed').length,
-    draft: items.filter((i) => i.status === 'draft' || i.status === 'late').length,
+    total: items.length, aktif: items.filter((i) => i.status === 'published').length,
+    selesai: items.filter((i) => i.status === 'completed').length, draft: items.filter((i) => i.status === 'draft' || i.status === 'late').length,
   };
 
   const handleSave = async () => {
@@ -252,10 +336,8 @@ export function GuruTugasView() {
     } catch { /* fallback */ }
     const newItem: TugasItem = { id: `t${Date.now()}`, ...form, status: 'published' };
     setItems((prev) => [newItem, ...prev]);
-    toast.success('Tugas berhasil dibuat (lokal)');
-    setDialogOpen(false);
-    setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '' });
-    setSaving(false);
+    toast.success('Tugas berhasil dibuat (lokal)'); setDialogOpen(false);
+    setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '' }); setSaving(false);
   };
 
   const handleDelete = () => {
@@ -264,17 +346,16 @@ export function GuruTugasView() {
     toast.success('Tugas berhasil dihapus'); setDeleteOpen(false); setSelected(null);
   };
 
+  const typeBorderColor: Record<string, string> = { tugas: 'border-l-blue-500', quiz: 'border-l-amber-500', ujian: 'border-l-purple-500' };
+  const typeAccentBg: Record<string, string> = { tugas: 'bg-blue-50', quiz: 'bg-amber-50', ujian: 'bg-purple-50' };
+  const typeAccentColor: Record<string, string> = { tugas: 'text-blue-600', quiz: 'text-amber-600', ujian: 'text-purple-600' };
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-[#1F3864]">Tugas, Kuis & Ujian</h1>
-          <p className="text-sm text-muted-foreground">Kelola tugas, kuis, dan ujian untuk siswa Anda</p>
-        </div>
-        <Button onClick={() => setDialogOpen(true)} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white">
-          <Plus className="w-4 h-4 mr-2" /> Buat Tugas Baru
-        </Button>
-      </div>
+      <PageHeader icon={<ClipboardList className="w-5 h-5" />} title="Tugas, Kuis & Ujian" description="Kelola tugas, kuis, dan ujian untuk siswa Anda"
+        action={<Button onClick={() => { setSelected(null); setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '' }); setDialogOpen(true); }} className="bg-[#1F3864] hover:bg-[#2d5289] text-white transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
+          <Plus className="w-4 h-4 mr-2" />Buat Tugas Baru
+        </Button>} />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<FileText className="w-5 h-5" />} label="Total Tugas" value={stats.total} bg="bg-[#1F3864]/10" color="text-[#1F3864]" />
@@ -283,92 +364,114 @@ export function GuruTugasView() {
         <StatCard icon={<Clock className="w-5 h-5" />} label="Draft / Terlambat" value={stats.draft} bg="bg-amber-50" color="text-amber-600" />
       </div>
 
-      <Card>
+      {/* Filters */}
+      <Card className="rounded-xl shadow-sm">
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList><TabsTrigger value="semua">Semua</TabsTrigger><TabsTrigger value="tugas">Tugas</TabsTrigger><TabsTrigger value="quiz">Kuis</TabsTrigger><TabsTrigger value="ujian">Ujian</TabsTrigger></TabsList>
-            </Tabs>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input placeholder="Cari tugas..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-wrap gap-2">
+              <span className="text-xs font-medium text-muted-foreground self-center mr-1">Tipe:</span>
+              {['semua', 'tugas', 'quiz', 'ujian'].map((t) => (
+                <FilterPill key={t} label={t === 'semua' ? 'Semua' : t === 'tugas' ? 'Tugas' : t === 'quiz' ? 'Kuis' : 'Ujian'} active={typeFilter === t} onClick={() => setTypeFilter(t)} />
+              ))}
+            </div>
+            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+              <div className="flex flex-wrap gap-2">
+                <span className="text-xs font-medium text-muted-foreground self-center mr-1">Status:</span>
+                {['semua', 'published', 'draft', 'completed', 'late'].map((s) => (
+                  <FilterPill key={s} label={s === 'semua' ? 'Semua' : s === 'published' ? 'Aktif' : s === 'draft' ? 'Draft' : s === 'completed' ? 'Selesai' : 'Terlambat'} active={statusFilter === s} onClick={() => setStatusFilter(s)} />
+                ))}
+              </div>
+              <div className="relative flex-1 w-full sm:max-w-xs sm:ml-auto">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input placeholder="Cari tugas..." className="pl-9 rounded-lg" value={search} onChange={(e) => setSearch(e.target.value)} />
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-[#1F3864]/5 hover:bg-[#1F3864]/5">
-                  <TableHead className="font-semibold">Judul</TableHead>
-                  <TableHead className="font-semibold">Tipe</TableHead>
-                  <TableHead className="font-semibold">Tenggat</TableHead>
-                  <TableHead className="font-semibold">Status</TableHead>
-                  <TableHead className="font-semibold text-right">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 && <TableRow><TableCell colSpan={5} className="text-center py-12 text-muted-foreground">Tidak ada data tugas</TableCell></TableRow>}
-                {filtered.map((item) => (
-                  <TableRow key={item.id} className="group">
-                    <TableCell className="font-medium max-w-[240px]">
-                      <div className="truncate" title={item.title}>{item.title}</div>
-                      <div className="text-xs text-muted-foreground truncate max-w-[240px]" title={item.description}>{item.description}</div>
-                    </TableCell>
-                    <TableCell>{typeBadge(item.type)}</TableCell>
-                    <TableCell className="text-sm whitespace-nowrap">{formatDate(item.dueDate)}</TableCell>
-                    <TableCell>{statusBadge(item.status)}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex gap-1 justify-end">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelected(item); setDetailOpen(true); }}><Eye className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelected(item); setForm({ title: item.title, description: item.description, type: item.type, dueDate: item.dueDate, content: item.content || '' }); setDialogOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => { setSelected(item); setDeleteOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Task Cards */}
+      {filtered.length === 0 ? (
+        <Card className="rounded-xl shadow-sm"><CardContent>
+          <EmptyState icon={<ClipboardList className="w-8 h-8" />} message="Tidak ada tugas yang cocok dengan filter." />
+        </CardContent></Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((item) => {
+            const countdown = getCountdown(item.dueDate);
+            return (
+              <Card key={item.id} className={cn('rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border-l-4 overflow-hidden', typeBorderColor[item.type])}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div className="flex gap-2 flex-wrap">
+                      <TypeBadge type={item.type} />
+                      <StatusBadge status={item.status} />
+                    </div>
+                    <div className="flex gap-0.5 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelected(item); setDetailOpen(true); }}><Eye className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelected(item); setForm({ title: item.title, description: item.description, type: item.type, dueDate: item.dueDate, content: item.content || '' }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => { setSelected(item); setDeleteOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                    </div>
+                  </div>
+                  <h3 className="font-semibold text-sm text-foreground mb-1 leading-tight">{item.title}</h3>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{item.description}</p>
+                  <div className={cn('flex items-center gap-2 px-3 py-2 rounded-lg', typeAccentBg[item.type])}>
+                    <CalendarClock className={cn('w-3.5 h-3.5', typeAccentColor[item.type])} />
+                    <span className={cn('text-xs font-medium', countdown.urgent ? 'text-red-600' : 'text-muted-foreground')}>{formatDate(item.dueDate)}</span>
+                    <span className={cn('text-xs font-semibold ml-auto', countdown.urgent ? 'text-red-600' : 'text-muted-foreground')}>({countdown.text})</span>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* Create / Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
           <DialogHeader><DialogTitle className="text-[#1F3864]">{selected ? 'Edit' : 'Buat'} Tugas</DialogTitle><DialogDescription>Tambahkan tugas, kuis, atau ujian baru untuk siswa</DialogDescription></DialogHeader>
           <div className="space-y-4">
-            <div className="space-y-2"><Label>Judul *</Label><Input placeholder="Masukkan judul tugas" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Deskripsi</Label><Input placeholder="Deskripsi singkat" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Judul *</Label><Input placeholder="Masukkan judul tugas" className="rounded-lg" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Deskripsi</Label><Input placeholder="Deskripsi singkat" className="rounded-lg" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Tipe *</Label>
-              <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v as 'tugas' | 'quiz' | 'ujian' }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent><SelectItem value="tugas">Tugas</SelectItem><SelectItem value="quiz">Kuis</SelectItem><SelectItem value="ujian">Ujian</SelectItem></SelectContent>
-              </Select>
+              <div className="flex gap-2">
+                {(['tugas', 'quiz', 'ujian'] as const).map((t) => (
+                  <button key={t} type="button" onClick={() => setForm((f) => ({ ...f, type: t }))}
+                    className={cn('rounded-full px-4 py-2 text-sm font-medium transition-all duration-200 cursor-pointer',
+                      form.type === t
+                        ? t === 'tugas' ? 'bg-blue-500 text-white shadow-sm' : t === 'quiz' ? 'bg-amber-500 text-white shadow-sm' : 'bg-purple-500 text-white shadow-sm'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    )}>{t === 'tugas' ? '📝 Tugas' : t === 'quiz' ? '📋 Kuis' : '📄 Ujian'}</button>
+                ))}
+              </div>
             </div>
-            <div className="space-y-2"><Label>Tanggal Tenggat *</Label><Input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Konten / Instruksi</Label><Textarea placeholder="Tulis instruksi tugas..." rows={5} value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Tanggal Tenggat *</Label><Input type="date" className="rounded-lg" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Konten / Instruksi</Label><Textarea placeholder="Tulis instruksi tugas..." rows={5} className="rounded-lg" value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogOpen(false); setSelected(null); }}>Batal</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white">{saving ? 'Menyimpan...' : 'Simpan'}</Button>
+            <Button variant="outline" onClick={() => { setDialogOpen(false); setSelected(null); }} className="rounded-lg transition-all duration-200">Batal</Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#2d5289] text-white rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{saving ? 'Menyimpan...' : 'Simpan'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Detail Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg rounded-xl">
           <DialogHeader><DialogTitle className="text-[#1F3864]">{selected?.title}</DialogTitle><DialogDescription>Detail tugas</DialogDescription></DialogHeader>
           {selected && (
-            <div className="space-y-3">
-              <div className="flex gap-2">{typeBadge(selected.type)} {statusBadge(selected.status)}</div>
+            <div className="space-y-4">
+              <div className="flex gap-2"><TypeBadge type={selected.type} /> <StatusBadge status={selected.status} /></div>
               <p className="text-sm text-muted-foreground">{selected.description}</p>
-              <div className="flex items-center gap-2 text-sm"><CalendarClock className="w-4 h-4 text-muted-foreground" /> Tenggat: {formatDate(selected.dueDate)}</div>
-              {selected.content && <div className="p-3 rounded-lg bg-muted text-sm whitespace-pre-wrap">{selected.content}</div>}
+              <div className={cn('flex items-center gap-2 text-sm p-3 rounded-lg', typeAccentBg[selected.type])}>
+                <CalendarClock className={cn('w-4 h-4', typeAccentColor[selected.type])} />
+                <span>Tenggat: <strong>{formatDate(selected.dueDate)}</strong></span>
+                <span className={cn('ml-auto text-xs font-semibold', getCountdown(selected.dueDate).urgent ? 'text-red-600' : 'text-muted-foreground')}>({getCountdown(selected.dueDate).text})</span>
+              </div>
+              {selected.content && <div className="p-4 rounded-xl bg-muted/50 text-sm whitespace-pre-wrap border border-muted">{selected.content}</div>}
             </div>
           )}
         </DialogContent>
@@ -376,9 +479,9 @@ export function GuruTugasView() {
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader><AlertDialogTitle>Hapus Tugas</AlertDialogTitle><AlertDialogDescription>Apakah Anda yakin ingin menghapus &quot;{selected?.title}&quot;?</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Hapus</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogCancel className="rounded-lg">Batal</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 rounded-lg">Hapus</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
@@ -389,6 +492,13 @@ export function GuruTugasView() {
 // 2. GURU KEHADIRAN VIEW
 // ═══════════════════════════════════════════════════════════════════
 
+const ATTENDANCE_BUTTONS: { status: AttendanceRecord['status']; label: string; color: string; activeColor: string; activeBg: string }[] = [
+  { status: 'Hadir', label: 'H', color: 'text-emerald-600', activeColor: 'text-white', activeBg: 'bg-emerald-500' },
+  { status: 'Izin', label: 'I', color: 'text-blue-600', activeColor: 'text-white', activeBg: 'bg-blue-500' },
+  { status: 'Sakit', label: 'S', color: 'text-amber-600', activeColor: 'text-white', activeBg: 'bg-amber-500' },
+  { status: 'Alpa', label: 'A', color: 'text-red-600', activeColor: 'text-white', activeBg: 'bg-red-500' },
+];
+
 export function GuruKehadiranView() {
   const user = useAppStore((s) => s.user);
   const [date, setDate] = useState(todayStr());
@@ -398,7 +508,6 @@ export function GuruKehadiranView() {
   const [saving, setSaving] = useState(false);
   const loadedRef = useRef<string>('');
 
-  // Load students when classId changes
   useEffect(() => {
     const key = `${classId}-${date}`;
     if (!classId || loadedRef.current === key) return;
@@ -427,15 +536,18 @@ export function GuruKehadiranView() {
     return () => controller.abort();
   }, [classId, date, user?.schoolId]);
 
-  const updateRecord = (sid: string, field: keyof AttendanceRecord, value: string) => {
-    setRecords((prev) => ({ ...prev, [sid]: { ...prev[sid], [field]: value } }));
-  };
+  const updateRecord = useCallback((sid: string, status: string) => {
+    setRecords((prev) => ({ ...prev, [sid]: { ...prev[sid], status: status as AttendanceRecord['status'] } }));
+  }, []);
+
+  const updateNote = useCallback((sid: string, note: string) => {
+    setRecords((prev) => ({ ...prev, [sid]: { ...prev[sid], note } }));
+  }, []);
 
   const markAllHadir = () => {
     const updated = { ...records };
     students.forEach((s) => { updated[s.id] = { ...updated[s.id], status: 'Hadir' }; });
-    setRecords(updated);
-    toast.success('Semua siswa ditandai Hadir');
+    setRecords(updated); toast.success('Semua siswa ditandai Hadir');
   };
 
   const handleSave = async () => {
@@ -446,89 +558,78 @@ export function GuruKehadiranView() {
       const res = await fetch('/api/attendance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (res.ok) { toast.success('Kehadiran berhasil disimpan'); setSaving(false); return; }
     } catch { /* fallback */ }
-    toast.success('Kehadiran berhasil disimpan (lokal)');
-    setSaving(false);
+    toast.success('Kehadiran berhasil disimpan (lokal)'); setSaving(false);
   };
 
   const summary = Object.values(records).reduce((acc, r) => { acc[r.status] = (acc[r.status] || 0) + 1; return acc; }, { Hadir: 0, Izin: 0, Sakit: 0, Alpa: 0 } as Record<string, number>);
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-[#1F3864]">Kehadiran Siswa</h1>
-        <p className="text-sm text-muted-foreground">Catat kehadiran harian siswa di kelas</p>
-      </div>
+      <PageHeader icon={<UserCheck className="w-5 h-5" />} title="Kehadiran Siswa" description="Catat kehadiran harian siswa di kelas" />
 
-      <Card>
+      {/* Date + Class selector */}
+      <Card className="rounded-xl shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-            <div className="space-y-2 w-full sm:w-auto"><Label>Tanggal</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full sm:w-48" /></div>
-            <div className="space-y-2 w-full sm:w-auto">
-              <Label>Kelas</Label>
-              <Select value={classId} onValueChange={(v) => { setClassId(v); loadedRef.current = ''; }}>
-                <SelectTrigger className="w-full sm:w-48"><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
-                <SelectContent>{MOCK_CLASSES.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-              </Select>
+            <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Tanggal</Label><Input type="date" value={date} onChange={(e) => { setDate(e.target.value); loadedRef.current = ''; }} className="w-full sm:w-48 rounded-lg" /></div>
+            <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Kelas</Label>
+              <div className="flex flex-wrap gap-2">
+                {MOCK_CLASSES.map((c) => (
+                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); loadedRef.current = ''; }} />
+                ))}
+              </div>
             </div>
-            {students.length > 0 && <Button variant="outline" onClick={markAllHadir} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50"><UserCheck className="w-4 h-4 mr-2" />Semua Hadir</Button>}
+            {students.length > 0 && <Button variant="outline" onClick={markAllHadir} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 rounded-full px-4 transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer"><UserCheck className="w-4 h-4 mr-2" />Semua Hadir</Button>}
           </div>
         </CardContent>
       </Card>
 
+      {/* Summary counters */}
       {students.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard icon={<UserCheck className="w-5 h-5" />} label="Hadir" value={summary.Hadir} bg="bg-emerald-50" color="text-emerald-600" />
-          <StatCard icon={<FileText className="w-5 h-5" />} label="Izin" value={summary.Izin} bg="bg-blue-50" color="text-blue-600" />
-          <StatCard icon={<Stethoscope className="w-5 h-5" />} label="Sakit" value={summary.Sakit} bg="bg-amber-50" color="text-amber-600" />
-          <StatCard icon={<UserX className="w-5 h-5" />} label="Alpa" value={summary.Alpa} bg="bg-red-50" color="text-red-600" />
+          <SoftStatCard icon={<UserCheck className="w-4 h-4" />} label="Hadir" value={summary.Hadir} bg="bg-emerald-100" color="text-emerald-600" />
+          <SoftStatCard icon={<FileText className="w-4 h-4" />} label="Izin" value={summary.Izin} bg="bg-blue-100" color="text-blue-600" />
+          <SoftStatCard icon={<Stethoscope className="w-4 h-4" />} label="Sakit" value={summary.Sakit} bg="bg-amber-100" color="text-amber-600" />
+          <SoftStatCard icon={<UserX className="w-4 h-4" />} label="Alpa" value={summary.Alpa} bg="bg-red-100" color="text-red-600" />
         </div>
       )}
 
-      <Card>
+      {/* Student list */}
+      <Card className="rounded-xl shadow-sm overflow-hidden">
         <CardContent className="p-0">
           {!classId ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <Users className="w-12 h-12 mb-3 opacity-30" /><p>Pilih kelas untuk menampilkan daftar siswa</p>
-            </div>
+            <EmptyState icon={<Users className="w-8 h-8" />} message="Pilih kelas untuk menampilkan daftar siswa" />
           ) : students.length === 0 ? (
             <div className="flex items-center justify-center py-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1F3864]" /></div>
           ) : (
-            <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-[#1F3864]/5 hover:bg-[#1F3864]/5">
-                    <TableHead className="w-12 font-semibold">No</TableHead>
-                    <TableHead className="font-semibold">Nama Siswa</TableHead>
-                    <TableHead className="font-semibold">NISN</TableHead>
-                    <TableHead className="font-semibold">Status</TableHead>
-                    <TableHead className="font-semibold">Catatan</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {students.map((s, idx) => {
-                    const rec = records[s.id] || { studentId: s.id, status: 'Hadir' as const, note: '' };
-                    return (
-                      <TableRow key={s.id}>
-                        <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
-                        <TableCell className="font-medium">{s.name}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{s.nisn}</TableCell>
-                        <TableCell>
-                          <Select value={rec.status} onValueChange={(v) => updateRecord(s.id, 'status', v)}>
-                            <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Hadir"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-emerald-500" />Hadir</span></SelectItem>
-                              <SelectItem value="Izin"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-blue-500" />Izin</span></SelectItem>
-                              <SelectItem value="Sakit"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-amber-500" />Sakit</span></SelectItem>
-                              <SelectItem value="Alpa"><span className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-red-500" />Alpa</span></SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                        <TableCell><Input placeholder="Catatan..." value={rec.note} onChange={(e) => updateRecord(s.id, 'note', e.target.value)} className="w-40" /></TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+            <div className="max-h-[480px] overflow-y-auto">
+              <div className="divide-y divide-border/50">
+                {students.map((s, idx) => {
+                  const rec = records[s.id] || { studentId: s.id, status: 'Hadir' as const, note: '' };
+                  return (
+                    <div key={s.id} className={cn('flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30', idx % 2 === 0 ? 'bg-background' : 'bg-muted/10')}>
+                      <span className="text-xs text-muted-foreground w-6 text-center shrink-0">{idx + 1}</span>
+                      <Avatar className="h-8 w-8 shrink-0"><AvatarFallback className="bg-[#1F3864]/10 text-[#1F3864] text-xs font-medium rounded-full">{getInitials(s.name)}</AvatarFallback></Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">NISN: {s.nisn}</p>
+                      </div>
+                      <div className="flex gap-1.5 shrink-0">
+                        {ATTENDANCE_BUTTONS.map((btn) => (
+                          <button key={btn.status} type="button" title={btn.status}
+                            onClick={() => updateRecord(s.id, btn.status)}
+                            className={cn('h-8 w-8 rounded-full text-xs font-bold transition-all duration-200 cursor-pointer flex items-center justify-center',
+                              rec.status === btn.status
+                                ? cn(btn.activeBg, btn.activeColor, 'shadow-sm scale-105')
+                                : cn('bg-muted/50', btn.color, 'hover:bg-muted')
+                            )}>{btn.label}</button>
+                        ))}
+                      </div>
+                      <Input placeholder="Catatan..." value={rec.note} onChange={(e) => updateNote(s.id, e.target.value)} className="w-32 h-8 text-xs rounded-lg hidden sm:block" />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
         </CardContent>
@@ -536,8 +637,8 @@ export function GuruKehadiranView() {
 
       {students.length > 0 && (
         <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white min-w-[160px]">
-            <Save className="w-4 h-4 mr-2" />{saving ? 'Menyimpan...' : 'Simpan Kehadiran'}
+          <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#2d5289] text-white min-w-[180px] rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}{saving ? 'Menyimpan...' : 'Simpan Kehadiran'}
           </Button>
         </div>
       )}
@@ -555,6 +656,7 @@ export function GuruRekapKehadiranView() {
   const [month, setMonth] = useState(currentMonth());
   const [data, setData] = useState<RekapKehadiran[]>(MOCK_REKAP);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [exporting, setExporting] = useState(false);
   const fetchedRef = useRef<string>('');
 
   useEffect(() => {
@@ -565,10 +667,7 @@ export function GuruRekapKehadiranView() {
     (async () => {
       try {
         const res = await fetch(`/api/attendance?schoolId=${user?.schoolId ?? ''}&classId=${classId}&month=${month}`, { signal: controller.signal });
-        if (res.ok) {
-          const json = await res.json();
-          if (Array.isArray(json.rekap) && json.rekap.length > 0) { setData(json.rekap); return; }
-        }
+        if (res.ok) { const json = await res.json(); if (Array.isArray(json.rekap) && json.rekap.length > 0) { setData(json.rekap); return; } }
       } catch { /* use mock */ }
       setData(MOCK_REKAP);
     })();
@@ -580,32 +679,49 @@ export function GuruRekapKehadiranView() {
   const avgKehadiran = data.length > 0 ? (data.reduce((s, d) => s + d.persentase, 0) / data.length).toFixed(1) : '0';
   const seringIzin = [...data].sort((a, b) => b.izin - a.izin)[0];
   const seringAlpa = [...data].sort((a, b) => b.alpa - a.alpa)[0];
+  const pctColor = (p: number) => p >= 90 ? 'text-emerald-600' : p >= 75 ? 'text-amber-600' : 'text-red-600';
+  const barColor = (p: number) => p >= 90 ? 'bg-emerald-500' : p >= 75 ? 'bg-amber-500' : 'bg-red-500';
+
+  const handleExport = async () => {
+    setExporting(true);
+    await new Promise((r) => setTimeout(r, 1000));
+    toast.success('Data berhasil diekspor');
+    setExporting(false);
+  };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-[#1F3864]">Rekap Kehadiran</h1><p className="text-sm text-muted-foreground">Ringkasan kehadiran siswa per bulan</p></div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => toast.success('Data berhasil diekspor')}><Download className="w-4 h-4 mr-2" />Ekspor</Button>
-          <Button variant="outline" onClick={() => window.print()}><Printer className="w-4 h-4 mr-2" />Cetak</Button>
-        </div>
-      </div>
+      <PageHeader icon={<BarChart3 className="w-5 h-5" />} title="Rekap Kehadiran" description="Ringkasan kehadiran siswa per bulan"
+        action={<div className="flex gap-2">
+          <Button variant="outline" onClick={handleExport} disabled={exporting} className="rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
+            {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}{exporting ? 'Mengekspor...' : 'Ekspor'}
+          </Button>
+          <Button variant="outline" onClick={() => window.print()} className="rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer"><Printer className="w-4 h-4 mr-2" />Cetak</Button>
+        </div>} />
 
-      <Card><CardContent className="p-4"><div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-        <div className="space-y-2"><Label>Kelas</Label>
-          <Select value={classId} onValueChange={(v) => { setClassId(v); fetchedRef.current = ''; }}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>{MOCK_CLASSES.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2"><Label>Bulan</Label>
-          <Select value={month} onValueChange={(v) => { setMonth(v); fetchedRef.current = ''; }}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </div></CardContent></Card>
+      {/* Class filter pills + month */}
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+            <div className="space-y-2 w-full sm:w-auto">
+              <Label className="text-xs text-muted-foreground">Kelas</Label>
+              <div className="flex flex-wrap gap-2">
+                {MOCK_CLASSES.map((c) => (
+                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); fetchedRef.current = ''; }} />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Bulan</Label>
+              <Select value={month} onValueChange={(v) => { setMonth(v); fetchedRef.current = ''; }}>
+                <SelectTrigger className="w-48 rounded-lg"><SelectValue /></SelectTrigger>
+                <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Summary stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<Calendar className="w-5 h-5" />} label="Total Hari Efektif" value={totalHari} bg="bg-[#1F3864]/10" color="text-[#1F3864]" />
         <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Rata-rata Kehadiran" value={`${avgKehadiran}%`} bg="bg-emerald-50" color="text-emerald-600" />
@@ -613,9 +729,13 @@ export function GuruRekapKehadiranView() {
         <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Sering Alpa" value={seringAlpa ? seringAlpa.studentName.split(' ')[0] : '-'} bg="bg-red-50" color="text-red-600" sub={seringAlpa ? `${seringAlpa.alpa}x` : ''} />
       </div>
 
-      <Card>
-        <CardHeader className="pb-2"><div className="flex items-center justify-between"><CardTitle className="text-base">Detail Kehadiran Siswa</CardTitle>
-          <Button variant="ghost" size="sm" onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))}><BarChart3 className="w-4 h-4 mr-1" />Urutkan {sortDir === 'desc' ? '↑' : '↓'}</Button>
+      {/* Table with percentage bars */}
+      <Card className="rounded-xl shadow-sm overflow-hidden">
+        <CardHeader className="pb-2"><div className="flex items-center justify-between">
+          <CardTitle className="text-base">Detail Kehadiran Siswa</CardTitle>
+          <Button variant="ghost" size="sm" onClick={() => setSortDir((d) => (d === 'desc' ? 'asc' : 'desc'))} className="rounded-lg transition-all duration-200 cursor-pointer">
+            <ArrowUpDown className="w-4 h-4 mr-1" />{sortDir === 'desc' ? 'Tertinggi' : 'Terendah'}
+          </Button>
         </div></CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
@@ -628,21 +748,19 @@ export function GuruRekapKehadiranView() {
                   <TableHead className="text-center font-semibold">Izin</TableHead>
                   <TableHead className="text-center font-semibold">Sakit</TableHead>
                   <TableHead className="text-center font-semibold">Alpa</TableHead>
-                  <TableHead className="font-semibold min-w-[200px]">Persentase</TableHead>
+                  <TableHead className="font-semibold min-w-[220px]">Persentase</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {sorted.map((d, idx) => {
-                  const pct = d.persentase;
-                  const barColor = pct >= 90 ? 'bg-emerald-500' : pct >= 75 ? 'bg-amber-500' : 'bg-red-500';
                   const isBest = idx === 0 && sortDir === 'desc';
                   const isWorst = idx === sorted.length - 1 && sortDir === 'desc';
                   return (
-                    <TableRow key={d.studentId} className={cn(isBest && 'bg-emerald-50/50', isWorst && 'bg-red-50/50')}>
+                    <TableRow key={d.studentId} className={cn(isBest && 'bg-emerald-50/50', isWorst && 'bg-red-50/50', 'even:bg-muted/30 hover:bg-muted/50 transition-colors')}>
                       <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                       <TableCell className="font-medium">{d.studentName}
-                        {isBest && <Badge className="ml-2 bg-emerald-100 text-emerald-700 border-0 text-xs">Terbaik</Badge>}
-                        {isWorst && <Badge className="ml-2 bg-red-100 text-red-700 border-0 text-xs">Perlu Perhatian</Badge>}
+                        {isBest && <Badge className="ml-2 bg-emerald-100 text-emerald-700 border-0 rounded-full text-[10px]">Terbaik</Badge>}
+                        {isWorst && <Badge className="ml-2 bg-red-100 text-red-700 border-0 rounded-full text-[10px]">Perlu Perhatian</Badge>}
                       </TableCell>
                       <TableCell className="text-center"><span className="text-emerald-600 font-medium">{d.hadir}</span></TableCell>
                       <TableCell className="text-center"><span className="text-blue-600">{d.izin}</span></TableCell>
@@ -650,8 +768,8 @@ export function GuruRekapKehadiranView() {
                       <TableCell className="text-center"><span className="text-red-600">{d.alpa}</span></TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-500', barColor)} style={{ width: `${pct}%` }} /></div>
-                          <span className={cn('text-sm font-medium w-14 text-right', pct >= 90 ? 'text-emerald-600' : pct >= 75 ? 'text-amber-600' : 'text-red-600')}>{pct}%</span>
+                          <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-700 ease-out', barColor(d.persentase))} style={{ width: `${d.persentase}%` }} /></div>
+                          <span className={cn('text-sm font-bold w-14 text-right', pctColor(d.persentase))}>{d.persentase}%</span>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -681,7 +799,6 @@ export function GuruKarakterView() {
   const studentLoadedRef = useRef<string>('');
   const ratingLoadedRef = useRef<string>('');
 
-  // Load students for class
   useEffect(() => {
     if (!classId || studentLoadedRef.current === classId) return;
     studentLoadedRef.current = classId;
@@ -696,7 +813,6 @@ export function GuruKarakterView() {
     return () => controller.abort();
   }, [classId, user?.schoolId]);
 
-  // Load ratings for student
   useEffect(() => {
     if (!studentId) return;
     const m = String(new Date(date).getMonth() + 1).padStart(2, '0');
@@ -732,52 +848,87 @@ export function GuruKarakterView() {
       const res = await fetch('/api/character-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       if (res.ok) { toast.success('Laporan karakter berhasil disimpan'); setSaving(false); return; }
     } catch { /* fallback */ }
-    toast.success('Laporan karakter berhasil disimpan (lokal)');
-    setSaving(false);
+    toast.success('Laporan karakter berhasil disimpan (lokal)'); setSaving(false);
   };
+
+  const completedCount = ratings.filter((r) => r.rating > 0).length;
+  const progressPct = (completedCount / HABITS.length) * 100;
+  const selectedStudent = students.find((s) => s.id === studentId);
 
   return (
     <div className="space-y-6">
-      <div><h1 className="text-2xl font-bold text-[#1F3864]">Isi Laporan 7 Kebiasaan</h1><p className="text-sm text-muted-foreground">7 Kebiasaan Anak Hebat — Laporan Karakter Siswa</p></div>
+      <PageHeader icon={<Sparkles className="w-5 h-5" />} title="Isi Laporan 7 Kebiasaan" description="7 Kebiasaan Anak Hebat — Laporan Karakter Siswa" />
 
-      <Card><CardContent className="p-4"><div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="space-y-2"><Label>Tanggal</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} /></div>
-        <div className="space-y-2"><Label>Kelas</Label>
-          <Select value={classId} onValueChange={(v) => { setClassId(v); setStudentId(''); studentLoadedRef.current = ''; ratingLoadedRef.current = ''; }}>
-            <SelectTrigger><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
-            <SelectContent>{MOCK_CLASSES.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2"><Label>Siswa</Label>
-          <Select value={studentId} onValueChange={(v) => { setStudentId(v); ratingLoadedRef.current = ''; }} disabled={!classId}>
-            <SelectTrigger><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
-            <SelectContent>{students.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </div></CardContent></Card>
+      {/* Selectors */}
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+            <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Tanggal</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full sm:w-48 rounded-lg" /></div>
+            <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Kelas</Label>
+              <div className="flex flex-wrap gap-2">
+                {MOCK_CLASSES.map((c) => (
+                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); setStudentId(''); studentLoadedRef.current = ''; ratingLoadedRef.current = ''; }} />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2 w-full sm:w-auto flex-1 sm:max-w-xs"><Label className="text-xs text-muted-foreground">Siswa</Label>
+              <Select value={studentId} onValueChange={(v) => { setStudentId(v); ratingLoadedRef.current = ''; }} disabled={!classId}>
+                <SelectTrigger className="rounded-lg"><SelectValue placeholder="Pilih siswa" /></SelectTrigger>
+                <SelectContent>{students.map((s) => <SelectItem key={s.id} value={s.id}><span className="flex items-center gap-2"><Avatar className="h-5 w-5"><AvatarFallback className="bg-[#1F3864]/10 text-[#1F3864] text-[10px] rounded-full">{getInitials(s.name)}</AvatarFallback></Avatar>{s.name}</span></SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Progress indicator */}
+      {studentId && (
+        <Card className="rounded-xl shadow-sm">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              {selectedStudent && <Avatar className="h-10 w-10"><AvatarFallback className="bg-[#1F3864]/10 text-[#1F3864] font-medium rounded-full">{getInitials(selectedStudent.name)}</AvatarFallback></Avatar>}
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-medium">{selectedStudent?.name ?? 'Siswa'}</span>
+                  <span className="text-xs text-muted-foreground">{completedCount}/{HABITS.length} kebiasaan dinilai</span>
+                </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-[#1F3864] to-[#2d5289] rounded-full transition-all duration-500 ease-out" style={{ width: `${progressPct}%` }} />
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Habit cards */}
       {!studentId ? (
-        <Card><CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground"><Sparkles className="w-12 h-12 mb-3 opacity-30" /><p>Pilih kelas dan siswa untuk mulai mengisi laporan</p></CardContent></Card>
+        <Card className="rounded-xl shadow-sm"><CardContent>
+          <EmptyState icon={<Sparkles className="w-8 h-8" />} message="Pilih kelas dan siswa untuk mulai mengisi laporan" />
+        </CardContent></Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {HABITS.map((h, idx) => {
             const rating = ratings.find((r) => r.habit === h.key);
+            const isRated = rating && rating.rating > 0;
             return (
-              <Card key={h.key} className={cn('transition-all hover:shadow-md', rating?.rating && rating.rating > 0 && 'ring-2 ring-[#1F3864]/20')}>
+              <Card key={h.key} className={cn('rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border overflow-hidden',
+                isRated ? cn('border-2', h.color.split(' ').slice(0, 2).join(' ')) : 'border-border')}
+              >
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start gap-3">
-                    <span className="text-2xl mt-0.5" role="img" aria-label={h.name}>{h.emoji}</span>
+                    <div className={cn('p-2 rounded-xl shrink-0 text-xl', h.iconBg)}>{h.emoji}</div>
                     <div className="flex-1 min-w-0">
-                      <span className="text-xs text-muted-foreground font-medium">Kebiasaan {idx + 1}</span>
-                      <h3 className="font-semibold text-[#1F3864] text-sm leading-tight">{h.name}</h3>
+                      <span className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wide">Kebiasaan {idx + 1}</span>
+                      <h3 className="font-semibold text-sm leading-tight text-foreground">{h.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{h.desc}</p>
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
                     <StarRating value={rating?.rating || 0} onChange={(v) => updateRating(h.key, v)} />
-                    <span className="text-xs text-muted-foreground">{rating?.rating || 0}/5</span>
+                    <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', isRated ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground')}>{rating?.rating || 0}/5</span>
                   </div>
-                  <Input placeholder="Catatan (opsional)..." value={rating?.note || ''} onChange={(e) => updateNote(h.key, e.target.value)} className="text-sm" />
+                  <Textarea placeholder="Catatan (opsional)..." value={rating?.note || ''} onChange={(e) => updateNote(h.key, e.target.value)} className="text-sm rounded-lg resize-none" rows={2} />
                 </CardContent>
               </Card>
             );
@@ -787,8 +938,8 @@ export function GuruKarakterView() {
 
       {studentId && (
         <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white min-w-[180px]">
-            <Save className="w-4 h-4 mr-2" />{saving ? 'Menyimpan...' : 'Simpan Laporan'}
+          <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#2d5289] text-white min-w-[200px] rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}{saving ? 'Menyimpan...' : 'Simpan Laporan'}
           </Button>
         </div>
       )}
@@ -805,6 +956,10 @@ export function GuruRekapKarakterView() {
   const [classId, setClassId] = useState('c1');
   const [month, setMonth] = useState(currentMonth());
   const [data, setData] = useState(MOCK_REKAP_KARAKTER);
+  const [sortField, setSortField] = useState<'name' | 'score'>('score');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [detailStudent, setDetailStudent] = useState<typeof MOCK_REKAP_KARAKTER[number] | null>(null);
   const fetchedRef = useRef<string>('');
 
   useEffect(() => {
@@ -822,34 +977,53 @@ export function GuruRekapKarakterView() {
     return () => controller.abort();
   }, [classId, month, user?.schoolId]);
 
+  const studentAvgs = data.map((d) => ({ ...d, avg: d.ratings.length > 0 ? d.ratings.reduce((a, b) => a + b, 0) / d.ratings.length : 0 }));
+  const sorted = [...studentAvgs].sort((a, b) => {
+    if (sortField === 'name') return sortDir === 'asc' ? a.studentName.localeCompare(b.studentName) : b.studentName.localeCompare(a.studentName);
+    return sortDir === 'desc' ? b.avg - a.avg : a.avg - b.avg;
+  });
+
   const allRatings = data.flatMap((d) => d.ratings);
   const avgRating = allRatings.length > 0 ? (allRatings.reduce((a, b) => a + b, 0) / allRatings.length).toFixed(1) : '0';
   const habitAvgs = HABITS.map((h, hIdx) => ({ ...h, avg: data.length > 0 ? data.reduce((s, d) => s + (d.ratings[hIdx] || 0), 0) / data.length : 0 }));
   const strongest = [...habitAvgs].sort((a, b) => b.avg - a.avg)[0];
   const weakest = [...habitAvgs].sort((a, b) => a.avg - b.avg)[0];
-  const studentAvgs = data.map((d) => ({ ...d, avg: d.ratings.length > 0 ? d.ratings.reduce((a, b) => a + b, 0) / d.ratings.length : 0 }));
   const bestStudent = [...studentAvgs].sort((a, b) => b.avg - a.avg)[0];
   const worstStudent = [...studentAvgs].sort((a, b) => a.avg - b.avg)[0];
 
+  const scoreColor = (avg: number) => avg >= 4 ? 'text-emerald-600' : avg >= 3 ? 'text-amber-600' : 'text-red-600';
+  const scoreBg = (avg: number) => avg >= 4 ? 'bg-emerald-100' : avg >= 3 ? 'bg-amber-100' : 'bg-red-100';
+  const scoreBar = (avg: number) => avg >= 4 ? 'bg-emerald-500' : avg >= 3 ? 'bg-amber-500' : 'bg-red-500';
+
+  const openDetail = (s: typeof MOCK_REKAP_KARAKTER[number]) => { setDetailStudent(s); setDetailOpen(true); };
+
   return (
     <div className="space-y-6">
-      <div><h1 className="text-2xl font-bold text-[#1F3864]">Rekap 7 Kebiasaan</h1><p className="text-sm text-muted-foreground">Analisis laporan karakter siswa — 7 Kebiasaan Anak Hebat</p></div>
+      <PageHeader icon={<GraduationCap className="w-5 h-5" />} title="Rekap 7 Kebiasaan" description="Analisis laporan karakter siswa — 7 Kebiasaan Anak Hebat" />
 
-      <Card><CardContent className="p-4"><div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-        <div className="space-y-2"><Label>Kelas</Label>
-          <Select value={classId} onValueChange={(v) => { setClassId(v); fetchedRef.current = ''; }}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>{MOCK_CLASSES.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2"><Label>Bulan</Label>
-          <Select value={month} onValueChange={(v) => { setMonth(v); fetchedRef.current = ''; }}>
-            <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
-          </Select>
-        </div>
-      </div></CardContent></Card>
+      {/* Filters */}
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
+            <div className="space-y-2 w-full sm:w-auto">
+              <Label className="text-xs text-muted-foreground">Kelas</Label>
+              <div className="flex flex-wrap gap-2">
+                {MOCK_CLASSES.map((c) => (
+                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); fetchedRef.current = ''; }} />
+                ))}
+              </div>
+            </div>
+            <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Bulan</Label>
+              <Select value={month} onValueChange={(v) => { setMonth(v); fetchedRef.current = ''; }}>
+                <SelectTrigger className="w-48 rounded-lg"><SelectValue /></SelectTrigger>
+                <SelectContent>{MONTHS.map((m) => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
+      {/* Summary stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<ClipboardList className="w-5 h-5" />} label="Total Laporan" value={data.length * 7} bg="bg-[#1F3864]/10" color="text-[#1F3864]" />
         <StatCard icon={<Star className="w-5 h-5" />} label="Rata-rata Rating" value={avgRating} bg="bg-amber-50" color="text-amber-600" />
@@ -857,20 +1031,20 @@ export function GuruRekapKarakterView() {
         <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Perlu Diperbaiki" value={weakest?.name.split(' ').slice(0, 2).join(' ') || '-'} bg="bg-red-50" color="text-red-600" sub={weakest ? `${weakest.avg.toFixed(1)}/5` : ''} />
       </div>
 
-      {/* Bar chart */}
-      <Card>
+      {/* Per-habit bar visualization */}
+      <Card className="rounded-xl shadow-sm">
         <CardHeader className="pb-2"><CardTitle className="text-base">Rata-rata Rating per Kebiasaan</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {habitAvgs.map((h) => {
             const pct = (h.avg / 5) * 100;
             return (
               <div key={h.key} className="flex items-center gap-3">
-                <span className="text-lg shrink-0" role="img" aria-label={h.name}>{h.emoji}</span>
+                <div className={cn('p-1.5 rounded-lg shrink-0', h.iconBg)}><span className="text-base" role="img" aria-label={h.name}>{h.emoji}</span></div>
                 <span className="text-sm font-medium w-36 shrink-0 truncate hidden sm:block" title={h.name}>{h.name}</span>
-                <span className="text-sm font-medium w-10 shrink-0 sm:hidden" role="img" aria-label={h.name}>{h.emoji}</span>
-                <div className="flex-1 h-6 bg-muted rounded-full overflow-hidden">
-                  <div className={cn('h-full rounded-full transition-all duration-700 flex items-center justify-end pr-2', h.avg >= 4 ? 'bg-emerald-500' : h.avg >= 3 ? 'bg-amber-500' : 'bg-red-500')} style={{ width: `${Math.max(pct, 10)}%` }}>
-                    <span className="text-xs font-bold text-white">{h.avg.toFixed(1)}</span>
+                <span className="text-sm shrink-0 sm:hidden" role="img" aria-label={h.name}>{h.emoji}</span>
+                <div className="flex-1 h-7 bg-muted/50 rounded-lg overflow-hidden">
+                  <div className={cn('h-full rounded-lg transition-all duration-700 ease-out flex items-center justify-end pr-2', scoreBar(h.avg))} style={{ width: `${Math.max(pct, 12)}%` }}>
+                    <span className="text-xs font-bold text-white drop-shadow-sm">{h.avg.toFixed(1)}</span>
                   </div>
                 </div>
               </div>
@@ -879,9 +1053,19 @@ export function GuruRekapKarakterView() {
         </CardContent>
       </Card>
 
-      {/* Table */}
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-base">Detail per Siswa</CardTitle></CardHeader>
+      {/* Student table */}
+      <Card className="rounded-xl shadow-sm overflow-hidden">
+        <CardHeader className="pb-2"><div className="flex items-center justify-between">
+          <CardTitle className="text-base">Detail per Siswa</CardTitle>
+          <div className="flex gap-1">
+            <Button variant={sortField === 'score' ? 'default' : 'ghost'} size="sm" onClick={() => { setSortField('score'); setSortDir((d) => sortField === 'score' ? (d === 'desc' ? 'asc' : 'desc') : 'desc'); }} className={cn('rounded-lg text-xs h-7 transition-all duration-200 cursor-pointer', sortField === 'score' && 'bg-[#1F3864] hover:bg-[#2d5289] text-white')}>
+              <BarChart3 className="w-3 h-3 mr-1" />Skor
+            </Button>
+            <Button variant={sortField === 'name' ? 'default' : 'ghost'} size="sm" onClick={() => { setSortField('name'); setSortDir((d) => sortField === 'name' ? (d === 'desc' ? 'asc' : 'desc') : 'asc'); }} className={cn('rounded-lg text-xs h-7 transition-all duration-200 cursor-pointer', sortField === 'name' && 'bg-[#1F3864] hover:bg-[#2d5289] text-white')}>
+              <Users className="w-3 h-3 mr-1" />Nama
+            </Button>
+          </div>
+        </div></CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto max-h-[480px] overflow-y-auto">
             <Table>
@@ -890,34 +1074,41 @@ export function GuruRekapKarakterView() {
                   <TableHead className="w-12 font-semibold">No</TableHead>
                   <TableHead className="font-semibold min-w-[140px]">Nama</TableHead>
                   {HABITS.map((h) => (
-                    <TableHead key={h.key} className="text-center font-semibold min-w-[70px]">
+                    <TableHead key={h.key} className="text-center font-semibold min-w-[60px]">
                       <span className="text-xs block" role="img" aria-label={h.name}>{h.emoji}</span>
-                      <span className="text-[10px] text-muted-foreground block truncate max-w-[70px]" title={h.name}>{h.name.split(' ')[0]}</span>
+                      <span className="text-[10px] text-muted-foreground block truncate max-w-[60px]" title={h.name}>{h.name.split(' ')[0]}</span>
                     </TableHead>
                   ))}
-                  <TableHead className="text-center font-semibold">Rata-rata</TableHead>
+                  <TableHead className="text-center font-semibold min-w-[100px]">Rata-rata</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.map((d, idx) => {
-                  const avg = d.ratings.length > 0 ? d.ratings.reduce((a, b) => a + b, 0) / d.ratings.length : 0;
+                {sorted.map((d, idx) => {
                   const isBest = bestStudent && d.studentId === bestStudent.studentId;
                   const isWorst = worstStudent && d.studentId === worstStudent.studentId;
                   return (
-                    <TableRow key={d.studentId} className={cn(isBest && 'bg-emerald-50/50', isWorst && 'bg-red-50/50')}>
+                    <TableRow key={d.studentId} className={cn(isBest && 'bg-emerald-50/50', isWorst && 'bg-red-50/50', 'even:bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer')} onClick={() => openDetail(d)}>
                       <TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                       <TableCell className="font-medium">{d.studentName}
-                        {isBest && <Badge className="ml-1 bg-emerald-100 text-emerald-700 border-0 text-[10px]">Terbaik</Badge>}
-                        {isWorst && <Badge className="ml-1 bg-red-100 text-red-700 border-0 text-[10px]">Perlu Perhatian</Badge>}
+                        {isBest && <Badge className="ml-1 bg-emerald-100 text-emerald-700 border-0 rounded-full text-[10px]">Terbaik</Badge>}
+                        {isWorst && <Badge className="ml-1 bg-red-100 text-red-700 border-0 rounded-full text-[10px]">Perlu Perhatian</Badge>}
                       </TableCell>
                       {d.ratings.map((r, hIdx) => (
                         <TableCell key={hIdx} className="text-center">
-                          <span className={cn('font-medium', r >= 4 ? 'text-emerald-600' : r >= 3 ? 'text-amber-600' : 'text-red-600')}>{r > 0 ? r.toFixed(1) : '-'}</span>
+                          <div className="flex flex-col items-center gap-1">
+                            <div className="w-8 h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-500', scoreBar(r))} style={{ width: `${(r / 5) * 100}%` }} /></div>
+                            <span className={cn('text-xs font-medium', scoreColor(r))}>{r > 0 ? r.toFixed(1) : '-'}</span>
+                          </div>
                         </TableCell>
                       ))}
                       <TableCell className="text-center">
-                        <span className={cn('font-bold', avg >= 4 ? 'text-emerald-600' : avg >= 3 ? 'text-amber-600' : 'text-red-600')}>{avg.toFixed(1)}</span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className={cn('text-sm font-bold', scoreColor(d.avg))}>{d.avg.toFixed(1)}</span>
+                          <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-500', scoreBar(d.avg))} style={{ width: `${(d.avg / 5) * 100}%` }} /></div>
+                        </div>
                       </TableCell>
+                      <TableCell><Eye className="w-4 h-4 text-muted-foreground" /></TableCell>
                     </TableRow>
                   );
                 })}
@@ -926,6 +1117,51 @@ export function GuruRekapKarakterView() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Student Detail Dialog */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
+          <DialogHeader>
+            <DialogTitle className="text-[#1F3864]">Detail Karakter — {detailStudent?.studentName}</DialogTitle>
+            <DialogDescription>Rating 7 Kebiasaan Anak Hebat</DialogDescription>
+          </DialogHeader>
+          {detailStudent && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
+                <Avatar className="h-12 w-12"><AvatarFallback className="bg-[#1F3864]/10 text-[#1F3864] font-bold rounded-full text-lg">{getInitials(detailStudent.studentName)}</AvatarFallback></Avatar>
+                <div>
+                  <p className="font-semibold">{detailStudent.studentName}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={cn('text-2xl font-bold', scoreColor(detailStudent.avg))}>{detailStudent.avg.toFixed(1)}</span>
+                    <span className="text-sm text-muted-foreground">/ 5.0</span>
+                    <Badge className={cn('ml-2 rounded-full border-0', scoreBg(detailStudent.avg), scoreColor(detailStudent.avg))}>{detailStudent.avg >= 4 ? 'Sangat Baik' : detailStudent.avg >= 3 ? 'Cukup' : 'Perlu Perbaikan'}</Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-3">
+                {HABITS.map((h, idx) => {
+                  const r = detailStudent.ratings[idx] || 0;
+                  const pct = (r / 5) * 100;
+                  return (
+                    <div key={h.key} className={cn('flex items-center gap-3 p-3 rounded-xl border', h.color)}>
+                      <div className={cn('p-2 rounded-lg shrink-0', h.iconBg)}><span className="text-lg" role="img" aria-label={h.name}>{h.emoji}</span></div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium truncate">{h.name}</span>
+                          <span className={cn('text-sm font-bold', scoreColor(r))}>{r > 0 ? r.toFixed(1) : '-'}</span>
+                        </div>
+                        <div className="h-2 bg-white/50 rounded-full overflow-hidden">
+                          <div className={cn('h-full rounded-full transition-all duration-700 ease-out', scoreBar(r))} style={{ width: `${pct}%` }} />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -939,10 +1175,10 @@ export function GuruJurnalView() {
   const [journals, setJournals] = useState<JournalEntry[]>(MOCK_JOURNALS);
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [classFilter, setClassFilter] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [selectedJournal, setSelectedJournal] = useState<JournalEntry | null>(null);
-  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ date: todayStr(), className: '', subject: '', topic: '', activities: '', notes: '' });
   const fetchedRef = useRef(false);
@@ -969,14 +1205,14 @@ export function GuruJurnalView() {
 
   const filtered = journals.filter((j) => {
     if (dateFilter && !j.date.includes(dateFilter)) return false;
+    if (classFilter && j.className !== classFilter) return false;
     if (search) { const q = search.toLowerCase(); if (!j.topic.toLowerCase().includes(q) && !j.className.toLowerCase().includes(q) && !j.subject.toLowerCase().includes(q)) return false; }
     return true;
   });
 
   const todayCount = journals.filter((j) => j.date === todayStr()).length;
   const monthLabel = MONTHS.find((m) => m.value === currentMonth())?.label || '';
-
-  const toggleRow = (id: string) => setExpandedRows((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; });
+  const uniqueClasses = [...new Set(journals.map((j) => j.className))].filter(Boolean);
 
   const handleSave = async () => {
     if (!form.className || !form.subject || !form.topic) { toast.error('Kelas, mata pelajaran, dan topik wajib diisi'); return; }
@@ -986,130 +1222,136 @@ export function GuruJurnalView() {
       if (res.ok) { toast.success('Jurnal mengajar berhasil disimpan'); setDialogOpen(false); setSaving(false); return; }
     } catch { /* fallback */ }
     setJournals((prev) => [{ id: `j${Date.now()}`, ...form }, ...prev]);
-    toast.success('Jurnal mengajar berhasil disimpan (lokal)');
-    setDialogOpen(false);
-    setSaving(false);
+    toast.success('Jurnal mengajar berhasil disimpan (lokal)'); setDialogOpen(false); setSaving(false);
   };
 
   const handleDelete = () => {
     if (!selectedJournal) return;
     setJournals((prev) => prev.filter((j) => j.id !== selectedJournal.id));
-    toast.success('Jurnal berhasil dihapus');
-    setDeleteOpen(false);
-    setSelectedJournal(null);
+    toast.success('Jurnal berhasil dihapus'); setDeleteOpen(false); setSelectedJournal(null);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div><h1 className="text-2xl font-bold text-[#1F3864]">Jurnal Mengajar</h1><p className="text-sm text-muted-foreground">Catat aktivitas dan refleksi mengajar harian</p></div>
-        <Button onClick={() => { setForm({ date: todayStr(), className: '', subject: '', topic: '', activities: '', notes: '' }); setDialogOpen(true); }} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white">
+      <PageHeader icon={<BookHeart className="w-5 h-5" />} title="Jurnal Mengajar" description="Catat aktivitas dan refleksi mengajar harian"
+        action={<Button onClick={() => { setForm({ date: todayStr(), className: '', subject: '', topic: '', activities: '', notes: '' }); setDialogOpen(true); }} className="bg-[#1F3864] hover:bg-[#2d5289] text-white transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
           <Plus className="w-4 h-4 mr-2" />Tambah Jurnal
-        </Button>
-      </div>
+        </Button>} />
 
+      {/* Summary stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard icon={<BookOpen className="w-5 h-5" />} label="Total Jurnal" value={journals.length} bg="bg-[#1F3864]/10" color="text-[#1F3864]" />
         <StatCard icon={<Calendar className="w-5 h-5" />} label={monthLabel} value={journals.length} bg="bg-emerald-50" color="text-emerald-600" />
         <StatCard icon={<Clock className="w-5 h-5" />} label="Hari Ini" value={todayCount} bg="bg-amber-50" color="text-amber-600" />
       </div>
 
-      <Card><CardContent className="p-4"><div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-        <div className="relative flex-1 w-full sm:max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Cari topik, kelas, mapel..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
-        <div className="space-y-1"><Label className="text-xs text-muted-foreground">Filter Tanggal</Label><Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-48" /></div>
-      </div></CardContent></Card>
-
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto max-h-[560px] overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-[#1F3864]/5 hover:bg-[#1F3864]/5">
-                  <TableHead className="w-10"></TableHead>
-                  <TableHead className="font-semibold">Tanggal</TableHead>
-                  <TableHead className="font-semibold">Kelas</TableHead>
-                  <TableHead className="font-semibold">Mata Pelajaran</TableHead>
-                  <TableHead className="font-semibold">Topik</TableHead>
-                  <TableHead className="text-right font-semibold">Aksi</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.length === 0 && <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground">Tidak ada jurnal</TableCell></TableRow>}
-                {filtered.map((j) => {
-                  const isExpanded = expandedRows.has(j.id);
-                  return (
-                    <React.Fragment key={j.id}>
-                      <TableRow className="group cursor-pointer" onClick={() => toggleRow(j.id)}>
-                        <TableCell className="w-10">{isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}</TableCell>
-                        <TableCell className="text-sm whitespace-nowrap">{formatDate(j.date)}</TableCell>
-                        <TableCell><Badge variant="outline" className="font-normal">{j.className}</Badge></TableCell>
-                        <TableCell className="font-medium">{j.subject}</TableCell>
-                        <TableCell className="max-w-[200px]"><div className="truncate" title={j.topic}>{j.topic}</div></TableCell>
-                        <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setForm({ date: j.date, className: j.className, subject: j.subject, topic: j.topic, activities: j.activities, notes: j.notes }); setDialogOpen(true); }}><Pencil className="w-4 h-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => { setSelectedJournal(j); setDeleteOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                      {isExpanded && (
-                        <TableRow>
-                          <TableCell colSpan={6} className="bg-muted/30 px-6 py-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div><h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Aktivitas</h4><p className="text-sm whitespace-pre-wrap">{j.activities || 'Tidak ada catatan'}</p></div>
-                              <div><h4 className="text-xs font-semibold text-muted-foreground uppercase mb-1">Catatan</h4><p className="text-sm whitespace-pre-wrap">{j.notes || 'Tidak ada catatan'}</p></div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </TableBody>
-            </Table>
+      {/* Filters */}
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="p-4">
+          <div className="flex flex-col gap-3">
+            <div className="relative w-full sm:max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input placeholder="Cari topik, kelas, mapel..." className="pl-9 rounded-lg" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex items-center gap-2"><Label className="text-xs text-muted-foreground shrink-0">Tanggal:</Label><Input type="date" value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="w-40 rounded-lg h-8" /></div>
+              {uniqueClasses.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  <FilterPill label="Semua" active={!classFilter} onClick={() => setClassFilter('')} />
+                  {uniqueClasses.map((c) => (
+                    <FilterPill key={c} label={c} active={classFilter === c} onClick={() => setClassFilter(c)} />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Timeline cards */}
+      {filtered.length === 0 ? (
+        <Card className="rounded-xl shadow-sm"><CardContent>
+          <EmptyState icon={<BookHeart className="w-8 h-8" />} message="Tidak ada jurnal yang cocok dengan filter." />
+        </CardContent></Card>
+      ) : (
+        <div className="space-y-4">
+          {filtered.map((j) => {
+            const dateObj = new Date(j.date);
+            const dayName = dateObj.toLocaleDateString('id-ID', { weekday: 'short' });
+            const dayNum = dateObj.getDate();
+            const monthShort = dateObj.toLocaleDateString('id-ID', { month: 'short' });
+            return (
+              <Card key={j.id} className="rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden">
+                <CardContent className="p-0">
+                  <div className="flex">
+                    {/* Date accent */}
+                    <div className="w-16 sm:w-20 bg-gradient-to-b from-[#1F3864] to-[#2d5289] text-white flex flex-col items-center justify-center shrink-0 p-2">
+                      <span className="text-[10px] uppercase font-medium opacity-80">{dayName}</span>
+                      <span className="text-2xl sm:text-3xl font-bold leading-none">{dayNum}</span>
+                      <span className="text-[10px] uppercase font-medium opacity-80">{monthShort}</span>
+                    </div>
+                    {/* Content */}
+                    <div className="flex-1 p-4 min-w-0">
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="flex flex-wrap gap-1.5">
+                          <Badge variant="outline" className="rounded-full text-xs font-normal">{j.className}</Badge>
+                          <Badge className="bg-[#1F3864]/10 text-[#1F3864] border-0 rounded-full text-xs">{j.subject}</Badge>
+                        </div>
+                        <div className="flex gap-0.5 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setForm({ date: j.date, className: j.className, subject: j.subject, topic: j.topic, activities: j.activities, notes: j.notes }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => { setSelectedJournal(j); setDeleteOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      </div>
+                      <h3 className="font-semibold text-sm mb-2">{j.topic}</h3>
+                      {j.activities && <p className="text-xs text-muted-foreground line-clamp-2">{j.activities}</p>}
+                      {j.notes && <p className="text-xs text-amber-600 mt-1.5 line-clamp-1 italic">💬 {j.notes}</p>}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
+
       {/* Create/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto rounded-xl">
           <DialogHeader><DialogTitle className="text-[#1F3864]">Tambah Jurnal Mengajar</DialogTitle><DialogDescription>Catat kegiatan belajar mengajar hari ini</DialogDescription></DialogHeader>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2"><Label>Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} /></div>
+              <div className="space-y-2"><Label>Tanggal</Label><Input type="date" className="rounded-lg" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Kelas *</Label>
                 <Select value={form.className} onValueChange={(v) => setForm((f) => ({ ...f, className: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
+                  <SelectTrigger className="rounded-lg"><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
                   <SelectContent>{MOCK_CLASSES.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
             <div className="space-y-2"><Label>Mata Pelajaran *</Label>
               <Select value={form.subject} onValueChange={(v) => setForm((f) => ({ ...f, subject: v }))}>
-                <SelectTrigger><SelectValue placeholder="Pilih mata pelajaran" /></SelectTrigger>
+                <SelectTrigger className="rounded-lg"><SelectValue placeholder="Pilih mata pelajaran" /></SelectTrigger>
                 <SelectContent>{SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
             </div>
-            <div className="space-y-2"><Label>Topik *</Label><Input placeholder="Topik pembelajaran" value={form.topic} onChange={(e) => setForm((f) => ({ ...f, topic: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Aktivitas</Label><Textarea placeholder="Deskripsikan aktivitas pembelajaran..." rows={4} value={form.activities} onChange={(e) => setForm((f) => ({ ...f, activities: e.target.value }))} /></div>
-            <div className="space-y-2"><Label>Catatan</Label><Textarea placeholder="Catatan tambahan atau refleksi..." rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Topik *</Label><Input placeholder="Topik pembelajaran" className="rounded-lg" value={form.topic} onChange={(e) => setForm((f) => ({ ...f, topic: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Aktivitas</Label><Textarea placeholder="Deskripsikan aktivitas pembelajaran..." rows={4} className="rounded-lg" value={form.activities} onChange={(e) => setForm((f) => ({ ...f, activities: e.target.value }))} /></div>
+            <div className="space-y-2"><Label>Catatan</Label><Textarea placeholder="Catatan tambahan atau refleksi..." rows={3} className="rounded-lg" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} /></div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Batal</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white">{saving ? 'Menyimpan...' : 'Simpan Jurnal'}</Button>
+            <Button variant="outline" onClick={() => setDialogOpen(false)} className="rounded-lg transition-all duration-200">Batal</Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#2d5289] text-white rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">
+              {saving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}{saving ? 'Menyimpan...' : 'Simpan Jurnal'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Delete Dialog */}
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-xl">
           <AlertDialogHeader><AlertDialogTitle>Hapus Jurnal</AlertDialogTitle><AlertDialogDescription>Apakah Anda yakin ingin menghapus jurnal &quot;{selectedJournal?.topic}&quot;?</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">Hapus</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogCancel className="rounded-lg">Batal</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700 rounded-lg">Hapus</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>

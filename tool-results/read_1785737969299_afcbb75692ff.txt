@@ -1,0 +1,1148 @@
+     1→     1→'use client';
+     2→     2→
+     3→     3→import React, { useState, useEffect, useMemo, useCallback } from 'react';
+     4→     4→import { useAppStore } from '@/store/use-store';
+     5→     5→import {
+     6→     6→  Card,
+     7→     7→  CardContent,
+     8→     8→  CardHeader,
+     9→     9→  CardTitle,
+    10→    10→  CardDescription,
+    11→    11→} from '@/components/ui/card';
+    12→    12→import { Button } from '@/components/ui/button';
+    13→    13→import { Badge } from '@/components/ui/badge';
+    14→    14→import {
+    15→    15→  Table,
+    16→    16→  TableBody,
+    17→    17→  TableCell,
+    18→    18→  TableHead,
+    19→    19→  TableHeader,
+    20→    20→  TableRow,
+    21→    21→} from '@/components/ui/table';
+    22→    22→import { Input } from '@/components/ui/input';
+    23→    23→import {
+    24→    24→  Select,
+    25→    25→  SelectContent,
+    26→    26→  SelectItem,
+    27→    27→  SelectTrigger,
+    28→    28→  SelectValue,
+    29→    29→} from '@/components/ui/select';
+    30→    30→import { Skeleton } from '@/components/ui/skeleton';
+    31→    31→import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    32→    32→import { Progress } from '@/components/ui/progress';
+    33→    33→import { toast } from 'sonner';
+    34→    34→import { cn } from '@/lib/utils';
+    35→    35→import {
+    36→    36→  BookOpen,
+    37→    37→  Calculator,
+    38→    38→  Atom,
+    39→    39→  FlaskConical,
+    40→    40→  Leaf,
+    41→    41→  Languages,
+    42→    42→  Search,
+    43→    43→  ChevronLeft,
+    44→    44→  ChevronRight,
+    45→    45→  CheckCircle2,
+    46→    46→  Circle,
+    47→    47→  Clock,
+    48→    48→  AlertCircle,
+    49→    49→  FileText,
+    50→    50→  ClipboardList,
+    51→    51→  Timer,
+    52→    52→  PlayCircle,
+    53→    53→  Eye,
+    54→    54→  CalendarDays,
+    55→    55→  TrendingUp,
+    56→    56→  XCircle,
+    57→    57→  ArrowRight,
+    58→    58→  Sparkles,
+    59→    59→  GraduationCap,
+    60→    60→  BookMarked,
+    61→    61→  BookCheck,
+    62→    62→  ChevronDown,
+    63→    63→  ChevronUp,
+    64→    64→  Calendar,
+    65→    65→  UserCheck,
+    66→    66→  BriefcaseMedical,
+    67→    67→  X,
+    68→    68→  BarChart3,
+    69→    69→  Loader2,
+    70→    70→  FileQuestion,
+    71→    71→  Trophy,
+    72→    72→  Target,
+    73→    73→  AlertTriangle,
+    74→    74→} from 'lucide-react';
+    75→    75→
+    76→    76→// ═══════════════════════════════════════════════════════════════════════
+    77→    77→//  SHARED TYPES
+    78→    78→// ═══════════════════════════════════════════════════════════════════════
+    79→    79→
+    80→    80→interface Material {
+    81→    81→  id: string;
+    82→    82→  title: string;
+    83→    83→  description: string;
+    84→    84→  subject: string;
+    85→    85→  date: string;
+    86→    86→  isRead: boolean;
+    87→    87→}
+    88→    88→
+    89→    89→interface SubjectData {
+    90→    90→  id: string;
+    91→    91→  name: string;
+    92→    92→  icon: React.ReactNode;
+    93→    93→  color: string;
+    94→    94→  bgLight: string;
+    95→    95→  borderColor: string;
+    96→    96→  materials: Material[];
+    97→    97→}
+    98→    98→
+    99→    99→interface Task {
+   100→   100→  id: string;
+   101→   101→  title: string;
+   102→   102→  type: 'tugas' | 'kuis' | 'ujian';
+   103→   103→  subject: string;
+   104→   104→  dueDate: string;
+   105→   105→  status: 'menunggu' | 'dikerjakan' | 'selesai' | 'terlambat';
+   106→   106→  isUrgent: boolean;
+   107→   107→  score?: number;
+   108→   108→}
+   109→   109→
+   110→   110→interface AttendanceDay {
+   111→   111→  day: number;
+   112→   112→  status: 'hadir' | 'izin' | 'sakit' | 'alpa' | 'weekend' | 'none';
+   113→   113→}
+   114→   114→
+   115→   115→// ═══════════════════════════════════════════════════════════════════════
+   116→   116→//  BRAND CONSTANTS
+   117→   117→// ═══════════════════════════════════════════════════════════════════════
+   118→   118→
+   119→   119→const BRAND = '#1F3864';
+   120→   120→const BRAND_LIGHT = '#E8EDF5';
+   121→   121→const BRAND_DARK = '#152A4A';
+   122→   122→
+   123→   123→// ═══════════════════════════════════════════════════════════════════════
+   124→   124→//  MOCK DATA
+   125→   125→// ═══════════════════════════════════════════════════════════════════════
+   126→   126→
+   127→   127→const MOCK_SUBJECTS: SubjectData[] = [
+   128→   128→  {
+   129→   129→    id: 'matematika',
+   130→   130→    name: 'Matematika',
+   131→   131→    icon: <Calculator className="h-6 w-6" />,
+   132→   132→    color: 'text-rose-600',
+   133→   133→    bgLight: 'bg-rose-50',
+   134→   134→    borderColor: 'border-rose-200',
+   135→   135→    materials: [
+   136→   136→      { id: 'm1', title: 'Persamaan Kuadrat', description: 'Memahami bentuk umum persamaan kuadrat dan cara menyelesaikannya.', subject: 'Matematika', date: '2025-01-10', isRead: true },
+   137→   137→      { id: 'm2', title: 'Fungsi Kuadrat', description: 'Grafik dan sifat-sifat fungsi kuadrat.', subject: 'Matematika', date: '2025-01-15', isRead: true },
+   138→   138→      { id: 'm3', title: 'Sistem Persamaan Linear', description: 'Metode eliminasi dan substitusi untuk menyelesaikan SPLDV.', subject: 'Matematika', date: '2025-01-20', isRead: false },
+   139→   139→      { id: 'm4', title: 'Logaritma', description: 'Sifat-sifat logaritma dan penerapannya.', subject: 'Matematika', date: '2025-01-25', isRead: false },
+   140→   140→    ],
+   141→   141→  },
+   142→   142→  {
+   143→   143→    id: 'fisika',
+   144→   144→    name: 'Fisika',
+   145→   145→    icon: <Atom className="h-6 w-6" />,
+   146→   146→    color: 'text-blue-600',
+   147→   147→    bgLight: 'bg-blue-50',
+   148→   148→    borderColor: 'border-blue-200',
+   149→   149→    materials: [
+   150→   150→      { id: 'f1', title: 'Hukum Newton', description: 'Tiga hukum gerak Newton dan penerapannya dalam kehidupan sehari-hari.', subject: 'Fisika', date: '2025-01-08', isRead: true },
+   151→   151→      { id: 'f2', title: 'Usaha dan Energi', description: 'Konsep usaha, energi kinetik, dan energi potensial.', subject: 'Fisika', date: '2025-01-14', isRead: true },
+   152→   152→      { id: 'f3', title: 'Momentum dan Impuls', description: 'Hukum kekekalan momentum dan tumbukan.', subject: 'Fisika', date: '2025-01-22', isRead: false },
+   153→   153→    ],
+   154→   154→  },
+   155→   155→  {
+   156→   156→    id: 'kimia',
+   157→   157→    name: 'Kimia',
+   158→   158→    icon: <FlaskConical className="h-6 w-6" />,
+   159→   159→    color: 'text-purple-600',
+   160→   160→    bgLight: 'bg-purple-50',
+   161→   161→    borderColor: 'border-purple-200',
+   162→   162→    materials: [
+   163→   163→      { id: 'k1', title: 'Struktur Atom', description: 'Model atom, partikel penyusun atom, dan konfigurasi elektron.', subject: 'Kimia', date: '2025-01-09', isRead: true },
+   164→   164→      { id: 'k2', title: 'Ikatan Kimia', description: 'Ikatan ion, ikatan kovalen, dan ikatan logam.', subject: 'Kimia', date: '2025-01-16', isRead: true },
+   165→   165→      { id: 'k3', title: 'Sistem Periodik Unsur', description: 'Tren sifat unsur dalam periode dan golongan.', subject: 'Kimia', date: '2025-01-23', isRead: false },
+   166→   166→      { id: 'k4', title: 'Reaksi Kimia', description: 'Jenis-jenis reaksi kimia dan persamaan reaksi.', subject: 'Kimia', date: '2025-01-28', isRead: false },
+   167→   167→    ],
+   168→   168→  },
+   169→   169→  {
+   170→   170→    id: 'biologi',
+   171→   171→    name: 'Biologi',
+   172→   172→    icon: <Leaf className="h-6 w-6" />,
+   173→   173→    color: 'text-green-600',
+   174→   174→    bgLight: 'bg-green-50',
+   175→   175→    borderColor: 'border-green-200',
+   176→   176→    materials: [
+   177→   177→      { id: 'b1', title: 'Sel dan Organel', description: 'Struktur sel prokariotik dan eukariotik beserta fungsinya.', subject: 'Biologi', date: '2025-01-07', isRead: true },
+   178→   178→      { id: 'b2', title: 'Jaringan Tumbuhan', description: 'Jenis-jenis jaringan pada tumbuhan dan fungsinya.', subject: 'Biologi', date: '2025-01-13', isRead: false },
+   179→   179→      { id: 'b3', title: 'Fotosintesis', description: 'Proses fotosintesis dan faktor-faktor yang mempengaruhinya.', subject: 'Biologi', date: '2025-01-19', isRead: false },
+   180→   180→    ],
+   181→   181→  },
+   182→   182→  {
+   183→   183→    id: 'bindo',
+   184→   184→    name: 'Bahasa Indonesia',
+   185→   185→    icon: <BookOpen className="h-6 w-6" />,
+   186→   186→    color: 'text-amber-600',
+   187→   187→    bgLight: 'bg-amber-50',
+   188→   188→    borderColor: 'border-amber-200',
+   189→   189→    materials: [
+   190→   190→      { id: 'bi1', title: 'Teks Eksplanasi', description: 'Struktur dan ciri-ciri teks eksplanasi.', subject: 'Bahasa Indonesia', date: '2025-01-11', isRead: true },
+   191→   191→      { id: 'bi2', title: 'Teks Persuasi', description: 'Teknik persuasi dalam teks dan iklan.', subject: 'Bahasa Indonesia', date: '2025-01-18', isRead: false },
+   192→   192→      { id: 'bi3', title: 'Cerpen dan Unsur Intrinsik', description: 'Menganalisis unsur intrinsik cerpen.', subject: 'Bahasa Indonesia', date: '2025-01-24', isRead: false },
+   193→   193→    ],
+   194→   194→  },
+   195→   195→  {
+   196→   196→    id: 'bing',
+   197→   197→    name: 'Bahasa Inggris',
+   198→   198→    icon: <Languages className="h-6 w-6" />,
+   199→   199→    color: 'text-cyan-600',
+   200→   200→    bgLight: 'bg-cyan-50',
+   201→   201→    borderColor: 'border-cyan-200',
+   202→   202→    materials: [
+   203→   203→      { id: 'be1', title: 'Past Tense & Present Perfect', description: 'Perbedaan penggunaan past tense dan present perfect.', subject: 'Bahasa Inggris', date: '2025-01-12', isRead: true },
+   204→   204→      { id: 'be2', title: 'Passive Voice', description: 'Membuat kalimat pasif dalam berbagai tenses.', subject: 'Bahasa Inggris', date: '2025-01-17', isRead: true },
+   205→   205→      { id: 'be3', title: 'Conditional Sentences', description: 'Tipe 0, 1, 2, dan 3 kalimat bersyarat.', subject: 'Bahasa Inggris', date: '2025-01-26', isRead: false },
+   206→   206→      { id: 'be4', title: 'Analytical Exposition Text', description: 'Struktur dan bahasa teks eksposisi analitis.', subject: 'Bahasa Inggris', date: '2025-01-29', isRead: false },
+   207→   207→    ],
+   208→   208→  },
+   209→   209→];
+   210→   210→
+   211→   211→const MOCK_TASKS: Task[] = [
+   212→   212→  { id: 't1', title: 'Latihan Soal Persamaan Kuadrat', type: 'tugas', subject: 'Matematika', dueDate: '2025-01-20', status: 'selesai', isUrgent: false, score: 85 },
+   213→   213→  { id: 't2', title: 'Kuis Hukum Newton', type: 'kuis', subject: 'Fisika', dueDate: '2025-01-22', status: 'selesai', isUrgent: false, score: 90 },
+   214→   214→  { id: 't3', title: 'Tugas Laporan Praktikum Ikatan Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-28', status: 'menunggu', isUrgent: true },
+   215→   215→  { id: 't4', title: 'Ujian Tengah Semester Biologi', type: 'ujian', subject: 'Biologi', dueDate: '2025-02-01', status: 'menunggu', isUrgent: false },
+   216→   216→  { id: 't5', title: 'Essay Teks Eksplanasi', type: 'tugas', subject: 'Bahasa Indonesia', dueDate: '2025-01-15', status: 'terlambat', isUrgent: false },
+   217→   217→  { id: 't6', title: 'Kuis Passive Voice', type: 'kuis', subject: 'Bahasa Inggris', dueDate: '2025-01-25', status: 'menunggu', isUrgent: true },
+   218→   218→  { id: 't7', title: 'Tugas Analisis Data Fotosintesis', type: 'tugas', subject: 'Biologi', dueDate: '2025-01-30', status: 'dikerjakan', isUrgent: false },
+   219→   219→  { id: 't8', title: 'Tryout UTBK Matematika', type: 'ujian', subject: 'Matematika', dueDate: '2025-02-05', status: 'menunggu', isUrgent: false },
+   220→   220→  { id: 't9', title: 'Kuis Teks Persuasi', type: 'kuis', subject: 'Bahasa Indonesia', dueDate: '2025-01-18', status: 'selesai', isUrgent: false, score: 78 },
+   221→   221→  { id: 't10', title: 'Tugas Reaksi Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-12', status: 'selesai', isUrgent: false, score: 92 },
+   222→   222→];
+   223→   223→
+   224→   224→function generateMockAttendance(year: number, month: number): AttendanceDay[] {
+   225→   225→  const days: AttendanceDay[] = [];
+   226→   226→  const daysInMonth = new Date(year, month + 1, 0).getDate();
+   227→   227→  const statuses: Array<'hadir' | 'izin' | 'sakit' | 'alpa'> = ['hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'izin', 'sakit', 'alpa'];
+   228→   228→  let statusIdx = 0;
+   229→   229→
+   230→   230→  for (let d = 1; d <= daysInMonth; d++) {
+   231→   231→    const date = new Date(year, month, d);
+   232→   232→    const dow = date.getDay();
+   233→   233→    if (dow === 0 || dow === 6) {
+   234→   234→      days.push({ day: d, status: 'weekend' });
+   235→   235→    } else {
+   236→   236→      const s = statuses[statusIdx % statuses.length];
+   237→   237→      days.push({ day: d, status: s });
+   238→   238→      statusIdx++;
+   239→   239→    }
+   240→   240→  }
+   241→   241→  return days;
+   242→   242→}
+   243→   243→
+   244→   244→// ═══════════════════════════════════════════════════════════════════════
+   245→   245→//  1. SISWA MATERI VIEW
+   246→   246→// ═══════════════════════════════════════════════════════════════════════
+   247→   247→
+   248→   248→export function SiswaMateriView() {
+   249→   249→  const { user } = useAppStore();
+   250→   250→  const [subjects, setSubjects] = useState<SubjectData[]>([]);
+   251→   251→  const [isLoading, setIsLoading] = useState(true);
+   252→   252→  const [searchQuery, setSearchQuery] = useState('');
+   253→   253→  const [activeTab, setActiveTab] = useState('semua');
+   254→   254→  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
+   255→   255→
+   256→   256→  useEffect(() => {
+   257→   257→    async function fetchMaterials() {
+   258→   258→      setIsLoading(true);
+   259→   259→      try {
+   260→   260→        const params = new URLSearchParams({
+   261→   261→          schoolId: user?.schoolId || '',
+   262→   262→          classId: user?.classId || '',
+   263→   263→          type: 'materi',
+   264→   264→          status: 'published',
+   265→   265→        });
+   266→   266→        const res = await fetch(`/api/materials?${params}`);
+   267→   267→        if (res.ok) {
+   268→   268→          const data = await res.json();
+   269→   269→          if (Array.isArray(data) && data.length > 0) {
+   270→   270→            // Map API data into our subject structure
+   271→   271→            const mapped = MOCK_SUBJECTS.map((subj) => {
+   272→   272→              const apiMaterials = (data as Material[]).filter(
+   273→   273→                (m) => m.subject === subj.name
+   274→   274→              );
+   275→   275→              return apiMaterials.length > 0
+   276→   276→                ? { ...subj, materials: apiMaterials }
+   277→   277→                : subj;
+   278→   278→            });
+   279→   279→            setSubjects(mapped);
+   280→   280→          } else {
+   281→   281→            setSubjects(MOCK_SUBJECTS);
+   282→   282→          }
+   283→   283→        } else {
+   284→   284→          setSubjects(MOCK_SUBJECTS);
+   285→   285→        }
+   286→   286→      } catch {
+   287→   287→        setSubjects(MOCK_SUBJECTS);
+   288→   288→      } finally {
+   289→   289→        setIsLoading(false);
+   290→   290→      }
+   291→   291→    }
+   292→   292→    fetchMaterials();
+   293→   293→  }, [user?.schoolId, user?.classId]);
+   294→   294→
+   295→   295→  const toggleSubject = useCallback((subjectId: string) => {
+   296→   296→    setExpandedSubject((prev) => (prev === subjectId ? null : subjectId));
+   297→   297→  }, []);
+   298→   298→
+   299→   299→  const filteredSubjects = useMemo(() => {
+   300→   300→    return subjects.map((subj) => {
+   301→   301→      let mats = subj.materials;
+   302→   302→
+   303→   303→      // Search filter
+   304→   304→      if (searchQuery.trim()) {
+   305→   305→        const q = searchQuery.toLowerCase();
+   306→   306→        mats = mats.filter(
+   307→   307→          (m) =>
+   308→   308→            m.title.toLowerCase().includes(q) ||
+   309→   309→            m.description.toLowerCase().includes(q)
+   310→   310→        );
+   311→   311→      }
+   312→   312→
+   313→   313→      // Tab filter
+   314→   314→      if (activeTab === 'belum') {
+   315→   315→        mats = mats.filter((m) => !m.isRead);
+   316→   316→      } else if (activeTab === 'selesai') {
+   317→   317→        mats = mats.filter((m) => m.isRead);
+   318→   318→      }
+   319→   319→
+   320→   320→      return { ...subj, materials: mats, filteredCount: mats.length };
+   321→   321→    });
+   322→   322→  }, [subjects, searchQuery, activeTab]);
+   323→   323→
+   324→   324→  const totalMaterials = useMemo(
+   325→   325→    () => subjects.reduce((sum, s) => sum + s.materials.length, 0),
+   326→   326→    [subjects]
+   327→   327→  );
+   328→   328→  const totalRead = useMemo(
+   329→   329→    () => subjects.reduce((sum, s) => sum + s.materials.filter((m) => m.isRead).length, 0),
+   330→   330→    [subjects]
+   331→   331→  );
+   332→   332→  const overallProgress = totalMaterials > 0 ? Math.round((totalRead / totalMaterials) * 100) : 0;
+   333→   333→
+   334→   334→  const handleMarkRead = (materialId: string, subjectId: string) => {
+   335→   335→    setSubjects((prev) =>
+   336→   336→      prev.map((subj) => {
+   337→   337→        if (subj.id !== subjectId) return subj;
+   338→   338→        return {
+   339→   339→          ...subj,
+   340→   340→          materials: subj.materials.map((m) =>
+   341→   341→            m.id === materialId ? { ...m, isRead: true } : m
+   342→   342→          ),
+   343→   343→        };
+   344→   344→      })
+   345→   345→    );
+   346→   346→    toast.success('Materi ditandai sudah dibaca!');
+   347→   347→  };
+   348→   348→
+   349→   349→  if (isLoading) {
+   350→   350→    return (
+   351→   351→      <div className="space-y-6">
+   352→   352→        <Skeleton className="h-44 w-full rounded-2xl" />
+   353→   353→        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   354→   354→          {Array.from({ length: 6 }).map((_, i) => (
+   355→   355→            <Skeleton key={i} className="h-36 rounded-xl" />
+   356→   356→          ))}
+   357→   357→        </div>
+   358→   358→      </div>
+   359→   359→    );
+   360→   360→  }
+   361→   361→
+   362→   362→  return (
+   363→   363→    <div className="space-y-6">
+   364→   364→      {/* ── Hero Banner ── */}
+   365→   365→      <div
+   366→   366→        className="relative rounded-2xl overflow-hidden p-6 md:p-8"
+   367→   367→        style={{ background: `linear-gradient(135deg, ${BRAND}, ${BRAND_DARK})` }}
+   368→   368→      >
+   369→   369→        <div className="absolute top-0 right-0 w-64 h-64 rounded-full opacity-10" style={{ background: 'white', transform: 'translate(30%, -30%)' }} />
+   370→   370→        <div className="absolute bottom-0 left-0 w-40 h-40 rounded-full opacity-5" style={{ background: 'white', transform: 'translate(-30%, 30%)' }} />
+   371→   371→        <div className="relative z-10">
+   372→   372→          <div className="flex items-center gap-3 mb-2">
+   373→   373→            <div className="p-2.5 rounded-xl bg-white/15 backdrop-blur-sm">
+   374→   374→              <BookMarked className="h-6 w-6 text-white" />
+   375→   375→            </div>
+   376→   376→            <h1 className="text-2xl md:text-3xl font-bold text-white">Materi Pelajaran</h1>
+   377→   377→          </div>
+   378→   378→          <p className="text-white/80 text-sm md:text-base mb-4">
+   379→   379→            Kelas {user?.className || 'XII IPA'} — Semua materi tersedia untuk dipelajari
+   380→   380→          </p>
+   381→   381→          <div className="flex flex-wrap items-center gap-4 text-white/90 text-sm">
+   382→   382→            <div className="flex items-center gap-1.5">
+   383→   383→              <BookOpen className="h-4 w-4" />
+   384→   384→              <span>{totalMaterials} Materi</span>
+   385→   385→            </div>
+   386→   386→            <div className="flex items-center gap-1.5">
+   387→   387→              <BookCheck className="h-4 w-4" />
+   388→   388→              <span>{totalRead} Selesai</span>
+   389→   389→            </div>
+   390→   390→            <div className="flex items-center gap-1.5">
+   391→   391→              <TrendingUp className="h-4 w-4" />
+   392→   392→              <span>{overallProgress}% Progres</span>
+   393→   393→            </div>
+   394→   394→          </div>
+   395→   395→          <div className="mt-4 w-full max-w-xs">
+   396→   396→            <div className="flex items-center justify-between text-xs text-white/70 mb-1">
+   397→   397→              <span>Progres Keseluruhan</span>
+   398→   398→              <span>{overallProgress}%</span>
+   399→   399→            </div>
+   400→   400→            <div className="h-2 rounded-full bg-white/20 overflow-hidden">
+   401→   401→              <div
+   402→   402→                className="h-full rounded-full bg-white transition-all duration-500"
+   403→   403→                style={{ width: `${overallProgress}%` }}
+   404→   404→              />
+   405→   405→            </div>
+   406→   406→          </div>
+   407→   407→        </div>
+   408→   408→      </div>
+   409→   409→
+   410→   410→      {/* ── Search & Filter ── */}
+   411→   411→      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+   412→   412→        <div className="relative flex-1 max-w-md w-full">
+   413→   413→          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   414→   414→          <Input
+   415→   415→            placeholder="Cari materi..."
+   416→   416→            value={searchQuery}
+   417→   417→            onChange={(e) => setSearchQuery(e.target.value)}
+   418→   418→            className="pl-9"
+   419→   419→          />
+   420→   420→        </div>
+   421→   421→        <Tabs value={activeTab} onValueChange={setActiveTab}>
+   422→   422→          <TabsList className="h-9">
+   423→   423→            <TabsTrigger value="semua" className="text-xs px-3">Semua</TabsTrigger>
+   424→   424→            <TabsTrigger value="belum" className="text-xs px-3">Belum Dibaca</TabsTrigger>
+   425→   425→            <TabsTrigger value="selesai" className="text-xs px-3">Selesai</TabsTrigger>
+   426→   426→          </TabsList>
+   427→   427→        </Tabs>
+   428→   428→      </div>
+   429→   429→
+   430→   430→      {/* ── Subject Grid ── */}
+   431→   431→      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+   432→   432→        {filteredSubjects.map((subj) => {
+   433→   433→          const total = subj.materials.length;
+   434→   434→          const completed = subj.materials.filter((m) => m.isRead).length;
+   435→   435→          const pct = total > 0 ? Math.round((completed / total) * 100) : 0;
+   436→   436→          const isExpanded = expandedSubject === subj.id;
+   437→   437→
+   438→   438→          return (
+   439→   439→            <div key={subj.id} className="space-y-2">
+   440→   440→              <Card
+   441→   441→                className={cn(
+   442→   442→                  'cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 border-2',
+   443→   443→                  isExpanded ? subj.borderColor : 'border-transparent'
+   444→   444→                )}
+   445→   445→                onClick={() => toggleSubject(subj.id)}
+   446→   446→              >
+   447→   447→                <CardContent className="p-4">
+   448→   448→                  <div className="flex items-start gap-3">
+   449→   449→                    <div className={cn('p-2.5 rounded-xl shrink-0', subj.bgLight, subj.color)}>
+   450→   450→                      {subj.icon}
+   451→   451→                    </div>
+   452→   452→                    <div className="flex-1 min-w-0">
+   453→   453→                      <div className="flex items-center justify-between mb-1">
+   454→   454→                        <h3 className="font-semibold text-sm truncate">{subj.name}</h3>
+   455→   455→                        <div className="flex items-center gap-1 text-muted-foreground shrink-0 ml-2">
+   456→   456→                          {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+   457→   457→                        </div>
+   458→   458→                      </div>
+   459→   459→                      <div className="flex items-center gap-3 text-xs text-muted-foreground mb-2">
+   460→   460→                        <span>{total} materi</span>
+   461→   461→                        <span className="font-medium" style={{ color: BRAND }}>{completed} selesai</span>
+   462→   462→                      </div>
+   463→   463→                      <div className="flex items-center gap-2">
+   464→   464→                        <Progress value={pct} className="h-2 flex-1" />
+   465→   465→                        <span className="text-xs font-medium" style={{ color: BRAND }}>{pct}%</span>
+   466→   466→                      </div>
+   467→   467→                    </div>
+   468→   468→                  </div>
+   469→   469→                </CardContent>
+   470→   470→              </Card>
+   471→   471→
+   472→   472→              {/* ── Expanded Material List ── */}
+   473→   473→              {isExpanded && (
+   474→   474→                <div className="space-y-2 pl-2">
+   475→   475→                  {subj.materials.length === 0 ? (
+   476→   476→                    <Card className="border-dashed">
+   477→   477→                      <CardContent className="p-4 text-center text-muted-foreground text-sm">
+   478→   478→                        Tidak ada materi yang sesuai filter.
+   479→   479→                      </CardContent>
+   480→   480→                    </Card>
+   481→   481→                  ) : (
+   482→   482→                    subj.materials.map((mat) => (
+   483→   483→                      <Card key={mat.id} className="transition-all duration-150 hover:shadow-md">
+   484→   484→                        <CardContent className="p-4">
+   485→   485→                          <div className="flex items-start gap-3">
+   486→   486→                            <div className={cn('mt-0.5 shrink-0', mat.isRead ? 'text-emerald-500' : 'text-muted-foreground')}>
+   487→   487→                              {mat.isRead ? (
+   488→   488→                                <CheckCircle2 className="h-5 w-5" />
+   489→   489→                              ) : (
+   490→   490→                                <Circle className="h-5 w-5" />
+   491→   491→                              )}
+   492→   492→                            </div>
+   493→   493→                            <div className="flex-1 min-w-0">
+   494→   494→                              <div className="flex items-center gap-2 mb-1">
+   495→   495→                                <h4 className={cn('text-sm font-medium truncate', mat.isRead ? 'text-muted-foreground' : 'font-semibold')}>{mat.title}</h4>
+   496→   496→                                <Badge
+   497→   497→                                  variant={mat.isRead ? 'secondary' : 'default'}
+   498→   498→                                  className={cn('text-[10px] px-1.5 py-0', !mat.isRead && 'bg-amber-500 hover:bg-amber-600 text-white')}
+   499→   499→                                >
+   500→   500→                                  {mat.isRead ? 'Dibaca' : 'Belum'}
+   501→   501→                                </Badge>
+   502→   502→                              </div>
+   503→   503→                              <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{mat.description}</p>
+   504→   504→                              <div className="flex items-center justify-between">
+   505→   505→                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+   506→   506→                                  <CalendarDays className="h-3 w-3" />
+   507→   507→                                  <span>{new Date(mat.date).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+   508→   508→                                </div>
+   509→   509→                                {!mat.isRead && (
+   510→   510→                                  <Button
+   511→   511→                                    size="sm"
+   512→   512→                                    className="h-7 text-xs px-3"
+   513→   513→                                    style={{ backgroundColor: BRAND }}
+   514→   514→                                    onClick={(e) => {
+   515→   515→                                      e.stopPropagation();
+   516→   516→                                      handleMarkRead(mat.id, subj.id);
+   517→   517→                                    }}
+   518→   518→                                  >
+   519→   519→                                    <PlayCircle className="h-3.5 w-3.5 mr-1" />
+   520→   520→                                    Mulai Belajar
+   521→   521→                                  </Button>
+   522→   522→                                )}
+   523→   523→                              </div>
+   524→   524→                            </div>
+   525→   525→                          </div>
+   526→   526→                        </CardContent>
+   527→   527→                      </Card>
+   528→   528→                    ))
+   529→   529→                  )}
+   530→   530→                </div>
+   531→   531→              )}
+   532→   532→            </div>
+   533→   533→          );
+   534→   534→        })}
+   535→   535→      </div>
+   536→   536→
+   537→   537→      {/* ── Empty State ── */}
+   538→   538→      {!isLoading && filteredSubjects.every((s) => s.materials.length === 0) && (
+   539→   539→        <div className="text-center py-12">
+   540→   540→          <Search className="h-12 w-12 text-muted-foreground/40 mx-auto mb-3" />
+   541→   541→          <h3 className="text-lg font-semibold text-muted-foreground">Tidak ada materi ditemukan</h3>
+   542→   542→          <p className="text-sm text-muted-foreground/70 mt-1">Coba ubah kata kunci pencarian atau filter.</p>
+   543→   543→        </div>
+   544→   544→      )}
+   545→   545→    </div>
+   546→   546→  );
+   547→   547→}
+   548→   548→
+   549→   549→// ═══════════════════════════════════════════════════════════════════════
+   550→   550→//  2. SISWA TUGAS VIEW
+   551→   551→// ═══════════════════════════════════════════════════════════════════════
+   552→   552→
+   553→   553→export function SiswaTugasView() {
+   554→   554→  const { user } = useAppStore();
+   555→   555→  const [tasks, setTasks] = useState<Task[]>([]);
+   556→   556→  const [isLoading, setIsLoading] = useState(true);
+   557→   557→  const [activeTab, setActiveTab] = useState('semua');
+   558→   558→
+   559→   559→  useEffect(() => {
+   560→   560→    async function fetchTasks() {
+   561→   561→      setIsLoading(true);
+   562→   562→      try {
+   563→   563→        const params = new URLSearchParams({
+   564→   564→          schoolId: user?.schoolId || '',
+   565→   565→          classId: user?.classId || '',
+   566→   566→          type: 'tugas',
+   567→   567→          status: 'published',
+   568→   568→        });
+   569→   569→        const res = await fetch(`/api/materials?${params}`);
+   570→   570→        if (res.ok) {
+   571→   571→          const data = await res.json();
+   572→   572→          if (Array.isArray(data) && data.length > 0) {
+   573→   573→            // Map API data to Task interface
+   574→   574→            const mapped: Task[] = data.map((item: any) => ({
+   575→   575→              id: item.id,
+   576→   576→              title: item.title,
+   577→   577→              type: (item.type || 'tugas') as Task['type'],
+   578→   578→              subject: item.subject?.name || 'Umum',
+   579→   579→              dueDate: item.dueDate || '2025-12-31',
+   580→   580→              status: 'menunggu' as const,
+   581→   581→              isUrgent: false,
+   582→   582→            }));
+   583→   583→            setTasks(mapped);
+   584→   584→          } else {
+   585→   585→            setTasks(MOCK_TASKS);
+   586→   586→          }
+   587→   587→        } else {
+   588→   588→          setTasks(MOCK_TASKS);
+   589→   589→        }
+   590→   590→      } catch {
+   591→   591→        setTasks(MOCK_TASKS);
+   592→   592→      } finally {
+   593→   593→        setIsLoading(false);
+   594→   594→      }
+   595→   595→    }
+   596→   596→    fetchTasks();
+   597→   597→  }, [user?.schoolId, user?.classId]);
+   598→   598→
+   599→   599→  const filteredTasks = useMemo(() => {
+   600→   600→    let filtered = tasks;
+   601→   601→    if (activeTab === 'tugas') filtered = tasks.filter((t) => t.type === 'tugas');
+   602→   602→    else if (activeTab === 'kuis') filtered = tasks.filter((t) => t.type === 'kuis');
+   603→   603→    else if (activeTab === 'ujian') filtered = tasks.filter((t) => t.type === 'ujian');
+   604→   604→    return filtered;
+   605→   605→  }, [tasks, activeTab]);
+   606→   606→
+   607→   607→  const stats = useMemo(() => {
+   608→   608→    const total = tasks.length;
+   609→   609→    const menunggu = tasks.filter((t) => t.status === 'menunggu').length;
+   610→   610→    const selesai = tasks.filter((t) => t.status === 'selesai').length;
+   611→   611→    const terlambat = tasks.filter((t) => t.status === 'terlambat').length;
+   612→   612→    return { total, menunggu, selesai, terlambat };
+   613→   613→  }, [tasks]);
+   614→   614→
+   615→   615→  const getTypeIcon = (type: Task['type']) => {
+   616→   616→    switch (type) {
+   617→   617→      case 'tugas': return <FileText className="h-4 w-4" />;
+   618→   618→      case 'kuis': return <FileQuestion className="h-4 w-4" />;
+   619→   619→      case 'ujian': return <ClipboardList className="h-4 w-4" />;
+   620→   620→    }
+   621→   621→  };
+   622→   622→
+   623→   623→  const getTypeLabel = (type: Task['type']) => {
+   624→   624→    switch (type) {
+   625→   625→      case 'tugas': return 'Tugas';
+   626→   626→      case 'kuis': return 'Kuis';
+   627→   627→      case 'ujian': return 'Ujian';
+   628→   628→    }
+   629→   629→  };
+   630→   630→
+   631→   631→  const getTypeBadgeClass = (type: Task['type']) => {
+   632→   632→    switch (type) {
+   633→   633→      case 'tugas': return 'bg-sky-100 text-sky-700 hover:bg-sky-100';
+   634→   634→      case 'kuis': return 'bg-violet-100 text-violet-700 hover:bg-violet-100';
+   635→   635→      case 'ujian': return 'bg-orange-100 text-orange-700 hover:bg-orange-100';
+   636→   636→    }
+   637→   637→  };
+   638→   638→
+   639→   639→  const getStatusBadge = (status: Task['status']) => {
+   640→   640→    switch (status) {
+   641→   641→      case 'menunggu':
+   642→   642→        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 text-[11px]">Menunggu</Badge>;
+   643→   643→      case 'dikerjakan':
+   644→   644→        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 text-[11px]">Dikerjakan</Badge>;
+   645→   645→      case 'selesai':
+   646→   646→        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 text-[11px]">Selesai</Badge>;
+   647→   647→      case 'terlambat':
+   648→   648→        return <Badge className="bg-red-100 text-red-700 hover:bg-red-100 text-[11px]">Terlambat</Badge>;
+   649→   649→    }
+   650→   650→  };
+   651→   651→
+   652→   652→  const handleStartTask = (taskId: string) => {
+   653→   653→    setTasks((prev) =>
+   654→   654→      prev.map((t) => (t.id === taskId ? { ...t, status: 'dikerjakan' as const } : t))
+   655→   655→    );
+   656→   656→    toast.success('Tugas dimulai! Semangat mengerjakan! 💪');
+   657→   657→  };
+   658→   658→
+   659→   659→  const handleViewResult = (taskId: string) => {
+   660→   660→    const task = tasks.find((t) => t.id === taskId);
+   661→   661→    toast.info(`Nilai ${task?.title}: ${task?.score}/100`);
+   662→   662→  };
+   663→   663→
+   664→   664→  if (isLoading) {
+   665→   665→    return (
+   666→   666→      <div className="space-y-6">
+   667→   667→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   668→   668→          {Array.from({ length: 4 }).map((_, i) => (
+   669→   669→            <Skeleton key={i} className="h-24 rounded-xl" />
+   670→   670→          ))}
+   671→   671→        </div>
+   672→   672→        <Skeleton className="h-10 w-72 rounded-lg" />
+   673→   673→        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   674→   674→          {Array.from({ length: 6 }).map((_, i) => (
+   675→   675→            <Skeleton key={i} className="h-40 rounded-xl" />
+   676→   676→          ))}
+   677→   677→        </div>
+   678→   678→      </div>
+   679→   679→    );
+   680→   680→  }
+   681→   681→
+   682→   682→  const statCards = [
+   683→   683→    { label: 'Total Tugas', value: stats.total, icon: <ClipboardList className="h-5 w-5" />, bg: 'bg-slate-50', color: 'text-slate-600' },
+   684→   684→    { label: 'Menunggu', value: stats.menunggu, icon: <Clock className="h-5 w-5" />, bg: 'bg-amber-50', color: 'text-amber-600' },
+   685→   685→    { label: 'Selesai', value: stats.selesai, icon: <CheckCircle2 className="h-5 w-5" />, bg: 'bg-emerald-50', color: 'text-emerald-600' },
+   686→   686→    { label: 'Terlambat', value: stats.terlambat, icon: <AlertCircle className="h-5 w-5" />, bg: 'bg-red-50', color: 'text-red-600' },
+   687→   687→  ];
+   688→   688→
+   689→   689→  return (
+   690→   690→    <div className="space-y-6">
+   691→   691→      {/* ── Page Header ── */}
+   692→   692→      <div className="flex items-center gap-3">
+   693→   693→        <div className="p-2.5 rounded-xl" style={{ backgroundColor: BRAND_LIGHT }}>
+   694→   694→          <Target className="h-6 w-6" style={{ color: BRAND }} />
+   695→   695→        </div>
+   696→   696→        <div>
+   697→   697→          <h1 className="text-2xl font-bold" style={{ color: BRAND }}>Tugas & Ujian</h1>
+   698→   698→          <p className="text-sm text-muted-foreground">Kelola dan pantau semua tugasmu di sini</p>
+   699→   699→        </div>
+   700→   700→      </div>
+   701→   701→
+   702→   702→      {/* ── Stat Cards ── */}
+   703→   703→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+   704→   704→        {statCards.map((s) => (
+   705→   705→          <Card key={s.label} className="hover:shadow-md transition-shadow duration-200">
+   706→   706→            <CardContent className="p-4 flex items-center gap-3">
+   707→   707→              <div className={cn('p-2.5 rounded-xl', s.bg, s.color)}>
+   708→   708→                {s.icon}
+   709→   709→              </div>
+   710→   710→              <div>
+   711→   711→                <p className="text-2xl font-bold" style={{ color: BRAND }}>{s.value}</p>
+   712→   712→                <p className="text-xs text-muted-foreground">{s.label}</p>
+   713→   713→              </div>
+   714→   714→            </CardContent>
+   715→   715→          </Card>
+   716→   716→        ))}
+   717→   717→      </div>
+   718→   718→
+   719→   719→      {/* ── Tabs ── */}
+   720→   720→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+   721→   721→        <TabsList>
+   722→   722→          <TabsTrigger value="semua">Semua</TabsTrigger>
+   723→   723→          <TabsTrigger value="tugas">Tugas</TabsTrigger>
+   724→   724→          <TabsTrigger value="kuis">Kuis</TabsTrigger>
+   725→   725→          <TabsTrigger value="ujian">Ujian/Tryout</TabsTrigger>
+   726→   726→        </TabsList>
+   727→   727→
+   728→   728→        <TabsContent value={activeTab} className="mt-4">
+   729→   729→          {filteredTasks.length === 0 ? (
+   730→   730→            <div className="text-center py-16">
+   731→   731→              <div className="p-4 rounded-full bg-muted w-fit mx-auto mb-4">
+   732→   732→                <ClipboardList className="h-8 w-8 text-muted-foreground" />
+   733→   733→              </div>
+   734→   734→              <h3 className="text-lg font-semibold text-muted-foreground">Belum ada tugas</h3>
+   735→   735→              <p className="text-sm text-muted-foreground/70 mt-1">
+   736→   736→                {activeTab === 'semua'
+   737→   737→                  ? 'Semua tugas sudah selesai dikerjakan. Kerja bagus!'
+   738→   738→                  : `Tidak ada ${getTypeLabel(activeTab as Task['type'])} untuk saat ini.`}
+   739→   739→              </p>
+   740→   740→            </div>
+   741→   741→          ) : (
+   742→   742→            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+   743→   743→              {filteredTasks.map((task) => {
+   744→   744→                const isActionable = task.status === 'menunggu' || task.status === 'dikerjakan';
+   745→   745→                const isCompleted = task.status === 'selesai' || task.status === 'terlambat';
+   746→   746→
+   747→   747→                return (
+   748→   748→                  <Card
+   749→   749→                    key={task.id}
+   750→   750→                    className={cn(
+   751→   751→                      'transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 overflow-hidden',
+   752→   752→                      task.isUrgent && isActionable && 'border-l-4 border-l-red-500'
+   753→   753→                    )}
+   754→   754→                  >
+   755→   755→                    <CardContent className="p-4 md:p-5">
+   756→   756→                      {/* Urgent banner */}
+   757→   757→                      {task.isUrgent && isActionable && (
+   758→   758→                        <div className="flex items-center gap-1.5 text-red-600 text-xs font-medium mb-3">
+   759→   759→                          <AlertTriangle className="h-3.5 w-3.5" />
+   760→   760→                          <span>Segera dikerjakan!</span>
+   761→   761→                        </div>
+   762→   762→                      )}
+   763→   763→
+   764→   764→                      <div className="flex items-start justify-between gap-2 mb-2">
+   765→   765→                        <div className="flex items-center gap-2 flex-wrap">
+   766→   766→                          <Badge className={cn('text-[10px] px-2 py-0.5', getTypeBadgeClass(task.type))}>
+   767→   767→                            {getTypeIcon(task.type)}
+   768→   768→                            <span className="ml-1">{getTypeLabel(task.type)}</span>
+   769→   769→                          </Badge>
+   770→   770→                          {getStatusBadge(task.status)}
+   771→   771→                        </div>
+   772→   772→                        {task.score !== undefined && isCompleted && (
+   773→   773→                          <div className={cn('text-sm font-bold', task.score >= 75 ? 'text-emerald-600' : 'text-red-500')}>
+   774→   774→                            {task.score}
+   775→   775→                          </div>
+   776→   776→                        )}
+   777→   777→                      </div>
+   778→   778→
+   779→   779→                      <h3 className="font-semibold text-sm md:text-base mb-1 line-clamp-2">{task.title}</h3>
+   780→   780→
+   781→   781→                      <div className="space-y-1.5 mb-4 text-xs text-muted-foreground">
+   782→   782→                        <div className="flex items-center gap-1.5">
+   783→   783→                          <BookOpen className="h-3.5 w-3.5" />
+   784→   784→                          <span>{task.subject}</span>
+   785→   785→                        </div>
+   786→   786→                        <div className="flex items-center gap-1.5">
+   787→   787→                          <CalendarDays className="h-3.5 w-3.5" />
+   788→   788→                          <span>
+   789→   789→                            {task.type === 'ujian' ? 'Jadwal' : 'Tenggat'}: {new Date(task.dueDate).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+   790→   790→                          </span>
+   791→   791→                        </div>
+   792→   792→                      </div>
+   793→   793→
+   794→   794→                      <div className="flex justify-end">
+   795→   795→                        {isActionable && (
+   796→   796→                          <Button
+   797→   797→                            size="sm"
+   798→   798→                            className="h-8 text-xs"
+   799→   799→                            style={{ backgroundColor: BRAND }}
+   800→   800→                            onClick={() => handleStartTask(task.id)}
+   801→   801→                          >
+   802→   802→                            {task.status === 'dikerjakan' ? (
+   803→   803→                              <>
+   804→   804→                                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+   805→   805→                                Lanjutkan
+   806→   806→                              </>
+   807→   807→                            ) : (
+   808→   808→                              <>
+   809→   809→                                <PlayCircle className="h-3.5 w-3.5 mr-1" />
+   810→   810→                                Mulai Kerjakan
+   811→   811→                              </>
+   812→   812→                            )}
+   813→   813→                          </Button>
+   814→   814→                        )}
+   815→   815→                        {isCompleted && (
+   816→   816→                          <Button
+   817→   817→                            size="sm"
+   818→   818→                            variant="outline"
+   819→   819→                            className="h-8 text-xs"
+   820→   820→                            onClick={() => handleViewResult(task.id)}
+   821→   821→                          >
+   822→   822→                            <Eye className="h-3.5 w-3.5 mr-1" />
+   823→   823→                            Lihat Hasil
+   824→   824→                          </Button>
+   825→   825→                        )}
+   826→   826→                      </div>
+   827→   827→                    </CardContent>
+   828→   828→                  </Card>
+   829→   829→                );
+   830→   830→              })}
+   831→   831→            </div>
+   832→   832→          )}
+   833→   833→        </TabsContent>
+   834→   834→      </Tabs>
+   835→   835→    </div>
+   836→   836→  );
+   837→   837→}
+   838→   838→
+   839→   839→// ═══════════════════════════════════════════════════════════════════════
+   840→   840→//  3. SISWA KEHADIRAN VIEW
+   841→   841→// ═══════════════════════════════════════════════════════════════════════
+   842→   842→
+   843→   843→export function SiswaKehadiranView() {
+   844→   844→  const { user } = useAppStore();
+   845→   845→  const [attendance, setAttendance] = useState<AttendanceDay[]>([]);
+   846→   846→  const [isLoading, setIsLoading] = useState(true);
+   847→   847→  const [currentDate, setCurrentDate] = useState(() => new Date());
+   848→   848→
+   849→   849→  const currentYear = currentDate.getFullYear();
+   850→   850→  const currentMonth = currentDate.getMonth();
+   851→   851→  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+   852→   852→  const firstDayOfWeek = new Date(currentYear, currentMonth, 1).getDay(); // 0=Sun
+   853→   853→
+   854→   854→  const monthName = new Date(currentYear, currentMonth).toLocaleDateString('id-ID', {
+   855→   855→    month: 'long',
+   856→   856→    year: 'numeric',
+   857→   857→  });
+   858→   858→
+   859→   859→  useEffect(() => {
+   860→   860→    async function fetchAttendance() {
+   861→   861→      setIsLoading(true);
+   862→   862→      try {
+   863→   863→        const params = new URLSearchParams({
+   864→   864→          studentId: user?.id || '',
+   865→   865→          month: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
+   866→   866→        });
+   867→   867→        const res = await fetch(`/api/attendance?${params}`);
+   868→   868→        if (res.ok) {
+   869→   869→          const data = await res.json();
+   870→   870→          if (Array.isArray(data) && data.length > 0) {
+   871→   871→            setAttendance(data as AttendanceDay[]);
+   872→   872→          } else {
+   873→   873→            setAttendance(generateMockAttendance(currentYear, currentMonth));
+   874→   874→          }
+   875→   875→        } else {
+   876→   876→          setAttendance(generateMockAttendance(currentYear, currentMonth));
+   877→   877→        }
+   878→   878→      } catch {
+   879→   879→        setAttendance(generateMockAttendance(currentYear, currentMonth));
+   880→   880→      } finally {
+   881→   881→        setIsLoading(false);
+   882→   882→      }
+   883→   883→    }
+   884→   884→    fetchAttendance();
+   885→   885→  }, [user?.id, currentYear, currentMonth]);
+   886→   886→
+   887→   887→  const stats = useMemo(() => {
+   888→   888→    const hadir = attendance.filter((a) => a.status === 'hadir').length;
+   889→   889→    const izin = attendance.filter((a) => a.status === 'izin').length;
+   890→   890→    const sakit = attendance.filter((a) => a.status === 'sakit').length;
+   891→   891→    const alpa = attendance.filter((a) => a.status === 'alpa').length;
+   892→   892→    const totalSchoolDays = hadir + izin + sakit + alpa;
+   893→   893→    const pct = totalSchoolDays > 0 ? Math.round((hadir / totalSchoolDays) * 100) : 0;
+   894→   894→    return { hadir, izin, sakit, alpa, totalSchoolDays, pct };
+   895→   895→  }, [attendance]);
+   896→   896→
+   897→   897→  const prevMonth = () => {
+   898→   898→    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+   899→   899→  };
+   900→   900→
+   901→   901→  const nextMonth = () => {
+   902→   902→    setCurrentDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+   903→   903→  };
+   904→   904→
+   905→   905→  const goToToday = () => {
+   906→   906→    setCurrentDate(new Date());
+   907→   907→  };
+   908→   908→
+   909→   909→  const getDayStatus = (day: number): AttendanceDay['status'] => {
+   910→   910→    const found = attendance.find((a) => a.day === day);
+   911→   911→    return found ? found.status : 'none';
+   912→   912→  };
+   913→   913→
+   914→   914→  const getCellColor = (status: AttendanceDay['status']) => {
+   915→   915→    switch (status) {
+   916→   916→      case 'hadir': return 'bg-emerald-500 text-white';
+   917→   917→      case 'izin': return 'bg-blue-500 text-white';
+   918→   918→      case 'sakit': return 'bg-amber-500 text-white';
+   919→   919→      case 'alpa': return 'bg-red-500 text-white';
+   920→   920→      case 'weekend': return 'bg-muted/50 text-muted-foreground/50';
+   921→   921→      default: return 'bg-background text-muted-foreground/30';
+   922→   922→    }
+   923→   923→  };
+   924→   924→
+   925→   925→  // Build calendar grid cells
+   926→   926→  const calendarCells: (number | null)[] = [];
+   927→   927→  for (let i = 0; i < firstDayOfWeek; i++) calendarCells.push(null);
+   928→   928→  for (let d = 1; d <= daysInMonth; d++) calendarCells.push(d);
+   929→   929→
+   930→   930→  const dayLabels = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+   931→   931→
+   932→   932→  if (isLoading) {
+   933→   933→    return (
+   934→   934→      <div className="space-y-6">
+   935→   935→        <Skeleton className="h-10 w-72 rounded-lg" />
+   936→   936→        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+   937→   937→          {Array.from({ length: 4 }).map((_, i) => (
+   938→   938→            <Skeleton key={i} className="h-24 rounded-xl" />
+   939→   939→          ))}
+   940→   940→        </div>
+   941→   941→        <Skeleton className="h-80 rounded-xl" />
+   942→   942→      </div>
+   943→   943→    );
+   944→   944→  }
+   945→   945→
+   946→   946→  const statItems = [
+   947→   947→    { label: 'Hadir', value: stats.hadir, icon: <UserCheck className="h-5 w-5" />, bg: 'bg-emerald-50', color: 'text-emerald-600' },
+   948→   948→    { label: 'Izin', value: stats.izin, icon: <BriefcaseMedical className="h-5 w-5" />, bg: 'bg-blue-50', color: 'text-blue-600' },
+   949→   949→    { label: 'Sakit', value: stats.sakit, icon: <AlertCircle className="h-5 w-5" />, bg: 'bg-amber-50', color: 'text-amber-600' },
+   950→   950→    { label: 'Alpa', value: stats.alpa, icon: <XCircle className="h-5 w-5" />, bg: 'bg-red-50', color: 'text-red-600' },
+   951→   951→  ];
+   952→   952→
+   953→   953→  const legendItems = [
+   954→   954→    { color: 'bg-emerald-500', label: 'Hadir' },
+   955→   955→    { color: 'bg-blue-500', label: 'Izin' },
+   956→   956→    { color: 'bg-amber-500', label: 'Sakit' },
+   957→   957→    { color: 'bg-red-500', label: 'Alpa' },
+   958→   958→    { color: 'bg-muted/50', label: 'Akhir Pekan' },
+   959→   959→    { color: 'bg-background border', label: 'Tidak Ada Data' },
+   960→   960→  ];
+   961→   961→
+   962→   962→  return (
+   963→   963→    <div className="space-y-6">
+   964→   964→      {/* ── Page Header ── */}
+   965→   965→      <div className="flex items-center gap-3">
+   966→   966→        <div className="p-2.5 rounded-xl" style={{ backgroundColor: BRAND_LIGHT }}>
+   967→   967→          <CalendarDays className="h-6 w-6" style={{ color: BRAND }} />
+   968→   968→        </div>
+   969→   969→        <div>
+   970→   970→          <h1 className="text-2xl font-bold" style={{ color: BRAND }}>Kehadiran Saya</h1>
+   971→   971→          <p className="text-sm text-muted-foreground">Pantau rekam kehadiranmu setiap bulan</p>
+   972→   972→        </div>
+   973→   973→      </div>
+   974→   974→
+   975→   975→      {/* ── Month Selector ── */}
+   976→   976→      <Card>
+   977→   977→        <CardContent className="p-4 flex items-center justify-between">
+   978→   978→          <Button variant="outline" size="icon" onClick={prevMonth} className="h-9 w-9">
+   979→   979→            <ChevronLeft className="h-4 w-4" />
+   980→   980→          </Button>
+   981→   981→          <div className="text-center">
+   982→   982→            <h2 className="text-lg font-bold capitalize" style={{ color: BRAND }}>{monthName}</h2>
+   983→   983→          </div>
+   984→   984→          <div className="flex items-center gap-2">
+   985→   985→            <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={goToToday}>
+   986→   986→              Hari Ini
+   987→   987→            </Button>
+   988→   988→            <Button variant="outline" size="icon" onClick={nextMonth} className="h-9 w-9">
+   989→   989→              <ChevronRight className="h-4 w-4" />
+   990→   990→            </Button>
+   991→   991→          </div>
+   992→   992→        </CardContent>
+   993→   993→      </Card>
+   994→   994→
+   995→   995→      {/* ── Summary Stats ── */}
+   996→   996→      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+   997→   997→        {statItems.map((s) => (
+   998→   998→          <Card key={s.label} className="hover:shadow-md transition-shadow duration-200">
+   999→   999→            <CardContent className="p-4 flex items-center gap-3">
+  1000→  1000→              <div className={cn('p-2.5 rounded-xl', s.bg, s.color)}>
+  1001→  1001→                {s.icon}
+  1002→  1002→              </div>
+  1003→  1003→              <div>
+  1004→  1004→                <p className="text-2xl font-bold" style={{ color: BRAND }}>{s.value}</p>
+  1005→  1005→                <p className="text-xs text-muted-foreground">{s.label}</p>
+  1006→  1006→              </div>
+  1007→  1007→            </CardContent>
+  1008→  1008→          </Card>
+  1009→  1009→        ))}
+  1010→  1010→      </div>
+  1011→  1011→
+  1012→  1012→      {/* ── Attendance Percentage ── */}
+  1013→  1013→      <Card className="overflow-hidden">
+  1014→  1014→        <CardContent className="p-6">
+  1015→  1015→          <div className="flex flex-col md:flex-row items-center gap-6">
+  1016→  1016→            {/* Circular Progress */}
+  1017→  1017→            <div className="relative shrink-0">
+  1018→  1018→              <svg width="120" height="120" viewBox="0 0 120 120" className="transform -rotate-90">
+  1019→  1019→                <circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
+  1020→  1020→                <circle
+  1021→  1021→                  cx="60" cy="60" r="52" fill="none"
+  1022→  1022→                  stroke={stats.pct >= 80 ? '#10B981' : stats.pct >= 60 ? '#F59E0B' : '#EF4444'}
+  1023→  1023→                  strokeWidth="8"
+  1024→  1024→                  strokeLinecap="round"
+  1025→  1025→                  strokeDasharray={`${2 * Math.PI * 52}`}
+  1026→  1026→                  strokeDashoffset={`${2 * Math.PI * 52 * (1 - stats.pct / 100)}`}
+  1027→  1027→                  className="transition-all duration-700"
+  1028→  1028→                />
+  1029→  1029→              </svg>
+  1030→  1030→              <div className="absolute inset-0 flex items-center justify-center">
+  1031→  1031→                <div className="text-center">
+  1032→  1032→                  <span className="text-2xl font-bold" style={{ color: BRAND }}>{stats.pct}%</span>
+  1033→  1033→                </div>
+  1034→  1034→              </div>
+  1035→  1035→            </div>
+  1036→  1036→
+  1037→  1037→            {/* Text summary */}
+  1038→  1038→            <div className="flex-1 text-center md:text-left">
+  1039→  1039→              <h3 className="text-lg font-bold mb-1" style={{ color: BRAND }}>Persentase Kehadiran</h3>
+  1040→  1040→              <p className="text-sm text-muted-foreground mb-3">
+  1041→  1041→                Kamu hadir <span className="font-semibold text-emerald-600">{stats.hadir}</span> dari{' '}
+  1042→  1042→                <span className="font-semibold">{stats.totalSchoolDays}</span> hari sekolah bulan ini
+  1043→  1043→              </p>
+  1044→  1044→              {stats.pct >= 90 ? (
+  1045→  1045→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-medium">
+  1046→  1046→                  <Trophy className="h-3.5 w-3.5" />
+  1047→  1047→                  Luar biasa! Terus pertahankan!
+  1048→  1048→                </div>
+  1049→  1049→              ) : stats.pct >= 75 ? (
+  1050→  1050→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 text-amber-700 text-xs font-medium">
+  1051→  1051→                  <Sparkles className="h-3.5 w-3.5" />
+  1052→  1052→                  Bagus! Tingkatkan lagi kehadiranmu.
+  1053→  1053→                </div>
+  1054→  1054→              ) : (
+  1055→  1055→                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-red-50 text-red-700 text-xs font-medium">
+  1056→  1056→                  <AlertTriangle className="h-3.5 w-3.5" />
+  1057→  1057→                  Perbaiki kehadiranmu bulan depan.
+  1058→  1058→                </div>
+  1059→  1059→              )}
+  1060→  1060→            </div>
+  1061→  1061→          </div>
+  1062→  1062→        </CardContent>
+  1063→  1063→      </Card>
+  1064→  1064→
+  1065→  1065→      {/* ── Calendar Grid ── */}
+  1066→  1066→      <Card>
+  1067→  1067→        <CardHeader className="pb-2">
+  1068→  1068→          <CardTitle className="text-base font-semibold flex items-center gap-2" style={{ color: BRAND }}>
+  1069→  1069→            <Calendar className="h-4 w-4" />
+  1070→  1070→            Kalender Kehadiran
+  1071→  1071→          </CardTitle>
+  1072→  1072→          <CardDescription>Klik pada tanggal untuk melihat detail kehadiran</CardDescription>
+  1073→  1073→        </CardHeader>
+  1074→  1074→        <CardContent className="p-4">
+  1075→  1075→          {/* Day labels */}
+  1076→  1076→          <div className="grid grid-cols-7 gap-1 mb-1">
+  1077→  1077→            {dayLabels.map((d) => (
+  1078→  1078→              <div key={d} className="text-center text-xs font-medium text-muted-foreground py-1.5">
+  1079→  1079→                {d}
+  1080→  1080→              </div>
+  1081→  1081→            ))}
+  1082→  1082→          </div>
+  1083→  1083→
+  1084→  1084→          {/* Calendar cells */}
+  1085→  1085→          <div className="grid grid-cols-7 gap-1">
+  1086→  1086→            {calendarCells.map((day, idx) => {
+  1087→  1087→              if (day === null) {
+  1088→  1088→                return <div key={`empty-${idx}`} className="aspect-square" />;
+  1089→  1089→              }
+  1090→  1090→
+  1091→  1091→              const status = getDayStatus(day);
+  1092→  1092→              const isToday =
+  1093→  1093→                day === new Date().getDate() &&
+  1094→  1094→                currentMonth === new Date().getMonth() &&
+  1095→  1095→                currentYear === new Date().getFullYear();
+  1096→  1096→
+  1097→  1097→              return (
+  1098→  1098→                <button
+  1099→  1099→                  key={day}
+  1100→  1100→                  className={cn(
+  1101→  1101→                    'aspect-square rounded-lg flex items-center justify-center text-xs font-medium transition-all duration-150 hover:scale-110 hover:shadow-md relative',
+  1102→  1102→                    getCellColor(status),
+  1103→  1103→                    isToday && 'ring-2 ring-offset-2 ring-[#1F3864]'
+  1104→  1104→                  )}
+  1105→  1105→                  onClick={() => {
+  1106→  1106→                    const statusLabels: Record<string, string> = {
+  1107→  1107→                      hadir: 'Hadir',
+  1108→  1108→                      izin: 'Izin',
+  1109→  1109→                      sakit: 'Sakit',
+  1110→  1110→                      alpa: 'Alpa',
+  1111→  1111→                      weekend: 'Akhir Pekan',
+  1112→  1112→                      none: 'Tidak Ada Data',
+  1113→  1113→                    };
+  1114→  1114→                    toast.info(`${day} ${monthName}: ${statusLabels[status] || status}`);
+  1115→  1115→                  }}
+  1116→  1116→                  title={
+  1117→  1117→                    status === 'hadir' ? 'Hadir' :
+  1118→  1118→                    status === 'izin' ? 'Izin' :
+  1119→  1119→                    status === 'sakit' ? 'Sakit' :
+  1120→  1120→                    status === 'alpa' ? 'Alpa' :
+  1121→  1121→                    status === 'weekend' ? 'Akhir Pekan' :
+  1122→  1122→                    'Tidak Ada Data'
+  1123→  1123→                  }
+  1124→  1124→                >
+  1125→  1125→                  {day}
+  1126→  1126→                  {isToday && (
+  1127→  1127→                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full" style={{ backgroundColor: BRAND }} />
+  1128→  1128→                  )}
+  1129→  1129→                </button>
+  1130→  1130→              );
+  1131→  1131→            })}
+  1132→  1132→          </div>
+  1133→  1133→
+  1134→  1134→          {/* Legend */}
+  1135→  1135→          <div className="flex flex-wrap items-center justify-center gap-3 mt-4 pt-4 border-t">
+  1136→  1136→            {legendItems.map((item) => (
+  1137→  1137→              <div key={item.label} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+  1138→  1138→                <span className={cn('w-3 h-3 rounded-sm shrink-0', item.color)} />
+  1139→  1139→                <span>{item.label}</span>
+  1140→  1140→              </div>
+  1141→  1141→            ))}
+  1142→  1142→          </div>
+  1143→  1143→        </CardContent>
+  1144→  1144→      </Card>
+  1145→  1145→    </div>
+  1146→  1146→  );
+  1147→  1147→}
+  1148→  1148→
