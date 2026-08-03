@@ -143,3 +143,4 @@ export const useAppStore = create<AppState>((set) => ({
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   navigateTo: (view) => set({ currentView: view }),
 }));
+

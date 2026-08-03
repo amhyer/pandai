@@ -1,9 +1,14 @@
 #!/usr/bin/env node
 // server-manager.js — Auto-restart dev server when it crashes
+// eslint-disable @typescript-eslint/no-require-imports
 
-const { spawn } = require('child_process');
-const fs = require('fs');
-const path = require('path');
+import { spawn } from 'child_process';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const LOG = path.join(__dirname, 'dev.log');
 const KEEPALIVE_LOG = path.join(__dirname, 'keepalive.log');
