@@ -1,0 +1,802 @@
+'use client';
+
+import React, { useState, useRef, useCallback } from 'react';
+import { useAppStore } from '@/store/use-store';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import {
+  Download,
+  Upload,
+  FileJson,
+  Users,
+  GraduationCap,
+  BookOpen,
+  LayoutGrid,
+  ChevronDown,
+  ChevronUp,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  Loader2,
+  Wrench,
+  ArrowRight,
+  FileSpreadsheet,
+  Database,
+  Info,
+  Sparkles,
+} from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════════════
+
+const BRAND = '#1F3864';
+const AMBER = '#F59E0B';
+
+// ═══════════════════════════════════════════════════════════════════════
+// TYPES
+// ═══════════════════════════════════════════════════════════════════════
+
+interface UploadPreview {
+  version?: string;
+  exportedAt?: string;
+  schoolName?: string;
+  sourceTypes?: string[];
+  totalRecords?: number;
+  data: {
+    pesertaDidik?: Record<string, unknown>[];
+    guru?: Record<string, unknown>[];
+    rombel?: Record<string, unknown>[];
+    mataPelajaran?: Record<string, unknown>[];
+  };
+}
+
+interface ImportResultItem {
+  created: number;
+  skipped: number;
+  errors: string[];
+}
+
+interface ImportResults {
+  pesertaDidik?: ImportResultItem;
+  guru?: ImportResultItem;
+  rombel?: ImportResultItem;
+  mataPelajaran?: ImportResultItem;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// HELPER: GradientIcon
+// ═══════════════════════════════════════════════════════════════════════
+
+function GradientIcon({ children, className }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div className={cn('p-2.5 rounded-xl bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white shadow-sm', className)}>
+      {children}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// WORKFLOW STEPS
+// ═══════════════════════════════════════════════════════════════════════
+
+const WORKFLOW_STEPS = [
+  {
+    num: 1,
+    title: 'Unduh Alat Ekstraksi',
+    desc: 'Klik tombol "Download Alat" di bawah untuk mengunduh file HTML.',
+    icon: Download,
+  },
+  {
+    num: 2,
+    title: 'Buka File HTML',
+    desc: 'Buka file yang diunduh menggunakan browser (Chrome/Edge/Firefox).',
+    icon: FileSpreadsheet,
+  },
+  {
+    num: 3,
+    title: 'Unggah File Excel',
+    desc: 'Unggah file ekspor Dapodik (.xlsx / .xls / .csv) ke alat tersebut.',
+    icon: Upload,
+  },
+  {
+    num: 4,
+    title: 'Ekspor ke JSON',
+    desc: 'Pilih kolom yang sesuai, lalu ekspor hasilnya sebagai file .json.',
+    icon: FileJson,
+  },
+  {
+    num: 5,
+    title: 'Impor ke PANDAI',
+    desc: 'Kembali ke tab "Impor Data" dan unggah file .json tadi.',
+    icon: Database,
+  },
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// DATA TYPE CONFIGS
+// ═══════════════════════════════════════════════════════════════════════
+
+const TYPE_CONFIG = {
+  pesertaDidik: {
+    label: 'Peserta Didik',
+    icon: Users,
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50',
+    borderColor: 'border-blue-200',
+    badgeColor: 'bg-blue-100 text-blue-700',
+    columns: ['nisn', 'nama', 'nama_peserta_didik', 'jenis_kelamin', 'no_hp', 'rombel'],
+  },
+  guru: {
+    label: 'Guru',
+    icon: GraduationCap,
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50',
+    borderColor: 'border-emerald-200',
+    badgeColor: 'bg-emerald-100 text-emerald-700',
+    columns: ['nip', 'nama', 'no_hp', 'jenis_kelamin'],
+  },
+  rombel: {
+    label: 'Rombongan Belajar',
+    icon: LayoutGrid,
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
+    badgeColor: 'bg-purple-100 text-purple-700',
+    columns: ['nama', 'tingkat', 'tahun_pelajaran', 'wali_kelas'],
+  },
+  mataPelajaran: {
+    label: 'Mata Pelajaran',
+    icon: BookOpen,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50',
+    borderColor: 'border-amber-200',
+    badgeColor: 'bg-amber-100 text-amber-700',
+    columns: ['kode_mapel', 'nama', 'jenis'],
+  },
+} as const;
+
+type DataTypeKey = keyof typeof TYPE_CONFIG;
+
+// ═══════════════════════════════════════════════════════════════════════
+// MAIN COMPONENT
+// ═══════════════════════════════════════════════════════════════════════
+
+export function DapodikSyncView() {
+  const { user } = useAppStore();
+
+  // State
+  const [activeTab, setActiveTab] = useState<string>('ekstraksi');
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResults, setImportResults] = useState<ImportResults | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const [parseError, setParseError] = useState<string | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // FILE HANDLING
+  // ═══════════════════════════════════════════════════════════════════════
+
+  const processFile = useCallback((file: File) => {
+    if (!file.name.endsWith('.json')) {
+      setParseError('Hanya file .json yang diterima.');
+      setUploadPreview(null);
+      setUploadedFile(null);
+      toast.error('Format file tidak didukung', { description: 'Silakan unggah file .json' });
+      return;
+    }
+
+    setParseError(null);
+    setUploadedFile(file);
+    setImportResults(null);
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const parsed = JSON.parse(e.target?.result as string);
+
+        // Validate structure
+        if (!parsed.data || typeof parsed.data !== 'object') {
+          setParseError('Struktur file tidak valid. File harus berisi objek "data".');
+          setUploadPreview(null);
+          toast.error('Struktur file tidak valid');
+          return;
+        }
+
+        const preview: UploadPreview = {
+          version: parsed.version,
+          exportedAt: parsed.exportedAt,
+          schoolName: parsed.schoolName,
+          sourceTypes: parsed.sourceTypes,
+          totalRecords: parsed.totalRecords,
+          data: {
+            pesertaDidik: Array.isArray(parsed.data.pesertaDidik) ? parsed.data.pesertaDidik : [],
+            guru: Array.isArray(parsed.data.guru) ? parsed.data.guru : [],
+            rombel: Array.isArray(parsed.data.rombel) ? parsed.data.rombel : [],
+            mataPelajaran: Array.isArray(parsed.data.mataPelajaran) ? parsed.data.mataPelajaran : [],
+          },
+        };
+
+        setUploadPreview(preview);
+
+        // Auto-expand sections with data
+        const initialExpand: Record<string, boolean> = {};
+        (Object.keys(preview.data) as DataTypeKey[]).forEach((key) => {
+          if (preview.data[key] && preview.data[key]!.length > 0) {
+            initialExpand[key] = true;
+          }
+        });
+        setExpandedSections(initialExpand);
+
+        toast.success('File berhasil dibaca', {
+          description: `${preview.totalRecords ?? '?'} record ditemukan dalam file.`,
+        });
+      } catch {
+        setParseError('Gagal menguraikan file JSON. Pastikan file tidak rusak.');
+        setUploadPreview(null);
+        toast.error('Gagal membaca file', { description: 'File JSON tidak valid atau rusak.' });
+      }
+    };
+    reader.onerror = () => {
+      setParseError('Gagal membaca file.');
+      setUploadPreview(null);
+      toast.error('Gagal membaca file');
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(true);
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOver(false);
+    const file = e.dataTransfer.files[0];
+    if (file) processFile(file);
+  }, [processFile]);
+
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  }, [processFile]);
+
+  const toggleSection = useCallback((key: string) => {
+    setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
+  }, []);
+
+  const resetUpload = useCallback(() => {
+    setUploadedFile(null);
+    setUploadPreview(null);
+    setImportResults(null);
+    setParseError(null);
+    setExpandedSections({});
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // IMPORT HANDLER
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async function handleImport() {
+    if (!user?.schoolId) {
+      toast.error('Sekolah tidak ditemukan', { description: 'ID sekolah tidak tersedia.' });
+      return;
+    }
+    if (!uploadPreview) {
+      toast.error('Tidak ada data untuk diimpor');
+      return;
+    }
+
+    setIsImporting(true);
+    try {
+      const res = await fetch('/api/dapodik/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schoolId: user.schoolId,
+          data: uploadPreview,
+        }),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        toast.error('Impor gagal', { description: result.error || 'Terjadi kesalahan.' });
+        return;
+      }
+
+      setImportResults(result.results);
+      toast.success('Impor berhasil!', {
+        description: result.message || 'Data Dapodik berhasil diimpor.',
+      });
+    } catch {
+      toast.error('Kesalahan jaringan', { description: 'Tidak dapat terhubung ke server.' });
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // RENDER
+  // ═══════════════════════════════════════════════════════════════════════
+
+  return (
+    <div className="space-y-6">
+      {/* ── Gradient Header ── */}
+      <div className="bg-gradient-to-r from-[#1F3864] to-[#2d5289] rounded-xl px-6 py-5 text-white">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-white/15 backdrop-blur-sm">
+            <Database className="h-6 w-6" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Tarik Data Dapodik</h1>
+            <p className="text-sm text-white/80 mt-0.5">
+              Impor data peserta didik, guru, rombel, dan mata pelajaran dari Dapodik
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Tabs ── */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <TabsList className="bg-muted/80 rounded-lg p-1">
+          <TabsTrigger
+            value="ekstraksi"
+            className="rounded-md px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1F3864] data-[state=active]:font-semibold transition-all"
+          >
+            <Wrench className="h-4 w-4 mr-1.5" />
+            Alat Ekstraksi
+          </TabsTrigger>
+          <TabsTrigger
+            value="impor"
+            className="rounded-md px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1F3864] data-[state=active]:font-semibold transition-all"
+          >
+            <Upload className="h-4 w-4 mr-1.5" />
+            Impor Data
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="ekstraksi" className="space-y-6">
+          {/* Info Card */}
+          <Card className="rounded-xl border shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Info className="h-5 w-5 text-[#1F3864]" />
+                <CardTitle className="text-lg" style={{ color: BRAND }}>
+                  Cara Menggunakan Alat Ekstraksi
+                </CardTitle>
+              </div>
+              <CardDescription className="text-sm">
+                Ikuti 5 langkah berikut untuk mengekstrak dan mengimpor data Dapodik ke PANDAI.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {WORKFLOW_STEPS.map((step, idx) => {
+                  const Icon = step.icon;
+                  return (
+                    <div key={step.num} className="flex items-start gap-4">
+                      {/* Step number circle */}
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white shadow-sm"
+                        style={{ backgroundColor: BRAND }}
+                      >
+                        {step.num}
+                      </div>
+                      {/* Connector line */}
+                      {idx < WORKFLOW_STEPS.length - 1 && (
+                        <div className="absolute ml-4 mt-9 h-[calc(100%-18px)] w-px bg-border" style={{ display: 'none' }} />
+                      )}
+                      {/* Content */}
+                      <div className="flex-1 rounded-lg bg-muted/40 p-4 border border-border/50">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Icon className="h-4 w-4 text-[#F59E0B]" />
+                          <span className="font-semibold text-sm text-foreground">{step.title}</span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">{step.desc}</p>
+                      </div>
+                      {idx < WORKFLOW_STEPS.length - 1 && (
+                        <ArrowRight className="h-5 w-5 text-muted-foreground/40 shrink-0 mt-4 hidden sm:block" />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Download Card */}
+          <Card className="rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 shadow-sm">
+            <CardContent className="py-8 flex flex-col items-center justify-center text-center gap-4">
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-[#F59E0B] to-[#D97706] text-white shadow-lg">
+                <Download className="h-8 w-8" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Alat Ekstraksi Dapodik</h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  File HTML mandiri — cukup buka di browser, tidak perlu instalasi.
+                </p>
+              </div>
+              <a
+                href="/dapodik-tool.html"
+                download="PANDAI-Alat-Ekstraksi-Dapodik.html"
+              >
+                <Button
+                  size="lg"
+                  className="rounded-xl px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+                  style={{
+                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                    color: 'white',
+                  }}
+                >
+                  <Download className="h-5 w-5 mr-2" />
+                  Download Alat
+                </Button>
+              </a>
+              <p className="text-xs text-muted-foreground">
+                Format: HTML • Ukuran: ~45 KB • Kompatibel: Chrome, Edge, Firefox
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="impor" className="space-y-6">
+          {/* Upload Zone */}
+          <div
+            className={cn(
+              'relative rounded-xl border-2 border-dashed transition-all duration-200 cursor-pointer',
+              dragOver
+                ? 'border-[#F59E0B] bg-amber-50/60 scale-[1.01]'
+                : 'border-border hover:border-[#1F3864]/40 hover:bg-muted/20',
+              uploadedFile && !parseError && 'border-emerald-300 bg-emerald-50/30'
+            )}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleFileChange}
+            />
+            <div className="flex flex-col items-center justify-center py-12 px-6 gap-3">
+              {dragOver ? (
+                <>
+                  <div className="p-3 rounded-xl bg-amber-100">
+                    <Upload className="h-8 w-8 text-[#F59E0B]" />
+                  </div>
+                  <p className="text-sm font-semibold text-[#F59E0B]">Lepaskan file di sini...</p>
+                </>
+              ) : uploadedFile && !parseError ? (
+                <>
+                  <div className="p-3 rounded-xl bg-emerald-100">
+                    <CheckCircle2 className="h-8 w-8 text-emerald-600" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">{uploadedFile.name}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {(uploadedFile.size / 1024).toFixed(1)} KB — Klik untuk ganti file
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-3 rounded-xl bg-muted">
+                    <FileJson className="h-8 w-8 text-muted-foreground" />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-foreground">
+                      Seret & lepas file JSON di sini
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      atau klik untuk memilih file • Format: .json
+                    </p>
+                  </div>
+                </>
+              )}
+              {parseError && (
+                <div className="flex items-center gap-2 text-red-600 bg-red-50 rounded-lg px-4 py-2 mt-1">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <p className="text-xs font-medium">{parseError}</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── Summary Cards (after upload) ── */}
+          {uploadPreview && (
+            <div className="space-y-6">
+              {/* Meta Info */}
+              <div className="flex flex-wrap gap-3">
+                {uploadPreview.schoolName && (
+                  <Badge variant="outline" className="rounded-lg px-3 py-1 text-xs">
+                    <GraduationCap className="h-3 w-3 mr-1" />
+                    {uploadPreview.schoolName}
+                  </Badge>
+                )}
+                {uploadPreview.exportedAt && (
+                  <Badge variant="outline" className="rounded-lg px-3 py-1 text-xs">
+                    Diekspor: {uploadPreview.exportedAt}
+                  </Badge>
+                )}
+                {uploadPreview.version && (
+                  <Badge variant="outline" className="rounded-lg px-3 py-1 text-xs">
+                    Versi: {uploadPreview.version}
+                  </Badge>
+                )}
+              </div>
+
+              {/* Summary Cards Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {(Object.keys(TYPE_CONFIG) as DataTypeKey[]).map((key) => {
+                  const config = TYPE_CONFIG[key];
+                  const count = uploadPreview.data[key]?.length ?? 0;
+                  const Icon = config.icon;
+                  return (
+                    <Card
+                      key={key}
+                      className={cn(
+                        'rounded-xl border shadow-sm hover:shadow-md transition-all',
+                        count > 0 ? config.borderColor : 'opacity-50'
+                      )}
+                    >
+                      <CardContent className="p-4 flex items-center gap-3">
+                        <div className={cn('p-2 rounded-lg', config.bgColor)}>
+                          <Icon className={cn('h-5 w-5', config.color)} />
+                        </div>
+                        <div>
+                          <p className="text-2xl font-bold" style={{ color: BRAND }}>{count}</p>
+                          <p className="text-xs text-muted-foreground">{config.label}</p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {/* ── Collapsible Preview Tables ── */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold text-foreground">Pratinjau Data</h3>
+                {(Object.keys(TYPE_CONFIG) as DataTypeKey[]).map((key) => {
+                  const config = TYPE_CONFIG[key];
+                  const rows = uploadPreview.data[key] ?? [];
+                  if (rows.length === 0) return null;
+                  const isExpanded = expandedSections[key] ?? false;
+
+                  return (
+                    <Collapsible
+                      key={key}
+                      open={isExpanded}
+                      onOpenChange={() => toggleSection(key)}
+                    >
+                      <Card className="rounded-xl border shadow-sm">
+                        <CollapsibleTrigger className="w-full">
+                          <div className="flex items-center justify-between py-3 px-4 hover:bg-muted/30 transition-colors rounded-t-xl cursor-pointer">
+                            <div className="flex items-center gap-2">
+                              <div className={cn('p-1.5 rounded-lg', config.bgColor)}>
+                                {(() => { const DynIcon = config.icon; return <DynIcon className={cn('h-4 w-4', config.color)} />; })()}
+                              </div>
+                              <span className="text-sm font-semibold">{config.label}</span>
+                              <Badge className={cn('rounded-full text-[10px] font-medium border', config.badgeColor)}>
+                                {rows.length} record
+                              </Badge>
+                            </div>
+                            {isExpanded ? (
+                              <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </div>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-10 text-center text-xs">#</TableHead>
+                                  {config.columns.map((col) => (
+                                    <TableHead key={col} className="text-xs font-semibold">
+                                      {col.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
+                                    </TableHead>
+                                  ))}
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {rows.slice(0, 50).map((row, idx) => (
+                                  <TableRow key={idx}>
+                                    <TableCell className="text-center text-xs text-muted-foreground">
+                                      {idx + 1}
+                                    </TableCell>
+                                    {config.columns.map((col) => (
+                                      <TableCell key={col} className="text-xs max-w-[200px] truncate">
+                                        {(row[col] as string) ?? '-'}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                            {rows.length > 50 && (
+                              <div className="px-4 py-2 text-center text-xs text-muted-foreground border-t bg-muted/20">
+                                Menampilkan 50 dari {rows.length} record
+                              </div>
+                            )}
+                          </div>
+                        </CollapsibleContent>
+                      </Card>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+
+              {/* ── Import Action ── */}
+              {!importResults && (
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-xl bg-muted/40 border border-border/50">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <AlertTriangle className="h-4 w-4 text-[#F59E0B]" />
+                    <span>
+                      Data duplikat (berdasarkan NISN/NIP/nama kelas/kode mapel) akan dilewati otomatis.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" className="rounded-lg" onClick={resetUpload}>
+                      Batal
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="rounded-lg px-6 font-semibold text-white"
+                      style={{ backgroundColor: BRAND }}
+                      onClick={handleImport}
+                      disabled={isImporting}
+                    >
+                      {isImporting ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Mengimpor...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Mulai Impor
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Import Results ── */}
+              {importResults && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    <h3 className="text-base font-bold" style={{ color: BRAND }}>
+                      Hasil Impor
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {(Object.keys(importResults) as DataTypeKey[]).map((key) => {
+                      const config = TYPE_CONFIG[key];
+                      const result = importResults[key];
+                      if (!result) return null;
+                      const Icon = config.icon;
+                      const total = result.created + result.skipped;
+
+                      return (
+                        <Card key={key} className={cn('rounded-xl border shadow-sm', config.borderColor)}>
+                          <CardContent className="p-4 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <div className={cn('p-1.5 rounded-lg', config.bgColor)}>
+                                <Icon className={cn('h-4 w-4', config.color)} />
+                              </div>
+                              <span className="text-sm font-semibold">{config.label}</span>
+                            </div>
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Dibuat</span>
+                                <span className="font-semibold text-emerald-600">{result.created}</span>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Dilewati</span>
+                                <span className="font-semibold text-amber-600">{result.skipped}</span>
+                              </div>
+                              <div className="h-px bg-border" />
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Total</span>
+                                <span className="font-bold" style={{ color: BRAND }}>{total}</span>
+                              </div>
+                            </div>
+                            {result.errors.length > 0 && (
+                              <div className="space-y-1 mt-2">
+                                <p className="text-xs font-medium text-red-600 flex items-center gap-1">
+                                  <XCircle className="h-3 w-3" />
+                                  {result.errors.length} kesalahan
+                                </p>
+                                <div className="max-h-24 overflow-y-auto text-xs text-red-500 space-y-0.5">
+                                  {result.errors.slice(0, 5).map((err, i) => (
+                                    <p key={i} className="truncate">• {err}</p>
+                                  ))}
+                                  {result.errors.length > 5 && (
+                                    <p className="text-muted-foreground">
+                                      ...+{result.errors.length - 5} lainnya
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+
+                  {/* Note about default password */}
+                  <div className="rounded-xl bg-amber-50 border border-amber-200 p-4">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="text-sm">
+                        <p className="font-semibold text-amber-800">Password Default</p>
+                        <p className="text-amber-700 mt-0.5">
+                          Semua akun baru (siswa & guru) dibuat dengan password default:{' '}
+                          <code className="bg-amber-100 px-1.5 py-0.5 rounded text-xs font-mono font-bold">pandai123</code>.{' '}
+                          Segera minta pengguna untuk mengubah password setelah login pertama.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Reset button */}
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="rounded-lg"
+                      onClick={resetUpload}
+                    >
+                      Impor Data Lain
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

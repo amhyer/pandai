@@ -79,6 +79,10 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'teacher-assignments': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.TeacherAssignmentsView }))),
   'backup-restore': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.BackupRestoreView }))),
   'activity-log': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.ActivityLogView }))),
+  'timetable': React.lazy(() => import('@/components/views/admin-school-timetable').then(m => ({ default: m.TimetableView }))),
+  'wali-kelas': React.lazy(() => import('@/components/views/admin-school-timetable').then(m => ({ default: m.WaliKelasView }))),
+  'import-csv': React.lazy(() => import('@/components/views/admin-school-import').then(m => ({ default: m.ImportCsvView }))),
+  'dapodik-sync': React.lazy(() => import('@/components/views/admin-school-dapodik').then(m => ({ default: m.DapodikSyncView }))),
 
   // GURU — existing components
   'guru-materi': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruMateriView }))),
@@ -93,6 +97,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-karakter': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruKarakterView }))),
   'guru-rekap-karakter': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruRekapKarakterView }))),
   'guru-jurnal': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruJurnalView }))),
+  'guru-pandai-ai': React.lazy(() => import('@/components/views/guru-ai-views').then(m => ({ default: m.GuruPandaiAiView }))),
 
   // SISWA — new views
   'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
@@ -100,6 +105,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'siswa-riwayat': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaRiwayatView }))),
   'siswa-nilai': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaNilaiView }))),
   'siswa-kehadiran': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaKehadiranView }))),
+  'siswa-pandai-ai': React.lazy(() => import('@/components/views/siswa-ai-views').then(m => ({ default: m.SiswaPandaiAiView }))),
 
   // ORANG_TUA — existing components
   'ortu-nilai': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuNilaiView }))),

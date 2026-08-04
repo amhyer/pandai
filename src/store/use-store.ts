@@ -26,6 +26,10 @@ export type ViewType =
   | 'subjects'             // Mata Pelajaran
   | 'users'                // Data Siswa
   | 'teacher-assignments'   // Penugasan Guru
+  | 'timetable'            // Jadwal Pelajaran
+  | 'wali-kelas'            // Wali Kelas
+  | 'import-csv'            // Import Data
+  | 'dapodik-sync'          // Tarik Data Dapodik
   | 'settings'             // Pengaturan Aplikasi
   | 'backup-restore'        // Cadangkan & Pulihkan
   | 'activity-log'         // Log Aktivitas
@@ -41,6 +45,7 @@ export type ViewType =
   | 'guru-nilai'           // Input Nilai
   | 'guru-analisis'        // Analisis Hasil Belajar
   | 'guru-laporan'         // Laporan Siswa
+  | 'guru-pandai-ai'       // PANDAI AI (Asisten AI)
 
   // ── SISWA ──
   | 'siswa-materi'         // Materi Pelajaran
@@ -48,6 +53,7 @@ export type ViewType =
   | 'siswa-riwayat'        // Riwayat Pengerjaan
   | 'siswa-nilai'          // Nilai Saya
   | 'siswa-kehadiran'      // Kehadiran Saya
+  | 'siswa-pandai-ai'      // PANDAI AI
 
   // ── ORANG_TUA ──
   | 'ortu-karakter'        // Isi Laporan Harian (7 Kebiasaan)

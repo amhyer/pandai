@@ -122,7 +122,7 @@ const NAV_CONFIG: RoleNav = {
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // ADMIN SEKOLAH — 8 Menu dalam 4 Seksi
+  // ADMIN SEKOLAH — 12 Menu dalam 5 Seksi
   // ────────────────────────────────────────────────────────────────
   ADMIN_SCHOOL: [
     {
@@ -137,12 +137,21 @@ const NAV_CONFIG: RoleNav = {
         { label: 'Kelas', view: 'classes', icon: GraduationCap },
         { label: 'Mata Pelajaran', view: 'subjects', icon: BookMarked },
         { label: 'Data Siswa', view: 'users', icon: Users },
+        { label: 'Jadwal Pelajaran', view: 'timetable', icon: CalendarDays },
       ],
     },
     {
       section: 'Penugasan',
       items: [
         { label: 'Penugasan Guru', view: 'teacher-assignments', icon: ClipboardCheck },
+        { label: 'Wali Kelas', view: 'wali-kelas', icon: UserCheck },
+      ],
+    },
+    {
+      section: 'Integrasi',
+      items: [
+        { label: 'Import Data', view: 'import-csv', icon: FilePlus },
+        { label: 'Tarik Data Dapodik', view: 'dapodik-sync', icon: Database },
       ],
     },
     {
@@ -156,7 +165,7 @@ const NAV_CONFIG: RoleNav = {
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // GURU — 11 Menu dalam 6 Seksi
+  // GURU — 12 Menu dalam 7 Seksi
   // ────────────────────────────────────────────────────────────────
   GURU: [
     {
@@ -200,10 +209,16 @@ const NAV_CONFIG: RoleNav = {
         { label: 'Laporan Siswa', view: 'guru-laporan', icon: Printer },
       ],
     },
+    {
+      section: 'AI',
+      items: [
+        { label: 'PANDAI AI', view: 'guru-pandai-ai', icon: BrainCircuit },
+      ],
+    },
   ],
 
   // ────────────────────────────────────────────────────────────────
-  // SISWA — 6 Menu dalam 3 Seksi
+  // SISWA — 7 Menu dalam 4 Seksi
   // ────────────────────────────────────────────────────────────────
   SISWA: [
     {
@@ -225,6 +240,12 @@ const NAV_CONFIG: RoleNav = {
       items: [
         { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
         { label: 'Kehadiran Saya', view: 'siswa-kehadiran', icon: CalendarDays },
+      ],
+    },
+    {
+      section: 'AI',
+      items: [
+        { label: 'PANDAI AI', view: 'siswa-pandai-ai', icon: BrainCircuit },
       ],
     },
   ],
@@ -293,6 +314,10 @@ const VIEW_LABELS: Record<ViewType, string> = {
   subjects: 'Mata Pelajaran',
   users: 'Data Siswa',
   'teacher-assignments': 'Penugasan Guru',
+  timetable: 'Jadwal Pelajaran',
+  'wali-kelas': 'Wali Kelas',
+  'import-csv': 'Import Data',
+  'dapodik-sync': 'Tarik Data Dapodik',
   'backup-restore': 'Cadangkan & Pulihkan',
   'activity-log': 'Log Aktivitas',
 
@@ -307,6 +332,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-nilai': 'Input Nilai',
   'guru-analisis': 'Analisis Hasil Belajar',
   'guru-laporan': 'Laporan Siswa',
+  'guru-pandai-ai': 'PANDAI AI',
 
   // SISWA
   'siswa-materi': 'Materi Pelajaran',
@@ -314,6 +340,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'siswa-riwayat': 'Riwayat Pengerjaan',
   'siswa-nilai': 'Nilai Saya',
   'siswa-kehadiran': 'Kehadiran Saya',
+  'siswa-pandai-ai': 'PANDAI AI',
 
   // ORANG_TUA
   'ortu-karakter': 'Isi Laporan Harian',
@@ -348,6 +375,10 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     subjects: [{ label: VIEW_LABELS.subjects }],
     users: [{ label: VIEW_LABELS.users }],
     'teacher-assignments': [{ label: VIEW_LABELS['teacher-assignments'] }],
+    timetable: [{ label: VIEW_LABELS.timetable }],
+    'wali-kelas': [{ label: VIEW_LABELS['wali-kelas'] }],
+    'import-csv': [{ label: VIEW_LABELS['import-csv'] }],
+    'dapodik-sync': [{ label: VIEW_LABELS['dapodik-sync'] }],
     'backup-restore': [{ label: VIEW_LABELS['backup-restore'] }],
     'activity-log': [{ label: VIEW_LABELS['activity-log'] }],
     'guru-materi': [{ label: VIEW_LABELS['guru-materi'] }],
@@ -360,11 +391,13 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-nilai': [{ label: VIEW_LABELS['guru-nilai'] }],
     'guru-analisis': [{ label: VIEW_LABELS['guru-analisis'] }],
     'guru-laporan': [{ label: VIEW_LABELS['guru-laporan'] }],
+    'guru-pandai-ai': [{ label: VIEW_LABELS['guru-pandai-ai'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
     'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
     'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
     'siswa-kehadiran': [{ label: VIEW_LABELS['siswa-kehadiran'] }],
+    'siswa-pandai-ai': [{ label: VIEW_LABELS['siswa-pandai-ai'] }],
     'ortu-karakter': [{ label: VIEW_LABELS['ortu-karakter'] }],
     'ortu-rekap-karakter': [{ label: VIEW_LABELS['ortu-rekap-karakter'] }],
     'ortu-nilai': [{ label: VIEW_LABELS['ortu-nilai'] }],

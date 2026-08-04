@@ -91,6 +91,8 @@ model User {
   class           Class?            @relation(fields: [classId], references: [id])
   createdQuestions Question[]        @relation("QuestionCreator")
   studentAttempts StudentAttempt[]
+  waliKelasOf     Class[]           @relation("WaliKelasClass")
+  timetableAsTeacher Timetable[]    @relation("TimetableTeacher")
 
   @@index([schoolId])
   @@index([role])
@@ -104,12 +106,15 @@ model Class {
   grade        Int      // 10, 11, 12
   academicYear String   // 2024/2025
   schoolId     String
+  waliKelasId  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  school  School  @relation(fields: [schoolId], references: [id])
-  users   User[]
+  school    School         @relation(fields: [schoolId], references: [id])
+  users     User[]
   examAssignments ExamAssignment[]
+  WaliKelas User?          @relation("WaliKelasClass", fields: [waliKelasId], references: [id])
+  timetables Timetable[]
 }
 
 // ===== SUBJECT (MATA UJI) =====
@@ -124,6 +129,7 @@ model Subject {
 
   topics    Topic[]
   questions Question[]
+  timetables Timetable[]
 }
 
 // ===== TOPIC / SUBTOPIK =====
@@ -156,6 +162,9 @@ model Question {
   cognitiveLevel String @default("C3") // C1-C6
   difficulty    String   @default("sedang") // mudah, sedang, sulit
   status        String   @default("draft") // draft, published, archived
+  source        String   @default("manual") // manual, ai
+  reviewedBy    String?
+  reviewedAt    DateTime?
   createdBy     String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -399,4 +408,88 @@ model Material {
   @@index([schoolId])
   @@index([teacherId])
   @@index([subjectId])
+}
+
+// ===== AI CONFIG =====
+model AiConfig {
+  id                      String   @id @default(cuid())
+  schoolId                String   @unique
+  generateQuestionsPerDay Int      @default(10)
+  generateReportPerDay    Int      @default(5)
+  chatbotPerDay           Int      @default(20)
+  analyzeDifficultyPerDay Int      @default(10)
+  summarizeMaterialPerDay Int      @default(10)
+  recommendQuestionsPerDay Int     @default(10)
+  schoolDailyLimit        Int      @default(500)
+  enabled                 Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([schoolId])
+}
+
+// ===== AI USAGE LOG =====
+model AiUsageLog {
+  id         String   @id @default(cuid())
+  userId     String
+  schoolId   String
+  actionType String   // generate_questions, generate_report, chatbot, analyze_difficulty, summarize_material, recommend_questions
+  tokensUsed Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([actionType])
+  @@index([createdAt])
+}
+
+// ===== CHATBOT SESSION =====
+model ChatbotSession {
+  id        String        @id @default(cuid())
+  userId    String
+  schoolId  String
+  subjectId String?
+  title     String        @default("Sesi Baru")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  messages  ChatMessage[]
+
+  @@index([userId])
+  @@index([schoolId])
+}
+
+// ===== CHAT MESSAGE =====
+model ChatMessage {
+  id         String   @id @default(cuid())
+  sessionId  String
+  role       String   // user, assistant
+  content    String
+  createdAt  DateTime @default(now())
+
+  session    ChatbotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+// ===== TIMETABLE (JADWAL PELAJARAN) =====
+model Timetable {
+  id         String   @id @default(cuid())
+  day        String   // SENIN, SELASA, RABU, KAMIS, JUMAT
+  slotNumber Int      // 1-10
+  subjectId  String
+  teacherId  String
+  classId    String
+  schoolId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+  teacher User    @relation("TimetableTeacher", fields: [teacherId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+
+  @@unique([day, slotNumber, classId, schoolId])
+  @@index([schoolId])
+  @@index([classId])
+  @@index([teacherId])
 }
