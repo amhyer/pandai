@@ -142,9 +142,9 @@ Aturan:
         })),
       ];
 
-      const zai = (await import('z-ai-web-dev-sdk')).then((m) => m.ZAI);
-      const ZAI = (await zai);
-      const instance = new ZAI();
+      const zaiMod = await import('z-ai-web-dev-sdk');
+      const ZAIClass = zaiMod.default;
+      const instance = await ZAIClass.create();
 
       const result = await instance.chat.completions.create({
         model: 'gpt-4o-mini',

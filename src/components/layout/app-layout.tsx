@@ -104,6 +104,7 @@ const NAV_CONFIG: RoleNav = {
       items: [
         { label: 'Kelola Sekolah', view: 'schools', icon: School },
         { label: 'Semua Pengguna', view: 'users-global', icon: Users },
+        { label: 'Bank Soal Global (NALAR)', view: 'questions-global', icon: BookMarked },
       ],
     },
     {
@@ -305,6 +306,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   schools: 'Kelola Sekolah',
   'school-detail': 'Detail Sekolah',
   'users-global': 'Semua Pengguna',
+  'questions-global': 'Bank Soal Global (NALAR)',
   'reports-global': 'Laporan Global',
   'analytics-global': 'Analitik Platform',
   settings: 'Pengaturan',

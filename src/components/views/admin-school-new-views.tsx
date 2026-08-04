@@ -242,7 +242,7 @@ function getAvatarColor(name?: string): string {
     'bg-sky-500', 'bg-rose-500', 'bg-teal-500',
   ];
   let hash = 0;
-  for (let i = 0; i < (name || '').length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  for (let i = 0; i < (name || '').length; i++) hash = (name || '').charCodeAt(i) + ((hash << 5) - hash);
   return colors[Math.abs(hash) % colors.length];
 }
 

@@ -155,7 +155,7 @@ function StatCard({
   gradient,
 }: {
   title: string;
-  value: string | number;
+  value: React.ReactNode;
   icon: React.ReactNode;
   trend?: 'up' | 'down';
   trendValue?: string;
@@ -1893,6 +1893,28 @@ export function SettingsView() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+export function QuestionsGlobalView() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Bank Soal Global (NALAR)</h2>
+        <p className="text-muted-foreground">Kelola bank soal lintas sekolah untuk platform NALAR.</p>
+      </div>
+      <div className="flex flex-col items-center justify-center py-20 gap-4 rounded-lg border border-dashed border-muted-foreground/25">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#1F3864]/10 text-[#1F3864]">
+          <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+            <path d="M12 6v6l4 2" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="12" cy="12" r="10" />
+          </svg>
+        </div>
+        <p className="text-sm text-muted-foreground max-w-md text-center">
+          Halaman ini sedang dalam pengembangan. Fitur akan segera tersedia.
+        </p>
       </div>
     </div>
   );

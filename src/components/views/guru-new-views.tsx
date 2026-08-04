@@ -22,7 +22,7 @@ import {
   ChevronDown, ChevronUp, UserCheck, UserX, Stethoscope, ClipboardList,
   Download, Printer, CalendarClock, Sparkles, Calendar,
   Loader2, ArrowUpDown, BookMarked, Heart, Target, Lightbulb, Handshake, Ear,
-  Team, Wrench, BookHeart, GraduationCap,
+  Wrench, BookHeart, GraduationCap,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -1125,16 +1125,18 @@ export function GuruRekapKarakterView() {
             <DialogTitle className="text-[#1F3864]">Detail Karakter — {detailStudent?.studentName}</DialogTitle>
             <DialogDescription>Rating 7 Kebiasaan Anak Hebat</DialogDescription>
           </DialogHeader>
-          {detailStudent && (
+          {detailStudent && (() => {
+            const avg = detailStudent.ratings.reduce((a, b) => a + b, 0) / detailStudent.ratings.length;
+            return (
             <div className="space-y-4">
               <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/30">
                 <Avatar className="h-12 w-12"><AvatarFallback className="bg-[#1F3864]/10 text-[#1F3864] font-bold rounded-full text-lg">{getInitials(detailStudent.studentName)}</AvatarFallback></Avatar>
                 <div>
                   <p className="font-semibold">{detailStudent.studentName}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className={cn('text-2xl font-bold', scoreColor(detailStudent.avg))}>{detailStudent.avg.toFixed(1)}</span>
+                    <span className={cn('text-2xl font-bold', scoreColor(avg))}>{avg.toFixed(1)}</span>
                     <span className="text-sm text-muted-foreground">/ 5.0</span>
-                    <Badge className={cn('ml-2 rounded-full border-0', scoreBg(detailStudent.avg), scoreColor(detailStudent.avg))}>{detailStudent.avg >= 4 ? 'Sangat Baik' : detailStudent.avg >= 3 ? 'Cukup' : 'Perlu Perbaikan'}</Badge>
+                    <Badge className={cn('ml-2 rounded-full border-0', scoreBg(avg), scoreColor(avg))}>{avg >= 4 ? 'Sangat Baik' : avg >= 3 ? 'Cukup' : 'Perlu Perbaikan'}</Badge>
                   </div>
                 </div>
               </div>
@@ -1159,7 +1161,8 @@ export function GuruRekapKarakterView() {
                 })}
               </div>
             </div>
-          )}
+          );
+          })()}
         </DialogContent>
       </Dialog>
     </div>

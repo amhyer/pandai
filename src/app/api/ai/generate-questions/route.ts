@@ -62,7 +62,7 @@ Pastikan hanya mengembalikan JSON array tanpa teks tambahan.`;
     }
 
     // Save to database
-    const created = [];
+    const created: any[] = [];
     for (const q of questions) {
       const question = await db.question.create({
         data: {

@@ -66,6 +66,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'schools': React.lazy(() => import('@/components/dashboard/super-admin/school-manager').then(m => ({ default: m.SchoolManager }))),
   'school-detail': React.lazy(() => import('@/components/dashboard/super-admin/school-manager').then(m => ({ default: m.SchoolManager }))),
   'users-global': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.UsersGlobalView }))),
+  'questions-global': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.QuestionsGlobalView }))),
   'reports-global': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.ReportsGlobalView }))),
   'analytics-global': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.AnalyticsGlobalView }))),
   'settings': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.SettingsView }))),

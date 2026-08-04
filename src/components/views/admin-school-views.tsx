@@ -258,12 +258,6 @@ function AddClassDialog({
   isSubmitting: boolean;
   editData?: ClassRow | null;
 }) {
-  const [form, setForm] = useState<ClassFormData>({
-    name: '',
-    grade: '10',
-    academicYear: '2024/2025',
-  });
-
   // Reset form when dialog opens or editData changes
   const formKey = editData?.id ?? 'new';
   const [form, setForm] = useState<ClassFormData>(() => {

@@ -1,4 +1,4 @@
-import { ZAI } from 'z-ai-web-dev-sdk';
+import ZAI from 'z-ai-web-dev-sdk';
 import { db } from '@/lib/db';
 
 // ═══════════════════════════════════════════════════════════════
@@ -7,9 +7,9 @@ import { db } from '@/lib/db';
 
 let _zai: ZAI | null = null;
 
-export function getZai(): ZAI {
+export async function getZai(): Promise<ZAI> {
   if (!_zai) {
-    _zai = new ZAI();
+    _zai = await ZAI.create();
   }
   return _zai;
 }
@@ -121,7 +121,7 @@ export async function aiCompletion(
   userPrompt: string,
   jsonMode?: boolean
 ): Promise<string> {
-  const zai = getZai();
+  const zai = await getZai();
   const messages = [
     { role: 'system' as const, content: systemPrompt },
     { role: 'user' as const, content: userPrompt },

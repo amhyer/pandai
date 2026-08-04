@@ -1,0 +1,6 @@
+{
+  "name": "pandai-web",
+  "scripts": {
+    "dev": "bun --hot index.ts"
+  }
+}
