@@ -1,5 +1,5 @@
 /**
- * Simple in-memory rate limiter for Next.js middleware.
+ * Simple in-memory rate limiter for Next.js middleware (Edge Runtime compatible).
  * Suitable for single-instance deployments (self-hosted).
  * Resets on server restart — adequate for pre-production.
  */
@@ -11,21 +11,12 @@ interface RateLimitEntry {
 
 const store = new Map<string, RateLimitEntry>();
 
-// Cleanup stale entries every 60s
-let cleanupTimer: ReturnType<typeof setInterval> | null = null;
-function ensureCleanup() {
-  if (cleanupTimer) return;
-  cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [key, entry] of store) {
-      if (entry.resetAt <= now) store.delete(key);
-    }
-  }, 60_000);
-  // Don't block process exit
-  if (typeof process !== 'undefined') {
-    process.on('beforeExit', () => {
-      if (cleanupTimer) clearInterval(cleanupTimer);
-    });
+// Lazy cleanup: remove stale entries when store grows beyond threshold
+function maybeCleanup() {
+  if (store.size < 200) return; // only cleanup when store is large
+  const now = Date.now();
+  for (const [key, entry] of store) {
+    if (entry.resetAt <= now) store.delete(key);
   }
 }
 
@@ -38,7 +29,7 @@ export function checkRateLimit(
   maxRequests: number,
   windowMs: number
 ): { allowed: boolean; retryAfterMs?: number } {
-  ensureCleanup();
+  maybeCleanup();
   const now = Date.now();
   const entry = store.get(key);
 
