@@ -30,8 +30,11 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (NEVER commit .env to git)
+.env
+.env.local
+.env.production
+.env.staging
 
 # vercel
 .vercel
@@ -52,3 +55,11 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Database
+db/*.db
+db/*.db-journal
+
+# Upload artifacts
+/upload/extracted/
+/upload/*.exe_extracted/

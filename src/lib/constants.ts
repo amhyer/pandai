@@ -87,9 +87,22 @@ export const STATUS_LABELS: Record<string, string> = {
 };
 
 // Helper untuk hashing password (simple implementation)
+// Salt is loaded from env var; falls back to a default for development only.
+function getSalt(): string {
+  const salt = process.env.PASSWORD_SALT;
+  if (!salt || salt === 'CHANGE_ME_IN_PRODUCTION') {
+    // Only warn in non-test environments
+    if (process.env.NODE_ENV === 'production') {
+      console.error('[SECURITY] PASSWORD_SALT env var is not set! Using insecure fallback.');
+    }
+    return 'pandai_dev_salt_2024'; // Dev-only fallback
+  }
+  return salt;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password + 'pandai_salt_2024');
+  const data = encoder.encode(password + getSalt());
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
