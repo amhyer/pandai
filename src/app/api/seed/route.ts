@@ -2,8 +2,28 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // ─── PRODUCTION GUARD ───
+    // Seed endpoint is DANGEROUS — it deletes ALL data and creates demo accounts.
+    // In production, it must NEVER be callable.
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Seed endpoint is disabled in production.' },
+        { status: 403 }
+      );
+    }
+
+    // ─── AUTH GUARD ───
+    // Even in development, require SUPER_ADMIN role header.
+    const userRole = request.headers.get('X-User-Role');
+    if (userRole !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Only SUPER_ADMIN can seed data.' },
+        { status: 403 }
+      );
+    }
+
     // Clear existing data (order matters for FK constraints)
     await db.studentAnswer.deleteMany();
     await db.studentAttempt.deleteMany();
