@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { useAppStore } from '@/store/use-store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -1279,7 +1280,7 @@ export function OrtuRekapKarakterView() {
                 <span className="text-sky-400 mt-0.5 flex-shrink-0">
                   {idx === 0 ? '📌' : '🌟'}
                 </span>
-                <p dangerouslySetInnerHTML={{ __html: rec }} />
+                <p dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(rec) }} />
               </div>
             ))}
             <div className="flex gap-2.5 items-start">

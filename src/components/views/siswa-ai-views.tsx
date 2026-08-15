@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import DOMPurify from 'dompurify';
 import { useAppStore } from '@/store/use-store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -405,7 +406,7 @@ export function SiswaPandaiAiView() {
                     ) : (
                       <div
                         className="ai-markdown"
-                        dangerouslySetInnerHTML={{ __html: renderBasicMarkdown(msg.content) }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderBasicMarkdown(msg.content)) }}
                       />
                     )}
                   </div>
