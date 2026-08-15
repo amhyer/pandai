@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } from '@/lib/ai-helper';
+import { logError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
   try {
@@ -76,6 +77,7 @@ Buat rekomendasi yang mencakup:
 
     return NextResponse.json({ success: true, recommendations });
   } catch (error: unknown) {
+    logError({ error, route: '/api/ai/recommend-questions', method: 'POST' });
     console.error('Recommend questions error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal membuat rekomendasi';
     return NextResponse.json({ error: msg }, { status: 500 });

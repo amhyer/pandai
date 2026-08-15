@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { logError } from '@/lib/error-log';
 
 // GET attempts
 export async function GET(request: Request) {
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(attempts);
   } catch (error) {
+    logError({ error, route: '/api/attempts', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
   }
 }
@@ -110,6 +112,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(attempt);
   } catch (error: any) {
+    logError({ error, route: '/api/attempts', method: 'POST' });
     console.error('Submit attempt error:', error);
     return NextResponse.json({ error: 'Gagal submit jawaban' }, { status: 500 });
   }

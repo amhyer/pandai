@@ -476,6 +476,26 @@ model ChatMessage {
   @@index([sessionId])
 }
 
+// ===== ERROR LOG =====
+model ErrorLog {
+  id        String   @id @default(cuid())
+  level     String   @default("error") // error, warn, fatal
+  message   String
+  stack     String?                     // error stack trace
+  route     String?                     // API route that caused the error
+  method    String?                     // HTTP method
+  userId    String?                     // authenticated user (if any)
+  schoolId  String?                     // school context (if any)
+  statusCode Int?                       // HTTP status code returned
+  body      String?                     // truncated request body (first 500 chars)
+  createdAt DateTime @default(now())
+
+  @@index([route])
+  @@index([level])
+  @@index([schoolId])
+  @@index([createdAt])
+}
+
 // ===== TIMETABLE (JADWAL PELAJARAN) =====
 model Timetable {
   id         String   @id @default(cuid())

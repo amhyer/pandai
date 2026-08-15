@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
+import { logError } from '@/lib/error-log';
 
 // Helper: extract first name from full name
 function getFirstName(fullName: string): string {
@@ -92,6 +93,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(users);
   } catch (error) {
+    logError({ error, route: '/api/users', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
   }
 }
@@ -219,6 +221,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ user, message: `Pengguna ${name} berhasil ditambahkan` });
   } catch (error: any) {
+    logError({ error, route: '/api/users', method: 'POST' });
     console.error('Create user error:', error);
     return NextResponse.json({ error: error.message || 'Gagal membuat pengguna' }, { status: 500 });
   }
@@ -242,6 +245,7 @@ export async function PATCH(request: Request) {
     const user = await db.user.update({ where: { id }, data });
     return NextResponse.json(user);
   } catch (error) {
+    logError({ error, route: '/api/users', method: 'PATCH' });
     return NextResponse.json({ error: 'Gagal update pengguna' }, { status: 500 });
   }
 }
@@ -260,6 +264,7 @@ export async function PUT(request: Request) {
     const user = await db.user.update({ where: { id }, data });
     return NextResponse.json(user);
   } catch (error) {
+    logError({ error, route: '/api/users', method: 'PUT' });
     return NextResponse.json({ error: 'Gagal memperbarui profil' }, { status: 500 });
   }
 }
@@ -272,6 +277,7 @@ export async function DELETE(request: Request) {
     await db.user.update({ where: { id }, data: { isActive: false } });
     return NextResponse.json({ success: true });
   } catch (error) {
+    logError({ error, route: '/api/users', method: 'DELETE' });
     return NextResponse.json({ error: 'Gagal hapus pengguna' }, { status: 500 });
   }
 }

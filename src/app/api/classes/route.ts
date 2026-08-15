@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { logError } from '@/lib/error-log';
 
 export async function GET(request: Request) {
   try {
@@ -21,6 +22,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(classes);
   } catch (error) {
+    logError({ error, route: '/api/classes', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data kelas' }, { status: 500 });
   }
 }
@@ -47,6 +49,7 @@ export async function PUT(request: Request) {
     });
     return NextResponse.json(cls);
   } catch (error) {
+    logError({ error, route: '/api/classes', method: 'PUT' });
     return NextResponse.json({ error: 'Gagal memperbarui kelas' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion } from '@/lib/ai-helper';
+import { logError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
   try {
@@ -53,6 +54,7 @@ Buat output dengan format:
 
     return NextResponse.json({ success: true, summary });
   } catch (error: unknown) {
+    logError({ error, route: '/api/ai/summarize-material', method: 'POST' });
     console.error('Summarize material error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal meringkas materi';
     return NextResponse.json({ error: msg }, { status: 500 });

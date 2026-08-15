@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } from '@/lib/ai-helper';
+import { logError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
   try {
@@ -89,6 +90,7 @@ Pastikan hanya mengembalikan JSON array tanpa teks tambahan.`;
 
     return NextResponse.json({ success: true, questions: created, count: created.length });
   } catch (error: unknown) {
+    logError({ error, route: '/api/ai/generate-questions', method: 'POST' });
     console.error('Generate questions error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal menghasilkan soal';
     return NextResponse.json({ error: msg }, { status: 500 });

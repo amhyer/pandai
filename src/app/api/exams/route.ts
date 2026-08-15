@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { logError } from '@/lib/error-log';
 
 // GET exam packages and sessions
 export async function GET(request: Request) {
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(packages);
   } catch (error) {
+    logError({ error, route: '/api/exams', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data ujian' }, { status: 500 });
   }
 }
@@ -82,6 +84,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(pkg);
   } catch (error) {
+    logError({ error, route: '/api/exams', method: 'POST' });
     console.error('Create exam error:', error);
     return NextResponse.json({ error: 'Gagal membuat ujian' }, { status: 500 });
   }
@@ -98,6 +101,7 @@ export async function PATCH(request: Request) {
     const updated = await db.examPackage.update({ where: { id }, data });
     return NextResponse.json(updated);
   } catch (error) {
+    logError({ error, route: '/api/exams', method: 'PATCH' });
     return NextResponse.json({ error: 'Gagal update ujian' }, { status: 500 });
   }
 }
@@ -116,6 +120,7 @@ export async function DELETE(request: Request) {
     }
     return NextResponse.json({ success: true });
   } catch (error) {
+    logError({ error, route: '/api/exams', method: 'DELETE' });
     return NextResponse.json({ error: 'Gagal hapus ujian' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } from '@/lib/ai-helper';
+import { logError } from '@/lib/error-log';
 
 export async function GET(request: Request) {
   try {
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    logError({ error, route: '/api/ai/chatbot', method: 'GET' });
     console.error('Get chatbot sessions error:', error);
     return NextResponse.json({ error: 'Gagal mengambil sesi chatbot' }, { status: 500 });
   }
@@ -174,6 +176,7 @@ Aturan:
 
     return NextResponse.json({ error: 'Aksi tidak valid' }, { status: 400 });
   } catch (error: unknown) {
+    logError({ error, route: '/api/ai/chatbot', method: 'POST' });
     console.error('Chatbot error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal memproses chatbot';
     return NextResponse.json({ error: msg }, { status: 500 });
@@ -193,6 +196,7 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true, message: 'Sesi berhasil dihapus' });
   } catch (error) {
+    logError({ error, route: '/api/ai/chatbot', method: 'DELETE' });
     console.error('Delete chatbot session error:', error);
     return NextResponse.json({ error: 'Gagal menghapus sesi' }, { status: 500 });
   }

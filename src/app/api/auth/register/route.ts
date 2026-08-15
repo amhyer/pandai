@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
+import { logError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
   try {
@@ -51,6 +52,7 @@ export async function POST(request: Request) {
       isActive: user.isActive,
     });
   } catch (error: any) {
+    logError({ error, route: '/api/auth/register', method: 'POST' });
     console.error('Register error:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }

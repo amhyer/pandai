@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion } from '@/lib/ai-helper';
+import { logError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
   try {
@@ -133,6 +134,7 @@ Tulis dalam bentuk paragraf yang mengalir, 3-4 paragraf. Gunakan bahasa yang pos
 
     return NextResponse.json({ success: true, description });
   } catch (error: unknown) {
+    logError({ error, route: '/api/ai/generate-report-desc', method: 'POST' });
     console.error('Generate report desc error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal menghasilkan deskripsi rapor';
     return NextResponse.json({ error: msg }, { status: 500 });

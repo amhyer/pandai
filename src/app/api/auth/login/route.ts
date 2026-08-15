@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { verifyPassword } from '@/lib/constants';
+import { logError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
   try {
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
       isActive: user.isActive,
     });
   } catch (error: any) {
+    logError({ error, route: '/api/auth/login', method: 'POST' });
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { logError } from '@/lib/error-log';
 
 export async function GET(request: Request) {
   try {
@@ -28,6 +29,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(questions);
   } catch (error) {
+    logError({ error, route: '/api/questions', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil soal' }, { status: 500 });
   }
 }
@@ -54,6 +56,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(question);
   } catch (error) {
+    logError({ error, route: '/api/questions', method: 'POST' });
     console.error('Create question error:', error);
     return NextResponse.json({ error: 'Gagal membuat soal' }, { status: 500 });
   }
@@ -67,6 +70,7 @@ export async function PATCH(request: Request) {
     const question = await db.question.update({ where: { id }, data });
     return NextResponse.json(question);
   } catch (error) {
+    logError({ error, route: '/api/questions', method: 'PATCH' });
     return NextResponse.json({ error: 'Gagal update soal' }, { status: 500 });
   }
 }
@@ -79,6 +83,7 @@ export async function DELETE(request: Request) {
     await db.question.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
+    logError({ error, route: '/api/questions', method: 'DELETE' });
     return NextResponse.json({ error: 'Gagal hapus soal' }, { status: 500 });
   }
 }
