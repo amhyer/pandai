@@ -55,3 +55,34 @@ kill $PID 2>/dev/null
 **JANGAN pisah start-server dan test-nya jadi command terpisah**, karena server akan mati begitu bash call pertama selesai.
 
 Untuk test API baru tanpa UI → pakai curl langsung ke endpoint. Jangan gunakan Agent Browser yang lebih berat resource.
+
+---
+Task ID: R34
+Agent: Main Agent (context continuation)
+Task: Verify and finalize R34-A (7 Kebiasaan) + R34-B (Kuis Tautan Luar)
+
+Work Log:
+- Found R34-A already committed (c6e93aa) from previous context session
+- Found R34-B backend already implemented (schema, API routes, utility)
+- Found R34-B UI partially committed, with 2 uncommitted files (guru-views.tsx, siswa-new-views.tsx)
+- Fixed JSX unclosed tag in guru-views.tsx (line 713 div missing closing tag)
+- Fixed TypeScript type error: MaterialData interface missing external quiz fields
+- Ran ESLint - clean after fixes
+- Ran production build - successful
+- Performed 7 API verification tests via curl (all passed)
+- Committed 2 fix commits and pushed to GitHub
+
+Stage Summary:
+- R34-A: 7 Kebiasaan Anak Indonesia Hebat - FULLY COMPLETE
+  - Scale 1-4 (Belum/Kadang/Sering/Selalu)
+  - filledBy field (ORANG_TUA|GURU)
+  - POST/PATCH/DELETE restricted to ORANG_TUA only
+  - GURU view is read-only (rekap)
+- R34-B: Kuis dari Tautan Luar - FULLY COMPLETE
+  - External quiz materials with auto-provider detection (Google Form, Quizizz, Kahoot, Wordwall, etc.)
+  - scoreEntryMode (SELF_REPORTED|TEACHER_ENTERED)
+  - Guru UI: Sumber Soal toggle, URL input, provider badge
+  - Siswa UI: Provider badge, "Buka Kuis" link, self-report form
+  - ExternalQuizScore model for score storage
+- Commits: c6e93aa → 7484710 → 4625448 (pushed to main)
+- All 7 API verification tests passed
