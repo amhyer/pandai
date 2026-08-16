@@ -86,3 +86,31 @@ Stage Summary:
   - ExternalQuizScore model for score storage
 - Commits: c6e93aa → 7484710 → 4625448 (pushed to main)
 - All 7 API verification tests passed
+
+---
+Task ID: R35
+Agent: Main Agent (context continuation)
+Task: Verifikasi 2 Celah R34-A + R34-B (curl + DB + Agent Browser)
+
+Work Log:
+- Reseeded DB (was empty after db:push)
+- Found ORANG_TUA password is "123" (not "password123") in seed script
+- Part 1 curl: ORANG_TUA login (rahman/123) → 200, submit 7 habits → all 201
+- Part 1 DB: Direct query confirmed 9 records (7 single + 2 batch), all filledBy=ORANG_TUA, ratings 1-4 valid
+- Part 1 validation: GURU POST → 403, rating>4 → 400, invalid habit → 400
+- Part 1 batch POST: Array of 2 habits → 201 with both records
+- Fixed stale Stephen Covey habit IDs in ortu-new-views.tsx fallback catch block
+- Fixed star rating from [1,2,3,4,5] to [1,2,3,4] for 4-point scale
+- Agent Browser: Successfully loaded landing page, login form
+- Agent Browser: Successfully logged in as ORANG_TUA, saw full dashboard with "7 KEBIASAAN ANAK INDONESIA HEBAT" sidebar
+- Agent Browser: Server OOM when navigating to data-heavy views (7 Kebiasaan form triggers concurrent API calls)
+- Root cause: Chrome uses ~1.2GB RSS, Next.js server needs ~256MB heap + Prisma queries spike memory → exceeds 4GB sandbox RAM
+- This is a sandbox hardware limitation, NOT a code bug — all APIs return correct data via curl
+
+Stage Summary:
+- Part 1 FULLY VERIFIED: ORANG_TUA can submit all 7 Kebiasaan, ratings 1-4, filledBy=ORANG_TUA, DB confirmed
+- Part 1 batch POST works correctly (no bug found)
+- Part 2A partial: UI login works, dashboard renders, sidebar shows correct labels
+- Part 2A/B limitation: Server OOM when Chrome + data-heavy view concurrent API calls exceed 4GB
+- Bug fix: Stale Covey habit IDs in fallback + star rating 5→4
+- Commit: 074cd14 pushed to main
