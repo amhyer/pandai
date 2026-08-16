@@ -1,0 +1,670 @@
+    70→    70→} from 'lucide-react';
+    71→    71→import { cn } from '@/lib/utils';
+    72→    72→import type { LucideIcon } from 'lucide-react';
+    73→    73→
+    74→    74→// ═══════════════════════════════════════════════════════════════════════
+    75→    75→// Navigation Config — Terinspirasi SIMANTAP, diadaptasi ke domain TKA
+    76→    76→// ═══════════════════════════════════════════════════════════════════════
+    77→    77→
+    78→    78→interface NavItem {
+    79→    79→  label: string;
+    80→    80→  view: ViewType;
+    81→    81→  icon: LucideIcon;
+    82→    82→}
+    83→    83→
+    84→    84→interface NavSection {
+    85→    85→  section: string;
+    86→    86→  items: NavItem[];
+    87→    87→}
+    88→    88→
+    89→    89→type RoleNav = Record<UserRole, NavSection[]>;
+    90→    90→
+    91→    91→const NAV_CONFIG: RoleNav = {
+    92→    92→  // ────────────────────────────────────────────────────────────────
+    93→    93→  // SUPER ADMIN — Mengelola platform lintas sekolah
+    94→    94→  // ────────────────────────────────────────────────────────────────
+    95→    95→  SUPER_ADMIN: [
+    96→    96→    {
+    97→    97→      section: 'Utama',
+    98→    98→      items: [
+    99→    99→        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+   100→   100→      ],
+   101→   101→    },
+   102→   102→    {
+   103→   103→      section: 'Manajemen',
+   104→   104→      items: [
+   105→   105→        { label: 'Kelola Sekolah', view: 'schools', icon: School },
+   106→   106→        { label: 'Semua Pengguna', view: 'users-global', icon: Users },
+   107→   107→        { label: 'Bank Soal Global (NALAR)', view: 'questions-global', icon: BookMarked },
+   108→   108→      ],
+   109→   109→    },
+   110→   110→    {
+   111→   111→      section: 'Laporan',
+   112→   112→      items: [
+   113→   113→        { label: 'Analitik Platform', view: 'analytics-global', icon: BarChart3 },
+   114→   114→        { label: 'Laporan Global', view: 'reports-global', icon: Printer },
+   115→   115→      ],
+   116→   116→    },
+   117→   117→    {
+   118→   118→      section: 'Sistem',
+   119→   119→      items: [
+   120→   120→        { label: 'Pengaturan', view: 'settings', icon: Settings },
+   121→   121→      ],
+   122→   122→    },
+   123→   123→  ],
+   124→   124→
+   125→   125→  // ────────────────────────────────────────────────────────────────
+   126→   126→  // ADMIN SEKOLAH — 12 Menu dalam 5 Seksi
+   127→   127→  // ────────────────────────────────────────────────────────────────
+   128→   128→  ADMIN_SCHOOL: [
+   129→   129→    {
+   130→   130→      section: 'Utama',
+   131→   131→      items: [
+   132→   132→        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+   133→   133→      ],
+   134→   134→    },
+   135→   135→    {
+   136→   136→      section: 'Data Induk',
+   137→   137→      items: [
+   138→   138→        { label: 'Kelas', view: 'classes', icon: GraduationCap },
+   139→   139→        { label: 'Mata Pelajaran', view: 'subjects', icon: BookMarked },
+   140→   140→        { label: 'Data Siswa', view: 'users', icon: Users },
+   141→   141→        { label: 'Jadwal Pelajaran', view: 'timetable', icon: CalendarDays },
+   142→   142→      ],
+   143→   143→    },
+   144→   144→    {
+   145→   145→      section: 'Penugasan',
+   146→   146→      items: [
+   147→   147→        { label: 'Penugasan Guru', view: 'teacher-assignments', icon: ClipboardCheck },
+   148→   148→        { label: 'Wali Kelas', view: 'wali-kelas', icon: UserCheck },
+   149→   149→      ],
+   150→   150→    },
+   151→   151→    {
+   152→   152→      section: 'Integrasi',
+   153→   153→      items: [
+   154→   154→        { label: 'Import Data', view: 'import-csv', icon: FilePlus },
+   155→   155→        { label: 'Tarik Data Dapodik', view: 'dapodik-sync', icon: Database },
+   156→   156→      ],
+   157→   157→    },
+   158→   158→    {
+   159→   159→      section: 'Sistem',
+   160→   160→      items: [
+   161→   161→        { label: 'Pengaturan Aplikasi', view: 'settings', icon: Settings },
+   162→   162→        { label: 'Cadangkan & Pulihkan', view: 'backup-restore', icon: HardDrive },
+   163→   163→        { label: 'Log Aktivitas', view: 'activity-log', icon: Activity },
+   164→   164→      ],
+   165→   165→    },
+   166→   166→  ],
+   167→   167→
+   168→   168→  // ────────────────────────────────────────────────────────────────
+   169→   169→  // GURU — 12 Menu dalam 7 Seksi
+   170→   170→  // ────────────────────────────────────────────────────────────────
+   171→   171→  GURU: [
+   172→   172→    {
+   173→   173→      section: 'Utama',
+   174→   174→      items: [
+   175→   175→        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+   176→   176→      ],
+   177→   177→    },
+   178→   178→    {
+   179→   179→      section: 'Pembelajaran',
+   180→   180→      items: [
+   181→   181→        { label: 'Materi Pelajaran', view: 'guru-materi', icon: FileText },
+   182→   182→        { label: 'Tugas, Kuis & Ujian', view: 'guru-tugas', icon: ClipboardList },
+   183→   183→      ],
+   184→   184→    },
+   185→   185→    {
+   186→   186→      section: 'Kehadiran',
+   187→   187→      items: [
+   188→   188→        { label: 'Kehadiran Siswa', view: 'guru-kehadiran', icon: CalendarDays },
+   189→   189→        { label: 'Rekap Kehadiran', view: 'guru-rekap-kehadiran', icon: History },
+   190→   190→      ],
+   191→   191→    },
+   192→   192→    {
+   193→   193→      section: 'Karakter',
+   194→   194→      items: [
+   195→   195→        { label: 'Rekap Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
+   196→   196→        { label: 'Analisis Kebiasaan Kelas', view: 'guru-rekap-karakter', icon: Award },
+   197→   197→      ],
+   198→   198→    },
+   199→   199→    {
+   200→   200→      section: 'Administrasi',
+   201→   201→      items: [
+   202→   202→        { label: 'Jurnal Mengajar', view: 'guru-jurnal', icon: ScrollText },
+   203→   203→      ],
+   204→   204→    },
+   205→   205→    {
+   206→   206→      section: 'Penilaian',
+   207→   207→      items: [
+   208→   208→        { label: 'Input Nilai', view: 'guru-nilai', icon: ListChecks },
+   209→   209→        { label: 'Analisis Hasil Belajar', view: 'guru-analisis', icon: TrendingUp },
+   210→   210→        { label: 'Laporan Siswa', view: 'guru-laporan', icon: Printer },
+   211→   211→      ],
+   212→   212→    },
+   213→   213→    {
+   214→   214→      section: 'AI',
+   215→   215→      items: [
+   216→   216→        { label: 'PANDAI AI', view: 'guru-pandai-ai', icon: BrainCircuit },
+   217→   217→      ],
+   218→   218→    },
+   219→   219→  ],
+   220→   220→
+   221→   221→  // ────────────────────────────────────────────────────────────────
+   222→   222→  // SISWA — 7 Menu dalam 4 Seksi
+   223→   223→  // ────────────────────────────────────────────────────────────────
+   224→   224→  SISWA: [
+   225→   225→    {
+   226→   226→      section: 'Utama',
+   227→   227→      items: [
+   228→   228→        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+   229→   229→      ],
+   230→   230→    },
+   231→   231→    {
+   232→   232→      section: 'Belajar',
+   233→   233→      items: [
+   234→   234→        { label: 'Materi Pelajaran', view: 'siswa-materi', icon: BookOpen },
+   235→   235→        { label: 'Tugas & Ujian', view: 'siswa-tugas', icon: ClipboardList },
+   236→   236→        { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: History },
+   237→   237→      ],
+   238→   238→    },
+   239→   239→    {
+   240→   240→      section: 'Hasil',
+   241→   241→      items: [
+   242→   242→        { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
+   243→   243→        { label: 'Kehadiran Saya', view: 'siswa-kehadiran', icon: CalendarDays },
+   244→   244→      ],
+   245→   245→    },
+   246→   246→    {
+   247→   247→      section: 'AI',
+   248→   248→      items: [
+   249→   249→        { label: 'PANDAI AI', view: 'siswa-pandai-ai', icon: BrainCircuit },
+   250→   250→      ],
+   251→   251→    },
+   252→   252→  ],
+   253→   253→
+   254→   254→  // ────────────────────────────────────────────────────────────────
+   255→   255→  // ORANG TUA — 8 Menu dalam 3 Seksi
+   256→   256→  // ────────────────────────────────────────────────────────────────
+   257→   257→  ORANG_TUA: [
+   258→   258→    {
+   259→   259→      section: 'Utama',
+   260→   260→      items: [
+   261→   261→        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+   262→   262→      ],
+   263→   263→    },
+   264→   264→    {
+   265→   265→      section: '7 Kebiasaan Anak Indonesia Hebat',
+   266→   266→      items: [
+   267→   267→        { label: 'Isi Laporan Harian', view: 'ortu-karakter', icon: Heart },
+   268→   268→        { label: 'Rekap & Analisis', view: 'ortu-rekap-karakter', icon: BarChart3 },
+   269→   269→      ],
+   270→   270→    },
+   271→   271→    {
+   272→   272→      section: 'Pantau Anak',
+   273→   273→      items: [
+   274→   274→        { label: 'Nilai & Progres', view: 'ortu-nilai', icon: Target },
+   275→   275→        { label: 'Materi Pelajaran', view: 'ortu-materi', icon: BookOpen },
+   276→   276→        { label: 'Kehadiran', view: 'ortu-kehadiran', icon: UserCheck },
+   277→   277→        { label: 'Riwayat Pengerjaan', view: 'ortu-kuis', icon: History },
+   278→   278→        { label: 'Laporan Cetak', view: 'ortu-laporan', icon: Printer },
+   279→   279→      ],
+   280→   280→    },
+   281→   281→  ],
+   282→   282→};
+   283→   283→
+   284→   284→// ─── Role badge labels ──────────────────────────────────────────────
+   285→   285→
+   286→   286→const ROLE_LABELS: Record<UserRole, string> = {
+   287→   287→  SUPER_ADMIN: 'Super Admin',
+   288→   288→  ADMIN_SCHOOL: 'Admin Sekolah',
+   289→   289→  GURU: 'Guru',
+   290→   290→  SISWA: 'Siswa',
+   291→   291→  ORANG_TUA: 'Orang Tua',
+   292→   292→};
+   293→   293→
+   294→   294→// ─── View → breadcrumb label map ─────────────────────────────────────
+   295→   295→
+   296→   296→const VIEW_LABELS: Record<ViewType, string> = {
+   297→   297→  // Public
+   298→   298→  landing: 'Beranda',
+   299→   299→  login: 'Masuk',
+   300→   300→  register: 'Daftar',
+   301→   301→
+   302→   302→  // Dashboard
+   303→   303→  dashboard: 'Beranda',
+   304→   304→
+   305→   305→  // SUPER_ADMIN
+   306→   306→  schools: 'Kelola Sekolah',
+   307→   307→  'school-detail': 'Detail Sekolah',
+   308→   308→  'users-global': 'Semua Pengguna',
+   309→   309→  'questions-global': 'Bank Soal Global (NALAR)',
+   310→   310→  'reports-global': 'Laporan Global',
+   311→   311→  'analytics-global': 'Analitik Platform',
+   312→   312→  settings: 'Pengaturan',
+   313→   313→
+   314→   314→  // ADMIN_SCHOOL
+   315→   315→  classes: 'Kelas',
+   316→   316→  subjects: 'Mata Pelajaran',
+   317→   317→  users: 'Data Siswa',
+   318→   318→  'teacher-assignments': 'Penugasan Guru',
+   319→   319→  timetable: 'Jadwal Pelajaran',
+   320→   320→  'wali-kelas': 'Wali Kelas',
+   321→   321→  'import-csv': 'Import Data',
+   322→   322→  'dapodik-sync': 'Tarik Data Dapodik',
+   323→   323→  'backup-restore': 'Cadangkan & Pulihkan',
+   324→   324→  'activity-log': 'Log Aktivitas',
+   325→   325→
+   326→   326→  // GURU
+   327→   327→  'guru-materi': 'Materi Pelajaran',
+   328→   328→  'guru-tugas': 'Tugas, Kuis & Ujian',
+   329→   329→  'guru-kehadiran': 'Kehadiran Siswa',
+   330→   330→  'guru-rekap-kehadiran': 'Rekap Kehadiran',
+   331→   331→  'guru-karakter': 'Rekap Laporan 7 Kebiasaan',
+   332→   332→  'guru-rekap-karakter': 'Analisis Kebiasaan Kelas',
+   333→   333→  'guru-jurnal': 'Jurnal Mengajar',
+   334→   334→  'guru-nilai': 'Input Nilai',
+   335→   335→  'guru-analisis': 'Analisis Hasil Belajar',
+   336→   336→  'guru-laporan': 'Laporan Siswa',
+   337→   337→  'guru-pandai-ai': 'PANDAI AI',
+   338→   338→
+   339→   339→  // SISWA
+   340→   340→  'siswa-materi': 'Materi Pelajaran',
+   341→   341→  'siswa-tugas': 'Tugas & Ujian',
+   342→   342→  'siswa-riwayat': 'Riwayat Pengerjaan',
+   343→   343→  'siswa-nilai': 'Nilai Saya',
+   344→   344→  'siswa-kehadiran': 'Kehadiran Saya',
+   345→   345→  'siswa-pandai-ai': 'PANDAI AI',
+   346→   346→
+   347→   347→  // ORANG_TUA
+   348→   348→  'ortu-karakter': 'Isi Laporan Harian',
+   349→   349→  'ortu-rekap-karakter': 'Rekap & Analisis',
+   350→   350→  'ortu-nilai': 'Nilai & Progres',
+   351→   351→  'ortu-materi': 'Materi Pelajaran',
+   352→   352→  'ortu-kehadiran': 'Kehadiran',
+   353→   353→  'ortu-kuis': 'Riwayat Pengerjaan',
+   354→   354→  'ortu-laporan': 'Laporan Cetak',
+   355→   355→
+   356→   356→  // Shared
+   357→   357→  profile: 'Profil',
+   358→   358→  notifications: 'Notifikasi',
+   359→   359→  broadcasts: 'Broadcast',
+   360→   360→};
+   361→   361→
+   362→   362→// ─── Breadcrumb builder ─────────────────────────────────────────────
+   363→   363→
+   364→   364→function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] {
+   365→   365→  const roleBased: Partial<Record<ViewType, { label: string; view?: ViewType }[]>> = {
+   366→   366→    dashboard: [{ label: VIEW_LABELS.dashboard }],
+   367→   367→    schools: [{ label: VIEW_LABELS.schools }],
+   368→   368→    'school-detail': [
+   369→   369→      { label: VIEW_LABELS.schools, view: 'schools' },
+   370→   370→      { label: VIEW_LABELS['school-detail'] },
+   371→   371→    ],
+   372→   372→    'users-global': [{ label: VIEW_LABELS['users-global'] }],
+   373→   373→    'reports-global': [{ label: VIEW_LABELS['reports-global'] }],
+   374→   374→    'analytics-global': [{ label: VIEW_LABELS['analytics-global'] }],
+   375→   375→    settings: [{ label: VIEW_LABELS.settings }],
+   376→   376→    classes: [{ label: VIEW_LABELS.classes }],
+   377→   377→    subjects: [{ label: VIEW_LABELS.subjects }],
+   378→   378→    users: [{ label: VIEW_LABELS.users }],
+   379→   379→    'teacher-assignments': [{ label: VIEW_LABELS['teacher-assignments'] }],
+   380→   380→    timetable: [{ label: VIEW_LABELS.timetable }],
+   381→   381→    'wali-kelas': [{ label: VIEW_LABELS['wali-kelas'] }],
+   382→   382→    'import-csv': [{ label: VIEW_LABELS['import-csv'] }],
+   383→   383→    'dapodik-sync': [{ label: VIEW_LABELS['dapodik-sync'] }],
+   384→   384→    'backup-restore': [{ label: VIEW_LABELS['backup-restore'] }],
+   385→   385→    'activity-log': [{ label: VIEW_LABELS['activity-log'] }],
+   386→   386→    'guru-materi': [{ label: VIEW_LABELS['guru-materi'] }],
+   387→   387→    'guru-tugas': [{ label: VIEW_LABELS['guru-tugas'] }],
+   388→   388→    'guru-kehadiran': [{ label: VIEW_LABELS['guru-kehadiran'] }],
+   389→   389→    'guru-rekap-kehadiran': [{ label: VIEW_LABELS['guru-rekap-kehadiran'] }],
+   390→   390→    'guru-karakter': [{ label: VIEW_LABELS['guru-karakter'] }],
+   391→   391→    'guru-rekap-karakter': [{ label: VIEW_LABELS['guru-rekap-karakter'] }],
+   392→   392→    'guru-jurnal': [{ label: VIEW_LABELS['guru-jurnal'] }],
+   393→   393→    'guru-nilai': [{ label: VIEW_LABELS['guru-nilai'] }],
+   394→   394→    'guru-analisis': [{ label: VIEW_LABELS['guru-analisis'] }],
+   395→   395→    'guru-laporan': [{ label: VIEW_LABELS['guru-laporan'] }],
+   396→   396→    'guru-pandai-ai': [{ label: VIEW_LABELS['guru-pandai-ai'] }],
+   397→   397→    'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
+   398→   398→    'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
+   399→   399→    'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
+   400→   400→    'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
+   401→   401→    'siswa-kehadiran': [{ label: VIEW_LABELS['siswa-kehadiran'] }],
+   402→   402→    'siswa-pandai-ai': [{ label: VIEW_LABELS['siswa-pandai-ai'] }],
+   403→   403→    'ortu-karakter': [{ label: VIEW_LABELS['ortu-karakter'] }],
+   404→   404→    'ortu-rekap-karakter': [{ label: VIEW_LABELS['ortu-rekap-karakter'] }],
+   405→   405→    'ortu-nilai': [{ label: VIEW_LABELS['ortu-nilai'] }],
+   406→   406→    'ortu-materi': [{ label: VIEW_LABELS['ortu-materi'] }],
+   407→   407→    'ortu-kehadiran': [{ label: VIEW_LABELS['ortu-kehadiran'] }],
+   408→   408→    'ortu-kuis': [{ label: VIEW_LABELS['ortu-kuis'] }],
+   409→   409→    'ortu-laporan': [{ label: VIEW_LABELS['ortu-laporan'] }],
+   410→   410→    profile: [{ label: VIEW_LABELS.profile }],
+   411→   411→    notifications: [{ label: VIEW_LABELS.notifications }],
+   412→   412→    broadcasts: [{ label: VIEW_LABELS.broadcasts }],
+   413→   413→    landing: [{ label: VIEW_LABELS.landing }],
+   414→   414→    login: [{ label: VIEW_LABELS.login }],
+   415→   415→    register: [{ label: VIEW_LABELS.register }],
+   416→   416→  };
+   417→   417→  return roleBased[view] ?? [{ label: VIEW_LABELS[view] ?? view }];
+   418→   418→}
+   419→   419→
+   420→   420→// ═══════════════════════════════════════════════════════════════════════
+   421→   421→// Sidebar Navigation — grouped by section (SIMANTAP pattern)
+   422→   422→// ═══════════════════════════════════════════════════════════════════════
+   423→   423→
+   424→   424→interface SidebarNavProps {
+   425→   425→  sections: NavSection[];
+   426→   426→  currentView: ViewType;
+   427→   427→  onNavigate: (view: ViewType) => void;
+   428→   428→  onLogout: () => void;
+   429→   429→}
+   430→   430→
+   431→   431→function SidebarNav({ sections, currentView, onNavigate, onLogout }: SidebarNavProps) {
+   432→   432→  const [collapsed, setCollapsed] = React.useState<Record<string, boolean>>({});
+   433→   433→
+   434→   434→  const toggleSection = (section: string) => {
+   435→   435→    setCollapsed((prev) => ({ ...prev, [section]: !prev[section] }));
+   436→   436→  };
+   437→   437→
+   438→   438→  return (
+   439→   439→    <div className="flex h-full flex-col min-h-0">
+   440→   440→      {/* Scrollable nav area */}
+   441→   441→      <ScrollArea className="flex-1 px-3 py-2 min-h-0">
+   442→   442→        <nav className="flex flex-col gap-1 pb-2" role="navigation" aria-label="Main navigation">
+   443→   443→          {sections.map((group) => (
+   444→   444→            <React.Fragment key={group.section}>
+   445→   445→              {/* Section label — clickable to collapse */}
+   446→   446→              <button
+   447→   447→                onClick={() => toggleSection(group.section)}
+   448→   448→                className="mt-4 mb-1 flex w-full items-center justify-between px-3 first:mt-0 group/section"
+   449→   449→                aria-expanded={!collapsed[group.section]}
+   450→   450→              >
+   451→   451→                <span className="text-[11px] font-semibold uppercase tracking-wider text-white/40">
+   452→   452→                  {group.section}
+   453→   453→                </span>
+   454→   454→                <ChevronRight
+   455→   455→                  className={cn(
+   456→   456→                    'h-3 w-3 text-white/30 transition-transform duration-200',
+   457→   457→                    !collapsed[group.section] && 'rotate-90'
+   458→   458→                  )}
+   459→   459→                />
+   460→   460→              </button>
+   461→   461→
+   462→   462→              {/* Items — animated collapse */}
+   463→   463→              <div
+   464→   464→                className={cn(
+   465→   465→                  'overflow-hidden transition-all duration-200 ease-in-out',
+   466→   466→                  collapsed[group.section] ? 'max-h-0 opacity-0' : 'max-h-[600px] opacity-100'
+   467→   467→                )}
+   468→   468→              >
+   469→   469→                {group.items.map((item) => {
+   470→   470→                  const Icon = item.icon;
+   471→   471→                  const isActive = currentView === item.view;
+   472→   472→                  return (
+   473→   473→                    <button
+   474→   474→                      key={item.view}
+   475→   475→                      onClick={() => onNavigate(item.view)}
+   476→   476→                      className={cn(
+   477→   477→                        'flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 text-left',
+   478→   478→                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
+   479→   479→                        'hover:scale-[1.02] active:scale-[0.98]',
+   480→   480→                        isActive
+   481→   481→                          ? 'bg-white/10 text-amber-400 shadow-sm shadow-amber-400/10 border-l-[3px] border-amber-400'
+   482→   482→                          : 'text-white/70 hover:bg-white/5 hover:text-white border-l-[3px] border-transparent'
+   483→   483→                      )}
+   484→   484→                      aria-current={isActive ? 'page' : undefined}
+   485→   485→                    >
+   486→   486→                      <Icon className="h-4.5 w-4.5 shrink-0" />
+   487→   487→                      <span className="truncate">{item.label}</span>
+   488→   488→                    </button>
+   489→   489→                  );
+   490→   490→                })}
+   491→   491→              </div>
+   492→   492→            </React.Fragment>
+   493→   493→          ))}
+   494→   494→        </nav>
+   495→   495→      </ScrollArea>
+   496→   496→
+   497→   497→      {/* Logout at bottom — always visible */}
+   498→   498→      <div className="shrink-0 border-t border-white/10 p-3">
+   499→   499→        <button
+   500→   500→          onClick={onLogout}
+   501→   501→          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-white/60 transition-all duration-150 hover:bg-red-500/10 hover:text-red-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/30 text-left hover:scale-[1.02] active:scale-[0.98]"
+   502→   502→        >
+   503→   503→          <LogOut className="h-4.5 w-4.5 shrink-0" />
+   504→   504→          <span>Keluar</span>
+   505→   505→        </button>
+   506→   506→      </div>
+   507→   507→    </div>
+   508→   508→  );
+   509→   509→}
+   510→   510→
+   511→   511→// ═══════════════════════════════════════════════════════════════════════
+   512→   512→// Main AppLayout
+   513→   513→// ═══════════════════════════════════════════════════════════════════════
+   514→   514→
+   515→   515→export default function AppLayout({ children }: { children: React.ReactNode }) {
+   516→   516→  const user = useAppStore((s) => s.user);
+   517→   517→  const currentView = useAppStore((s) => s.currentView);
+   518→   518→  const sidebarOpen = useAppStore((s) => s.sidebarOpen);
+   519→   519→  const navigateTo = useAppStore((s) => s.navigateTo);
+   520→   520→  const logout = useAppStore((s) => s.logout);
+   521→   521→  const toggleSidebar = useAppStore((s) => s.toggleSidebar);
+   522→   522→
+   523→   523→  const role = user?.role ?? 'SISWA';
+   524→   524→  const navSections = NAV_CONFIG[role];
+   525→   525→  const breadcrumbs = buildBreadcrumbs(currentView);
+   526→   526→  const initials = user?.name
+   527→   527→    ?.split(' ')
+   528→   528→    .map((n) => n[0])
+   529→   529→      .join('')
+   530→   530→      .toUpperCase()
+   531→   531→      .slice(0, 2) ?? 'U';
+   532→   532→
+   533→   533→  const handleLogout = () => {
+   534→   534→    logout();
+   535→   535→    toast.success('Berhasil keluar');
+   536→   536→  };
+   537→   537→
+   538→   538→  // ── Sidebar content (shared between desktop & mobile) ──
+   539→   539→
+   540→   540→  const sidebarBranding = (
+   541→   541→    <div className="flex items-center gap-3 px-4 pt-6 pb-2">
+   542→   542→      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-400">
+   543→   543→        <GraduationCap className="h-5 w-5 text-[#1F3864]" />
+   544→   544→      </div>
+   545→   545→      <span className="text-xl font-bold tracking-tight text-white">PANDAI</span>
+   546→   546→    </div>
+   547→   547→  );
+   548→   548→
+   549→   549→  const sidebarUser = user && (
+   550→   550→    <div className="px-4 py-3">
+   551→   551→      <p className="truncate text-sm font-semibold text-white">{user.name}</p>
+   552→   552→      <span className="mt-1 inline-block rounded-full bg-amber-400/20 px-2.5 py-0.5 text-xs font-medium text-amber-400">
+   553→   553→        {ROLE_LABELS[role]}
+   554→   554→      </span>
+   555→   555→      {user.schoolName && (
+   556→   556→        <p className="mt-1.5 truncate text-xs text-white/50">{user.schoolName}</p>
+   557→   557→      )}
+   558→   558→    </div>
+   559→   559→  );
+   560→   560→
+   561→   561→  const sidebarNav = (
+   562→   562→    <SidebarNav
+   563→   563→      sections={navSections}
+   564→   564→      currentView={currentView}
+   565→   565→      onNavigate={navigateTo}
+   566→   566→      onLogout={handleLogout}
+   567→   567→    />
+   568→   568→  );
+   569→   569→
+   570→   570→  return (
+   571→   571→    <div className="flex h-screen overflow-hidden bg-gray-50">
+   572→   572→      {/* ── Desktop Sidebar ── */}
+   573→   573→      <aside
+   574→   574→        className={cn(
+   575→   575→          'hidden lg:flex lg:flex-col lg:w-64 bg-[#1F3864] shrink-0 transition-all duration-300 overflow-hidden',
+   576→   576→          !sidebarOpen && 'lg:w-0'
+   577→   577→        )}
+   578→   578→      >
+   579→   579→        {/* Branding + User info — fixed at top */}
+   580→   580→        <div className="shrink-0">
+   581→   581→          {sidebarBranding}
+   582→   582→          {sidebarUser && (
+   583→   583→            <>
+   584→   584→              <div className="mx-4">
+   585→   585→                <Separator className="bg-white/10" />
+   586→   586→              </div>
+   587→   587→              {sidebarUser}
+   588→   588→            </>
+   589→   589→          )}
+   590→   590→        </div>
+   591→   591→        {/* Nav takes remaining space with scroll */}
+   592→   592→        <div className="flex-1 min-h-0">
+   593→   593→          {sidebarNav}
+   594→   594→        </div>
+   595→   595→      </aside>
+   596→   596→
+   597→   597→      {/* ── Mobile Sidebar (Sheet) ── */}
+   598→   598→      <Sheet>
+   599→   599→        <SheetTrigger asChild>
+   600→   600→          <Button
+   601→   601→            variant="ghost"
+   602→   602→            size="icon"
+   603→   603→            className="fixed left-4 top-3 z-40 lg:hidden"
+   604→   604→            aria-label="Toggle menu"
+   605→   605→          >
+   606→   606→            <Menu className="h-5 w-5" />
+   607→   607→          </Button>
+   608→   608→        </SheetTrigger>
+   609→   609→        <SheetContent side="left" className="w-72 p-0 bg-[#1F3864] border-r-white/10 flex flex-col">
+   610→   610→          <SheetTitle className="sr-only">Menu Navigasi</SheetTitle>
+   611→   611→          {/* Branding + User info — fixed at top on mobile */}
+   612→   612→          <div className="shrink-0">
+   613→   613→            {sidebarBranding}
+   614→   614→            {sidebarUser && (
+   615→   615→              <>
+   616→   616→                <div className="mx-4">
+   617→   617→                  <Separator className="bg-white/10" />
+   618→   618→                </div>
+   619→   619→                {sidebarUser}
+   620→   620→              </>
+   621→   621→            )}
+   622→   622→          </div>
+   623→   623→          {/* Nav takes remaining space with scroll on mobile */}
+   624→   624→          <div className="flex-1 min-h-0">
+   625→   625→            {sidebarNav}
+   626→   626→          </div>
+   627→   627→        </SheetContent>
+   628→   628→      </Sheet>
+   629→   629→
+   630→   630→      {/* ── Right column: Header + Content ── */}
+   631→   631→      <div className="flex flex-1 flex-col overflow-hidden">
+   632→   632→        {/* ── Header ── */}
+   633→   633→        <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b bg-white px-4 shadow-sm sm:px-6">
+   634→   634→          {/* Spacer for mobile menu button */}
+   635→   635→          <div className="w-10 lg:hidden" />
+   636→   636→
+   637→   637→          {/* Desktop sidebar toggle */}
+   638→   638→          <Button
+   639→   639→            variant="ghost"
+   640→   640→            size="icon"
+   641→   641→            className="hidden lg:flex"
+   642→   642→            onClick={toggleSidebar}
+   643→   643→            aria-label="Toggle sidebar"
+   644→   644→          >
+   645→   645→            <Menu className="h-5 w-5" />
+   646→   646→          </Button>
+   647→   647→
+   648→   648→          {/* Breadcrumb */}
+   649→   649→          <Breadcrumb className="hidden sm:flex">
+   650→   650→            <BreadcrumbList>
+   651→   651→              {breadcrumbs.map((crumb, idx) => {
+   652→   652→                const isLast = idx === breadcrumbs.length - 1;
+   653→   653→                return (
+   654→   654→                  <React.Fragment key={crumb.label}>
+   655→   655→                    <BreadcrumbItem>
+   656→   656→                      {isLast ? (
+   657→   657→                        <BreadcrumbPage>{crumb.label}</BreadcrumbPage>
+   658→   658→                      ) : (
+   659→   659→                        <BreadcrumbLink
+   660→   660→                          className="cursor-pointer"
+   661→   661→                          onClick={() => crumb.view && navigateTo(crumb.view)}
+   662→   662→                        >
+   663→   663→                          {crumb.label}
+   664→   664→                        </BreadcrumbLink>
+   665→   665→                      )}
+   666→   666→                    </BreadcrumbItem>
+   667→   667→                    {!isLast && <BreadcrumbSeparator />}
+   668→   668→                  </React.Fragment>
+   669→   669→                );
+   670→   670→              })}
+   671→   671→            </BreadcrumbList>
+   672→   672→          </Breadcrumb>
+   673→   673→
+   674→   674→          {/* Mobile breadcrumb - just show current page */}
+   675→   675→          <span className="sm:hidden text-sm font-medium text-foreground">
+   676→   676→            {breadcrumbs[breadcrumbs.length - 1]?.label}
+   677→   677→          </span>
+   678→   678→
+   679→   679→          {/* Right side */}
+   680→   680→          <div className="ml-auto flex items-center gap-2">
+   681→   681→            {/* Notification bell */}
+   682→   682→            <Button
+   683→   683→              variant="ghost"
+   684→   684→              size="icon"
+   685→   685→              className="relative hover:bg-muted transition-colors duration-200"
+   686→   686→              aria-label="Notifikasi"
+   687→   687→              onClick={() => navigateTo('notifications')}
+   688→   688→            >
+   689→   689→              <Bell className="h-5 w-5" />
+   690→   690→              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+   691→   691→            </Button>
+   692→   692→
+   693→   693→            {/* User dropdown */}
+   694→   694→            <DropdownMenu>
+   695→   695→              <DropdownMenuTrigger asChild>
+   696→   696→                <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+   697→   697→                  <Avatar className="h-9 w-9">
+   698→   698→                    <AvatarFallback className="bg-[#1F3864] text-xs font-semibold text-white">
+   699→   699→                      {initials}
+   700→   700→                    </AvatarFallback>
+   701→   701→                  </Avatar>
+   702→   702→                </Button>
+   703→   703→              </DropdownMenuTrigger>
+   704→   704→              <DropdownMenuContent className="w-48" align="end" forceMount>
+   705→   705→                {user && (
+   706→   706→                  <>
+   707→   707→                    <div className="flex flex-col gap-1 p-2">
+   708→   708→                      <p className="text-sm font-medium leading-none">{user.name}</p>
+   709→   709→                      <p className="text-xs text-muted-foreground">{user.email}</p>
+   710→   710→                    </div>
+   711→   711→                    <DropdownMenuSeparator />
+   712→   712→                  </>
+   713→   713→                )}
+   714→   714→                <DropdownMenuItem onClick={() => navigateTo('profile')}>
+   715→   715→                  Profil
+   716→   716→                </DropdownMenuItem>
+   717→   717→                <DropdownMenuItem onClick={() => navigateTo('settings')}>
+   718→   718→                  Pengaturan
+   719→   719→                </DropdownMenuItem>
+   720→   720→                <DropdownMenuSeparator />
+   721→   721→                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+   722→   722→                  Keluar
+   723→   723→                </DropdownMenuItem>
+   724→   724→              </DropdownMenuContent>
+   725→   725→            </DropdownMenu>
+   726→   726→          </div>
+   727→   727→        </header>
+   728→   728→
+   729→   729→        {/* ── Main Content ── */}
+   730→   730→        <main className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-4 sm:p-6">
+   731→   731→          <div className="mx-auto max-w-7xl">
+   732→   732→            {children}
+   733→   733→          </div>
+   734→   734→        </main>
+   735→   735→      </div>
+   736→   736→    </div>
+   737→   737→  );
+   738→   738→}
+   739→   739→

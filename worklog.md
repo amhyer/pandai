@@ -151,3 +151,32 @@ Stage Summary:
   - src/app/authenticated-app.tsx (lazy views + roleDashboards)
   - src/components/layout/app-layout.tsx (sidebar, VIEW_LABELS, ROLE_LABELS, breadcrumbs)
   - src/components/auth/login-form.tsx (demo account button)
+---
+Task ID: R36
+Agent: Main Agent
+Task: UI Click-Through Verification (memory-efficient) + Feature C — Kepala Sekolah Dashboard
+
+Work Log:
+- Killed old processes, freed memory to 3.5GB available
+- Built production (Next.js 16, 768MB max)
+- Agent Browser Part A: Successfully opened landing page, navigated to login form, selected ORANG_TUA role, filled credentials (rahman/123), clicked Masuk
+- Agent Browser OOM: Headless Chrome spawns 7+ processes using ~1.2GB total, killing the Next.js production server. This is a sandbox hardware limitation (4GB RAM, no swap).
+- API+DB Verification Feature A (7 Kebiasaan): Batch POST 7 habits → 201, DB confirmed 7 records, GURU POST → 403
+- API+DB Verification Feature B (External Quiz): Material created → 201, SISWA self-report → 201, DB confirmed
+- Feature C Implementation (via subagent):
+  - Added KEPALA_SEKOLAH to UserRole, ViewType, ROLE_LABELS, seed script
+  - Created /api/kepsek/dashboard (aggregate-only endpoint)
+  - Added RBAC guards to /api/users, /api/scores, /api/character-reports (KEPALA_SEKOLAH → 403)
+  - Created dashboard UI with summary cards + 3 tabs
+  - Wired into authenticated-app.tsx and app-layout.tsx sidebar
+- Fixed TypeScript error (schoolId || '' for Headers)
+- Fixed API route 404 issue: nested hyphenated directory `kepala-sekolah/dashboard` caused Next.js 16 to return 404. Renamed to `kepsek/dashboard` (no hyphen in top-level dir).
+- Full verification: Login → 200, Dashboard → 200 (correct aggregates), RBAC → 403 on 3 endpoints, GURU dashboard → 403, SUPER_ADMIN → 200, No role → 403
+
+Stage Summary:
+- UI click-through: OOM limitation confirmed (Chrome multi-process architecture incompatible with 4GB sandbox)
+- Feature A+B: Solid API+DB evidence (curl verification complete)
+- Feature C: KEPALA_SEKOLAH Dashboard FULLY IMPLEMENTED
+  - 13 files changed, 736 insertions
+  - Commit: cc92433 pushed to main
+  - Demo users: kepsek.sman1/password123 (Dr. H. Muhammad Arif, M.Pd.), kepsek.smkn2/password123 (Ir. Surya Dewi, M.T.)
