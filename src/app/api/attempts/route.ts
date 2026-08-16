@@ -5,6 +5,15 @@ import { logError } from '@/lib/error-log';
 // GET attempts
 export async function GET(request: Request) {
   try {
+    // RBAC: Kepala Sekolah cannot access individual attempt data
+    const role = request.headers.get('X-User-Role');
+    if (role === 'KEPALA_SEKOLAH') {
+      return NextResponse.json(
+        { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const schoolId = searchParams.get('schoolId');

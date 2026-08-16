@@ -138,7 +138,7 @@ export async function GET(req: NextRequest) {
       })
     );
 
-    // ── rekapKebiasaan ──
+    // ── rekapKebiasaan (school-wide) ──
     const allReports = await db.characterReport.findMany({
       where: { schoolId },
     });
@@ -162,6 +162,44 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // ── rekapKebiasaanPerKelas (per-class 7 kebiasaan breakdown) ──
+    const rekapKebiasaanPerKelas = await Promise.all(
+      classes.map(async (cls) => {
+        const classReports = await db.characterReport.findMany({
+          where: { classId: cls.id },
+        });
+
+        const classHabitMap = new Map<string, { totalRating: number; count: number }>();
+        for (const report of classReports) {
+          const existing = classHabitMap.get(report.habit) || { totalRating: 0, count: 0 };
+          existing.totalRating += report.rating;
+          existing.count += 1;
+          classHabitMap.set(report.habit, existing);
+        }
+
+        const habits = Object.entries(SEVEN_HABIT_LABELS).map(([habitKey, habitInfo]) => {
+          const data = classHabitMap.get(habitKey);
+          return {
+            habitId: habitKey,
+            habitName: habitInfo.name,
+            avgRating: data ? Math.round((data.totalRating / data.count) * 100) / 100 : null,
+            reportCount: data ? data.count : 0,
+          };
+        });
+
+        const totalReports = classReports.length;
+        const totalRating = classReports.reduce((sum, r) => sum + r.rating, 0);
+
+        return {
+          className: cls.name,
+          classId: cls.id,
+          totalReports,
+          avgOverall: totalReports > 0 ? Math.round((totalRating / totalReports) * 100) / 100 : null,
+          habits,
+        };
+      })
+    );
+
     // ── Overall average kehadiran ──
     const allAttendance = await db.attendance.findMany({
       where: { schoolId },
@@ -183,6 +221,7 @@ export async function GET(req: NextRequest) {
       rekapKelas,
       rekapGuru,
       rekapKebiasaan,
+      rekapKebiasaanPerKelas,
     });
   } catch (error) {
     await logError({ error, route: '/api/kepala-sekolah/dashboard', method: 'GET' });

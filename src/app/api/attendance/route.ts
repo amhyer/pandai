@@ -4,6 +4,15 @@ import { db } from '@/lib/db';
 // GET /api/attendance
 export async function GET(req: NextRequest) {
   try {
+    // RBAC: Kepala Sekolah cannot access individual attendance data
+    const role = req.headers.get('X-User-Role');
+    if (role === 'KEPALA_SEKOLAH') {
+      return NextResponse.json(
+        { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId');
     const classId = searchParams.get('classId');

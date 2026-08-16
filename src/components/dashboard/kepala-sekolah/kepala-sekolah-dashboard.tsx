@@ -14,7 +14,7 @@ import {
 } from '@/components/ui/table';
 import { Users, GraduationCap, School, Clock, Loader2 } from 'lucide-react';
 
-type TabKey = 'rekap-kelas' | 'rekap-guru' | 'rekap-karakter';
+type TabKey = 'rekap-kelas' | 'rekap-guru' | 'rekap-karakter' | 'rekap-karakter-kelas';
 
 interface SchoolInfo {
   schoolName: string;
@@ -50,17 +50,27 @@ interface RekapKebiasaan {
   reportCount: number;
 }
 
+interface RekapKebiasaanPerKelas {
+  className: string;
+  classId: string;
+  totalReports: number;
+  avgOverall: number | null;
+  habits: RekapKebiasaan[];
+}
+
 interface DashboardData {
   schoolInfo: SchoolInfo;
   rekapKelas: RekapKelas[];
   rekapGuru: RekapGuru[];
   rekapKebiasaan: RekapKebiasaan[];
+  rekapKebiasaanPerKelas: RekapKebiasaanPerKelas[];
 }
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'rekap-kelas', label: 'Rekap Per Kelas' },
   { key: 'rekap-guru', label: 'Rekap Per Guru' },
   { key: 'rekap-karakter', label: 'Rekap 7 Kebiasaan' },
+  { key: 'rekap-karakter-kelas', label: 'Kebiasaan Per Kelas' },
 ];
 
 const HABIT_COLORS = [
@@ -133,7 +143,7 @@ export function KepalaSekolahDashboard() {
     );
   }
 
-  const { schoolInfo, rekapKelas, rekapGuru, rekapKebiasaan } = data;
+  const { schoolInfo, rekapKelas, rekapGuru, rekapKebiasaan, rekapKebiasaanPerKelas } = data;
 
   const summaryCards = [
     {
@@ -396,6 +406,62 @@ export function KepalaSekolahDashboard() {
             )}
           </CardContent>
         </Card>
+      )}
+
+      {activeTab === 'rekap-karakter-kelas' && (
+        <div className="space-y-4">
+          {rekapKebiasaanPerKelas.length === 0 ? (
+            <Card className="border-0 shadow-sm">
+              <CardContent className="py-12 text-center">
+                <p className="text-sm text-muted-foreground">Belum ada data kebiasaan per kelas</p>
+              </CardContent>
+            </Card>
+          ) : (
+            rekapKebiasaanPerKelas.map((kelas) => (
+              <Card key={kelas.classId} className="border-0 shadow-sm">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-semibold">{kelas.className}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{kelas.totalReports} laporan</span>
+                      {kelas.avgOverall !== null && (
+                        <Badge variant={kelas.avgOverall >= 2.5 ? 'default' : kelas.avgOverall >= 1.5 ? 'secondary' : 'destructive'} className="text-[11px]">
+                          Rata-rata: {kelas.avgOverall}/4
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-2.5">
+                  {kelas.habits.map((habit, idx) => {
+                    const maxRating = 4;
+                    const rating = habit.avgRating ?? 0;
+                    const percentage = habit.avgRating !== null ? Math.round((rating / maxRating) * 100) : 0;
+                    const barColor = HABIT_COLORS[idx % HABIT_COLORS.length];
+                    const ratingLabel = habit.avgRating !== null ? `${rating}/4` : '-';
+                    return (
+                      <div key={habit.habitId} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium text-slate-600">{habit.habitName}</span>
+                          <span className={`text-xs font-semibold ${rating >= 2.5 ? 'text-emerald-600' : rating >= 1.5 ? 'text-amber-600' : 'text-red-600'}`}>
+                            {ratingLabel}
+                            <span className="ml-1 font-normal text-muted-foreground">({habit.reportCount})</span>
+                          </span>
+                        </div>
+                        <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${barColor} transition-all duration-500`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </div>
       )}
     </div>
   );
