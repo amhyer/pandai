@@ -92,6 +92,10 @@ interface MaterialData {
   teacher?: { name: string } | null;
   subject?: { id: string; name: string; code: string } | null;
   class?: { id: string; name: string } | null;
+  externalUrl?: string | null;
+  externalProvider?: string | null;
+  scoreEntryMode?: string | null;
+  scores?: Array<{ id: string; materialId: string; studentId: string; score: number; note?: string; entryMode: string; createdAt: string }>;
 }
 
 interface ExamPackageData {
