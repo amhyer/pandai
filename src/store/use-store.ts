@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type UserRole = 'SUPER_ADMIN' | 'ADMIN_SCHOOL' | 'GURU' | 'SISWA' | 'ORANG_TUA';
+export type UserRole = 'SUPER_ADMIN' | 'ADMIN_SCHOOL' | 'GURU' | 'SISWA' | 'ORANG_TUA' | 'KEPALA_SEKOLAH';
 
 // ===== ViewType — semua halaman yang tersedia di sidebar dan content =====
 export type ViewType =
@@ -63,6 +63,12 @@ export type ViewType =
   | 'ortu-kehadiran'       // Kehadiran
   | 'ortu-kuis'            // Riwayat Pengerjaan
   | 'ortu-laporan'         // Laporan Cetak
+
+  // ── KEPALA_SEKOLAH ──
+  | 'dashboard-kepsek'           // Dashboard Kepala Sekolah
+  | 'kepsek-rekap-kelas'         // Rekap Per Kelas
+  | 'kepsek-rekap-guru'          // Rekap Per Guru
+  | 'kepsek-rekap-karakter'      // Rekap 7 Kebiasaan
 
   // ── Shared ──
   | 'profile'

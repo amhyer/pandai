@@ -61,6 +61,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'dashboard-guru': React.lazy(() => import('@/components/dashboard/guru/guru-dashboard').then(m => ({ default: m.GuruDashboard }))),
   'dashboard-siswa': React.lazy(() => import('@/components/dashboard/siswa/siswa-dashboard').then(m => ({ default: m.SiswaDashboard }))),
   'dashboard-ortu': React.lazy(() => import('@/components/dashboard/orang-tua/orang-tua-dashboard').then(m => ({ default: m.OrangTuaDashboard }))),
+  'dashboard-kepsek': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
 
   // SUPER_ADMIN
   'schools': React.lazy(() => import('@/components/dashboard/super-admin/school-manager').then(m => ({ default: m.SchoolManager }))),
@@ -119,6 +120,11 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'ortu-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuKarakterView }))),
   'ortu-rekap-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuRekapKarakterView }))),
 
+  // KEPALA_SEKOLAH
+  'kepsek-rekap-kelas': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
+  'kepsek-rekap-guru': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
+  'kepsek-rekap-karakter': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
+
   // Shared
   'profile': React.lazy(() => import('@/components/views/shared-views').then(m => ({ default: m.ProfileView }))),
   'notifications': React.lazy(() => import('@/components/views/shared-views').then(m => ({ default: m.NotificationsView }))),
@@ -139,6 +145,7 @@ function ViewRouter() {
       'GURU': 'dashboard-guru',
       'SISWA': 'dashboard-siswa',
       'ORANG_TUA': 'dashboard-ortu',
+      'KEPALA_SEKOLAH': 'dashboard-kepsek',
     };
     const viewKey = roleDashboards[user?.role ?? 'SISWA'] ?? 'dashboard-siswa';
     const Component = views[viewKey];

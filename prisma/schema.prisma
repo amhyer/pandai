@@ -64,7 +64,7 @@ model User {
   email       String?  @unique       // Untuk admin/superadmin (opsional untuk guru/siswa/ortu)
   password    String
   name        String
-  role        String   // SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA, ORANG_TUA
+  role        String   // SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA, ORANG_TUA, KEPALA_SEKOLAH
   avatar      String?
   phone       String?
   isActive    Boolean  @default(true)

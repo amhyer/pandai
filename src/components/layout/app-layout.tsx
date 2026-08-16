@@ -67,6 +67,7 @@ import {
   Award,
   PenLine,
   BrainCircuit,
+  Crown,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
@@ -279,6 +280,26 @@ const NAV_CONFIG: RoleNav = {
       ],
     },
   ],
+
+  // ────────────────────────────────────────────────────────────────
+  // KEPALA SEKOLAH — 4 Menu dalam 3 Seksi
+  // ────────────────────────────────────────────────────────────────
+  KEPALA_SEKOLAH: [
+    {
+      section: 'Utama',
+      items: [
+        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+      ],
+    },
+    {
+      section: 'Rekap Sekolah',
+      items: [
+        { label: 'Rekap Per Kelas', view: 'kepsek-rekap-kelas', icon: GraduationCap },
+        { label: 'Rekap Per Guru', view: 'kepsek-rekap-guru', icon: Users },
+        { label: 'Rekap 7 Kebiasaan', view: 'kepsek-rekap-karakter', icon: Star },
+      ],
+    },
+  ],
 };
 
 // ─── Role badge labels ──────────────────────────────────────────────
@@ -289,6 +310,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
   GURU: 'Guru',
   SISWA: 'Siswa',
   ORANG_TUA: 'Orang Tua',
+  KEPALA_SEKOLAH: 'Kepala Sekolah',
 };
 
 // ─── View → breadcrumb label map ─────────────────────────────────────
@@ -353,6 +375,12 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'ortu-kuis': 'Riwayat Pengerjaan',
   'ortu-laporan': 'Laporan Cetak',
 
+  // KEPALA_SEKOLAH
+  'dashboard-kepsek': 'Dashboard Kepala Sekolah',
+  'kepsek-rekap-kelas': 'Rekap Per Kelas',
+  'kepsek-rekap-guru': 'Rekap Per Guru',
+  'kepsek-rekap-karakter': 'Rekap 7 Kebiasaan',
+
   // Shared
   profile: 'Profil',
   notifications: 'Notifikasi',
@@ -407,6 +435,10 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'ortu-kehadiran': [{ label: VIEW_LABELS['ortu-kehadiran'] }],
     'ortu-kuis': [{ label: VIEW_LABELS['ortu-kuis'] }],
     'ortu-laporan': [{ label: VIEW_LABELS['ortu-laporan'] }],
+    'dashboard-kepsek': [{ label: VIEW_LABELS['dashboard-kepsek'] }],
+    'kepsek-rekap-kelas': [{ label: VIEW_LABELS['kepsek-rekap-kelas'] }],
+    'kepsek-rekap-guru': [{ label: VIEW_LABELS['kepsek-rekap-guru'] }],
+    'kepsek-rekap-karakter': [{ label: VIEW_LABELS['kepsek-rekap-karakter'] }],
     profile: [{ label: VIEW_LABELS.profile }],
     notifications: [{ label: VIEW_LABELS.notifications }],
     broadcasts: [{ label: VIEW_LABELS.broadcasts }],

@@ -251,6 +251,31 @@ async function main() {
     console.log(`   ✅ Created: ${adminData.email} (${SCHOOLS[adminData.schoolIndex].name})`);
   }
 
+  // 5.5 Buat Kepala Sekolah
+  console.log('\n🎓 Membuat Kepala Sekolah...');
+  const KEPALA_SEKOLAH = [
+    { username: 'kepsek.sman1', name: 'Dr. H. Muhammad Arif, M.Pd.', schoolIndex: 0 },
+    { username: 'kepsek.smkn2', name: 'Ir. Surya Dewi, M.T.', schoolIndex: 1 },
+  ];
+  for (const kepsekData of KEPALA_SEKOLAH) {
+    const existing = await prisma.user.findFirst({ where: { username: kepsekData.username } });
+    if (existing) {
+      console.log(`   ✅ Skip: ${kepsekData.username} sudah ada`);
+      continue;
+    }
+    await prisma.user.create({
+      data: {
+        username: kepsekData.username,
+        password: hashedPassword,
+        name: kepsekData.name,
+        role: 'KEPALA_SEKOLAH',
+        schoolId: schoolIds[kepsekData.schoolIndex],
+        isActive: true,
+      },
+    });
+    console.log(`   ✅ Created: ${kepsekData.name} (login: ${kepsekData.username}, ${SCHOOLS[kepsekData.schoolIndex].name})`);
+  }
+
   // 6. Buat Guru (login pakai NIP/NIK)
   console.log('\n👩‍🏫 Membuat Guru...');
   for (const guruData of GURUS) {

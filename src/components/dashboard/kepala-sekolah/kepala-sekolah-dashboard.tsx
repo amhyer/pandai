@@ -1,0 +1,402 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { useAppStore } from '@/store/use-store';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Users, GraduationCap, School, Clock, Loader2 } from 'lucide-react';
+
+type TabKey = 'rekap-kelas' | 'rekap-guru' | 'rekap-karakter';
+
+interface SchoolInfo {
+  schoolName: string;
+  totalSiswa: number;
+  totalGuru: number;
+  totalKelas: number;
+  overallAvgKehadiran: number | null;
+}
+
+interface RekapKelas {
+  className: string;
+  classId: string;
+  studentCount: number;
+  avgKehadiran: number | null;
+  avgNilai: number | null;
+  avgKebiasaan: number | null;
+}
+
+interface RekapGuru {
+  teacherName: string;
+  teacherId: string;
+  nip: string | null;
+  kehadiranMengajar: number;
+  jumlahMateri: number;
+  jumlahKuis: number;
+  jumlahTugas: number;
+}
+
+interface RekapKebiasaan {
+  habitId: string;
+  habitName: string;
+  avgRating: number | null;
+  reportCount: number;
+}
+
+interface DashboardData {
+  schoolInfo: SchoolInfo;
+  rekapKelas: RekapKelas[];
+  rekapGuru: RekapGuru[];
+  rekapKebiasaan: RekapKebiasaan[];
+}
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'rekap-kelas', label: 'Rekap Per Kelas' },
+  { key: 'rekap-guru', label: 'Rekap Per Guru' },
+  { key: 'rekap-karakter', label: 'Rekap 7 Kebiasaan' },
+];
+
+const HABIT_COLORS = [
+  'bg-amber-400',
+  'bg-emerald-400',
+  'bg-sky-400',
+  'bg-rose-400',
+  'bg-violet-400',
+  'bg-teal-400',
+  'bg-orange-400',
+];
+
+export function KepalaSekolahDashboard() {
+  const user = useAppStore((s) => s.user);
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>('rekap-kelas');
+
+  useEffect(() => {
+    const schoolId = user?.schoolId;
+    if (!schoolId) {
+      setError('Data sekolah tidak ditemukan. Silakan hubungi admin.');
+      setLoading(false);
+      return;
+    }
+
+    async function fetchData() {
+      try {
+        const res = await fetch(`/api/kepsek/dashboard?schoolId=${schoolId}`, {
+          headers: {
+            'X-User-Id': user?.id || '',
+            'X-School-Id': schoolId || '',
+            'X-User-Role': user?.role || '',
+          },
+        });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Gagal memuat data');
+        }
+        const json = await res.json();
+        setData(json);
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [user?.id, user?.schoolId, user?.role]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" />
+        <span className="ml-3 text-sm text-muted-foreground">Memuat data dashboard...</span>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-red-50 text-red-500">
+          <School className="h-8 w-8" />
+        </div>
+        <p className="text-sm text-muted-foreground text-center max-w-md">{error || 'Data tidak tersedia'}</p>
+      </div>
+    );
+  }
+
+  const { schoolInfo, rekapKelas, rekapGuru, rekapKebiasaan } = data;
+
+  const summaryCards = [
+    {
+      label: 'Total Siswa',
+      value: schoolInfo.totalSiswa,
+      icon: Users,
+      color: 'from-amber-400 to-amber-500',
+      bgLight: 'bg-amber-50',
+      textColor: 'text-amber-700',
+    },
+    {
+      label: 'Total Guru',
+      value: schoolInfo.totalGuru,
+      icon: GraduationCap,
+      color: 'from-emerald-400 to-emerald-500',
+      bgLight: 'bg-emerald-50',
+      textColor: 'text-emerald-700',
+    },
+    {
+      label: 'Total Kelas',
+      value: schoolInfo.totalKelas,
+      icon: School,
+      color: 'from-sky-400 to-sky-500',
+      bgLight: 'bg-sky-50',
+      textColor: 'text-sky-700',
+    },
+    {
+      label: 'Rata-rata Kehadiran',
+      value: schoolInfo.overallAvgKehadiran !== null ? `${schoolInfo.overallAvgKehadiran}%` : '-',
+      icon: Clock,
+      color: 'from-violet-400 to-violet-500',
+      bgLight: 'bg-violet-50',
+      textColor: 'text-violet-700',
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* ── Header ── */}
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800">Dashboard Kepala Sekolah</h1>
+        <p className="text-sm text-muted-foreground mt-1">{schoolInfo.schoolName}</p>
+      </div>
+
+      {/* ── Summary Cards ── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {summaryCards.map((card) => {
+          const Icon = card.icon;
+          return (
+            <Card key={card.label} className="overflow-hidden border-0 shadow-sm">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center shrink-0 shadow-sm`}>
+                    <Icon className="h-5 w-5 text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground font-medium truncate">{card.label}</p>
+                    <p className={`text-xl font-bold ${card.textColor} mt-0.5`}>{card.value}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* ── Tabs ── */}
+      <div className="border-b border-slate-200">
+        <div className="flex gap-6">
+          {TABS.map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`
+                pb-3 text-sm font-medium border-b-2 transition-colors
+                ${activeTab === tab.key
+                  ? 'border-[#1F3864] text-[#1F3864]'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                }
+              `}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tab Content ── */}
+      {activeTab === 'rekap-kelas' && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Rekap Per Kelas</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="text-xs font-semibold">Kelas</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Siswa</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Kehadiran</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Nilai Rata-rata</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Kebiasaan (/4)</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rekapKelas.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                        Belum ada data kelas
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    rekapKelas.map((kelas) => {
+                      const kehadiran = kelas.avgKehadiran ?? null;
+                      const kebiasaan = kelas.avgKebiasaan ?? null;
+                      let statusLabel = 'Belum Ada Data';
+                      let statusVariant: 'default' | 'secondary' | 'destructive' | 'outline' = 'outline';
+                      if (kehadiran !== null && kebiasaan !== null) {
+                        if (kehadiran >= 80 && kebiasaan >= 2.5) {
+                          statusLabel = 'Tuntas';
+                          statusVariant = 'default';
+                        } else if (kehadiran >= 60 && kebiasaan >= 1.5) {
+                          statusLabel = 'Perlu Perhatian';
+                          statusVariant = 'secondary';
+                        } else {
+                          statusLabel = 'Belum Tuntas';
+                          statusVariant = 'destructive';
+                        }
+                      }
+                      return (
+                        <TableRow key={kelas.classId}>
+                          <TableCell className="font-medium text-sm">{kelas.className}</TableCell>
+                          <TableCell className="text-center text-sm">{kelas.studentCount}</TableCell>
+                          <TableCell className="text-center text-sm">
+                            {kehadiran !== null ? (
+                              <span className={kehadiran >= 80 ? 'text-emerald-600 font-semibold' : kehadiran >= 60 ? 'text-amber-600' : 'text-red-600'}>
+                                {kehadiran}%
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {kelas.avgNilai !== null ? kelas.avgNilai : <span className="text-muted-foreground">-</span>}
+                          </TableCell>
+                          <TableCell className="text-center text-sm">
+                            {kebiasaan !== null ? (
+                              <span className={kebiasaan >= 2.5 ? 'text-emerald-600 font-semibold' : kebiasaan >= 1.5 ? 'text-amber-600' : 'text-red-600'}>
+                                {kebiasaan}/4
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge variant={statusVariant} className="text-[11px]">
+                              {statusLabel}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'rekap-guru' && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Rekap Per Guru</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-96 overflow-y-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="text-xs font-semibold">Nama Guru</TableHead>
+                    <TableHead className="text-xs font-semibold">NIP</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Jurnal Mengajar</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Materi</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Kuis</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Tugas</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rekapGuru.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                        Belum ada data guru
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    rekapGuru.map((guru) => (
+                      <TableRow key={guru.teacherId}>
+                        <TableCell className="font-medium text-sm">{guru.teacherName}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {guru.nip ? (
+                            <span className="font-mono text-xs">{guru.nip}</span>
+                          ) : (
+                            <span className="text-muted-foreground">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs font-mono">{guru.kehadiranMengajar}</Badge>
+                        </TableCell>
+                        <TableCell className="text-center text-sm">{guru.jumlahMateri}</TableCell>
+                        <TableCell className="text-center text-sm">{guru.jumlahKuis}</TableCell>
+                        <TableCell className="text-center text-sm">{guru.jumlahTugas}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'rekap-karakter' && (
+        <Card className="border-0 shadow-sm">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold">Rekap 7 Kebiasaan Anak Indonesia Hebat</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {rekapKebiasaan.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">Belum ada data kebiasaan</p>
+            ) : (
+              rekapKebiasaan.map((habit, idx) => {
+                const maxRating = 4;
+                const rating = habit.avgRating ?? 0;
+                const percentage = habit.avgRating !== null ? Math.round((rating / maxRating) * 100) : 0;
+                const barColor = HABIT_COLORS[idx % HABIT_COLORS.length];
+                const ratingLabel = habit.avgRating !== null ? `${rating}/4` : '-';
+                return (
+                  <div key={habit.habitId} className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium text-slate-700">{habit.habitName}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-muted-foreground">{habit.reportCount} laporan</span>
+                        <span className={`text-sm font-semibold ${rating >= 2.5 ? 'text-emerald-600' : rating >= 1.5 ? 'text-amber-600' : 'text-red-600'}`}>
+                          {ratingLabel}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="h-3 w-full rounded-full bg-slate-100 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${barColor} transition-all duration-500`}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}

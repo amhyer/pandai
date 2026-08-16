@@ -3,6 +3,15 @@ import { db } from '@/lib/db';
 
 export async function GET(req: NextRequest) {
   try {
+    // RBAC: Kepala Sekolah cannot access individual student data
+    const role = req.headers.get('X-User-Role');
+    if (role === 'KEPALA_SEKOLAH') {
+      return NextResponse.json(
+        { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get('studentId');
 

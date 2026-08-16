@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck, Users, ArrowLeft, BookOpen, Sparkles, ChevronRight } from 'lucide-react';
+import { Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck, Users, ArrowLeft, BookOpen, Sparkles, ChevronRight, Crown } from 'lucide-react';
 
 const DEMO_ACCOUNTS = [
   { label: 'Super Admin', username: 'superadmin@pandai.id', password: 'password123', icon: Shield, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100', text: 'text-violet-700', iconColor: 'text-violet-500' },
@@ -15,6 +15,7 @@ const DEMO_ACCOUNTS = [
   { label: 'Guru (NIP)', username: '198504152010011001', password: 'password123', icon: BookOpen, color: 'from-sky-500 to-blue-600', bg: 'bg-sky-50', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100', text: 'text-sky-700', iconColor: 'text-sky-500' },
   { label: 'Siswa (NISN)', username: '0051234567', password: 'password123', icon: GraduationCap, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100', text: 'text-amber-700', iconColor: 'text-amber-500' },
   { label: 'Orang Tua', username: 'ahmad', password: '123', icon: Users, color: 'from-rose-400 to-pink-500', bg: 'bg-rose-50', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100', text: 'text-rose-700', iconColor: 'text-rose-500' },
+  { label: 'Kepala Sekolah', username: 'kepsek.sman1', password: 'password123', icon: Crown, color: 'from-[#1F3864] to-[#2a4a7a]', bg: 'bg-slate-100', border: 'border-slate-200', hoverBg: 'hover:bg-slate-200', text: 'text-[#1F3864]', iconColor: 'text-[#1F3864]' },
 ];
 
 export function LoginForm() {

@@ -31,9 +31,18 @@ export const RATING_LABELS: Record<number, string> = {
   4: 'Selalu',
 };
 
-// GET /api/character-reports — all authenticated users can read
+// GET /api/character-reports — all authenticated users can read (except KEPALA_SEKOLAH: individual data blocked)
 export async function GET(req: NextRequest) {
   try {
+    // RBAC: Kepala Sekolah cannot access individual character reports
+    const role = req.headers.get('X-User-Role');
+    if (role === 'KEPALA_SEKOLAH') {
+      return NextResponse.json(
+        { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId');
     const classId = searchParams.get('classId');

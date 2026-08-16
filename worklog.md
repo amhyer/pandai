@@ -114,3 +114,40 @@ Stage Summary:
 - Part 2A/B limitation: Server OOM when Chrome + data-heavy view concurrent API calls exceed 4GB
 - Bug fix: Stale Covey habit IDs in fallback + star rating 5→4
 - Commit: 074cd14 pushed to main
+
+---
+Task ID: Feature-C
+Agent: Main Agent
+Task: Kepala Sekolah (Principal) Dashboard
+
+Work Log:
+- Added KEPALA_SEKOLAH role to schema comment, UserRole type, ROLE_LABELS, seed data
+- Created 2 seed users: kepsek.sman1 (SMA Negeri 1 Makassar) and kepsek.smkn2 (SMK Negeri 2 Surabaya)
+- Created /api/kepala-sekolah/dashboard API with aggregate-only data (rekapKelas, rekapGuru, rekapKebiasaan, schoolInfo)
+- Added RBAC enforcement: KEPALA_SEKOLAH gets 403 on /api/scores, /api/users, /api/character-reports (individual data blocked)
+- Created KepalaSekolahDashboard component with summary cards, tabbed rekap tables, 7 Kebiasaan bar chart
+- Wired into app: ViewType (4 new views), authenticated-app lazy loading, app-layout sidebar + breadcrumbs + role label
+- Added Kepala Sekolah demo account button on login form (Crown icon, school-primary color)
+- db:push: schema in sync
+- seed.ts: 2 new KEPALA_SEKOLAH users created (27 total users)
+- lint: 0 errors
+- Login API verified: kepsek.sman1 login returns KEPALA_SEKOLAH role with schoolId
+
+Stage Summary:
+- KEPALA_SEKOLAH role fully integrated into 6-role RBAC system
+- Dashboard shows aggregated school data ONLY — no individual student data exposed
+- 3 existing API endpoints hardened with 403 for KEPALA_SEKOLAH role
+- New API: GET /api/kepala-sekolah/dashboard?schoolId=X (KEPALA_SEKOLAH + SUPER_ADMIN only)
+- Files created/modified:
+  - prisma/schema.prisma (role comment)
+  - prisma/seed.ts (2 KEPALA_SEKOLAH users)
+  - src/lib/constants.ts (ROLE_LABELS)
+  - src/store/use-store.ts (UserRole type + 4 ViewTypes)
+  - src/app/api/kepala-sekolah/dashboard/route.ts (NEW)
+  - src/app/api/scores/route.ts (RBAC guard)
+  - src/app/api/users/route.ts (RBAC guard)
+  - src/app/api/character-reports/route.ts (RBAC guard)
+  - src/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard.tsx (NEW)
+  - src/app/authenticated-app.tsx (lazy views + roleDashboards)
+  - src/components/layout/app-layout.tsx (sidebar, VIEW_LABELS, ROLE_LABELS, breadcrumbs)
+  - src/components/auth/login-form.tsx (demo account button)

@@ -74,15 +74,24 @@ async function autoCreateOrtuForSiswa(siswaData: {
 
 export async function GET(request: Request) {
   try {
+    // RBAC: Kepala Sekolah cannot access individual user data
+    const role = (request.headers.get('X-User-Role') || '').toUpperCase();
+    if (role === 'KEPALA_SEKOLAH') {
+      return NextResponse.json(
+        { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
-    const role = searchParams.get('role');
+    const userRole = searchParams.get('role');
     const classId = searchParams.get('classId');
     const parentId = searchParams.get('parentId'); // Get children of a parent
 
     const where: any = { isActive: true };
     if (schoolId) where.schoolId = schoolId;
-    if (role) where.role = role;
+    if (userRole) where.role = userRole;
     if (classId) where.classId = classId;
     if (parentId) where.parentId = parentId;
 
