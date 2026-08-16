@@ -118,7 +118,7 @@ Data Akademik:
 Kehadiran:
 - Hadir: ${attendanceSummary.hadir}, Izin: ${attendanceSummary.izin}, Sakit: ${attendanceSummary.sakit}, Alpa: ${attendanceSummary.alpa}
 
-7 Kebiasaan Anak Hebat:
+7 Kebiasaan Anak Indonesia Hebat (Bangun Pagi, Beribadah, Berolahraga, Makan Sehat, Gemar Belajar, Bermasyarakat, Tidur Cepat):
 ${habitSummary || 'Belum ada data'}
 
 Buat deskripsi rapor yang mencakup:

@@ -57,15 +57,25 @@ interface ChildInfo {
   classId: string;
 }
 
+// 7 Kebiasaan Anak Indonesia Hebat (program resmi pemerintah RI)
 const SEVEN_HABITS = [
-  { id: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', description: 'Mengambil inisiatif dan tanggung jawab atas tindakan sendiri', bg: 'bg-red-50', border: 'border-red-100', badge: 'bg-red-100 text-red-700', bar: 'bg-red-400' },
-  { id: 'tujuan', name: 'Mulai dengan Tujuan', emoji: '🧭', description: 'Membuat rencana dan tujuan yang jelas sebelum bertindak', bg: 'bg-blue-50', border: 'border-blue-100', badge: 'bg-blue-100 text-blue-700', bar: 'bg-blue-400' },
-  { id: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', description: 'Mengerjakan hal penting terlebih dahulu, bukan hal mendesak', bg: 'bg-green-50', border: 'border-green-100', badge: 'bg-green-100 text-green-700', bar: 'bg-green-400' },
-  { id: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', description: 'Bekerja sama dan menghargai perbedaan untuk hasil terbaik', bg: 'bg-yellow-50', border: 'border-yellow-100', badge: 'bg-yellow-100 text-yellow-700', bar: 'bg-yellow-400' },
-  { id: 'mengerti', name: 'Mengerti Dahulu Baru Dipahami', emoji: '👂', description: 'Mendengarkan dengan empati sebelum meminta dipahami', bg: 'bg-purple-50', border: 'border-purple-100', badge: 'bg-purple-100 text-purple-700', bar: 'bg-purple-400' },
-  { id: 'bersinergi', name: 'Bersinergi', emoji: '🤲', description: 'Bekerja sama untuk menciptakan hasil yang lebih baik', bg: 'bg-pink-50', border: 'border-pink-100', badge: 'bg-pink-100 text-pink-700', bar: 'bg-pink-400' },
-  { id: 'asah', name: 'Memperbarui Diri', emoji: '🔧', description: 'Terus belajar, berkembang, dan menjaga kesehatan diri', bg: 'bg-orange-50', border: 'border-orange-100', badge: 'bg-orange-100 text-orange-700', bar: 'bg-orange-400' },
+  { id: 'bangun_pagi',   name: 'Bangun Pagi',              emoji: '🌅', description: 'Bangun pagi secara teratur sebelum jam 6 pagi', bg: 'bg-amber-50', border: 'border-amber-200', badge: 'bg-amber-100 text-amber-700', bar: 'bg-amber-400' },
+  { id: 'beribadah',     name: 'Beribadah',                emoji: '🤲', description: 'Melaksanakan ibadah sesuai agama dan keyakinan', bg: 'bg-emerald-50', border: 'border-emerald-200', badge: 'bg-emerald-100 text-emerald-700', bar: 'bg-emerald-400' },
+  { id: 'berolahraga',   name: 'Berolahraga',              emoji: '🏃', description: 'Olahraga minimal 30 menit per hari', bg: 'bg-sky-50', border: 'border-sky-200', badge: 'bg-sky-100 text-sky-700', bar: 'bg-sky-400' },
+  { id: 'makan_sehat',   name: 'Makan Sehat & Bergizi',    emoji: '🥗', description: 'Mengonsumsi makanan sehat dan bergizi seimbang', bg: 'bg-green-50', border: 'border-green-200', badge: 'bg-green-100 text-green-700', bar: 'bg-green-400' },
+  { id: 'gemar_belajar', name: 'Gemar Belajar',             emoji: '📚', description: 'Belajar dengan rajin dan disiplin setiap hari', bg: 'bg-blue-50', border: 'border-blue-200', badge: 'bg-blue-100 text-blue-700', bar: 'bg-blue-400' },
+  { id: 'bermasyarakat', name: 'Bermasyarakat',             emoji: '🤝', description: 'Aktif membantu dan berinteraksi di masyarakat', bg: 'bg-rose-50', border: 'border-rose-200', badge: 'bg-rose-100 text-rose-700', bar: 'bg-rose-400' },
+  { id: 'tidur_cepat',   name: 'Tidur Cepat',              emoji: '😴', description: 'Tidur tepat waktu sebelum jam 9 malam', bg: 'bg-violet-50', border: 'border-violet-200', badge: 'bg-violet-100 text-violet-700', bar: 'bg-violet-400' },
 ];
+
+// Rating scale 1-4
+const RATING_SCALE = [1, 2, 3, 4] as const;
+const RATING_LABELS: Record<number, { label: string; color: string }> = {
+  1: { label: 'Belum',   color: 'text-red-500' },
+  2: { label: 'Kadang',  color: 'text-amber-500' },
+  3: { label: 'Sering',  color: 'text-emerald-500' },
+  4: { label: 'Selalu',  color: 'text-blue-600' },
+};
 
 interface HabitRating {
   habitId: string;
@@ -141,7 +151,7 @@ function getBarColor(score: number) {
 // STAR RATING COMPONENT (with hover preview)
 // ═══════════════════════════════════════════════════════════════════
 
-function StarRating({
+function HabitRatingSelector({
   rating,
   onChange,
   size = 'md',
@@ -152,41 +162,42 @@ function StarRating({
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
 }) {
-  const [hoveredStar, setHoveredStar] = useState(0);
+  const [hovered, setHovered] = useState(0);
+  const displayRating = hovered || rating;
 
-  const sizeClasses = { sm: 'text-lg', md: 'text-2xl', lg: 'text-3xl' };
-  const displayRating = hoveredStar || rating;
-
-  const ratingLabels = ['', 'Sangat Kurang', 'Kurang', 'Cukup', 'Baik', 'Sangat Baik'];
+  const sizeClasses = { sm: 'text-xs px-2 py-1', md: 'text-sm px-3 py-1.5', lg: 'text-base px-4 py-2' };
 
   return (
     <div className="flex items-center gap-1.5">
-      <div className="flex gap-0.5">
-        {[1, 2, 3, 4, 5].map((star) => (
+      <div className="flex gap-1">
+        {RATING_SCALE.map((level) => (
           <button
-            key={star}
+            key={level}
             type="button"
-            onClick={() => onChange?.(star === rating ? 0 : star)}
-            onMouseEnter={() => onChange && setHoveredStar(star)}
-            onMouseLeave={() => setHoveredStar(0)}
+            onClick={() => onChange?.(level === rating ? 0 : level)}
+            onMouseEnter={() => onChange && setHovered(level)}
+            onMouseLeave={() => setHovered(0)}
             className={cn(
               sizeClasses[size],
-              'transition-all duration-200',
+              'rounded-lg border font-semibold transition-all duration-200',
               onChange
-                ? 'cursor-pointer hover:scale-125 active:scale-95'
+                ? 'cursor-pointer hover:scale-105 active:scale-95'
                 : 'cursor-default',
-              star <= displayRating
-                ? 'text-amber-400 drop-shadow-[0_0_6px_rgba(251,191,36,0.4)]'
-                : 'text-gray-300'
+              level <= displayRating
+                ? level === 4 ? 'bg-blue-100 border-blue-300 text-blue-700'
+                  : level === 3 ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
+                  : level === 2 ? 'bg-amber-100 border-amber-300 text-amber-700'
+                  : 'bg-red-100 border-red-300 text-red-700'
+                : 'bg-gray-50 border-gray-200 text-gray-400'
             )}
           >
-            ★
+            {RATING_LABELS[level].label}
           </button>
         ))}
       </div>
       {showLabel && displayRating > 0 && (
-        <span className="text-xs text-muted-foreground font-medium ml-1">
-          {ratingLabels[displayRating]}
+        <span className={cn('text-xs font-medium ml-1', RATING_LABELS[displayRating]?.color || 'text-muted-foreground')}>
+          {RATING_LABELS[displayRating].label}
         </span>
       )}
     </div>
@@ -377,7 +388,7 @@ export function OrtuKarakterView() {
           </GradientIcon>
           <div>
             <h1 className="text-2xl font-bold text-foreground">
-              7 Kebiasaan Anak Hebat
+              7 Kebiasaan Anak Indonesia Hebat
             </h1>
             <p className="text-sm text-muted-foreground mt-0.5">
               Pantau dan catat perkembangan karakter anak Anda setiap hari
@@ -471,7 +482,7 @@ export function OrtuKarakterView() {
             </div>
             <div className="flex items-center justify-between mt-2">
               <span className="text-xs text-muted-foreground">
-                Rata-rata: <strong className="text-foreground">{avgRating}</strong>/5
+                Rata-rata: <strong className="text-foreground">{avgRating}</strong>/4
               </span>
               <div className="flex -space-x-0.5">
                 {[1, 2, 3, 4, 5].map((star) => (
@@ -536,7 +547,7 @@ export function OrtuKarakterView() {
                       <h3 className="font-semibold text-sm text-foreground">{habit.name}</h3>
                       {rating > 0 && (
                         <Badge className={cn('text-[10px] px-1.5 py-0 h-5 rounded-full border-0', habit.badge)}>
-                          {rating}/5
+                          {rating}/4
                         </Badge>
                       )}
                     </div>
@@ -546,18 +557,18 @@ export function OrtuKarakterView() {
 
                 <Separator className="my-3 bg-gray-200/60" />
 
-                {/* Star Rating */}
+                {/* Rating Selector */}
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium text-muted-foreground">Penilaian</Label>
                   <span className={cn(
                     'text-xs font-semibold transition-all duration-200',
-                    rating > 0 ? 'text-amber-600' : 'text-gray-400'
+                    rating > 0 ? 'text-blue-600' : 'text-gray-400'
                   )}>
-                    {rating > 0 ? ratingLabel(rating) : 'Belum dinilai'}
+                    {rating > 0 ? RATING_LABELS[rating]?.label || 'Belum dinilai' : 'Belum dinilai'}
                   </span>
                 </div>
                 <div className="mt-1.5">
-                  <StarRating
+                  <HabitRatingSelector
                     rating={rating}
                     onChange={(r) => handleRatingChange(habit.id, r)}
                     size="lg"
@@ -639,7 +650,7 @@ export function OrtuKarakterView() {
 }
 
 function ratingLabel(rating: number): string {
-  const labels = ['', 'Sangat Kurang', 'Kurang', 'Cukup', 'Baik', 'Sangat Baik'];
+  const labels: Record<number, string> = { 1: 'Belum', 2: 'Kadang', 3: 'Sering', 4: 'Selalu' };
   return labels[rating] || '';
 }
 
@@ -745,13 +756,13 @@ export function OrtuRekapKarakterView() {
         // Mock data fallback
       }
       setSummaries([
-        { habitId: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', avgRating: 4.2, totalReports: 20, trend: 'up', prevRating: 3.8, breakdown: { 1: 0, 2: 1, 3: 3, 4: 10, 5: 6 } },
-        { habitId: 'tujuan', name: 'Mulai dengan Tujuan', emoji: '🧭', avgRating: 3.6, totalReports: 18, trend: 'stable', prevRating: 3.5, breakdown: { 1: 1, 2: 2, 3: 6, 4: 7, 5: 2 } },
-        { habitId: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', avgRating: 4.0, totalReports: 22, trend: 'up', prevRating: 3.6, breakdown: { 1: 0, 2: 1, 3: 4, 4: 12, 5: 5 } },
-        { habitId: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', avgRating: 3.8, totalReports: 15, trend: 'down', prevRating: 4.1, breakdown: { 1: 1, 2: 1, 3: 5, 4: 6, 5: 2 } },
-        { habitId: 'mengerti', name: 'Mengerti Dahulu Baru Dipahami', emoji: '👂', avgRating: 3.3, totalReports: 17, trend: 'stable', prevRating: 3.4, breakdown: { 1: 1, 2: 3, 3: 6, 4: 5, 5: 2 } },
-        { habitId: 'bersinergi', name: 'Bersinergi', emoji: '🤲', avgRating: 4.1, totalReports: 19, trend: 'up', prevRating: 3.7, breakdown: { 1: 0, 2: 1, 3: 3, 4: 10, 5: 5 } },
-        { habitId: 'asah', name: 'Memperbarui Diri', emoji: '🔧', avgRating: 3.5, totalReports: 16, trend: 'down', prevRating: 3.9, breakdown: { 1: 1, 2: 2, 3: 5, 4: 6, 5: 2 } },
+        { habitId: 'bangun_pagi', name: 'Bangun Pagi', emoji: '🌅', avgRating: 3.2, totalReports: 20, trend: 'up', prevRating: 2.8, breakdown: { 1: 1, 2: 3, 3: 10, 4: 6 } },
+        { habitId: 'beribadah', name: 'Beribadah', emoji: '🤲', avgRating: 3.6, totalReports: 18, trend: 'stable', prevRating: 3.5, breakdown: { 1: 1, 2: 2, 3: 6, 4: 9 } },
+        { habitId: 'berolahraga', name: 'Berolahraga', emoji: '🏃', avgRating: 2.8, totalReports: 22, trend: 'down', prevRating: 3.0, breakdown: { 1: 3, 2: 5, 3: 8, 4: 6 } },
+        { habitId: 'makan_sehat', name: 'Makan Sehat & Bergizi', emoji: '🥗', avgRating: 3.1, totalReports: 15, trend: 'up', prevRating: 2.8, breakdown: { 1: 1, 2: 4, 3: 6, 4: 4 } },
+        { habitId: 'gemar_belajar', name: 'Gemar Belajar', emoji: '📚', avgRating: 3.3, totalReports: 17, trend: 'stable', prevRating: 3.2, breakdown: { 1: 1, 2: 2, 3: 8, 4: 6 } },
+        { habitId: 'bermasyarakat', name: 'Bermasyarakat', emoji: '🤝', avgRating: 3.4, totalReports: 19, trend: 'up', prevRating: 3.0, breakdown: { 1: 1, 2: 3, 3: 7, 4: 8 } },
+        { habitId: 'tidur_cepat', name: 'Tidur Cepat', emoji: '😴', avgRating: 2.6, totalReports: 16, trend: 'down', prevRating: 2.9, breakdown: { 1: 3, 2: 5, 3: 5, 4: 3 } },
       ]);
     }
     loadSummary();
@@ -772,9 +783,9 @@ export function OrtuRekapKarakterView() {
 
   const recommendations = weakest && weakest.avgRating < 4
     ? [`
-      <strong>${weakest.name} ${weakest.emoji}</strong> — Rata-rata ${weakest.avgRating}/5. Coba berikan contoh nyata dalam kehidupan sehari-hari dan diskusikan bersama anak mengapa kebiasaan ini penting.`,
+      <strong>${weakest.name} ${weakest.emoji}</strong> — Rata-rata ${weakest.avgRating}/4. Coba berikan contoh nyata dalam kehidupan sehari-hari dan diskusikan bersama anak mengapa kebiasaan ini penting.`,
         strongest && strongest.avgRating > 0
-        ? `<strong>${strongest.name} ${strongest.emoji}</strong> adalah kebiasaan terkuat dengan rata-rata ${strongest.avgRating}/5. Terus apresiasi dan pertahankan!`
+        ? `<strong>${strongest.name} ${strongest.emoji}</strong> adalah kebiasaan terkuat dengan rata-rata ${strongest.avgRating}/4. Terus apresiasi dan pertahankan!`
         : '',
       ]
     : [];
@@ -1035,10 +1046,12 @@ export function OrtuRekapKarakterView() {
               </p>
               <div className="flex items-baseline gap-1 justify-center sm:justify-start">
                 <span className={cn('text-6xl font-bold', scoreInfo.text)}>{overallAvg}</span>
-                <span className="text-xl text-muted-foreground font-medium">/5</span>
+                <span className="text-xl text-muted-foreground font-medium">/4</span>
               </div>
               <div className="flex justify-center sm:justify-start mt-2">
-                <StarRating rating={Math.round(overallAvg)} size="md" />
+                <Badge className={cn('px-4 py-1.5 text-sm font-semibold rounded-lg border', scoreInfo.text === 'text-emerald-600' ? 'bg-emerald-100 border-emerald-300 text-emerald-700' : scoreInfo.text === 'text-amber-600' ? 'bg-amber-100 border-amber-300 text-amber-700' : 'bg-red-100 border-red-300 text-red-700')}>
+                  {overallAvg >= 3.5 ? 'Selalu' : overallAvg >= 2.5 ? 'Sering' : 'Kadang/Belum'}
+                </Badge>
               </div>
             </div>
 
@@ -1149,7 +1162,7 @@ export function OrtuRekapKarakterView() {
                         'h-full rounded-full transition-all duration-700 ease-out',
                         getBarColor(summary.avgRating)
                       )}
-                      style={{ width: `${Math.min((summary.avgRating / 5) * 100, 100)}%` }}
+                      style={{ width: `${Math.min((summary.avgRating / 4) * 100, 100)}%` }}
                     />
                   </div>
 
@@ -1252,7 +1265,7 @@ export function OrtuRekapKarakterView() {
                               'h-full rounded-full transition-all duration-700 ease-out',
                               getBarColor(s.avgRating)
                             )}
-                            style={{ width: `${Math.min((s.avgRating / 5) * 100, 100)}%` }}
+                            style={{ width: `${Math.min((s.avgRating / 4) * 100, 100)}%` }}
                           />
                         </div>
                       </TableCell>

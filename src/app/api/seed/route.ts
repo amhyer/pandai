@@ -429,8 +429,8 @@ export async function POST(request: Request) {
       ],
     });
 
-    // ===== CHARACTER REPORTS (7 Kebiasaan) =====
-    const habitNames = ['proaktif', 'tujuan', 'prioritas', 'menang', 'mengerti', 'bersinergi', 'asah'];
+    // ===== CHARACTER REPORTS (7 Kebiasaan Anak Indonesia Hebat) =====
+    const habitNames = ['bangun_pagi', 'beribadah', 'berolahraga', 'makan_sehat', 'gemar_belajar', 'bermasyarakat', 'tidur_cepat'];
     const charData: any[] = [];
     for (let dayOffset = 0; dayOffset < 20; dayOffset++) {
       const date = new Date(now);
@@ -439,16 +439,17 @@ export async function POST(request: Request) {
       const dateStr = date.toISOString().split('T')[0];
 
       for (let s = 0; s < Math.min(students.length, 5); s++) {
-        // Guru reports
+        // Orang Tua reports (rating 1-4)
         for (const habit of habitNames.slice(0, 3 + Math.floor(Math.random() * 5))) {
           charData.push({
             studentId: students[s].id,
             classId: classRecords[s % classRecords.length].id,
             schoolId: sma1.id,
-            reporterId: guruBindo.id,
+            reporterId: guruBindo.id, // Using guru as reporter placeholder; filledBy marks it as ORANG TUA report
+            filledBy: 'ORANG_TUA',
             date: dateStr,
             habit,
-            rating: Math.floor(Math.random() * 3) + 3, // 3-5
+            rating: Math.floor(Math.random() * 3) + 2, // 2-4
             note: Math.random() > 0.7 ? 'Menunjukkan perkembangan baik' : null,
           });
         }

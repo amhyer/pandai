@@ -192,8 +192,8 @@ const NAV_CONFIG: RoleNav = {
     {
       section: 'Karakter',
       items: [
-        { label: 'Isi Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
-        { label: 'Rekap 7 Kebiasaan', view: 'guru-rekap-karakter', icon: Award },
+        { label: 'Rekap Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
+        { label: 'Analisis Kebiasaan Kelas', view: 'guru-rekap-karakter', icon: Award },
       ],
     },
     {
@@ -262,7 +262,7 @@ const NAV_CONFIG: RoleNav = {
       ],
     },
     {
-      section: '7 Kebiasaan Anak Hebat',
+      section: '7 Kebiasaan Anak Indonesia Hebat',
       items: [
         { label: 'Isi Laporan Harian', view: 'ortu-karakter', icon: Heart },
         { label: 'Rekap & Analisis', view: 'ortu-rekap-karakter', icon: BarChart3 },
@@ -328,8 +328,8 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-tugas': 'Tugas, Kuis & Ujian',
   'guru-kehadiran': 'Kehadiran Siswa',
   'guru-rekap-kehadiran': 'Rekap Kehadiran',
-  'guru-karakter': 'Isi Laporan 7 Kebiasaan',
-  'guru-rekap-karakter': 'Rekap 7 Kebiasaan',
+  'guru-karakter': 'Rekap Laporan 7 Kebiasaan',
+  'guru-rekap-karakter': 'Analisis Kebiasaan Kelas',
   'guru-jurnal': 'Jurnal Mengajar',
   'guru-nilai': 'Input Nilai',
   'guru-analisis': 'Analisis Hasil Belajar',

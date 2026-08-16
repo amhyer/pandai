@@ -37,14 +37,21 @@ interface HabitRating { habit: string; rating: number; note: string; }
 interface JournalEntry { id: string; date: string; className: string; subject: string; topic: string; activities: string; notes: string; }
 
 const HABITS = [
-  { key: 'proaktif', name: 'Bersikap Proaktif', emoji: '🎯', desc: 'Mengambil inisiatif dan bertanggung jawab', color: 'bg-rose-50 border-rose-200 text-rose-800', iconBg: 'bg-rose-100', barColor: 'bg-rose-400' },
-  { key: 'tujuan', name: 'Memulai dengan Tujuan', emoji: '🧭', desc: 'Menentukan tujuan sebelum bertindak', color: 'bg-sky-50 border-sky-200 text-sky-800', iconBg: 'bg-sky-100', barColor: 'bg-sky-400' },
-  { key: 'prioritas', name: 'Prioritas Utama Dahulu', emoji: '📋', desc: 'Mengutamakan hal penting, bukan mendesak', color: 'bg-amber-50 border-amber-200 text-amber-800', iconBg: 'bg-amber-100', barColor: 'bg-amber-400' },
-  { key: 'menang', name: 'Berpikir Menang-Menang', emoji: '🤝', desc: 'Mencari solusi saling menguntungkan', color: 'bg-emerald-50 border-emerald-200 text-emerald-800', iconBg: 'bg-emerald-100', barColor: 'bg-emerald-400' },
-  { key: 'mengerti', name: 'Mengerti lalu Dierti', emoji: '👂', desc: 'Mendengarkan orang lain terlebih dahulu', color: 'bg-violet-50 border-violet-200 text-violet-800', iconBg: 'bg-violet-100', barColor: 'bg-violet-400' },
-  { key: 'sinergi', name: 'Bersinergi', emoji: '🤲', desc: 'Bekerja sama mencapai hasil terbaik', color: 'bg-teal-50 border-teal-200 text-teal-800', iconBg: 'bg-teal-100', barColor: 'bg-teal-400' },
-  { key: 'asah', name: 'Asah Gergaji', emoji: '🔧', desc: 'Terus belajar dan mengembangkan diri', color: 'bg-orange-50 border-orange-200 text-orange-800', iconBg: 'bg-orange-100', barColor: 'bg-orange-400' },
+  { key: 'bangun_pagi',   name: 'Bangun Pagi',             emoji: '🌅', desc: 'Bangun pagi secara teratur', color: 'bg-amber-50 border-amber-200 text-amber-800', iconBg: 'bg-amber-100', barColor: 'bg-amber-400' },
+  { key: 'beribadah',     name: 'Beribadah',               emoji: '🤲', desc: 'Melaksanakan ibadah sesuai keyakinan', color: 'bg-emerald-50 border-emerald-200 text-emerald-800', iconBg: 'bg-emerald-100', barColor: 'bg-emerald-400' },
+  { key: 'berolahraga',   name: 'Berolahraga',             emoji: '🏃', desc: 'Olahraga minimal 30 menit per hari', color: 'bg-sky-50 border-sky-200 text-sky-800', iconBg: 'bg-sky-100', barColor: 'bg-sky-400' },
+  { key: 'makan_sehat',   name: 'Makan Sehat & Bergizi',   emoji: '🥗', desc: 'Mengonsumsi makanan bergizi seimbang', color: 'bg-green-50 border-green-200 text-green-800', iconBg: 'bg-green-100', barColor: 'bg-green-400' },
+  { key: 'gemar_belajar', name: 'Gemar Belajar',            emoji: '📚', desc: 'Belajar dengan rajin dan disiplin', color: 'bg-blue-50 border-blue-200 text-blue-800', iconBg: 'bg-blue-100', barColor: 'bg-blue-400' },
+  { key: 'bermasyarakat', name: 'Bermasyarakat',            emoji: '🤝', desc: 'Aktif di lingkungan masyarakat', color: 'bg-rose-50 border-rose-200 text-rose-800', iconBg: 'bg-rose-100', barColor: 'bg-rose-400' },
+  { key: 'tidur_cepat',   name: 'Tidur Cepat',             emoji: '😴', desc: 'Tidur tepat waktu', color: 'bg-violet-50 border-violet-200 text-violet-800', iconBg: 'bg-violet-100', barColor: 'bg-violet-400' },
 ];
+
+const RATING_LABELS: Record<number, { label: string; shortLabel: string; color: string }> = {
+  1: { label: 'Belum', shortLabel: '1', color: 'bg-red-100 border-red-300 text-red-700' },
+  2: { label: 'Kadang', shortLabel: '2', color: 'bg-amber-100 border-amber-300 text-amber-700' },
+  3: { label: 'Sering', shortLabel: '3', color: 'bg-emerald-100 border-emerald-300 text-emerald-700' },
+  4: { label: 'Selalu', shortLabel: '4', color: 'bg-blue-100 border-blue-300 text-blue-700' },
+};
 
 const MOCK_CLASSES = [
   { id: 'c1', name: 'X IPA 1' }, { id: 'c2', name: 'X IPA 2' },
@@ -85,21 +92,21 @@ const MOCK_REKAP: RekapKehadiran[] = [
 ];
 
 const MOCK_HABIT_RATINGS: HabitRating[] = [
-  { habit: 'proaktif', rating: 4, note: 'Sering bertanya aktif' }, { habit: 'tujuan', rating: 3, note: 'Kadang kurang fokus' },
-  { habit: 'prioritas', rating: 4, note: '' }, { habit: 'menang', rating: 5, note: 'Sangat baik kerja kelompok' },
-  { habit: 'mengerti', rating: 3, note: 'Perlu lebih mendengarkan' }, { habit: 'sinergi', rating: 4, note: '' },
-  { habit: 'asah', rating: 3, note: 'Aktif ekskul' },
+  { habit: 'bangun_pagi', rating: 3, note: 'Bangun jam 5 pagi' }, { habit: 'beribadah', rating: 4, note: '' },
+  { habit: 'berolahraga', rating: 3, note: '' }, { habit: 'makan_sehat', rating: 4, note: 'Sudah mau makan sayur' },
+  { habit: 'gemar_belajar', rating: 3, note: 'Perlu lebih konsisten' }, { habit: 'bermasyarakat', rating: 3, note: '' },
+  { habit: 'tidur_cepat', rating: 4, note: '' },
 ];
 
 const MOCK_REKAP_KARAKTER = [
-  { studentId: 's1', studentName: 'Ahmad Fauzi', ratings: [4, 3, 4, 5, 3, 4, 3] },
-  { studentId: 's2', studentName: 'Siti Nurhaliza', ratings: [5, 4, 5, 4, 5, 4, 4] },
-  { studentId: 's3', studentName: 'Budi Santoso', ratings: [3, 3, 2, 4, 3, 3, 2] },
-  { studentId: 's4', studentName: 'Dewi Lestari', ratings: [5, 5, 5, 5, 4, 5, 5] },
-  { studentId: 's5', studentName: 'Rizky Pratama', ratings: [2, 3, 2, 3, 2, 3, 2] },
-  { studentId: 's6', studentName: 'Putri Wulandari', ratings: [4, 4, 4, 4, 4, 5, 4] },
-  { studentId: 's7', studentName: 'Muhammad Iqbal', ratings: [3, 2, 3, 3, 3, 2, 3] },
-  { studentId: 's8', studentName: 'Anisa Rahma', ratings: [4, 5, 4, 4, 5, 4, 4] },
+  { studentId: 's1', studentName: 'Ahmad Fauzi', ratings: [3, 4, 3, 4, 3, 3, 4] },
+  { studentId: 's2', studentName: 'Siti Nurhaliza', ratings: [4, 4, 3, 4, 4, 4, 4] },
+  { studentId: 's3', studentName: 'Budi Santoso', ratings: [2, 3, 2, 3, 3, 2, 2] },
+  { studentId: 's4', studentName: 'Dewi Lestari', ratings: [4, 4, 4, 4, 4, 4, 4] },
+  { studentId: 's5', studentName: 'Rizky Pratama', ratings: [2, 2, 2, 3, 2, 2, 1] },
+  { studentId: 's6', studentName: 'Putri Wulandari', ratings: [4, 4, 3, 4, 4, 4, 3] },
+  { studentId: 's7', studentName: 'Muhammad Iqbal', ratings: [2, 3, 2, 3, 3, 2, 2] },
+  { studentId: 's8', studentName: 'Anisa Rahma', ratings: [3, 4, 3, 4, 4, 3, 3] },
 ];
 
 const MOCK_JOURNALS: JournalEntry[] = [
@@ -785,17 +792,15 @@ export function GuruRekapKehadiranView() {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// 4. GURU KARAKTER VIEW — Isi Laporan 7 Kebiasaan
+// 4. GURU KARAKTER VIEW — Read-Only Recap (Orang Tua yang mengisi)
 // ═══════════════════════════════════════════════════════════════════
 
 export function GuruKarakterView() {
   const user = useAppStore((s) => s.user);
-  const [date, setDate] = useState(todayStr());
   const [classId, setClassId] = useState('');
   const [studentId, setStudentId] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
   const [ratings, setRatings] = useState<HabitRating[]>(HABITS.map((h) => ({ habit: h.key, rating: 0, note: '' })));
-  const [saving, setSaving] = useState(false);
   const studentLoadedRef = useRef<string>('');
   const ratingLoadedRef = useRef<string>('');
 
@@ -815,7 +820,7 @@ export function GuruKarakterView() {
 
   useEffect(() => {
     if (!studentId) return;
-    const m = String(new Date(date).getMonth() + 1).padStart(2, '0');
+    const m = String(new Date().getMonth() + 1).padStart(2, '0');
     const key = `${studentId}-${m}`;
     if (ratingLoadedRef.current === key) return;
     ratingLoadedRef.current = key;
@@ -825,8 +830,8 @@ export function GuruKarakterView() {
         const res = await fetch(`/api/character-reports?schoolId=${user?.schoolId ?? ''}&classId=${classId}&studentId=${studentId}&month=${m}`, { signal: controller.signal });
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data.reports) && data.reports.length > 0) {
-            setRatings(HABITS.map((h) => { const f = data.reports.find((r: Record<string, string | number>) => r.habit === h.key); return { habit: h.key, rating: f ? (f.rating as number) : 0, note: f ? (f.note as string) : '' }; }));
+          if (Array.isArray(data) && data.length > 0) {
+            setRatings(HABITS.map((h) => { const f = data.find((r: Record<string, string | number>) => r.habit === h.key); return { habit: h.key, rating: f ? (f.rating as number) : 0, note: f ? (f.note as string) : '' }; }));
             return;
           }
         }
@@ -834,22 +839,7 @@ export function GuruKarakterView() {
       setRatings(MOCK_HABIT_RATINGS.map((r) => ({ ...r })));
     })();
     return () => controller.abort();
-  }, [studentId, classId, date, user?.schoolId]);
-
-  const updateRating = (hk: string, rating: number) => setRatings((prev) => prev.map((r) => (r.habit === hk ? { ...r, rating } : r)));
-  const updateNote = (hk: string, note: string) => setRatings((prev) => prev.map((r) => (r.habit === hk ? { ...r, note } : r)));
-
-  const handleSave = async () => {
-    if (!studentId) { toast.error('Pilih siswa terlebih dahulu'); return; }
-    if (!ratings.some((r) => r.rating > 0)) { toast.error('Berikan minimal satu penilaian'); return; }
-    setSaving(true);
-    try {
-      const body = ratings.filter((r) => r.rating > 0).map((r) => ({ studentId, classId, schoolId: user?.schoolId, reporterId: user?.id, date, habit: r.habit, rating: r.rating, note: r.note }));
-      const res = await fetch('/api/character-reports', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-      if (res.ok) { toast.success('Laporan karakter berhasil disimpan'); setSaving(false); return; }
-    } catch { /* fallback */ }
-    toast.success('Laporan karakter berhasil disimpan (lokal)'); setSaving(false);
-  };
+  }, [studentId, classId, user?.schoolId]);
 
   const completedCount = ratings.filter((r) => r.rating > 0).length;
   const progressPct = (completedCount / HABITS.length) * 100;
@@ -857,13 +847,22 @@ export function GuruKarakterView() {
 
   return (
     <div className="space-y-6">
-      <PageHeader icon={<Sparkles className="w-5 h-5" />} title="Isi Laporan 7 Kebiasaan" description="7 Kebiasaan Anak Hebat — Laporan Karakter Siswa" />
+      <PageHeader icon={<Sparkles className="w-5 h-5" />} title="Rekap Laporan 7 Kebiasaan" description="7 Kebiasaan Anak Indonesia Hebat — Data dilaporkan oleh Orang Tua (Read-Only)" />
+
+      {/* Info banner */}
+      <Card className="rounded-xl border-amber-200 bg-amber-50">
+        <CardContent className="p-4 flex items-center gap-3">
+          <span className="text-xl">ℹ️</span>
+          <p className="text-sm text-amber-800">
+            Laporan <strong>7 Kebiasaan Anak Indonesia Hebat</strong> diisi oleh <strong>Orang Tua</strong>. Guru hanya dapat melihat rekap data karakter siswa.
+          </p>
+        </CardContent>
+      </Card>
 
       {/* Selectors */}
       <Card className="rounded-xl shadow-sm">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
-            <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Tanggal</Label><Input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full sm:w-48 rounded-lg" /></div>
             <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Kelas</Label>
               <div className="flex flex-wrap gap-2">
                 {MOCK_CLASSES.map((c) => (
@@ -901,18 +900,19 @@ export function GuruKarakterView() {
         </Card>
       )}
 
-      {/* Habit cards */}
+      {/* Habit cards — READ ONLY */}
       {!studentId ? (
         <Card className="rounded-xl shadow-sm"><CardContent>
-          <EmptyState icon={<Sparkles className="w-8 h-8" />} message="Pilih kelas dan siswa untuk mulai mengisi laporan" />
+          <EmptyState icon={<Sparkles className="w-8 h-8" />} message="Pilih kelas dan siswa untuk melihat rekap 7 Kebiasaan" />
         </CardContent></Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {HABITS.map((h, idx) => {
             const rating = ratings.find((r) => r.habit === h.key);
             const isRated = rating && rating.rating > 0;
+            const ratingInfo = isRated ? RATING_LABELS[rating.rating] : null;
             return (
-              <Card key={h.key} className={cn('rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 border overflow-hidden',
+              <Card key={h.key} className={cn('rounded-xl shadow-sm border overflow-hidden',
                 isRated ? cn('border-2', h.color.split(' ').slice(0, 2).join(' ')) : 'border-border')}
               >
                 <CardContent className="p-4 space-y-3">
@@ -925,22 +925,19 @@ export function GuruKarakterView() {
                     </div>
                   </div>
                   <div className="flex items-center justify-between">
-                    <StarRating value={rating?.rating || 0} onChange={(v) => updateRating(h.key, v)} />
-                    <span className={cn('text-xs font-medium px-2 py-0.5 rounded-full', isRated ? 'bg-amber-100 text-amber-700' : 'bg-muted text-muted-foreground')}>{rating?.rating || 0}/5</span>
+                    {ratingInfo ? (
+                      <Badge className={cn('text-xs font-medium px-3 py-1 rounded-lg border', ratingInfo.color)}>{ratingInfo.label}</Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Belum dinilai</span>
+                    )}
+                    {isRated && rating?.note && (
+                      <span className="text-xs text-muted-foreground truncate max-w-[140px]">📝 {rating.note}</span>
+                    )}
                   </div>
-                  <Textarea placeholder="Catatan (opsional)..." value={rating?.note || ''} onChange={(e) => updateNote(h.key, e.target.value)} className="text-sm rounded-lg resize-none" rows={2} />
                 </CardContent>
               </Card>
             );
           })}
-        </div>
-      )}
-
-      {studentId && (
-        <div className="flex justify-end">
-          <Button onClick={handleSave} disabled={saving} className="bg-[#1F3864] hover:bg-[#2d5289] text-white min-w-[200px] rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
-            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}{saving ? 'Menyimpan...' : 'Simpan Laporan'}
-          </Button>
         </div>
       )}
     </div>
@@ -991,9 +988,9 @@ export function GuruRekapKarakterView() {
   const bestStudent = [...studentAvgs].sort((a, b) => b.avg - a.avg)[0];
   const worstStudent = [...studentAvgs].sort((a, b) => a.avg - b.avg)[0];
 
-  const scoreColor = (avg: number) => avg >= 4 ? 'text-emerald-600' : avg >= 3 ? 'text-amber-600' : 'text-red-600';
-  const scoreBg = (avg: number) => avg >= 4 ? 'bg-emerald-100' : avg >= 3 ? 'bg-amber-100' : 'bg-red-100';
-  const scoreBar = (avg: number) => avg >= 4 ? 'bg-emerald-500' : avg >= 3 ? 'bg-amber-500' : 'bg-red-500';
+  const scoreColor = (avg: number) => avg >= 3.5 ? 'text-emerald-600' : avg >= 2.5 ? 'text-amber-600' : 'text-red-600';
+  const scoreBg = (avg: number) => avg >= 3.5 ? 'bg-emerald-100' : avg >= 2.5 ? 'bg-amber-100' : 'bg-red-100';
+  const scoreBar = (avg: number) => avg >= 3.5 ? 'bg-emerald-500' : avg >= 2.5 ? 'bg-amber-500' : 'bg-red-500';
 
   const openDetail = (s: typeof MOCK_REKAP_KARAKTER[number]) => { setDetailStudent(s); setDetailOpen(true); };
 
@@ -1027,8 +1024,8 @@ export function GuruRekapKarakterView() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard icon={<ClipboardList className="w-5 h-5" />} label="Total Laporan" value={data.length * 7} bg="bg-[#1F3864]/10" color="text-[#1F3864]" />
         <StatCard icon={<Star className="w-5 h-5" />} label="Rata-rata Rating" value={avgRating} bg="bg-amber-50" color="text-amber-600" />
-        <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Kebiasaan Terkuat" value={strongest?.name.split(' ').slice(0, 2).join(' ') || '-'} bg="bg-emerald-50" color="text-emerald-600" sub={strongest ? `${strongest.avg.toFixed(1)}/5` : ''} />
-        <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Perlu Diperbaiki" value={weakest?.name.split(' ').slice(0, 2).join(' ') || '-'} bg="bg-red-50" color="text-red-600" sub={weakest ? `${weakest.avg.toFixed(1)}/5` : ''} />
+        <StatCard icon={<TrendingUp className="w-5 h-5" />} label="Kebiasaan Terkuat" value={strongest?.name.split(' ').slice(0, 2).join(' ') || '-'} bg="bg-emerald-50" color="text-emerald-600" sub={strongest ? `${strongest.avg.toFixed(1)}/4` : ''} />
+        <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Perlu Diperbaiki" value={weakest?.name.split(' ').slice(0, 2).join(' ') || '-'} bg="bg-red-50" color="text-red-600" sub={weakest ? `${weakest.avg.toFixed(1)}/4` : ''} />
       </div>
 
       {/* Per-habit bar visualization */}
@@ -1036,7 +1033,7 @@ export function GuruRekapKarakterView() {
         <CardHeader className="pb-2"><CardTitle className="text-base">Rata-rata Rating per Kebiasaan</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           {habitAvgs.map((h) => {
-            const pct = (h.avg / 5) * 100;
+            const pct = (h.avg / 4) * 100;
             return (
               <div key={h.key} className="flex items-center gap-3">
                 <div className={cn('p-1.5 rounded-lg shrink-0', h.iconBg)}><span className="text-base" role="img" aria-label={h.name}>{h.emoji}</span></div>
@@ -1097,7 +1094,7 @@ export function GuruRekapKarakterView() {
                       {d.ratings.map((r, hIdx) => (
                         <TableCell key={hIdx} className="text-center">
                           <div className="flex flex-col items-center gap-1">
-                            <div className="w-8 h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-500', scoreBar(r))} style={{ width: `${(r / 5) * 100}%` }} /></div>
+                            <div className="w-8 h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-500', scoreBar(r))} style={{ width: `${(r / 4) * 100}%` }} /></div>
                             <span className={cn('text-xs font-medium', scoreColor(r))}>{r > 0 ? r.toFixed(1) : '-'}</span>
                           </div>
                         </TableCell>
@@ -1105,7 +1102,7 @@ export function GuruRekapKarakterView() {
                       <TableCell className="text-center">
                         <div className="flex flex-col items-center gap-1">
                           <span className={cn('text-sm font-bold', scoreColor(d.avg))}>{d.avg.toFixed(1)}</span>
-                          <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-500', scoreBar(d.avg))} style={{ width: `${(d.avg / 5) * 100}%` }} /></div>
+                          <div className="w-12 h-1.5 rounded-full bg-muted overflow-hidden"><div className={cn('h-full rounded-full transition-all duration-500', scoreBar(d.avg))} style={{ width: `${(d.avg / 4) * 100}%` }} /></div>
                         </div>
                       </TableCell>
                       <TableCell><Eye className="w-4 h-4 text-muted-foreground" /></TableCell>
@@ -1135,15 +1132,15 @@ export function GuruRekapKarakterView() {
                   <p className="font-semibold">{detailStudent.studentName}</p>
                   <div className="flex items-center gap-2 mt-1">
                     <span className={cn('text-2xl font-bold', scoreColor(avg))}>{avg.toFixed(1)}</span>
-                    <span className="text-sm text-muted-foreground">/ 5.0</span>
-                    <Badge className={cn('ml-2 rounded-full border-0', scoreBg(avg), scoreColor(avg))}>{avg >= 4 ? 'Sangat Baik' : avg >= 3 ? 'Cukup' : 'Perlu Perbaikan'}</Badge>
+                    <span className="text-sm text-muted-foreground">/ 4.0</span>
+                    <Badge className={cn('ml-2 rounded-full border-0', scoreBg(avg), scoreColor(avg))}>{avg >= 3.5 ? 'Selalu' : avg >= 2.5 ? 'Sering' : 'Belum/Kadang'}</Badge>
                   </div>
                 </div>
               </div>
               <div className="space-y-3">
                 {HABITS.map((h, idx) => {
                   const r = detailStudent.ratings[idx] || 0;
-                  const pct = (r / 5) * 100;
+                  const pct = (r / 4) * 100;
                   return (
                     <div key={h.key} className={cn('flex items-center gap-3 p-3 rounded-xl border', h.color)}>
                       <div className={cn('p-2 rounded-lg shrink-0', h.iconBg)}><span className="text-lg" role="img" aria-label={h.name}>{h.emoji}</span></div>

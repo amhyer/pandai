@@ -358,16 +358,17 @@ model TeachingJournal {
   @@index([date])
 }
 
-// ===== CHARACTER REPORT (7 KEBIASAAN ANAK HEBAT) =====
+// ===== CHARACTER REPORT (7 KEBIASAAN ANAK INDONESIA HEBAT) =====
 model CharacterReport {
   id         String   @id @default(cuid())
   studentId  String
   classId    String?
   schoolId   String?
   reporterId String               // guru or orang tua
+  filledBy   String   @default("ORANG_TUA") // ORANG_TUA | GURU
   date       String               // YYYY-MM-DD
-  habit      String               // one of 7 kebiasaan
-  rating     Int      @default(3) // 1-5 scale
+  habit      String               // one of 7 kebiasaan: bangun_pagi, beribadah, berolahraga, makan_sehat, gemar_belajar, bermasyarakat, tidur_cepat
+  rating     Int      @default(3) // 1-4 scale: 1=Belum, 2=Kadang, 3=Sering, 4=Selalu
   note       String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
@@ -375,6 +376,7 @@ model CharacterReport {
   @@index([studentId])
   @@index([schoolId])
   @@index([date])
+  @@index([filledBy])
 }
 
 // ===== ACTIVITY LOG =====
@@ -394,24 +396,47 @@ model ActivityLog {
 
 // ===== MATERIAL / LESSON CONTENT =====
 model Material {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  content     String?              // markdown/text
-  subjectId   String?
-  topicId     String?
-  classId     String?
-  schoolId    String?
-  teacherId   String?
-  type        String   @default("materi") // materi, tugas, quiz
-  status      String   @default("published") // published, draft
-  dueDate     String?              // for tugas type
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id               String   @id @default(cuid())
+  title            String
+  description      String?
+  content          String?              // markdown/text
+  subjectId        String?
+  topicId          String?
+  classId          String?
+  schoolId         String?
+  teacherId        String?
+  type             String   @default("materi") // materi, tugas, quiz
+  status           String   @default("published") // published, draft
+  dueDate          String?              // for tugas/quiz type
+  externalUrl      String?              // URL for external quiz (Google Form, Quizizz, etc)
+  externalProvider String?              // auto-detected: Google Form, Quizizz, Kahoot, Wordwall, Tautan Lain
+  scoreEntryMode   String?              // SELF_REPORTED | TEACHER_ENTERED (for external quiz)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   @@index([schoolId])
   @@index([teacherId])
   @@index([subjectId])
+  @@index([type])
+}
+
+// ===== EXTERNAL QUIZ SCORE (nilai kuis eksternal) =====
+model ExternalQuizScore {
+  id         String   @id @default(cuid())
+  materialId String
+  studentId  String
+  schoolId   String?
+  classId    String?
+  score      Int                    // 0-100
+  note       String?
+  enteredBy  String                 // userId (siswa self-report OR guru)
+  entryMode  String                 // SELF_REPORTED | TEACHER_ENTERED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([materialId])
+  @@index([studentId])
+  @@index([schoolId])
 }
 
 // ===== AI CONFIG =====

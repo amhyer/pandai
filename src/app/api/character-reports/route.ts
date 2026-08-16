@@ -1,18 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { logError } from '@/lib/error-log';
 
-// 7 Kebiasaan Anak Hebat
-const SEVEN_HABITS = [
-  'Proaktif',
-  'Mulai dengan Tujuan',
-  'Prioritas Utama Dahulu',
-  'Pikir Menang-Menang',
-  'Mengerti lalu Dierti',
-  'Bersinergi',
-  'Asah Gergaji',
-];
+// 7 Kebiasaan Anak Indonesia Hebat (program resmi pemerintah RI)
+export const SEVEN_HABITS = [
+  'bangun_pagi',
+  'beribadah',
+  'berolahraga',
+  'makan_sehat',
+  'gemar_belajar',
+  'bermasyarakat',
+  'tidur_cepat',
+] as const;
 
-// GET /api/character-reports
+export const SEVEN_HABIT_LABELS: Record<string, { name: string; emoji: string; description: string }> = {
+  bangun_pagi:    { name: 'Bangun Pagi',     emoji: '🌅', description: 'Bangun pagi secara teratur sebelum jam 6 pagi' },
+  beribadah:      { name: 'Beribadah',       emoji: '🤲', description: 'Melaksanakan ibadah sesuai agama dan keyakinan masing-masing' },
+  berolahraga:    { name: 'Berolahraga',     emoji: '🏃', description: 'Melakukan aktivitas olahraga minimal 30 menit per hari' },
+  makan_sehat:    { name: 'Makan Sehat dan Bergizi', emoji: '🥗', description: 'Mengonsumsi makanan sehat dan bergizi seimbang' },
+  gemar_belajar:  { name: 'Gemar Belajar',   emoji: '📚', description: 'Belajar dengan rajin dan disiplin setiap hari' },
+  bermasyarakat:  { name: 'Bermasyarakat',   emoji: '🤝', description: 'Aktif berinteraksi dan membantu di lingkungan masyarakat' },
+  tidur_cepat:    { name: 'Tidur Cepat',     emoji: '😴', description: 'Tidur tepat waktu pada malam hari sebelum jam 9 malam' },
+};
+
+// Rating scale 1-4: 1=Belum, 2=Kadang, 3=Sering, 4=Selalu
+export const RATING_LABELS: Record<number, string> = {
+  1: 'Belum',
+  2: 'Kadang',
+  3: 'Sering',
+  4: 'Selalu',
+};
+
+// GET /api/character-reports — all authenticated users can read
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -22,6 +41,7 @@ export async function GET(req: NextRequest) {
     const reporterId = searchParams.get('reporterId');
     const date = searchParams.get('date');
     const month = searchParams.get('month');
+    const filledBy = searchParams.get('filledBy');
 
     const where: Record<string, unknown> = {};
     if (schoolId) where.schoolId = schoolId;
@@ -32,6 +52,7 @@ export async function GET(req: NextRequest) {
     if (month) {
       where.date = { startsWith: month } as any;
     }
+    if (filledBy) where.filledBy = filledBy;
 
     const reports = await db.characterReport.findMany({
       where,
@@ -51,55 +72,83 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(enriched);
   } catch (error) {
-    console.error('GET /api/character-reports error:', error);
+    await logError({ error, route: '/api/character-reports', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil laporan karakter' }, { status: 500 });
   }
 }
 
-// POST /api/character-reports — Create character report
+// POST /api/character-reports — ONLY ORANG_TUA can create new reports
 export async function POST(req: NextRequest) {
   try {
+    const role = req.headers.get('X-User-Role');
+    if (role !== 'ORANG_TUA') {
+      return NextResponse.json(
+        { error: 'Hanya Orang Tua yang dapat mengisi laporan 7 Kebiasaan Anak Indonesia Hebat' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
-    const { studentId, classId, schoolId, reporterId, date, habit, rating, note } = body;
+    // Support single or batch
+    const items = Array.isArray(body) ? body : [body];
 
-    if (!studentId || !reporterId || !date || !habit) {
-      return NextResponse.json({ error: 'Data wajib belum lengkap' }, { status: 400 });
+    const results: Record<string, unknown>[] = [];
+    for (const item of items) {
+      const { studentId, classId, schoolId, reporterId, date, habit, rating, note } = item;
+
+      if (!studentId || !reporterId || !date || !habit) {
+        return NextResponse.json({ error: 'Data wajib belum lengkap' }, { status: 400 });
+      }
+
+      if (!SEVEN_HABITS.includes(habit as typeof SEVEN_HABITS[number])) {
+        return NextResponse.json({ error: 'Kebiasaan tidak valid' }, { status: 400 });
+      }
+
+      if (rating < 1 || rating > 4) {
+        return NextResponse.json({ error: 'Rating harus antara 1-4 (Belum/Kadang/Sering/Selalu)' }, { status: 400 });
+      }
+
+      const report = await db.characterReport.create({
+        data: {
+          studentId,
+          classId: classId || null,
+          schoolId: schoolId || null,
+          reporterId,
+          filledBy: 'ORANG_TUA',
+          date,
+          habit,
+          rating,
+          note: note || null,
+        },
+      });
+      results.push(report);
     }
 
-    if (!SEVEN_HABITS.includes(habit)) {
-      return NextResponse.json({ error: 'Kebiasaan tidak valid' }, { status: 400 });
-    }
-
-    if (rating < 1 || rating > 5) {
-      return NextResponse.json({ error: 'Rating harus antara 1-5' }, { status: 400 });
-    }
-
-    const report = await db.characterReport.create({
-      data: {
-        studentId,
-        classId: classId || null,
-        schoolId: schoolId || null,
-        reporterId,
-        date,
-        habit,
-        rating,
-        note: note || null,
-      },
-    });
-
-    return NextResponse.json(report, { status: 201 });
+    return NextResponse.json(results, { status: 201 });
   } catch (error) {
-    console.error('POST /api/character-reports error:', error);
+    await logError({ error, route: '/api/character-reports', method: 'POST' });
     return NextResponse.json({ error: 'Gagal menyimpan laporan karakter' }, { status: 500 });
   }
 }
 
-// PATCH /api/character-reports
+// PATCH /api/character-reports — ONLY ORANG_TUA can update their own reports
 export async function PATCH(req: NextRequest) {
   try {
+    const role = req.headers.get('X-User-Role');
+    if (role !== 'ORANG_TUA') {
+      return NextResponse.json(
+        { error: 'Hanya Orang Tua yang dapat mengubah laporan 7 Kebiasaan' },
+        { status: 403 }
+      );
+    }
+
     const body = await req.json();
     const { id, rating, note } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    if (rating !== undefined && (rating < 1 || rating > 4)) {
+      return NextResponse.json({ error: 'Rating harus antara 1-4' }, { status: 400 });
+    }
 
     const report = await db.characterReport.update({
       where: { id },
@@ -111,14 +160,22 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json(report);
   } catch (error) {
-    console.error('PATCH /api/character-reports error:', error);
+    await logError({ error, route: '/api/character-reports', method: 'PATCH' });
     return NextResponse.json({ error: 'Gagal mengupdate laporan' }, { status: 500 });
   }
 }
 
-// DELETE /api/character-reports
+// DELETE /api/character-reports — ONLY ORANG_TUA can delete their own reports
 export async function DELETE(req: NextRequest) {
   try {
+    const role = req.headers.get('X-User-Role');
+    if (role !== 'ORANG_TUA') {
+      return NextResponse.json(
+        { error: 'Hanya Orang Tua yang dapat menghapus laporan 7 Kebiasaan' },
+        { status: 403 }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
@@ -126,7 +183,7 @@ export async function DELETE(req: NextRequest) {
     await db.characterReport.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('DELETE /api/character-reports error:', error);
+    await logError({ error, route: '/api/character-reports', method: 'DELETE' });
     return NextResponse.json({ error: 'Gagal menghapus laporan' }, { status: 500 });
   }
 }
