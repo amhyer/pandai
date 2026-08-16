@@ -279,13 +279,13 @@ export function OrtuKarakterView() {
         if (selectedChild === 'c1') {
           setHasExistingReport(true);
           setRatings([
-            { habitId: 'proaktif', rating: 4, note: 'Anak mulai rajin membersihkan kamar' },
-            { habitId: 'tujuan', rating: 3, note: '' },
-            { habitId: 'prioritas', rating: 5, note: 'Belajar sebelum bermain' },
-            { habitId: 'menang', rating: 4, note: '' },
-            { habitId: 'mengerti', rating: 3, note: '' },
-            { habitId: 'bersinergi', rating: 4, note: 'Bantu adik belajar' },
-            { habitId: 'asah', rating: 3, note: '' },
+            { habitId: 'bangun_pagi', rating: 3, note: 'Anak mulai rajin bangun pagi' },
+            { habitId: 'beribadah', rating: 4, note: '' },
+            { habitId: 'berolahraga', rating: 2, note: '' },
+            { habitId: 'makan_sehat', rating: 3, note: '' },
+            { habitId: 'gemar_belajar', rating: 4, note: '' },
+            { habitId: 'bermasyarakat', rating: 3, note: '' },
+            { habitId: 'tidur_cepat', rating: 2, note: '' },
           ]);
         }
       } finally {
@@ -485,7 +485,7 @@ export function OrtuKarakterView() {
                 Rata-rata: <strong className="text-foreground">{avgRating}</strong>/4
               </span>
               <div className="flex -space-x-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
+                {[1, 2, 3, 4].map((star) => (
                   <span
                     key={star}
                     className={cn(
