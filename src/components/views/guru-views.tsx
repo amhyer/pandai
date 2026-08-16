@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { detectExternalProvider, PROVIDER_ICONS, isValidUrl } from '@/lib/external-quiz';
 import {
   BookOpen,
   Plus,
@@ -52,6 +53,7 @@ import {
   Download,
   Printer,
   GraduationCap,
+  ExternalLink,
   BookMarked,
   CalendarClock,
   CheckCircle2,
@@ -430,6 +432,10 @@ export function GuruMateriView() {
   const [formSubjectId, setFormSubjectId] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formContent, setFormContent] = useState('');
+  const [formType, setFormType] = useState<string>('materi');
+  const [quizSource, setQuizSource] = useState<'internal' | 'external'>('internal');
+  const [formExternalUrl, setFormExternalUrl] = useState('');
+  const [formScoreEntryMode, setFormScoreEntryMode] = useState<'SELF_REPORTED' | 'TEACHER_ENTERED'>('SELF_REPORTED');
   const [submitting, setSubmitting] = useState(false);
 
   // Delete state
@@ -505,29 +511,45 @@ export function GuruMateriView() {
     setFormSubjectId('');
     setFormDescription('');
     setFormContent('');
+    setFormType('materi');
+    setQuizSource('internal');
+    setFormExternalUrl('');
+    setFormScoreEntryMode('SELF_REPORTED');
     setDialogOpen(true);
   }, []);
+
+  const detectedProvider = formExternalUrl ? detectExternalProvider(formExternalUrl) : null;
+  const providerInfo = detectedProvider ? PROVIDER_ICONS[detectedProvider] : null;
 
   const handleCreate = useCallback(async () => {
     if (!formTitle.trim()) {
       toast.error('Judul materi wajib diisi');
       return;
     }
+    if (quizSource === 'external' && formExternalUrl.trim() && !isValidUrl(formExternalUrl.trim())) {
+      toast.error('URL tidak valid. Gunakan format https://...');
+      return;
+    }
     setSubmitting(true);
     try {
+      const body: Record<string, unknown> = {
+        title: formTitle.trim(),
+        description: formDescription.trim() || null,
+        content: quizSource === 'internal' ? (formContent.trim() || null) : null,
+        subjectId: formSubjectId || null,
+        schoolId: user?.schoolId || null,
+        teacherId: user?.id || null,
+        type: formType,
+        status: 'published',
+      };
+      if (quizSource === 'external' && formExternalUrl.trim()) {
+        body.externalUrl = formExternalUrl.trim();
+        body.scoreEntryMode = formScoreEntryMode;
+      }
       const res = await fetch('/api/materials', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formTitle.trim(),
-          description: formDescription.trim() || null,
-          content: formContent.trim() || null,
-          subjectId: formSubjectId || null,
-          schoolId: user?.schoolId || null,
-          teacherId: user?.id || null,
-          type: 'materi',
-          status: 'published',
-        }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('Create failed');
       toast.success('Materi berhasil dibuat!');
@@ -538,7 +560,7 @@ export function GuruMateriView() {
     } finally {
       setSubmitting(false);
     }
-  }, [formTitle, formSubjectId, formDescription, formContent, user, fetchMaterials]);
+  }, [formTitle, formSubjectId, formDescription, formContent, formType, quizSource, formExternalUrl, formScoreEntryMode, user, fetchMaterials]);
 
   const handleDelete = useCallback(async () => {
     if (!deleteTarget) return;
@@ -626,11 +648,18 @@ export function GuruMateriView() {
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between gap-2">
                   <CardTitle className="text-base leading-snug">{materi.title}</CardTitle>
-                  {materi.status === 'draft' && (
-                    <Badge variant="secondary" className="shrink-0 rounded-full bg-amber-100 text-xs text-amber-700">
-                      Draft
-                    </Badge>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {materi.externalProvider && (
+                      <Badge className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full border', PROVIDER_ICONS[materi.externalProvider]?.color || 'bg-gray-100 text-gray-700')}>
+                        {PROVIDER_ICONS[materi.externalProvider]?.emoji || '🔗'} {materi.externalProvider}
+                      </Badge>
+                    )}
+                    {materi.status === 'draft' && (
+                      <Badge variant="secondary" className="shrink-0 rounded-full bg-amber-100 text-xs text-amber-700">
+                        Draft
+                      </Badge>
+                    )}
+                  </div>
                 </div>
                 {materi.subject && (
                   <Badge className={cn('w-fit rounded-full text-xs', subjectColor(materi.subject.name))}>
@@ -683,10 +712,10 @@ export function GuruMateriView() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label htmlFor="materi-title">Judul Materi *</Label>
+              <Label htmlFor="materi-title">Judul *</Label>
               <Input
                 id="materi-title"
-                placeholder="Contoh: Persamaan Kuadrat"
+                placeholder="Contoh: Kuis Hukum Newton"
                 className="rounded-lg focus-visible:ring-[#1F3864]/30"
                 value={formTitle}
                 onChange={(e) => setFormTitle(e.target.value)}
@@ -706,25 +735,136 @@ export function GuruMateriView() {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label htmlFor="materi-type">Tipe</Label>
+              <Select value={formType} onValueChange={(v) => { setFormType(v); if (v !== 'quiz') setQuizSource('internal'); }}>
+                <SelectTrigger className="rounded-lg focus:ring-[#1F3864]/30">
+                  <SelectValue placeholder="Pilih tipe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="materi">Materi Pelajaran</SelectItem>
+                  <SelectItem value="tugas">Tugas</SelectItem>
+                  <SelectItem value="quiz">Kuis</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Quiz source toggle — only shown when type=quiz */}
+            {formType === 'quiz' && (
+              <div className="space-y-3 p-4 rounded-xl border bg-muted/30">
+                <Label className="text-sm font-semibold text-foreground">Sumber Soal</Label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setQuizSource('internal')}
+                    className={cn(
+                      'flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all cursor-pointer',
+                      quizSource === 'internal'
+                        ? 'border-[#1F3864] bg-[#1F3864]/5 text-[#1F3864]'
+                        : 'border-border hover:border-gray-300'
+                    )}
+                  >
+                    📝 Disusun di Aplikasi
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuizSource('external')}
+                    className={cn(
+                      'flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all cursor-pointer',
+                      quizSource === 'external'
+                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+                        : 'border-border hover:border-gray-300'
+                    )}
+                  >
+                    🔗 Tautan Luar
+                  </button>
+                </div>
+
+                {/* External quiz URL */}
+                {quizSource === 'external' && (
+                  <div className="space-y-3 mt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="external-url">URL Kuis *</Label>
+                      <Input
+                        id="external-url"
+                        placeholder="https://docs.google.com/forms/d/..."
+                        className="rounded-lg focus-visible:ring-amber-500/30"
+                        value={formExternalUrl}
+                        onChange={(e) => setFormExternalUrl(e.target.value)}
+                      />
+                    </div>
+                    {formExternalUrl && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Provider terdeteksi:</span>
+                        {providerInfo ? (
+                          <Badge className={cn('text-xs font-medium px-2 py-0.5 rounded-lg border', providerInfo.color)}>
+                            {providerInfo.emoji} {detectedProvider}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground italic">Tidak dikenali</span>
+                        )}
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">Mode Input Nilai</Label>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setFormScoreEntryMode('SELF_REPORTED')}
+                          className={cn(
+                            'flex-1 p-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer',
+                            formScoreEntryMode === 'SELF_REPORTED'
+                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                              : 'border-border hover:border-gray-300'
+                          )}
+                        >
+                          👤 Siswa Lapor Sendiri
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setFormScoreEntryMode('TEACHER_ENTERED')}
+                          className={cn(
+                            'flex-1 p-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer',
+                            formScoreEntryMode === 'TEACHER_ENTERED'
+                              ? 'border-sky-500 bg-sky-50 text-sky-700'
+                              : 'border-border hover:border-gray-300'
+                          )}
+                        >
+                          👨‍🏫 Guru Input Manual
+                        </button>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {formScoreEntryMode === 'SELF_REPORTED'
+                          ? 'Siswa mengisi nilai sendiri setelah mengerjakan kuis di tautan luar'
+                          : 'Guru yang menginput nilai secara manual untuk setiap siswa'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
               <Label htmlFor="materi-desc">Deskripsi</Label>
               <Textarea
                 id="materi-desc"
-                placeholder="Deskripsi singkat materi..."
+                placeholder="Deskripsi singkat..."
                 className="min-h-[80px] rounded-lg focus-visible:ring-[#1F3864]/30"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="materi-content">Konten Materi</Label>
-              <Textarea
-                id="materi-content"
-                placeholder="Tulis konten materi di sini (mendukung markdown)..."
-                className="min-h-[150px] rounded-lg focus-visible:ring-[#1F3864]/30"
-                value={formContent}
-                onChange={(e) => setFormContent(e.target.value)}
-              />
-            </div>
+            {quizSource === 'internal' && (
+              <div className="space-y-2">
+                <Label htmlFor="materi-content">Konten Materi</Label>
+                <Textarea
+                  id="materi-content"
+                  placeholder="Tulis konten materi di sini..."
+                  className="min-h-[150px] rounded-lg focus-visible:ring-[#1F3864]/30"
+                  value={formContent}
+                  onChange={(e) => setFormContent(e.target.value)}
+                />
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2">
             <Button variant="outline" className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => setDialogOpen(false)}>

@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -31,6 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { PROVIDER_ICONS } from '@/lib/external-quiz';
 import {
   BookOpen,
   Calculator,
@@ -71,6 +73,7 @@ import {
   RefreshCw,
   ArrowRight,
   BookOpenCheck,
+  ExternalLink,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -99,6 +102,16 @@ interface SubjectData {
   materials: Material[];
 }
 
+interface ExternalQuizScore {
+  id: string;
+  materialId: string;
+  studentId: string;
+  score: number;
+  note?: string;
+  entryMode: 'SELF_REPORTED' | 'TEACHER_ENTERED';
+  createdAt: string;
+}
+
 interface Task {
   id: string;
   title: string;
@@ -108,6 +121,10 @@ interface Task {
   status: 'menunggu' | 'dikerjakan' | 'selesai' | 'terlambat';
   isUrgent: boolean;
   score?: number;
+  externalUrl?: string;
+  externalProvider?: string;
+  scoreEntryMode?: 'SELF_REPORTED' | 'TEACHER_ENTERED';
+  scores?: ExternalQuizScore[];
 }
 
 interface AttendanceDay {
@@ -687,6 +704,10 @@ export function SiswaTugasView() {
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('semua');
   const [statusFilter, setStatusFilter] = useState('semua');
+  // Score report form state
+  const [reportScore, setReportScore] = useState<Record<string, string>>({});
+  const [reportNote, setReportNote] = useState<Record<string, string>>({});
+  const [submittingScore, setSubmittingScore] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function fetchTasks() {
@@ -706,10 +727,14 @@ export function SiswaTugasView() {
               id: item.id,
               title: item.title,
               type: (item.type || 'tugas') as Task['type'],
-              subject: item.subject?.name || 'Umum',
-              dueDate: item.dueDate || '2025-12-31',
+              subject: item.subject?.name || item.subjectName || 'Umum',
+              dueDate: item.dueDate || item.createdAt || '2025-12-31',
               status: 'menunggu' as const,
               isUrgent: false,
+              externalUrl: item.externalUrl || undefined,
+              externalProvider: item.externalProvider || undefined,
+              scoreEntryMode: item.scoreEntryMode || undefined,
+              scores: item.scores || undefined,
             }));
             setTasks(mapped);
           } else {
@@ -835,6 +860,64 @@ export function SiswaTugasView() {
   const handleViewResult = (taskId: string) => {
     const task = tasks.find((t) => t.id === taskId);
     toast.info(`Nilai ${task?.title}: ${task?.score}/100`);
+  };
+
+  const handleSubmitScore = async (taskId: string) => {
+    const scoreVal = reportScore[taskId];
+    if (!scoreVal || isNaN(Number(scoreVal))) {
+      toast.error('Masukkan nilai yang valid (0-100)');
+      return;
+    }
+    const numScore = Number(scoreVal);
+    if (numScore < 0 || numScore > 100) {
+      toast.error('Nilai harus antara 0-100');
+      return;
+    }
+    if (!user?.id) {
+      toast.error('Anda harus login terlebih dahulu');
+      return;
+    }
+
+    setSubmittingScore((prev) => ({ ...prev, [taskId]: true }));
+    try {
+      const res = await fetch('/api/external-quiz-scores', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-User-Role': 'SISWA',
+          'X-User-Id': user.id,
+        },
+        body: JSON.stringify({
+          materialId: taskId,
+          studentId: user.id,
+          schoolId: user.schoolId || '',
+          classId: user.classId || '',
+          score: numScore,
+          note: reportNote[taskId] || '',
+          entryMode: 'SELF_REPORTED',
+        }),
+      });
+      if (res.ok) {
+        toast.success('Nilai berhasil dikirim!');
+        setReportScore((prev) => ({ ...prev, [taskId]: '' }));
+        setReportNote((prev) => ({ ...prev, [taskId]: '' }));
+        // Update the task in local state to reflect the new score
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId
+              ? { ...t, score: numScore, status: 'selesai' as const, scores: [{ id: 'new', materialId: taskId, studentId: user.id, score: numScore, note: reportNote[taskId] || undefined, entryMode: 'SELF_REPORTED' as const, createdAt: new Date().toISOString() }] }
+              : t
+          )
+        );
+      } else {
+        const err = await res.json().catch(() => ({ error: 'Gagal mengirim nilai' }));
+        toast.error(err.error || 'Gagal mengirim nilai');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat mengirim nilai');
+    } finally {
+      setSubmittingScore((prev) => ({ ...prev, [taskId]: false }));
+    }
   };
 
   if (isLoading) {
@@ -987,13 +1070,21 @@ export function SiswaTugasView() {
             const isActionable = task.status === 'menunggu' || task.status === 'dikerjakan';
             const isCompleted = task.status === 'selesai' || task.status === 'terlambat';
             const urgency = getDueUrgency(task.dueDate);
+            const isExternalQuiz = !!(task.externalUrl && (task.type === 'kuis' || task.type === 'ujian'));
+            const providerInfo = task.externalProvider ? PROVIDER_ICONS[task.externalProvider] : null;
+            // Check if student already has a score for this external quiz
+            const existingScore = isExternalQuiz && task.scores
+              ? task.scores.find((s) => s.studentId === user?.id)
+              : undefined;
 
             return (
               <Card
                 key={task.id}
                 className={cn(
                   'rounded-xl shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 overflow-hidden border-l-4',
-                  getBorderClass(task.type),
+                  isExternalQuiz
+                    ? 'border-l-amber-400 border-dashed border border-amber-200'
+                    : getBorderClass(task.type),
                   task.isUrgent && isActionable && 'ring-1 ring-red-200'
                 )}
               >
@@ -1013,10 +1104,17 @@ export function SiswaTugasView() {
                         <span className="ml-1">{getTypeLabel(task.type)}</span>
                       </Badge>
                       {getStatusBadge(task.status)}
+                      {/* Provider badge for external quizzes */}
+                      {isExternalQuiz && providerInfo && (
+                        <Badge className={cn('text-[10px] px-2 py-0.5 rounded-full', providerInfo.color)}>
+                          <span className="mr-1">{providerInfo.emoji}</span>
+                          {task.externalProvider}
+                        </Badge>
+                      )}
                     </div>
-                    {task.score !== undefined && isCompleted && (
-                      <div className={cn('text-sm font-bold px-2 py-0.5 rounded-full', task.score >= 75 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>
-                        {task.score}
+                    {(task.score !== undefined || existingScore) && isCompleted && (
+                      <div className={cn('text-sm font-bold px-2 py-0.5 rounded-full', (task.score ?? existingScore?.score ?? 0) >= 75 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700')}>
+                        {existingScore?.score ?? task.score}
                       </div>
                     )}
                   </div>
@@ -1037,6 +1135,83 @@ export function SiswaTugasView() {
                     </div>
                   </div>
 
+                  {/* ── External Quiz Actions ── */}
+                  {isExternalQuiz ? (
+                    <div className="space-y-3">
+                      {/* Open Quiz button */}
+                      <div className="flex justify-end">
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs rounded-lg bg-amber-600 hover:bg-amber-700 transition-all duration-200 hover:shadow-sm active:scale-[0.98] gap-1"
+                          onClick={() => window.open(task.externalUrl!, '_blank', 'noopener,noreferrer')}
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
+                          Buka Kuis
+                        </Button>
+                      </div>
+
+                      {/* TEACHER_ENTERED mode */}
+                      {task.scoreEntryMode === 'TEACHER_ENTERED' && (
+                        <div className="flex items-center gap-2 bg-sky-50 text-sky-700 text-xs font-medium rounded-lg px-3 py-2">
+                          <Clock className="h-3.5 w-3.5" />
+                          <span>Nilai akan diinput oleh guru</span>
+                        </div>
+                      )}
+
+                      {/* SELF_REPORTED mode */}
+                      {task.scoreEntryMode === 'SELF_REPORTED' && (
+                        <div className="rounded-lg border border-dashed border-amber-200 bg-amber-50/40 p-3 space-y-2.5">
+                          <p className="text-xs font-medium text-amber-800">Laporkan Nilai Kamu</p>
+                          {existingScore ? (
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                                <span className="text-sm font-semibold text-emerald-700">Nilai terkirim: {existingScore.score}</span>
+                              </div>
+                              <span className="text-[10px] text-muted-foreground">
+                                {existingScore.note && `(${existingScore.note})`}
+                              </span>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  placeholder="Nilai (0-100)"
+                                  className="h-8 text-xs w-28"
+                                  value={reportScore[task.id] || ''}
+                                  onChange={(e) => setReportScore((prev) => ({ ...prev, [task.id]: e.target.value }))}
+                                />
+                                <Button
+                                  size="sm"
+                                  className="h-8 text-xs rounded-lg bg-[#1F3864] hover:bg-[#2d5289] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                                  disabled={submittingScore[task.id] || !reportScore[task.id]}
+                                  onClick={() => handleSubmitScore(task.id)}
+                                >
+                                  {submittingScore[task.id] ? (
+                                    <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+                                  ) : (
+                                    <ArrowRight className="h-3.5 w-3.5 mr-1" />
+                                  )}
+                                  Kirim Nilai
+                                </Button>
+                              </div>
+                              <Textarea
+                                placeholder="Catatan opsional..."
+                                className="text-xs min-h-[56px] resize-none"
+                                rows={2}
+                                value={reportNote[task.id] || ''}
+                                onChange={(e) => setReportNote((prev) => ({ ...prev, [task.id]: e.target.value }))}
+                              />
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                  /* ── Regular Task Actions ── */
                   <div className="flex justify-end">
                     {isActionable && task.status === 'menunggu' && (
                       <Button
@@ -1070,6 +1245,7 @@ export function SiswaTugasView() {
                       </Button>
                     )}
                   </div>
+                  )}
                 </CardContent>
               </Card>
             );
