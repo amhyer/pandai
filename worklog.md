@@ -262,3 +262,38 @@ Stage Summary:
   - Draft after submit → 403 "Tugas sudah disubmit dan tidak bisa diubah lagi"
 - Commit: a81a297 pushed to main
 - Test script: scripts/r41-test.mjs (reusable, 8 steps)
+
+---
+Task ID: R42
+Agent: Main Agent
+Task: Fitur E: Remedial untuk Tryout & Assignment
+
+Work Log:
+- Step 1 (24cc409): Schema — added isRemedial + remedialOfId to StudentAttempt & AssignmentSubmission
+  - Removed @@unique([assignmentId, studentId]) on AssignmentSubmission to allow remedial pair
+  - Self-relation "RemedialChain" on StudentAttempt, "RemedialAssignment" on AssignmentSubmission
+- Step 2 (b4aaadc): API Tryout remedial — POST /api/attempts/remedial + enriched GET /api/attempts
+  - Activate: creates new StudentAttempt with isRemedial=true, inherits learningObjective
+  - Guard: one attempt can only have 1 remedial (409 if already exists)
+  - GET enriched: hasRemedial, remedialId, remedialStatus, activeScore, originalScore
+- Step 4 (6b22034): API Assignment remedial
+  - POST /api/assignments/[id]/submissions/remedial: activate remedial for student
+  - Updated submissions GET to use findFirst (no more unique constraint), includes remedialSubmissions
+  - Updated submissions POST to support remedialSubmissionId param for working on remedial
+  - GET /api/submissions/[id]: fetch any specific submission by ID
+- Step 6 (b56d825): UI Guru — remedial buttons
+  - GuruNilaiView: Aksi column with Remedial button (for <80% score) + status badge
+  - GuruAssignmentView: Remedial button in Aksi column, enriched StudentRow with remedial fields
+  - Student row builder separates original vs remedial submissions
+- Fixed route conflicts: moved submission detail to /api/submissions/[id]
+- Fixed grade endpoint: added isRemedial filter for grading remedial submissions
+- E2E Test (7565330): 18/18 passed via scripts/r42-test.mjs
+
+Stage Summary:
+- 6 commits: 24cc409, b4aaadc, 6b22034, b56d825, 3c1140b, 7565330 — all pushed to main
+- Remedial system works for BOTH Tryout and Assignment:
+  - Guru activates remedial → new entry created with isRemedial=true, LO inherited
+  - Original entry stays intact as historical record
+  - Siswa works on remedial (draft+submit flow reused)
+  - After remedial graded: activeScore = remedial score, originalScore = original
+  - Guard: 409 if remedial already exists for same attempt/submission
