@@ -61,6 +61,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (assignment.status === 'draft') return NextResponse.json({ error: 'Tugas belum dipublish' }, { status: 403 });
     if (assignment.status === 'closed') return NextResponse.json({ error: 'Tugas sudah ditutup' }, { status: 403 });
 
+    // Check if student already submitted — prevent further changes
+    const existingSub = await db.assignmentSubmission.findUnique({
+      where: { assignmentId_studentId: { assignmentId: id, studentId } },
+    });
+    if (existingSub && (existingSub.status === 'submitted' || existingSub.status === 'dinilai')) {
+      return NextResponse.json({ error: 'Tugas sudah disubmit dan tidak bisa diubah lagi' }, { status: 403 });
+    }
+
     // Upsert submission
     const submission = await db.assignmentSubmission.upsert({
       where: { assignmentId_studentId: { assignmentId: id, studentId } },
@@ -87,6 +95,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         const aq = assignment.questions.find((q) => q.questionId === questionId);
         if (!aq) continue;
 
+        // Use AssignmentQuestion.id (NOT Question.id) as the FK for AssignmentAnswer
+        const assignmentQuestionId = aq.id;
+
         // Auto-score PG
         let isCorrect: boolean | null = null;
         let pointsEarned = 0;
@@ -98,10 +109,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         }
 
         await db.assignmentAnswer.upsert({
-          where: { submissionId_questionId: { submissionId: submission.id, questionId } },
+          where: { submissionId_questionId: { submissionId: submission.id, questionId: assignmentQuestionId } },
           create: {
             submissionId: submission.id,
-            questionId,
+            questionId: assignmentQuestionId,
             answer: answer || null,
             essayAnswer: essayAnswer || null,
             isCorrect,
@@ -134,10 +145,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       });
     }
 
-    // Fetch updated submission
+    // Fetch updated submission with full question data for frontend
     const updated = await db.assignmentSubmission.findUnique({
       where: { id: submission.id },
-      include: { answers: true },
+      include: {
+        answers: { include: { question: { include: { question: { select: { id: true, content: true, type: true, options: true } } } } } },
+      },
     });
 
     return NextResponse.json(updated);
