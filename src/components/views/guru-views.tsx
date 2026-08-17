@@ -32,6 +32,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { detectExternalProvider, PROVIDER_ICONS, isValidUrl } from '@/lib/external-quiz';
+import { ImportSoalWordDialog } from './guru-import-soal';
 import {
   BookOpen,
   Plus,
@@ -51,6 +52,7 @@ import {
   ClipboardList,
   FileBarChart,
   Download,
+  Upload,
   Printer,
   GraduationCap,
   ExternalLink,
@@ -436,6 +438,8 @@ export function GuruMateriView() {
   const [materials, setMaterials] = useState<MaterialData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  // Import soal dialog
+  const [importSoalOpen, setImportSoalOpen] = useState(false);
   const [subjectFilter, setSubjectFilter] = useState('Semua');
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
 
@@ -594,13 +598,22 @@ export function GuruMateriView() {
   return (
     <div className="space-y-6">
       <PageHeader icon={BookOpen} title="Materi Ajar" description="Kelola materi pelajaran untuk persiapan TKA siswa Anda.">
-        <Button
-          className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
-          onClick={handleOpenDialog}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Tambah Materi
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            className="bg-amber-500 text-white transition-all duration-200 hover:bg-amber-600 hover:shadow-sm active:scale-[0.98]"
+            onClick={() => setImportSoalOpen(true)}
+          >
+            <Upload className="mr-2 h-4 w-4" />
+            Import Soal Word
+          </Button>
+          <Button
+            className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+            onClick={handleOpenDialog}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Tambah Materi
+          </Button>
+        </div>
       </PageHeader>
 
       {/* Stats */}
@@ -973,6 +986,7 @@ export function GuruMateriView() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <ImportSoalWordDialog open={importSoalOpen} onOpenChange={setImportSoalOpen} subjects={subjects} onImportComplete={fetchMaterials} />
     </div>
   );
 }
