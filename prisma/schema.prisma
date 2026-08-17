@@ -40,6 +40,7 @@ model School {
   examPackages    ExamPackage[]
   questions       Question[]
   subscriptions  Subscription[]
+  feedbacks       Feedback[]
 }
 
 // ===== SUBSCRIPTION =====
@@ -93,6 +94,8 @@ model User {
   studentAttempts StudentAttempt[]
   waliKelasOf     Class[]           @relation("WaliKelasClass")
   timetableAsTeacher Timetable[]    @relation("TimetableTeacher")
+  sentFeedback    Feedback[]        @relation("FeedbackSender")
+  respondedFeedback Feedback[]      @relation("FeedbackResponder")
 
   @@index([schoolId])
   @@index([role])
@@ -638,4 +641,30 @@ model AssignmentAnswer {
 
   @@unique([submissionId, questionId])
   @@index([submissionId])
+}
+
+// ===== FEEDBACK / KOTAK MASUKAN (Saran/Kritik/Apresiasi antar Role) =====
+model Feedback {
+  id           String    @id @default(cuid())
+  schoolId     String
+  fromUserId   String
+  fromRole     String    // ORANG_TUA, GURU, KEPALA_SEKOLAH
+  category     String    // saran, kritik, apresiasi
+  subject      String    // judul singkat
+  message      String    // isi pesan
+  status       String    @default("baru") // baru, dibaca, ditindaklanjuti
+  response     String?   // balasan dari pihak sekolah
+  respondedBy  String?   // FK User yang membalas
+  respondedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  fromUser     User      @relation("FeedbackSender", fields: [fromUserId], references: [id])
+  responder    User?     @relation("FeedbackResponder", fields: [respondedBy], references: [id])
+  school       School    @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([fromUserId])
+  @@index([status])
+  @@index([category])
 }
