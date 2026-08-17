@@ -262,6 +262,8 @@ model StudentAttempt {
   duration      Int      @default(0) // detik yang dipakai
   status        String   @default("in_progress") // in_progress, submitted, graded
   learningObjective String? // Tujuan Pembelajaran (opsional, ditulis guru saat input)
+  isRemedial    Boolean  @default(false) // true = ini adalah attempt remedial
+  remedialOfId  String?              // self-relation: menunjuk ke attempt asli yang di-remedial
   startedAt     DateTime @default(now())
   submittedAt   DateTime?
   createdAt     DateTime @default(now())
@@ -269,9 +271,12 @@ model StudentAttempt {
 
   user       User             @relation(fields: [userId], references: [id])
   answers    StudentAnswer[]
+  originalAttempt  StudentAttempt?  @relation("RemedialChain", fields: [remedialOfId], references: [id])
+  remedialAttempts StudentAttempt[] @relation("RemedialChain")
 
   @@index([userId])
   @@index([schoolId])
+  @@index([remedialOfId])
 }
 
 // ===== STUDENT ANSWER (JAWABAN PER SOAL) =====
@@ -599,6 +604,8 @@ model AssignmentSubmission {
   status       String    @default("belum_dikerjakan") // belum_dikerjakan, dikerjakan, submitted, dinilai
   score        Float?    // total skor setelah dinilai
   feedback     String?   // feedback guru
+  isRemedial   Boolean   @default(false) // true = ini adalah submission remedial
+  remedialOfId String?              // self-relation: menunjuk ke submission asli yang di-remedial
   startedAt    DateTime  @default(now())
   submittedAt  DateTime?
   gradedAt     DateTime?
@@ -607,11 +614,13 @@ model AssignmentSubmission {
 
   assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
   answers    AssignmentAnswer[]
+  originalSubmission    AssignmentSubmission?  @relation("RemedialAssignment", fields: [remedialOfId], references: [id])
+  remedialSubmissions    AssignmentSubmission[] @relation("RemedialAssignment")
 
-  @@unique([assignmentId, studentId])
   @@index([assignmentId])
   @@index([studentId])
   @@index([schoolId])
+  @@index([remedialOfId])
 }
 
 // ===== ASSIGNMENT ANSWER (JAWABAN PER SOAL DALAM TUGAS) =====
