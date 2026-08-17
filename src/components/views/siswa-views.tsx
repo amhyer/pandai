@@ -36,6 +36,7 @@ import {
   AlertCircle,
   ArrowUpRight,
   GraduationCap,
+  RotateCcw,
 } from 'lucide-react';
 
 // ─── API Types ────────────────────────────────────────────────────
@@ -77,6 +78,14 @@ interface Attempt {
   startedAt: string;
   submittedAt: string | null;
   answers: AttemptAnswer[];
+  learningObjective?: string | null;
+  isRemedial?: boolean;
+  hasRemedial?: boolean;
+  remedialId?: string;
+  remedialStatus?: string;
+  remedialScore?: number;
+  activeScore?: number;
+  originalScore?: number;
 }
 
 interface ExamPackage {
@@ -1007,6 +1016,14 @@ export function SiswaRiwayatView() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold text-sm">{examTitle}</h3>
                             {getStatusBadge(attempt.status)}
+                            {attempt.isRemedial && (
+                              <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-600 bg-amber-50">Remedial</Badge>
+                            )}
+                            {!attempt.isRemedial && attempt.hasRemedial && attempt.remedialStatus && (
+                              <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600">
+                                Remedial {attempt.remedialStatus === 'submitted' || attempt.remedialStatus === 'graded' ? '✓' : '⏳'}
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground flex-wrap">
                             <span className="flex items-center gap-1">
@@ -1033,8 +1050,14 @@ export function SiswaRiwayatView() {
                             <div className="text-right">
                               <div className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg ${colors.bg} ${colors.text}`}>
                                 <span className="text-lg font-bold">
-                                  {Math.round(attempt.percentage)}%
+                                  {attempt.activeScore !== undefined && attempt.activeScore !== attempt.percentage
+                                    ? Math.round(attempt.activeScore) + '%'
+                                    : Math.round(attempt.percentage) + '%'
+                                  }
                                 </span>
+                                {!attempt.isRemedial && attempt.hasRemedial && attempt.activeScore !== attempt.percentage && (
+                                  <span className="text-xs line-through text-muted-foreground">{Math.round(attempt.percentage)}%</span>
+                                )}
                               </div>
                               <p className="text-[10px] text-muted-foreground mt-1 text-right">
                                 {colors.label}
@@ -1061,6 +1084,26 @@ export function SiswaRiwayatView() {
                       {/* Expanded Detail */}
                       {isExpanded && (
                         <div className="mt-3 pt-3 border-t">
+                          {/* Learning Objective (show for remedial context) */}
+                          {attempt.learningObjective && (
+                            <div className="flex items-start gap-2 bg-sky-50 rounded-lg px-3 py-2.5 mb-3 border border-sky-100">
+                              <Target className="h-4 w-4 text-sky-600 mt-0.5 shrink-0" />
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-sky-500 font-medium">Tujuan Pembelajaran</p>
+                                <p className="text-sm text-sky-800 mt-0.5">{attempt.learningObjective}</p>
+                              </div>
+                            </div>
+                          )}
+                          {/* Remedial info */}
+                          {attempt.isRemedial && (
+                            <div className="flex items-start gap-2 bg-amber-50 rounded-lg px-3 py-2.5 mb-3 border border-amber-100">
+                              <RotateCcw className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-amber-500 font-medium">Ini adalah pengerjaan ulang (Remedial)</p>
+                                <p className="text-sm text-amber-800 mt-0.5">Kerjakan ulang soal untuk meningkatkan nilai Anda.</p>
+                              </div>
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">

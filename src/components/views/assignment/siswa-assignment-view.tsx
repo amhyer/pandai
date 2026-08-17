@@ -49,6 +49,13 @@ interface MySubmission {
   feedback: string | null;
   submittedAt: string | null;
   gradedAt: string | null;
+  isRemedial?: boolean;
+  hasRemedial?: boolean;
+  remedialId?: string;
+  remedialStatus?: string;
+  remedialScore?: number;
+  activeScore?: number | null;
+  originalScore?: number | null;
 }
 
 interface AssignmentListItem {
@@ -620,9 +627,19 @@ export function SiswaAssignmentView() {
                         >
                           {SUB_STATUS_LABEL[subStatus]}
                         </Badge>
-                        {subStatus === 'dinilai' && (a.mySubmission?.score ?? null) !== null && (
+                        {a.mySubmission?.hasRemedial && (
+                          <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-600 bg-amber-50">
+                            Remedial {a.mySubmission.remedialStatus === 'dinilai' || a.mySubmission.remedialStatus === 'submitted' ? '✓' : '⏳'}
+                          </Badge>
+                        )}
+                        {(subStatus === 'dinilai' || subStatus === 'submitted') && (a.mySubmission?.activeScore ?? null) !== null && (
                           <span className="text-sm font-bold text-[#1F3864]">
-                            {Math.round(a.mySubmission?.score ?? 0)}
+                            {Math.round(a.mySubmission?.activeScore ?? a.mySubmission?.score ?? 0)}
+                            {a.mySubmission?.hasRemedial && a.mySubmission.activeScore !== a.mySubmission.score && (
+                              <span className="text-xs line-through text-muted-foreground ml-1">
+                                {Math.round(a.mySubmission?.score ?? 0)}
+                              </span>
+                            )}
                           </span>
                         )}
                       </div>

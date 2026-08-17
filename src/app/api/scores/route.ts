@@ -19,13 +19,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
 
-    // Fetch all attempts for this student
-    const attempts = await db.studentAttempt.findMany({
+    // Fetch ALL attempts (both original and remedial) for enrichment
+    const allAttempts = await db.studentAttempt.findMany({
       where: { userId: studentId },
       orderBy: { startedAt: 'desc' },
+      include: {
+        remedialAttempts: { select: { id: true, status: true, score: true, percentage: true, submittedAt: true, isRemedial: true } },
+      },
     });
 
-    if (attempts.length === 0) {
+    if (allAttempts.length === 0) {
       return NextResponse.json({
         avgScore: 0,
         highScore: 0,
@@ -38,33 +41,81 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Use the percentage field directly from StudentAttempt
-    const scores = attempts.map(a => Math.round(a.percentage || 0));
+    // Separate original attempts from remedial ones for stats
+    // For stats/ranking: use only ORIGINAL attempts (exclude remedial to avoid double-counting)
+    // But if original has remedial, use remedial score as the "active" score
+    const originalAttempts = allAttempts.filter((a) => !a.isRemedial);
 
-    const avgScore = Math.round(scores.reduce((s, v) => s + v, 0) / scores.length);
-    const highScore = Math.max(...scores);
-    const totalTryout = attempts.length;
+    // Build active scores: for each original attempt, determine the effective score
+    const activeScores = originalAttempts.map((a) => {
+      if (a.remedialAttempts.length > 0) {
+        const remedial = a.remedialAttempts[0];
+        // If remedial is submitted/graded, use remedial score; otherwise original
+        if (remedial.status === 'submitted' || remedial.status === 'graded') {
+          return Math.round(remedial.percentage || 0);
+        }
+      }
+      return Math.round(a.percentage || 0);
+    });
 
-    // Score trend
-    const scoreTrend = attempts.map((a, idx) => ({
-      label: a.examPackageId ? `Paket ${idx + 1}` : `Tes ${idx + 1}`,
-      value: scores[idx],
-    }));
+    const avgScore = activeScores.length > 0
+      ? Math.round(activeScores.reduce((s, v) => s + v, 0) / activeScores.length)
+      : 0;
+    const highScore = activeScores.length > 0 ? Math.max(...activeScores) : 0;
+    const totalTryout = originalAttempts.length;
 
-    // Recent scores
-    const recentScores = attempts.map((a, idx) => ({
-      id: a.id,
-      examName: a.examPackageId ? `Paket ${idx + 1}` : `Tes ${idx + 1}`,
-      date: a.submittedAt
-        ? new Date(a.submittedAt).toISOString().split('T')[0]
-        : new Date(a.startedAt).toISOString().split('T')[0],
-      score: scores[idx],
-      status: scores[idx] >= 70 ? 'Lulus' : 'Belum Lulus',
-      learningObjective: a.learningObjective || null,
-    }));
+    // Score trend (only originals, with active score shown)
+    const scoreTrend = originalAttempts.map((a, idx) => {
+      let activeVal = Math.round(a.percentage || 0);
+      if (a.remedialAttempts.length > 0) {
+        const r = a.remedialAttempts[0];
+        if (r.status === 'submitted' || r.status === 'graded') {
+          activeVal = Math.round(r.percentage || 0);
+        }
+      }
+      return {
+        label: a.examPackageId ? `Paket ${idx + 1}` : `Tes ${idx + 1}`,
+        value: activeVal,
+      };
+    });
+
+    // Recent scores with remedial info
+    const recentScores = originalAttempts.map((a, idx) => {
+      const originalScore = Math.round(a.percentage || 0);
+      let activeScore = originalScore;
+      let remedialInfo: { id: string; status: string; score: number } | null = null;
+
+      if (a.remedialAttempts.length > 0) {
+        const r = a.remedialAttempts[0];
+        remedialInfo = {
+          id: r.id,
+          status: r.status,
+          score: Math.round(r.percentage || 0),
+        };
+        if (r.status === 'submitted' || r.status === 'graded') {
+          activeScore = remedialInfo.score;
+        }
+      }
+
+      return {
+        id: a.id,
+        examName: a.examPackageId ? `Paket ${idx + 1}` : `Tes ${idx + 1}`,
+        date: a.submittedAt
+          ? new Date(a.submittedAt).toISOString().split('T')[0]
+          : new Date(a.startedAt).toISOString().split('T')[0],
+        score: activeScore, // nilai yang berlaku (remedial jika ada & submitted)
+        originalScore, // nilai asli sebelum remedial
+        isRemedial: a.isRemedial,
+        hasRemedial: !!remedialInfo,
+        remedialStatus: remedialInfo?.status || null,
+        remedialScore: remedialInfo?.score || null,
+        status: activeScore >= 70 ? 'Lulus' : 'Belum Lulus',
+        learningObjective: a.learningObjective || null,
+      };
+    });
 
     // Class rank estimation
-    const classId = attempts[0].classId;
+    const classId = originalAttempts[0]?.classId;
     let classRank = 0;
     let totalClassmates = 0;
 

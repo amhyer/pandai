@@ -36,13 +36,33 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // If studentId, enrich with submission status per assignment
+    // If studentId, enrich with submission status per assignment (including remedial info)
     if (studentId) {
       const enriched = await Promise.all(assignments.map(async (a) => {
         const sub = await db.assignmentSubmission.findFirst({
           where: { assignmentId: a.id, studentId, isRemedial: false },
         });
-        return { ...a, mySubmission: sub || null };
+        if (!sub) return { ...a, mySubmission: null };
+
+        // Check for remedial submission
+        const remedial = await db.assignmentSubmission.findFirst({
+          where: { assignmentId: a.id, studentId, isRemedial: true },
+        });
+
+        const extra: Record<string, unknown> = { hasRemedial: false, activeScore: sub.score };
+        if (remedial) {
+          extra.hasRemedial = true;
+          extra.remedialId = remedial.id;
+          extra.remedialStatus = remedial.status;
+          extra.remedialScore = remedial.score;
+          extra.originalScore = sub.score;
+          // If remedial is submitted/graded, it becomes the active score
+          if (remedial.status === 'submitted' || remedial.status === 'dinilai') {
+            extra.activeScore = remedial.score;
+          }
+        }
+
+        return { ...a, mySubmission: { ...sub, ...extra } };
       }));
       return NextResponse.json(enriched);
     }
