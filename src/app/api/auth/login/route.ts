@@ -60,6 +60,7 @@ export async function POST(request: Request) {
       parentId: user.parentId,
       schoolId: user.schoolId,
       schoolName: user.school?.name,
+      schoolType: (user.school?.schoolType as string) || null,
       classId: user.classId,
       className: user.class?.name,
       isActive: user.isActive,

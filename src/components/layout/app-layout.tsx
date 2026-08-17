@@ -87,219 +87,321 @@ interface NavSection {
   items: NavItem[];
 }
 
+type SchoolType = 'SD' | 'SMP' | 'SMA' | 'SMK';
 type RoleNav = Record<UserRole, NavSection[]>;
 
+/**
+ * Bangun konfigurasi navigasi berdasarkan role + schoolType.
+ * Menu sidebar berbeda per jenjang pendidikan (SD/SMP/SMA/SMK).
+ * Tryout TKA tersedia di SEMUA jenjang.
+ */
+function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[] {
+  const st = (schoolType || 'SMA') as SchoolType;
+
+  // ──────────────────────────────────────────────────────────────
+  // SUPER ADMIN — Tidak terikat sekolah, menu tetap
+  // ──────────────────────────────────────────────────────────────
+  if (role === 'SUPER_ADMIN') {
+    return [
+      {
+        section: 'Utama',
+        items: [
+          { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        section: 'Manajemen',
+        items: [
+          { label: 'Kelola Sekolah', view: 'schools', icon: School },
+          { label: 'Semua Pengguna', view: 'users-global', icon: Users },
+          { label: 'Bank Soal Global (NALAR)', view: 'questions-global', icon: BookMarked },
+        ],
+      },
+      {
+        section: 'Laporan',
+        items: [
+          { label: 'Analitik Platform', view: 'analytics-global', icon: BarChart3 },
+          { label: 'Laporan Global', view: 'reports-global', icon: Printer },
+        ],
+      },
+      {
+        section: 'Sistem',
+        items: [
+          { label: 'Pengaturan', view: 'settings', icon: Settings },
+        ],
+      },
+    ];
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // ADMIN SEKOLAH — Beda per jenjang
+  // ──────────────────────────────────────────────────────────────
+  if (role === 'ADMIN_SCHOOL') {
+    const dataInduk: NavItem[] = [
+      { label: 'Kelas', view: 'classes', icon: GraduationCap },
+      { label: 'Mata Pelajaran', view: 'subjects', icon: BookMarked },
+      { label: 'Data Siswa', view: 'users', icon: Users },
+      { label: 'Jadwal Pelajaran', view: 'timetable', icon: CalendarDays },
+    ];
+
+    // SMA: tambah Penjurusan (IPA/IPS/Bahasa)
+    if (st === 'SMA') {
+      dataInduk.push({ label: 'Penjurusan', view: 'users' as ViewType, icon: Award });
+    }
+    // SMK: tambah Program Keahlian
+    if (st === 'SMK') {
+      dataInduk.push({ label: 'Program Keahlian', view: 'users' as ViewType, icon: FolderOpen });
+    }
+
+    const sections: NavSection[] = [
+      {
+        section: 'Utama',
+        items: [
+          { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        section: 'Data Induk',
+        items: dataInduk,
+      },
+      {
+        section: 'Penugasan',
+        items: [
+          { label: 'Penugasan Guru', view: 'teacher-assignments', icon: ClipboardCheck },
+          { label: 'Wali Kelas', view: 'wali-kelas', icon: UserCheck },
+        ],
+      },
+      {
+        section: 'Integrasi',
+        items: [
+          { label: 'Import Data', view: 'import-csv', icon: FilePlus },
+          { label: 'Tarik Data Dapodik', view: 'dapodik-sync', icon: Database },
+        ],
+      },
+      {
+        section: 'Sistem',
+        items: [
+          { label: 'Pengaturan Aplikasi', view: 'settings', icon: Settings },
+          { label: 'Cadangkan & Pulihkan', view: 'backup-restore', icon: HardDrive },
+          { label: 'Log Aktivitas', view: 'activity-log', icon: Activity },
+        ],
+      },
+    ];
+    return sections;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // GURU — Beda per jenjang (Tryout TKA di semua jenjang)
+  // ──────────────────────────────────────────────────────────────
+  if (role === 'GURU') {
+    const pembelajaran: NavItem[] = [
+      { label: 'Materi Pelajaran', view: 'guru-materi', icon: FileText },
+      { label: 'Tugas Terstruktur', view: 'guru-tugas', icon: ClipboardList },
+      { label: 'Tryout TKA', view: 'guru-nilai', icon: PenLine }, // Tryout di semua jenjang
+    ];
+
+    // SMA: tambah Penjurusan
+    // SMK: tambah Keahlian & PKL
+
+    const sections: NavSection[] = [
+      {
+        section: 'Utama',
+        items: [
+          { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        section: 'Pembelajaran',
+        items: pembelajaran,
+      },
+      {
+        section: 'Kehadiran',
+        items: [
+          { label: 'Kehadiran Siswa', view: 'guru-kehadiran', icon: CalendarDays },
+          { label: 'Rekap Kehadiran', view: 'guru-rekap-kehadiran', icon: History },
+        ],
+      },
+      {
+        section: 'Karakter',
+        items: [
+          { label: 'Rekap Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
+          { label: 'Analisis Kebiasaan Kelas', view: 'guru-rekap-karakter', icon: Award },
+        ],
+      },
+      {
+        section: 'Administrasi',
+        items: [
+          { label: 'Jurnal Mengajar', view: 'guru-jurnal', icon: ScrollText },
+        ],
+      },
+      {
+        section: 'Penilaian',
+        items: [
+          { label: 'Input Nilai', view: 'guru-nilai', icon: ListChecks },
+          { label: 'Analisis Hasil Belajar', view: 'guru-analisis', icon: TrendingUp },
+          { label: 'Laporan Siswa', view: 'guru-laporan', icon: Printer },
+        ],
+      },
+      {
+        section: 'AI',
+        items: [
+          { label: 'PANDAI AI', view: 'guru-pandai-ai', icon: BrainCircuit },
+        ],
+      },
+    ];
+
+    // SMA: tambah seksi Penjurusan
+    if (st === 'SMA') {
+      sections.splice(5, 0, {
+        section: 'Penjurusan',
+        items: [
+          { label: 'Manajemen Penjurusan', view: 'guru-analisis' as ViewType, icon: Award },
+          { label: 'Rekap Per Jurusan', view: 'guru-laporan' as ViewType, icon: BarChart3 },
+        ],
+      });
+    }
+
+    // SMK: tambah seksi Kompetensi Keahlian
+    if (st === 'SMK') {
+      sections.splice(5, 0, {
+        section: 'Kompetensi Keahlian',
+        items: [
+          { label: 'Program Keahlian', view: 'guru-analisis' as ViewType, icon: FolderOpen },
+          { label: 'PKL / Praktik Kerja', view: 'guru-laporan' as ViewType, icon: ClipboardCheck },
+        ],
+      });
+    }
+
+    return sections;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // SISWA — Beda sedikit per jenjang
+  // ──────────────────────────────────────────────────────────────
+  if (role === 'SISWA') {
+    const belajar: NavItem[] = [
+      { label: 'Materi Pelajaran', view: 'siswa-materi', icon: BookOpen },
+      { label: 'Tugas Terstruktur', view: 'siswa-tugas', icon: ClipboardList },
+      { label: 'Tryout TKA', view: 'siswa-riwayat', icon: PenLine },
+      { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: History },
+    ];
+
+    const sections: NavSection[] = [
+      {
+        section: 'Utama',
+        items: [
+          { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        section: 'Belajar',
+        items: belajar,
+      },
+      {
+        section: 'Hasil',
+        items: [
+          { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
+          { label: 'Kehadiran Saya', view: 'siswa-kehadiran', icon: CalendarDays },
+        ],
+      },
+      {
+        section: 'AI',
+        items: [
+          { label: 'PANDAI AI', view: 'siswa-pandai-ai', icon: BrainCircuit },
+        ],
+      },
+    ];
+
+    // SMA: tambah Penjurusan Saya
+    if (st === 'SMA') {
+      sections.splice(3, 0, {
+        section: 'Penjurusan',
+        items: [
+          { label: 'Jurusan Saya', view: 'siswa-nilai' as ViewType, icon: Award },
+          { label: 'Rekomendasi Jurusan', view: 'siswa-pandai-ai' as ViewType, icon: Target },
+        ],
+      });
+    }
+
+    // SMK: tambah Keahlian
+    if (st === 'SMK') {
+      sections.splice(3, 0, {
+        section: 'Kompetensi Keahlian',
+        items: [
+          { label: 'Program Keahlian', view: 'siswa-nilai' as ViewType, icon: FolderOpen },
+          { label: 'Log PKL Saya', view: 'siswa-kehadiran' as ViewType, icon: ClipboardCheck },
+        ],
+      });
+    }
+
+    return sections;
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // ORANG TUA — Menu pantau, sama semua jenjang
+  // ──────────────────────────────────────────────────────────────
+  if (role === 'ORANG_TUA') {
+    return [
+      {
+        section: 'Utama',
+        items: [
+          { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        section: '7 Kebiasaan Anak Indonesia Hebat',
+        items: [
+          { label: 'Isi Laporan Harian', view: 'ortu-karakter', icon: Heart },
+          { label: 'Rekap & Analisis', view: 'ortu-rekap-karakter', icon: BarChart3 },
+        ],
+      },
+      {
+        section: 'Pantau Anak',
+        items: [
+          { label: 'Nilai & Progres', view: 'ortu-nilai', icon: Target },
+          { label: 'Materi Pelajaran', view: 'ortu-materi', icon: BookOpen },
+          { label: 'Kehadiran', view: 'ortu-kehadiran', icon: UserCheck },
+          { label: 'Riwayat Pengerjaan', view: 'ortu-kuis', icon: History },
+          { label: 'Laporan Cetak', view: 'ortu-laporan', icon: Printer },
+        ],
+      },
+    ];
+  }
+
+  // ──────────────────────────────────────────────────────────────
+  // KEPALA SEKOLAH — Sama semua jenjang (rekap agregat)
+  // ──────────────────────────────────────────────────────────────
+  if (role === 'KEPALA_SEKOLAH') {
+    return [
+      {
+        section: 'Utama',
+        items: [
+          { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
+        ],
+      },
+      {
+        section: 'Rekap Sekolah',
+        items: [
+          { label: 'Rekap Per Kelas', view: 'kepsek-rekap-kelas', icon: GraduationCap },
+          { label: 'Rekap Per Guru', view: 'kepsek-rekap-guru', icon: Users },
+          { label: 'Rekap 7 Kebiasaan', view: 'kepsek-rekap-karakter', icon: Star },
+        ],
+      },
+    ];
+  }
+
+  // Fallback
+  return [];
+}
+
+// Shorthand for backward compat during migration
 const NAV_CONFIG: RoleNav = {
-  // ────────────────────────────────────────────────────────────────
-  // SUPER ADMIN — Mengelola platform lintas sekolah
-  // ────────────────────────────────────────────────────────────────
-  SUPER_ADMIN: [
-    {
-      section: 'Utama',
-      items: [
-        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      section: 'Manajemen',
-      items: [
-        { label: 'Kelola Sekolah', view: 'schools', icon: School },
-        { label: 'Semua Pengguna', view: 'users-global', icon: Users },
-        { label: 'Bank Soal Global (NALAR)', view: 'questions-global', icon: BookMarked },
-      ],
-    },
-    {
-      section: 'Laporan',
-      items: [
-        { label: 'Analitik Platform', view: 'analytics-global', icon: BarChart3 },
-        { label: 'Laporan Global', view: 'reports-global', icon: Printer },
-      ],
-    },
-    {
-      section: 'Sistem',
-      items: [
-        { label: 'Pengaturan', view: 'settings', icon: Settings },
-      ],
-    },
-  ],
-
-  // ────────────────────────────────────────────────────────────────
-  // ADMIN SEKOLAH — 12 Menu dalam 5 Seksi
-  // ────────────────────────────────────────────────────────────────
-  ADMIN_SCHOOL: [
-    {
-      section: 'Utama',
-      items: [
-        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      section: 'Data Induk',
-      items: [
-        { label: 'Kelas', view: 'classes', icon: GraduationCap },
-        { label: 'Mata Pelajaran', view: 'subjects', icon: BookMarked },
-        { label: 'Data Siswa', view: 'users', icon: Users },
-        { label: 'Jadwal Pelajaran', view: 'timetable', icon: CalendarDays },
-      ],
-    },
-    {
-      section: 'Penugasan',
-      items: [
-        { label: 'Penugasan Guru', view: 'teacher-assignments', icon: ClipboardCheck },
-        { label: 'Wali Kelas', view: 'wali-kelas', icon: UserCheck },
-      ],
-    },
-    {
-      section: 'Integrasi',
-      items: [
-        { label: 'Import Data', view: 'import-csv', icon: FilePlus },
-        { label: 'Tarik Data Dapodik', view: 'dapodik-sync', icon: Database },
-      ],
-    },
-    {
-      section: 'Sistem',
-      items: [
-        { label: 'Pengaturan Aplikasi', view: 'settings', icon: Settings },
-        { label: 'Cadangkan & Pulihkan', view: 'backup-restore', icon: HardDrive },
-        { label: 'Log Aktivitas', view: 'activity-log', icon: Activity },
-      ],
-    },
-  ],
-
-  // ────────────────────────────────────────────────────────────────
-  // GURU — 12 Menu dalam 7 Seksi
-  // ────────────────────────────────────────────────────────────────
-  GURU: [
-    {
-      section: 'Utama',
-      items: [
-        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      section: 'Pembelajaran',
-      items: [
-        { label: 'Materi Pelajaran', view: 'guru-materi', icon: FileText },
-        { label: 'Tugas Terstruktur', view: 'guru-tugas', icon: ClipboardList },
-      ],
-    },
-    {
-      section: 'Kehadiran',
-      items: [
-        { label: 'Kehadiran Siswa', view: 'guru-kehadiran', icon: CalendarDays },
-        { label: 'Rekap Kehadiran', view: 'guru-rekap-kehadiran', icon: History },
-      ],
-    },
-    {
-      section: 'Karakter',
-      items: [
-        { label: 'Rekap Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
-        { label: 'Analisis Kebiasaan Kelas', view: 'guru-rekap-karakter', icon: Award },
-      ],
-    },
-    {
-      section: 'Administrasi',
-      items: [
-        { label: 'Jurnal Mengajar', view: 'guru-jurnal', icon: ScrollText },
-      ],
-    },
-    {
-      section: 'Penilaian',
-      items: [
-        { label: 'Input Nilai', view: 'guru-nilai', icon: ListChecks },
-        { label: 'Analisis Hasil Belajar', view: 'guru-analisis', icon: TrendingUp },
-        { label: 'Laporan Siswa', view: 'guru-laporan', icon: Printer },
-      ],
-    },
-    {
-      section: 'AI',
-      items: [
-        { label: 'PANDAI AI', view: 'guru-pandai-ai', icon: BrainCircuit },
-      ],
-    },
-  ],
-
-  // ────────────────────────────────────────────────────────────────
-  // SISWA — 7 Menu dalam 4 Seksi
-  // ────────────────────────────────────────────────────────────────
-  SISWA: [
-    {
-      section: 'Utama',
-      items: [
-        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      section: 'Belajar',
-      items: [
-        { label: 'Materi Pelajaran', view: 'siswa-materi', icon: BookOpen },
-        { label: 'Tugas Terstruktur', view: 'siswa-tugas', icon: ClipboardList },
-        { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: History },
-      ],
-    },
-    {
-      section: 'Hasil',
-      items: [
-        { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
-        { label: 'Kehadiran Saya', view: 'siswa-kehadiran', icon: CalendarDays },
-      ],
-    },
-    {
-      section: 'AI',
-      items: [
-        { label: 'PANDAI AI', view: 'siswa-pandai-ai', icon: BrainCircuit },
-      ],
-    },
-  ],
-
-  // ────────────────────────────────────────────────────────────────
-  // ORANG TUA — 8 Menu dalam 3 Seksi
-  // ────────────────────────────────────────────────────────────────
-  ORANG_TUA: [
-    {
-      section: 'Utama',
-      items: [
-        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      section: '7 Kebiasaan Anak Indonesia Hebat',
-      items: [
-        { label: 'Isi Laporan Harian', view: 'ortu-karakter', icon: Heart },
-        { label: 'Rekap & Analisis', view: 'ortu-rekap-karakter', icon: BarChart3 },
-      ],
-    },
-    {
-      section: 'Pantau Anak',
-      items: [
-        { label: 'Nilai & Progres', view: 'ortu-nilai', icon: Target },
-        { label: 'Materi Pelajaran', view: 'ortu-materi', icon: BookOpen },
-        { label: 'Kehadiran', view: 'ortu-kehadiran', icon: UserCheck },
-        { label: 'Riwayat Pengerjaan', view: 'ortu-kuis', icon: History },
-        { label: 'Laporan Cetak', view: 'ortu-laporan', icon: Printer },
-      ],
-    },
-  ],
-
-  // ────────────────────────────────────────────────────────────────
-  // KEPALA SEKOLAH — 4 Menu dalam 3 Seksi
-  // ────────────────────────────────────────────────────────────────
-  KEPALA_SEKOLAH: [
-    {
-      section: 'Utama',
-      items: [
-        { label: 'Beranda', view: 'dashboard', icon: LayoutDashboard },
-      ],
-    },
-    {
-      section: 'Rekap Sekolah',
-      items: [
-        { label: 'Rekap Per Kelas', view: 'kepsek-rekap-kelas', icon: GraduationCap },
-        { label: 'Rekap Per Guru', view: 'kepsek-rekap-guru', icon: Users },
-        { label: 'Rekap 7 Kebiasaan', view: 'kepsek-rekap-karakter', icon: Star },
-      ],
-    },
-  ],
+  SUPER_ADMIN: [],
+  ADMIN_SCHOOL: [],
+  GURU: [],
+  SISWA: [],
+  ORANG_TUA: [],
+  KEPALA_SEKOLAH: [],
 };
 
 // ─── Role badge labels ──────────────────────────────────────────────
@@ -553,7 +655,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
 
   const role = user?.role ?? 'SISWA';
-  const navSections = NAV_CONFIG[role];
+  const navSections = buildNavConfig(role, user?.schoolType);
   const breadcrumbs = buildBreadcrumbs(currentView);
   const initials = user?.name
     ?.split(' ')

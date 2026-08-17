@@ -91,6 +91,7 @@ export interface User {
   parentId?: string;
   schoolId?: string;
   schoolName?: string;
+  schoolType?: string | null;
   classId?: string;
   className?: string;
   isActive: boolean;
