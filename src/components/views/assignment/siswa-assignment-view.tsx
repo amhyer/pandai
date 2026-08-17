@@ -620,9 +620,9 @@ export function SiswaAssignmentView() {
                         >
                           {SUB_STATUS_LABEL[subStatus]}
                         </Badge>
-                        {subStatus === 'dinilai' && a.mySubmission?.score !== null && (
+                        {subStatus === 'dinilai' && (a.mySubmission?.score ?? null) !== null && (
                           <span className="text-sm font-bold text-[#1F3864]">
-                            {Math.round(a.mySubmission.score)}
+                            {Math.round(a.mySubmission?.score ?? 0)}
                           </span>
                         )}
                       </div>

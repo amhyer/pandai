@@ -552,7 +552,7 @@ export function GuruAssignmentView() {
       if (ans.isCorrect) {
         // PG correct: auto-score
         total += ans.pointsEarned ?? 1;
-      } else if (ans.type === 'ESSAY' || detail.questions.find((q) => q.id === ans.questionId)?.type === 'ESSAY') {
+      } else if (detail.questions.find((q) => q.id === ans.questionId)?.type === 'ESSAY') {
         total += essayPoints[ans.questionId] || 0;
       }
     }
@@ -1282,7 +1282,7 @@ export function GuruAssignmentView() {
                     <div className="space-y-4">
                       {submissionDetail.answers.map((ans, idx) => {
                         const question = detail.questions.find((q) => q.id === ans.questionId);
-                        const isEssay = question?.type === 'ESSAY' || ans.type === 'ESSAY';
+                        const isEssay = question?.type === 'ESSAY';
 
                         return (
                           <div key={ans.id || idx} className="space-y-2 p-4 bg-slate-50 rounded-lg">
