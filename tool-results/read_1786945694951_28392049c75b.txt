@@ -1,0 +1,1319 @@
+     1→'use client';
+     2→import React, { useState, useEffect, useCallback, useRef } from 'react';
+     3→import { useAppStore } from '@/store/use-store';
+     4→import { Card, CardContent } from '@/components/ui/card';
+     5→import { Button } from '@/components/ui/button';
+     6→import { Badge } from '@/components/ui/badge';
+     7→import { Input } from '@/components/ui/input';
+     8→import { Textarea } from '@/components/ui/textarea';
+     9→import { Label } from '@/components/ui/label';
+    10→import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+    11→import { toast } from 'sonner';
+    12→import { cn } from '@/lib/utils';
+    13→import { Target, ChevronLeft, Clock, CheckCircle2, AlertCircle, Eye, Loader2, Save, Send, FileText, BookOpen, ClipboardList } from 'lucide-react';
+    14→
+    15→// ═══════════════════════════════════════════════════════════════════
+    16→// TYPES
+    17→// ═══════════════════════════════════════════════════════════════════
+    18→
+    19→type SubmissionType = 'pg_only' | 'essay_only' | 'mixed';
+    20→type SubStatus = 'belum_dikerjakan' | 'dikerjakan' | 'submitted' | 'dinilai';
+    21→type InternalView = 'list' | 'work' | 'result';
+    22→
+    23→type QuestionType = 'pg' | 'esai' | 'pg_kompleks' | 'isian';
+    24→
+    25→interface ParsedOption {
+    26→  label: string;
+    27→  text: string;
+    28→  isCorrect?: boolean;
+    29→}
+    30→
+    31→interface AssignmentQuestionItem {
+    32→  id: string;
+    33→  questionId: string;
+    34→  orderNum: number;
+    35→  points: number;
+    36→  question: {
+    37→    id: string;
+    38→    content: string;
+    39→    type: QuestionType;
+    40→    options: string | null;
+    41→    answer: string | null;
+    42→  };
+    43→}
+    44→
+    45→interface MySubmission {
+    46→  id: string;
+    47→  status: SubStatus;
+    48→  score: number | null;
+    49→  feedback: string | null;
+    50→  submittedAt: string | null;
+    51→  gradedAt: string | null;
+    52→}
+    53→
+    54→interface AssignmentListItem {
+    55→  id: string;
+    56→  title: string;
+    57→  description: string | null;
+    58→  deadline: string;
+    59→  learningObjective: string | null;
+    60→  submissionType: SubmissionType;
+    61→  maxScore: number;
+    62→  status: string;
+    63→  questions: AssignmentQuestionItem[];
+    64→  _count: { submissions: number };
+    65→  mySubmission: MySubmission | null;
+    66→}
+    67→
+    68→interface AssignmentDetail {
+    69→  id: string;
+    70→  title: string;
+    71→  description: string | null;
+    72→  instructions: string | null;
+    73→  deadline: string;
+    74→  learningObjective: string | null;
+    75→  submissionType: SubmissionType;
+    76→  maxScore: number;
+    77→  status: string;
+    78→  questions: AssignmentQuestionItem[];
+    79→}
+    80→
+    81→interface SubmissionAnswer {
+    82→  id: string;
+    83→  questionId: string;
+    84→  answer: string | null;
+    85→  essayAnswer: string | null;
+    86→  isCorrect: boolean | null;
+    87→  pointsEarned: number;
+    88→  question: {
+    89→    id: string;
+    90→    questionId: string;
+    91→    question: {
+    92→      id: string;
+    93→      content: string;
+    94→      type: QuestionType;
+    95→      options: string | null;
+    96→    };
+    97→  };
+    98→}
+    99→
+   100→interface SubmissionWithAnswers {
+   101→  id: string;
+   102→  status: SubStatus;
+   103→  score: number | null;
+   104→  feedback: string | null;
+   105→  submittedAt: string | null;
+   106→  gradedAt: string | null;
+   107→  answers: SubmissionAnswer[];
+   108→}
+   109→
+   110→interface LocalAnswer {
+   111→  answer?: string;
+   112→  essayAnswer?: string;
+   113→}
+   114→
+   115→// ═══════════════════════════════════════════════════════════════════
+   116→// CONSTANTS
+   117→// ═══════════════════════════════════════════════════════════════════
+   118→
+   119→const TYPE_LABELS: Record<SubmissionType, string> = {
+   120→  pg_only: 'PG Saja',
+   121→  essay_only: 'Essay Saja',
+   122→  mixed: 'Campuran',
+   123→};
+   124→
+   125→const TYPE_BADGE: Record<SubmissionType, string> = {
+   126→  pg_only: 'bg-pink-100 text-pink-700 border-pink-200',
+   127→  essay_only: 'bg-blue-100 text-blue-700 border-blue-200',
+   128→  mixed: 'bg-purple-100 text-purple-700 border-purple-200',
+   129→};
+   130→
+   131→const SUB_STATUS_BADGE: Record<SubStatus, string> = {
+   132→  belum_dikerjakan: 'bg-red-50 text-red-600 border-red-200',
+   133→  dikerjakan: 'bg-amber-50 text-amber-600 border-amber-200',
+   134→  submitted: 'bg-blue-50 text-blue-600 border-blue-200',
+   135→  dinilai: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+   136→};
+   137→
+   138→const SUB_STATUS_LABEL: Record<SubStatus, string> = {
+   139→  belum_dikerjakan: 'Belum Dikerjakan',
+   140→  dikerjakan: 'Dalam Pengerjaan',
+   141→  submitted: 'Terkirim',
+   142→  dinilai: 'Dinilai',
+   143→};
+   144→
+   145→const STATUS_FILTERS: { label: string; value: string }[] = [
+   146→  { label: 'Semua', value: 'all' },
+   147→  { label: 'Belum', value: 'belum_dikerjakan' },
+   148→  { label: 'Dikerjakan', value: 'dikerjakan' },
+   149→  { label: 'Terkirim', value: 'submitted' },
+   150→  { label: 'Dinilai', value: 'dinilai' },
+   151→];
+   152→
+   153→// ═══════════════════════════════════════════════════════════════════
+   154→// HELPERS
+   155→// ═══════════════════════════════════════════════════════════════════
+   156→
+   157→function formatDate(d: string) {
+   158→  if (!d) return '-';
+   159→  const date = new Date(d);
+   160→  return date.toLocaleDateString('id-ID', {
+   161→    day: 'numeric',
+   162→    month: 'short',
+   163→    year: 'numeric',
+   164→    hour: '2-digit',
+   165→    minute: '2-digit',
+   166→  });
+   167→}
+   168→
+   169→function parseOptions(optionsJson: string | null): ParsedOption[] {
+   170→  if (!optionsJson) return [];
+   171→  try {
+   172→    const parsed = JSON.parse(optionsJson);
+   173→    if (Array.isArray(parsed)) return parsed;
+   174→    return [];
+   175→  } catch {
+   176→    return [];
+   177→  }
+   178→}
+   179→
+   180→function getCountdown(deadline: string): { text: string; urgent: boolean; past: boolean } {
+   181→  const now = new Date().getTime();
+   182→  const end = new Date(deadline).getTime();
+   183→  const diff = end - now;
+   184→
+   185→  if (diff <= 0) return { text: 'Waktu habis', urgent: true, past: true };
+   186→
+   187→  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+   188→  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+   189→  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+   190→
+   191→  if (days > 0) return { text: `${days} hari ${hours} jam lagi`, urgent: days <= 1, past: false };
+   192→  if (hours > 0) return { text: `${hours} jam ${minutes} menit lagi`, urgent: hours <= 3, past: false };
+   193→  return { text: `${minutes} menit lagi`, urgent: true, past: false };
+   194→}
+   195→
+   196→function getSubStatus(item: AssignmentListItem): SubStatus {
+   197→  if (!item.mySubmission) return 'belum_dikerjakan';
+   198→  return item.mySubmission.status as SubStatus;
+   199→}
+   200→
+   201→function isQuestionPG(type: QuestionType): boolean {
+   202→  return type === 'pg';
+   203→}
+   204→
+   205→function getQuestionTypeLabel(type: QuestionType): string {
+   206→  if (type === 'pg' || type === 'pg_kompleks') return 'PG';
+   207→  return 'Essay';
+   208→}
+   209→
+   210→// ═══════════════════════════════════════════════════════════════════
+   211→// COMPONENT
+   212→// ═══════════════════════════════════════════════════════════════════
+   213→
+   214→export function SiswaAssignmentView() {
+   215→  const { user } = useAppStore();
+   216→
+   217→  const schoolId = user?.schoolId || '';
+   218→  const classId = user?.classId || '';
+   219→  const studentId = user?.id || '';
+   220→
+   221→  // ── View state ──
+   222→  const [view, setView] = useState<InternalView>('list');
+   223→
+   224→  // ── List view state ──
+   225→  const [assignments, setAssignments] = useState<AssignmentListItem[]>([]);
+   226→  const [listLoading, setListLoading] = useState(true);
+   227→  const [statusFilter, setStatusFilter] = useState('all');
+   228→
+   229→  // ── Work view state ──
+   230→  const [workId, setWorkId] = useState<string | null>(null);
+   231→  const [workDetail, setWorkDetail] = useState<AssignmentDetail | null>(null);
+   232→  const [workLoading, setWorkLoading] = useState(true);
+   233→  const [answers, setAnswers] = useState<Record<string, LocalAnswer>>({});
+   234→  const [saving, setSaving] = useState(false);
+   235→  const [submitting, setSubmitting] = useState(false);
+   236→  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+   237→  const autosaveRef = useRef<NodeJS.Timeout | null>(null);
+   238→  const hasUnsavedRef = useRef(false);
+   239→
+   240→  // ── Result view state ──
+   241→  const [resultDetail, setResultDetail] = useState<AssignmentDetail | null>(null);
+   242→  const [resultSubmission, setResultSubmission] = useState<SubmissionWithAnswers | null>(null);
+   243→  const [resultLoading, setResultLoading] = useState(true);
+   244→
+   245→  // ── Dialog ──
+   246→  const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+   247→
+   248→  // ═══════════════════════════════════════════════════════════════════
+   249→  // DATA FETCHING
+   250→  // ═══════════════════════════════════════════════════════════════════
+   251→
+   252→  const fetchAssignments = useCallback(async () => {
+   253→    if (!schoolId || !classId || !studentId) return;
+   254→    setListLoading(true);
+   255→    try {
+   256→      const params = new URLSearchParams({ schoolId, classId, studentId });
+   257→      const res = await fetch(`/api/assignments?${params}`);
+   258→      if (!res.ok) throw new Error('Gagal memuat tugas');
+   259→      const data = await res.json();
+   260→      setAssignments(data);
+   261→    } catch {
+   262→      toast.error('Gagal memuat daftar tugas');
+   263→    } finally {
+   264→      setListLoading(false);
+   265→    }
+   266→  }, [schoolId, classId, studentId]);
+   267→
+   268→  useEffect(() => {
+   269→    fetchAssignments();
+   270→  }, [fetchAssignments]);
+   271→
+   272→  // ═══════════════════════════════════════════════════════════════════
+   273→  // WORK VIEW — OPEN & LOAD
+   274→  // ═══════════════════════════════════════════════════════════════════
+   275→
+   276→  const openWork = useCallback(async (assignmentId: string) => {
+   277→    setWorkId(assignmentId);
+   278→    setWorkDetail(null);
+   279→    setAnswers({});
+   280→    setWorkLoading(true);
+   281→    setView('work');
+   282→    setLastSavedAt(null);
+   283→    hasUnsavedRef.current = false;
+   284→
+   285→    try {
+   286→      const [detailRes, subRes] = await Promise.all([
+   287→        fetch(`/api/assignments/${assignmentId}`),
+   288→        fetch(`/api/assignments/${assignmentId}/submissions?studentId=${studentId}`),
+   289→      ]);
+   290→
+   291→      if (!detailRes.ok) throw new Error('Gagal memuat tugas');
+   292→      const detail: AssignmentDetail = await detailRes.json();
+   293→      setWorkDetail(detail);
+   294→
+   295→      // Load existing answers from previous submission
+   296→      if (subRes.ok) {
+   297→        const sub: SubmissionWithAnswers | null = await subRes.json();
+   298→        if (sub && sub.answers && sub.answers.length > 0) {
+   299→          const loaded: Record<string, LocalAnswer> = {};
+   300→          for (const a of sub.answers) {
+   301→            // questionId in the answer is Question.id
+   302→            loaded[a.questionId] = {
+   303→              answer: a.answer || undefined,
+   304→              essayAnswer: a.essayAnswer || undefined,
+   305→            };
+   306→          }
+   307→          setAnswers(loaded);
+   308→        }
+   309→      }
+   310→    } catch {
+   311→      toast.error('Gagal memuat tugas');
+   312→      setView('list');
+   313→    } finally {
+   314→      setWorkLoading(false);
+   315→    }
+   316→  }, [studentId]);
+   317→
+   318→  // ═══════════════════════════════════════════════════════════════════
+   319→  // WORK VIEW — SAVE & SUBMIT
+   320→  // ═══════════════════════════════════════════════════════════════════
+   321→
+   322→  const buildAnswersPayload = useCallback(() => {
+   323→    return Object.entries(answers).map(([questionId, ans]) => ({
+   324→      questionId,
+   325→      answer: ans.answer || null,
+   326→      essayAnswer: ans.essayAnswer || null,
+   327→    }));
+   328→  }, [answers]);
+   329→
+   330→  const handleSaveDraft = useCallback(async () => {
+   331→    if (!workId || !studentId) return;
+   332→    setSaving(true);
+   333→    try {
+   334→      const payload = {
+   335→        studentId,
+   336→        schoolId,
+   337→        classId,
+   338→        action: 'draft' as const,
+   339→        answers: buildAnswersPayload(),
+   340→      };
+   341→      const res = await fetch(`/api/assignments/${workId}/submissions`, {
+   342→        method: 'POST',
+   343→        headers: { 'Content-Type': 'application/json' },
+   344→        body: JSON.stringify(payload),
+   345→      });
+   346→      if (!res.ok) throw new Error();
+   347→      setLastSavedAt(new Date());
+   348→      hasUnsavedRef.current = false;
+   349→      toast.success('Tersimpan');
+   350→    } catch {
+   351→      toast.error('Gagal menyimpan jawaban');
+   352→    } finally {
+   353→      setSaving(false);
+   354→    }
+   355→  }, [workId, studentId, schoolId, classId, buildAnswersPayload]);
+   356→
+   357→  const handleSubmit = useCallback(async () => {
+   358→    if (!workId || !studentId) return;
+   359→    setSubmitting(true);
+   360→    try {
+   361→      const payload = {
+   362→        studentId,
+   363→        schoolId,
+   364→        classId,
+   365→        action: 'submit' as const,
+   366→        answers: buildAnswersPayload(),
+   367→      };
+   368→      const res = await fetch(`/api/assignments/${workId}/submissions`, {
+   369→        method: 'POST',
+   370→        headers: { 'Content-Type': 'application/json' },
+   371→        body: JSON.stringify(payload),
+   372→      });
+   373→      if (!res.ok) {
+   374→        const err = await res.json().catch(() => null);
+   375→        throw new Error(err?.error || 'Gagal mengumpulkan');
+   376→      }
+   377→      setConfirmSubmitOpen(false);
+   378→      toast.success('Tugas berhasil dikumpulkan!');
+   379→      // Navigate to result view
+   380→      openResult(workId);
+   381→    } catch (err) {
+   382→      toast.error(err instanceof Error ? err.message : 'Gagal mengumpulkan tugas');
+   383→    } finally {
+   384→      setSubmitting(false);
+   385→    }
+   386→  }, [workId, studentId, schoolId, classId, buildAnswersPayload]);
+   387→
+   388→  // ═══════════════════════════════════════════════════════════════════
+   389→  // AUTOSAVE — every 30 seconds
+   390→  // ═══════════════════════════════════════════════════════════════════
+   391→
+   392→  useEffect(() => {
+   393→    if (view !== 'work' || !workId) return;
+   394→
+   395→    autosaveRef.current = setInterval(() => {
+   396→      if (hasUnsavedRef.current && !saving && !submitting) {
+   397→        handleSaveDraft();
+   398→      }
+   399→    }, 30_000);
+   400→
+   401→    return () => {
+   402→      if (autosaveRef.current) {
+   403→        clearInterval(autosaveRef.current);
+   404→        autosaveRef.current = null;
+   405→      }
+   406→    };
+   407→  }, [view, workId, saving, submitting, handleSaveDraft]);
+   408→
+   409→  // Track unsaved changes
+   410→  useEffect(() => {
+   411→    if (view === 'work') {
+   412→      hasUnsavedRef.current = true;
+   413→    }
+   414→  }, [answers, view]);
+   415→
+   416→  // ═══════════════════════════════════════════════════════════════════
+   417→  // RESULT VIEW — OPEN & LOAD
+   418→  // ═══════════════════════════════════════════════════════════════════
+   419→
+   420→  const openResult = useCallback(async (assignmentId: string) => {
+   421→    setResultDetail(null);
+   422→    setResultSubmission(null);
+   423→    setResultLoading(true);
+   424→    setView('result');
+   425→
+   426→    try {
+   427→      const [detailRes, subRes] = await Promise.all([
+   428→        fetch(`/api/assignments/${assignmentId}`),
+   429→        fetch(`/api/assignments/${assignmentId}/submissions?studentId=${studentId}`),
+   430→      ]);
+   431→
+   432→      if (!detailRes.ok) throw new Error('Gagal memuat tugas');
+   433→      const detail: AssignmentDetail = await detailRes.json();
+   434→      setResultDetail(detail);
+   435→
+   436→      if (subRes.ok) {
+   437→        const sub: SubmissionWithAnswers | null = await subRes.json();
+   438→        setResultSubmission(sub);
+   439→      }
+   440→    } catch {
+   441→      toast.error('Gagal memuat hasil');
+   442→      setView('list');
+   443→    } finally {
+   444→      setResultLoading(false);
+   445→    }
+   446→  }, [studentId]);
+   447→
+   448→  // ═══════════════════════════════════════════════════════════════════
+   449→  // ANSWER HANDLERS
+   450→  // ═══════════════════════════════════════════════════════════════════
+   451→
+   452→  const handlePGAnswer = useCallback((questionId: string, value: string) => {
+   453→    setAnswers((prev) => ({
+   454→      ...prev,
+   455→      [questionId]: { ...prev[questionId], answer: value, essayAnswer: undefined },
+   456→    }));
+   457→  }, []);
+   458→
+   459→  const handleEssayAnswer = useCallback((questionId: string, value: string) => {
+   460→    setAnswers((prev) => ({
+   461→      ...prev,
+   462→      [questionId]: { ...prev[questionId], essayAnswer: value, answer: undefined },
+   463→    }));
+   464→  }, []);
+   465→
+   466→  // ═══════════════════════════════════════════════════════════════════
+   467→  // NAVIGATION HELPERS
+   468→  // ═══════════════════════════════════════════════════════════════════
+   469→
+   470→  const goToList = useCallback(() => {
+   471→    setView('list');
+   472→    setWorkId(null);
+   473→    setWorkDetail(null);
+   474→    setAnswers({});
+   475→    setResultDetail(null);
+   476→    setResultSubmission(null);
+   477→    setLastSavedAt(null);
+   478→    hasUnsavedRef.current = false;
+   479→    fetchAssignments();
+   480→  }, [fetchAssignments]);
+   481→
+   482→  // ═══════════════════════════════════════════════════════════════════
+   483→  // DERIVED STATE
+   484→  // ═══════════════════════════════════════════════════════════════════
+   485→
+   486→  const filteredAssignments = statusFilter === 'all'
+   487→    ? assignments
+   488→    : assignments.filter((a) => getSubStatus(a) === statusFilter);
+   489→
+   490→  // ═══════════════════════════════════════════════════════════════════
+   491→  // RENDER — LIST VIEW
+   492→  // ═══════════════════════════════════════════════════════════════════
+   493→
+   494→  if (view === 'list') {
+   495→    return (
+   496→      <div className="space-y-6">
+   497→        {/* Header */}
+   498→        <div>
+   499→          <h1 className="text-2xl font-bold text-[#1F3864] flex items-center gap-2">
+   500→            <ClipboardList className="h-6 w-6" />
+   501→            Tugas Terstruktur
+   502→          </h1>
+   503→          <p className="text-sm text-muted-foreground mt-1">
+   504→            Lihat dan kerjakan tugas yang diberikan oleh guru
+   505→          </p>
+   506→        </div>
+   507→
+   508→        {/* Filter */}
+   509→        <div className="flex flex-wrap gap-2">
+   510→          {STATUS_FILTERS.map((f) => (
+   511→            <Button
+   512→              key={f.value}
+   513→              variant={statusFilter === f.value ? 'default' : 'outline'}
+   514→              size="sm"
+   515→              onClick={() => setStatusFilter(f.value)}
+   516→              className={cn(
+   517→                statusFilter === f.value &&
+   518→                  'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white'
+   519→              )}
+   520→            >
+   521→              {f.label}
+   522→            </Button>
+   523→          ))}
+   524→        </div>
+   525→
+   526→        {/* Loading */}
+   527→        {listLoading && (
+   528→          <div className="flex items-center justify-center py-20">
+   529→            <Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" />
+   530→          </div>
+   531→        )}
+   532→
+   533→        {/* Empty state */}
+   534→        {!listLoading && filteredAssignments.length === 0 && (
+   535→          <Card className="border-none shadow-sm bg-white">
+   536→            <CardContent className="py-16 flex flex-col items-center gap-3">
+   537→              <div className="rounded-full bg-[#1F3864]/10 p-4">
+   538→                <ClipboardList className="h-10 w-10 text-[#1F3864]" />
+   539→              </div>
+   540→              <p className="text-lg font-semibold text-slate-700">
+   541→                {statusFilter === 'all'
+   542→                  ? 'Belum ada tugas'
+   543→                  : `Tidak ada tugas dengan status "${STATUS_FILTERS.find((f) => f.value === statusFilter)?.label}"`}
+   544→              </p>
+   545→              <p className="text-sm text-muted-foreground">
+   546→                Tugas yang diberikan guru akan tampil di sini
+   547→              </p>
+   548→            </CardContent>
+   549→          </Card>
+   550→        )}
+   551→
+   552→        {/* Assignment cards */}
+   553→        {!listLoading && filteredAssignments.length > 0 && (
+   554→          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+   555→            {filteredAssignments.map((a) => {
+   556→              const subStatus = getSubStatus(a);
+   557→              const countdown = getCountdown(a.deadline);
+   558→              const canWork =
+   559→                subStatus === 'belum_dikerjakan' || subStatus === 'dikerjakan';
+   560→
+   561→              return (
+   562→                <Card
+   563→                  key={a.id}
+   564→                  className="border-none shadow-sm bg-white hover:shadow-md transition-shadow"
+   565→                >
+   566→                  <CardContent className="p-5 space-y-3">
+   567→                    {/* Title + type */}
+   568→                    <div className="flex items-start justify-between gap-2">
+   569→                      <h3 className="font-semibold text-sm text-slate-800 line-clamp-2 leading-snug flex-1">
+   570→                        {a.title}
+   571→                      </h3>
+   572→                      <Badge
+   573→                        variant="outline"
+   574→                        className={cn(
+   575→                          'text-[10px] px-2 py-0 shrink-0',
+   576→                          TYPE_BADGE[a.submissionType]
+   577→                        )}
+   578→                      >
+   579→                        {TYPE_LABELS[a.submissionType]}
+   580→                      </Badge>
+   581→                    </div>
+   582→
+   583→                    {/* Tujuan Pembelajaran preview */}
+   584→                    {a.learningObjective && (
+   585→                      <div className="flex items-start gap-2 bg-[#1F3864]/5 rounded-lg px-3 py-2">
+   586→                        <Target className="h-3.5 w-3.5 text-[#1F3864] mt-0.5 shrink-0" />
+   587→                        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
+   588→                          {a.learningObjective}
+   589→                        </p>
+   590→                      </div>
+   591→                    )}
+   592→
+   593→                    {/* Deadline with countdown */}
+   594→                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+   595→                      <Clock className="h-3.5 w-3.5" />
+   596→                      <span>{formatDate(a.deadline)}</span>
+   597→                      <span
+   598→                        className={cn(
+   599→                          'ml-1 font-medium',
+   600→                          countdown.past
+   601→                            ? 'text-red-500'
+   602→                            : countdown.urgent
+   603→                              ? 'text-amber-600'
+   604→                              : 'text-emerald-600'
+   605→                        )}
+   606→                      >
+   607→                        · {countdown.text}
+   608→                      </span>
+   609→                    </div>
+   610→
+   611→                    {/* Status + score row */}
+   612→                    <div className="flex items-center justify-between pt-1">
+   613→                      <div className="flex items-center gap-2">
+   614→                        <Badge
+   615→                          variant="outline"
+   616→                          className={cn(
+   617→                            'text-[10px] px-2 py-0',
+   618→                            SUB_STATUS_BADGE[subStatus]
+   619→                          )}
+   620→                        >
+   621→                          {SUB_STATUS_LABEL[subStatus]}
+   622→                        </Badge>
+   623→                        {subStatus === 'dinilai' && a.mySubmission?.score !== null && (
+   624→                          <span className="text-sm font-bold text-[#1F3864]">
+   625→                            {Math.round(a.mySubmission.score)}
+   626→                          </span>
+   627→                        )}
+   628→                      </div>
+   629→                    </div>
+   630→
+   631→                    {/* Action button */}
+   632→                    <div className="pt-1">
+   633→                      {canWork && !countdown.past && (
+   634→                        <Button
+   635→                          size="sm"
+   636→                          className="w-full bg-[#1F3864] hover:bg-[#1F3864]/90 text-white"
+   637→                          onClick={() => openWork(a.id)}
+   638→                        >
+   639→                          <BookOpen className="h-4 w-4 mr-2" />
+   640→                          Kerjakan
+   641→                        </Button>
+   642→                      )}
+   643→                      {canWork && countdown.past && (
+   644→                        <Button size="sm" className="w-full" disabled>
+   645→                          <AlertCircle className="h-4 w-4 mr-2" />
+   646→                          Waktu Habis
+   647→                        </Button>
+   648→                      )}
+   649→                      {subStatus === 'submitted' && (
+   650→                        <Button
+   651→                          size="sm"
+   652→                          variant="outline"
+   653→                          className="w-full"
+   654→                          disabled
+   655→                        >
+   656→                          <Send className="h-4 w-4 mr-2" />
+   657→                          Menunggu Penilaian
+   658→                        </Button>
+   659→                      )}
+   660→                      {subStatus === 'dinilai' && (
+   661→                        <Button
+   662→                          size="sm"
+   663→                          variant="outline"
+   664→                          className="w-full border-[#1F3864]/30 text-[#1F3864] hover:bg-[#1F3864]/5"
+   665→                          onClick={() => openResult(a.id)}
+   666→                        >
+   667→                          <Eye className="h-4 w-4 mr-2" />
+   668→                          Lihat Hasil
+   669→                        </Button>
+   670→                      )}
+   671→                    </div>
+   672→                  </CardContent>
+   673→                </Card>
+   674→              );
+   675→            })}
+   676→          </div>
+   677→        )}
+   678→      </div>
+   679→    );
+   680→  }
+   681→
+   682→  // ═══════════════════════════════════════════════════════════════════
+   683→  // RENDER — WORK VIEW (PENGERJAAN)
+   684→  // ═══════════════════════════════════════════════════════════════════
+   685→
+   686→  if (view === 'work') {
+   687→    const questions = workDetail?.questions || [];
+   688→    const countdown = workDetail ? getCountdown(workDetail.deadline) : null;
+   689→    const isPast = countdown?.past ?? false;
+   690→
+   691→    return (
+   692→      <div className="space-y-6">
+   693→        {/* Back + Title */}
+   694→        <div className="flex items-center gap-3">
+   695→          <Button
+   696→            variant="ghost"
+   697→            size="icon"
+   698→            className="h-8 w-8"
+   699→            onClick={goToList}
+   700→          >
+   701→            <ChevronLeft className="h-5 w-5" />
+   702→          </Button>
+   703→          <h1 className="text-xl font-bold text-[#1F3864]">Pengerjaan Tugas</h1>
+   704→        </div>
+   705→
+   706→        {workLoading && (
+   707→          <div className="flex items-center justify-center py-20">
+   708→            <Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" />
+   709→          </div>
+   710→        )}
+   711→
+   712→        {!workLoading && workDetail && (
+   713→          <>
+   714→            {/* Assignment info card */}
+   715→            <Card className="border-none shadow-sm bg-white">
+   716→              <CardContent className="p-6 space-y-4">
+   717→                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+   718→                  <div className="space-y-1 flex-1">
+   719→                    <h2 className="text-lg font-bold text-slate-800">
+   720→                      {workDetail.title}
+   721→                    </h2>
+   722→                    {workDetail.description && (
+   723→                      <p className="text-sm text-muted-foreground">
+   724→                        {workDetail.description}
+   725→                      </p>
+   726→                    )}
+   727→                  </div>
+   728→                  <Badge
+   729→                    variant="outline"
+   730→                    className={cn(
+   731→                      'text-xs shrink-0',
+   732→                      TYPE_BADGE[workDetail.submissionType]
+   733→                    )}
+   734→                  >
+   735→                    {TYPE_LABELS[workDetail.submissionType]}
+   736→                  </Badge>
+   737→                </div>
+   738→
+   739→                {workDetail.instructions && (
+   740→                  <div className="bg-slate-50 rounded-lg p-4">
+   741→                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+   742→                      Instruksi
+   743→                    </p>
+   744→                    <p className="text-sm text-slate-700 whitespace-pre-wrap">
+   745→                      {workDetail.instructions}
+   746→                    </p>
+   747→                  </div>
+   748→                )}
+   749→
+   750→                {workDetail.learningObjective && (
+   751→                  <div className="flex items-start gap-2 bg-[#1F3864]/5 rounded-lg px-3 py-2.5">
+   752→                    <Target className="h-4 w-4 text-[#1F3864] mt-0.5 shrink-0" />
+   753→                    <div className="min-w-0">
+   754→                      <p className="text-[11px] font-semibold text-[#1F3864] uppercase tracking-wide">
+   755→                        Tujuan Pembelajaran
+   756→                      </p>
+   757→                      <p className="text-xs text-slate-600 mt-0.5 break-words">
+   758→                        {workDetail.learningObjective}
+   759→                      </p>
+   760→                    </div>
+   761→                  </div>
+   762→                )}
+   763→
+   764→                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+   765→                  <span className="flex items-center gap-1.5">
+   766→                    <Clock className="h-4 w-4" />
+   767→                    {formatDate(workDetail.deadline)}
+   768→                  </span>
+   769→                  {countdown && (
+   770→                    <span
+   771→                      className={cn(
+   772→                        'flex items-center gap-1.5 font-medium',
+   773→                        countdown.past
+   774→                          ? 'text-red-500'
+   775→                          : countdown.urgent
+   776→                            ? 'text-amber-600'
+   777→                            : 'text-emerald-600'
+   778→                      )}
+   779→                    >
+   780→                      {countdown.past ? (
+   781→                        <AlertCircle className="h-4 w-4" />
+   782→                      ) : (
+   783→                        <Clock className="h-4 w-4" />
+   784→                      )}
+   785→                      {countdown.text}
+   786→                    </span>
+   787→                  )}
+   788→                  <span className="flex items-center gap-1.5">
+   789→                    <FileText className="h-4 w-4" />
+   790→                    {questions.length} soal
+   791→                  </span>
+   792→                </div>
+   793→              </CardContent>
+   794→            </Card>
+   795→
+   796→            {/* Questions */}
+   797→            {questions.length === 0 ? (
+   798→              <Card className="border-none shadow-sm bg-white">
+   799→                <CardContent className="p-6">
+   800→                  <div className="flex flex-col items-center gap-3 py-8">
+   801→                    <div className="rounded-full bg-[#1F3864]/10 p-4">
+   802→                      <FileText className="h-8 w-8 text-[#1F3864]" />
+   803→                    </div>
+   804→                    <p className="text-sm font-medium text-slate-700">
+   805→                      Tugas ini tidak memiliki soal dari bank soal
+   806→                    </p>
+   807→                    <p className="text-xs text-muted-foreground">
+   808→                      Silakan kumpulkan tugas Anda langsung
+   809→                    </p>
+   810→                  </div>
+   811→                </CardContent>
+   812→              </Card>
+   813→            ) : (
+   814→              <div className="space-y-4">
+   815→                {questions.map((aq, idx) => {
+   816→                  const q = aq.question;
+   817→                  const pg = isQuestionPG(q.type);
+   818→                  const opts = pg ? parseOptions(q.options) : [];
+   819→                  const currentAnswer = answers[q.id] || {};
+   820→
+   821→                  return (
+   822→                    <Card
+   823→                      key={aq.id}
+   824→                      className="border-none shadow-sm bg-white"
+   825→                    >
+   826→                      <CardContent className="p-6 space-y-4">
+   827→                        {/* Question header */}
+   828→                        <div className="flex items-start gap-3">
+   829→                          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-[#1F3864] text-white text-xs font-bold shrink-0">
+   830→                            {idx + 1}
+   831→                          </span>
+   832→                          <div className="flex-1">
+   833→                            <div className="flex items-center gap-2 mb-2">
+   834→                              <Badge
+   835→                                variant="outline"
+   836→                                className={cn(
+   837→                                  'text-[10px] px-2 py-0',
+   838→                                  pg
+   839→                                    ? 'bg-pink-50 text-pink-600 border-pink-200'
+   840→                                    : 'bg-blue-50 text-blue-600 border-blue-200'
+   841→                                )}
+   842→                              >
+   843→                                {getQuestionTypeLabel(q.type)}
+   844→                              </Badge>
+   845→                              <span className="text-[10px] text-muted-foreground">
+   846→                                {aq.points} poin
+   847→                              </span>
+   848→                            </div>
+   849→                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+   850→                              {q.content}
+   851→                            </p>
+   852→                          </div>
+   853→                        </div>
+   854→
+   855→                        {/* PG Options */}
+   856→                        {pg && opts.length > 0 && (
+   857→                          <div className="space-y-2 ml-10">
+   858→                            {opts.map((opt) => {
+   859→                              const isSelected =
+   860→                                currentAnswer.answer === opt.label;
+   861→                              return (
+   862→                                <label
+   863→                                  key={opt.label}
+   864→                                  className={cn(
+   865→                                    'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+   866→                                    isSelected
+   867→                                      ? 'bg-[#1F3864]/5 border-[#1F3864]/30'
+   868→                                      : 'bg-white border-slate-200 hover:border-slate-300'
+   869→                                  )}
+   870→                                >
+   871→                                  <div className="mt-0.5 shrink-0">
+   872→                                    <div
+   873→                                      className={cn(
+   874→                                        'h-5 w-5 rounded-full border-2 flex items-center justify-center transition-colors',
+   875→                                        isSelected
+   876→                                          ? 'border-[#1F3864]'
+   877→                                          : 'border-slate-300'
+   878→                                      )}
+   879→                                    >
+   880→                                      {isSelected && (
+   881→                                        <div className="h-2.5 w-2.5 rounded-full bg-[#1F3864]" />
+   882→                                      )}
+   883→                                    </div>
+   884→                                  </div>
+   885→                                  <div className="flex-1 min-w-0">
+   886→                                    <span className="text-xs font-semibold text-slate-500 mr-2">
+   887→                                      {opt.label}.
+   888→                                    </span>
+   889→                                    <span className="text-sm text-slate-700">
+   890→                                      {opt.text}
+   891→                                    </span>
+   892→                                  </div>
+   893→                                  <input
+   894→                                    type="radio"
+   895→                                    name={`q-${q.id}`}
+   896→                                    checked={isSelected}
+   897→                                    onChange={() =>
+   898→                                      handlePGAnswer(q.id, opt.label)
+   899→                                    }
+   900→                                    className="sr-only"
+   901→                                  />
+   902→                                </label>
+   903→                              );
+   904→                            })}
+   905→                          </div>
+   906→                        )}
+   907→
+   908→                        {/* Essay textarea */}
+   909→                        {!pg && (
+   910→                          <div className="ml-10">
+   911→                            <Textarea
+   912→                              placeholder="Tulis jawaban Anda di sini..."
+   913→                              rows={6}
+   914→                              value={currentAnswer.essayAnswer || ''}
+   915→                              onChange={(e) =>
+   916→                                handleEssayAnswer(q.id, e.target.value)
+   917→                              }
+   918→                              className="resize-y rounded-lg"
+   919→                            />
+   920→                          </div>
+   921→                        )}
+   922→                      </CardContent>
+   923→                    </Card>
+   924→                  );
+   925→                })}
+   926→              </div>
+   927→            )}
+   928→
+   929→            {/* Bottom bar */}
+   930→            <div className="sticky bottom-0 bg-white/80 backdrop-blur-sm border-t border-slate-200 -mx-1 px-1 py-3 z-10">
+   931→              <div className="flex items-center justify-between gap-3 max-w-4xl">
+   932→                <div className="text-xs text-muted-foreground">
+   933→                  {lastSavedAt ? (
+   934→                    <span className="flex items-center gap-1 text-emerald-600">
+   935→                      <CheckCircle2 className="h-3.5 w-3.5" />
+   936→                      Tersimpan {lastSavedAt.toLocaleTimeString('id-ID')}
+   937→                    </span>
+   938→                  ) : (
+   939→                    <span>Autosave setiap 30 detik</span>
+   940→                  )}
+   941→                </div>
+   942→                <div className="flex items-center gap-2">
+   943→                  <Button
+   944→                    variant="outline"
+   945→                    onClick={handleSaveDraft}
+   946→                    disabled={saving || submitting || isPast}
+   947→                  >
+   948→                    {saving ? (
+   949→                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+   950→                    ) : (
+   951→                      <Save className="h-4 w-4 mr-2" />
+   952→                    )}
+   953→                    Simpan Draft
+   954→                  </Button>
+   955→                  <Button
+   956→                    className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white"
+   957→                    onClick={() => setConfirmSubmitOpen(true)}
+   958→                    disabled={saving || submitting || isPast}
+   959→                  >
+   960→                    {submitting ? (
+   961→                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+   962→                    ) : (
+   963→                      <Send className="h-4 w-4 mr-2" />
+   964→                    )}
+   965→                    Kumpulkan
+   966→                  </Button>
+   967→                </div>
+   968→              </div>
+   969→            </div>
+   970→
+   971→            {/* Confirm submit dialog */}
+   972→            <Dialog open={confirmSubmitOpen} onOpenChange={setConfirmSubmitOpen}>
+   973→              <DialogContent>
+   974→                <DialogHeader>
+   975→                  <DialogTitle>Kumpulkan Tugas?</DialogTitle>
+   976→                  <DialogDescription>
+   977→                    Pastikan semua jawaban sudah Anda periksa. Setelah dikumpulkan,
+   978→                    Anda tidak dapat mengubah jawaban lagi.
+   979→                  </DialogDescription>
+   980→                </DialogHeader>
+   981→                <DialogFooter className="gap-2">
+   982→                  <Button
+   983→                    variant="outline"
+   984→                    onClick={() => setConfirmSubmitOpen(false)}
+   985→                    disabled={submitting}
+   986→                  >
+   987→                    Batal
+   988→                  </Button>
+   989→                  <Button
+   990→                    className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white"
+   991→                    onClick={handleSubmit}
+   992→                    disabled={submitting}
+   993→                  >
+   994→                    {submitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+   995→                    Ya, Kumpulkan
+   996→                  </Button>
+   997→                </DialogFooter>
+   998→              </DialogContent>
+   999→            </Dialog>
+  1000→          </>
+  1001→        )}
+  1002→      </div>
+  1003→    );
+  1004→  }
+  1005→
+  1006→  // ═══════════════════════════════════════════════════════════════════
+  1007→  // RENDER — RESULT VIEW (HASIL)
+  1008→  // ═══════════════════════════════════════════════════════════════════
+  1009→
+  1010→  if (view === 'result') {
+  1011→    const questions = resultDetail?.questions || [];
+  1012→    const subAnswers = resultSubmission?.answers || [];
+  1013→
+  1014→    // Build a map of questionId -> answer for quick lookup
+  1015→    const answerMap = new Map<string, SubmissionAnswer>();
+  1016→    for (const a of subAnswers) {
+  1017→      answerMap.set(a.questionId, a);
+  1018→    }
+  1019→
+  1020→    return (
+  1021→      <div className="space-y-6">
+  1022→        {/* Back + Title */}
+  1023→        <div className="flex items-center gap-3">
+  1024→          <Button
+  1025→            variant="ghost"
+  1026→            size="icon"
+  1027→            className="h-8 w-8"
+  1028→            onClick={goToList}
+  1029→          >
+  1030→            <ChevronLeft className="h-5 w-5" />
+  1031→          </Button>
+  1032→          <h1 className="text-xl font-bold text-[#1F3864]">Hasil Tugas</h1>
+  1033→        </div>
+  1034→
+  1035→        {resultLoading && (
+  1036→          <div className="flex items-center justify-center py-20">
+  1037→            <Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" />
+  1038→          </div>
+  1039→        )}
+  1040→
+  1041→        {!resultLoading && resultDetail && (
+  1042→          <>
+  1043→            {/* Assignment info */}
+  1044→            <Card className="border-none shadow-sm bg-white">
+  1045→              <CardContent className="p-6 space-y-4">
+  1046→                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+  1047→                  <div className="space-y-1">
+  1048→                    <h2 className="text-lg font-bold text-slate-800">
+  1049→                      {resultDetail.title}
+  1050→                    </h2>
+  1051→                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+  1052→                      <Clock className="h-4 w-4" />
+  1053→                      {formatDate(resultDetail.deadline)}
+  1054→                    </div>
+  1055→                  </div>
+  1056→                  <Badge
+  1057→                    variant="outline"
+  1058→                    className={cn(
+  1059→                      'text-xs shrink-0',
+  1060→                      TYPE_BADGE[resultDetail.submissionType]
+  1061→                    )}
+  1062→                  >
+  1063→                    {TYPE_LABELS[resultDetail.submissionType]}
+  1064→                  </Badge>
+  1065→                </div>
+  1066→
+  1067→                {resultDetail.learningObjective && (
+  1068→                  <div className="flex items-start gap-2 bg-[#1F3864]/5 rounded-lg px-3 py-2.5">
+  1069→                    <Target className="h-4 w-4 text-[#1F3864] mt-0.5 shrink-0" />
+  1070→                    <div className="min-w-0">
+  1071→                      <p className="text-[11px] font-semibold text-[#1F3864] uppercase tracking-wide">
+  1072→                        Tujuan Pembelajaran
+  1073→                      </p>
+  1074→                      <p className="text-xs text-slate-600 mt-0.5 break-words">
+  1075→                        {resultDetail.learningObjective}
+  1076→                      </p>
+  1077→                    </div>
+  1078→                  </div>
+  1079→                )}
+  1080→              </CardContent>
+  1081→            </Card>
+  1082→
+  1083→            {/* Score card */}
+  1084→            {resultSubmission && (
+  1085→              <Card className="border-none shadow-sm bg-white">
+  1086→                <CardContent className="p-6">
+  1087→                  <div className="flex flex-col sm:flex-row items-center gap-6">
+  1088→                    <div className="flex flex-col items-center justify-center rounded-2xl bg-[#1F3864]/5 px-8 py-6 min-w-[140px]">
+  1089→                      <p className="text-5xl font-bold text-[#1F3864]">
+  1090→                        {resultSubmission.score !== null
+  1091→                          ? Math.round(resultSubmission.score)
+  1092→                          : '-'}
+  1093→                      </p>
+  1094→                      <p className="text-xs text-muted-foreground mt-1">
+  1095→                        dari {resultDetail.maxScore}
+  1096→                      </p>
+  1097→                    </div>
+  1098→                    <div className="flex-1 space-y-3">
+  1099→                      <div className="flex items-center gap-2">
+  1100→                        <Badge
+  1101→                          variant="outline"
+  1102→                          className={cn(
+  1103→                            'text-xs',
+  1104→                            SUB_STATUS_BADGE[resultSubmission.status]
+  1105→                          )}
+  1106→                        >
+  1107→                          {SUB_STATUS_LABEL[resultSubmission.status]}
+  1108→                        </Badge>
+  1109→                        {resultSubmission.gradedAt && (
+  1110→                          <span className="text-xs text-muted-foreground">
+  1111→                            Dinilai {formatDate(resultSubmission.gradedAt)}
+  1112→                          </span>
+  1113→                        )}
+  1114→                      </div>
+  1115→                      {resultSubmission.feedback && (
+  1116→                        <div className="bg-slate-50 rounded-lg p-4">
+  1117→                          <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+  1118→                            Feedback dari Guru
+  1119→                          </p>
+  1120→                          <p className="text-sm text-slate-700 whitespace-pre-wrap">
+  1121→                            {resultSubmission.feedback}
+  1122→                          </p>
+  1123→                        </div>
+  1124→                      )}
+  1125→                      {!resultSubmission.feedback && (
+  1126→                        <p className="text-xs text-muted-foreground italic">
+  1127→                          Belum ada feedback dari guru
+  1128→                        </p>
+  1129→                      )}
+  1130→                    </div>
+  1131→                  </div>
+  1132→                </CardContent>
+  1133→              </Card>
+  1134→            )}
+  1135→
+  1136→            {/* Per-question review */}
+  1137→            {questions.length > 0 && (
+  1138→              <div className="space-y-4">
+  1139→                <h3 className="font-semibold text-sm text-slate-800 flex items-center gap-2">
+  1140→                  <FileText className="h-4 w-4 text-[#1F3864]" />
+  1141→                  Review Per Soal
+  1142→                </h3>
+  1143→
+  1144→                {questions.map((aq, idx) => {
+  1145→                  const q = aq.question;
+  1146→                  const pg = isQuestionPG(q.type);
+  1147→                  const opts = pg ? parseOptions(q.options) : [];
+  1148→                  const ans = answerMap.get(q.id);
+  1149→
+  1150→                  return (
+  1151→                    <Card
+  1152→                      key={aq.id}
+  1153→                      className="border-none shadow-sm bg-white"
+  1154→                    >
+  1155→                      <CardContent className="p-6 space-y-3">
+  1156→                        {/* Question header */}
+  1157→                        <div className="flex items-start gap-3">
+  1158→                          <span className="flex items-center justify-center h-7 w-7 rounded-full bg-[#1F3864] text-white text-xs font-bold shrink-0">
+  1159→                            {idx + 1}
+  1160→                          </span>
+  1161→                          <div className="flex-1">
+  1162→                            <div className="flex items-center gap-2 mb-2">
+  1163→                              <Badge
+  1164→                                variant="outline"
+  1165→                                className={cn(
+  1166→                                  'text-[10px] px-2 py-0',
+  1167→                                  pg
+  1168→                                    ? 'bg-pink-50 text-pink-600 border-pink-200'
+  1169→                                    : 'bg-blue-50 text-blue-600 border-blue-200'
+  1170→                                )}
+  1171→                              >
+  1172→                                {getQuestionTypeLabel(q.type)}
+  1173→                              </Badge>
+  1174→                              <span className="text-[10px] text-muted-foreground">
+  1175→                                {aq.points} poin
+  1176→                              </span>
+  1177→                            </div>
+  1178→                            <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
+  1179→                              {q.content}
+  1180→                            </p>
+  1181→                          </div>
+  1182→                        </div>
+  1183→
+  1184→                        {/* PG: show correct/wrong */}
+  1185→                        {pg && (
+  1186→                          <div className="ml-10 space-y-2">
+  1187→                            {opts.map((opt) => {
+  1188→                              const isStudentAnswer =
+  1189→                                ans?.answer === opt.label;
+  1190→                              const isCorrectAnswer =
+  1191→                                q.answer === opt.label;
+  1192→
+  1193→                              return (
+  1194→                                <div
+  1195→                                  key={opt.label}
+  1196→                                  className={cn(
+  1197→                                    'flex items-start gap-3 p-3 rounded-lg border',
+  1198→                                    isStudentAnswer && isCorrectAnswer
+  1199→                                      ? 'bg-emerald-50 border-emerald-200'
+  1200→                                      : isStudentAnswer && !isCorrectAnswer
+  1201→                                        ? 'bg-red-50 border-red-200'
+  1202→                                        : isCorrectAnswer && !isStudentAnswer
+  1203→                                          ? 'bg-emerald-50/50 border-emerald-100'
+  1204→                                          : 'bg-slate-50 border-slate-100'
+  1205→                                )}
+  1206→                                >
+  1207→                                  <div className="mt-0.5 shrink-0">
+  1208→                                    {isStudentAnswer && isCorrectAnswer && (
+  1209→                                      <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+  1210→                                    )}
+  1211→                                    {isStudentAnswer && !isCorrectAnswer && (
+  1212→                                      <AlertCircle className="h-5 w-5 text-red-500" />
+  1213→                                    )}
+  1214→                                    {!isStudentAnswer && isCorrectAnswer && (
+  1215→                                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+  1216→                                    )}
+  1217→                                    {!isStudentAnswer && !isCorrectAnswer && (
+  1218→                                      <div className="h-5 w-5 rounded-full border-2 border-slate-200" />
+  1219→                                    )}
+  1220→                                  </div>
+  1221→                                  <div className="flex-1 min-w-0">
+  1222→                                    <span className="text-xs font-semibold text-slate-500 mr-2">
+  1223→                                      {opt.label}.
+  1224→                                    </span>
+  1225→                                    <span className="text-sm text-slate-700">
+  1226→                                      {opt.text}
+  1227→                                    </span>
+  1228→                                    {isStudentAnswer && (
+  1229→                                      <Badge
+  1230→                                        variant="outline"
+  1231→                                        className={cn(
+  1232→                                          'text-[10px] ml-2',
+  1233→                                          isCorrectAnswer
+  1234→                                            ? 'bg-emerald-100 text-emerald-700 border-emerald-200'
+  1235→                                            : 'bg-red-100 text-red-600 border-red-200'
+  1236→                                        )}
+  1237→                                      >
+  1238→                                        {isCorrectAnswer ? 'Benar' : 'Salah'}
+  1239→                                      </Badge>
+  1240→                                    )}
+  1241→                                  </div>
+  1242→                                </div>
+  1243→                              );
+  1244→                            })}
+  1245→                            {!ans?.answer && (
+  1246→                              <p className="text-xs text-muted-foreground italic">
+  1247→                                Tidak dijawab
+  1248→                              </p>
+  1249→                            )}
+  1250→                          </div>
+  1251→                        )}
+  1252→
+  1253→                        {/* Essay: show text + points */}
+  1254→                        {!pg && (
+  1255→                          <div className="ml-10 space-y-2">
+  1256→                            <div className="bg-slate-50 rounded-lg p-4">
+  1257→                              <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">
+  1258→                                Jawaban Anda
+  1259→                              </p>
+  1260→                              <p className="text-sm text-slate-700 whitespace-pre-wrap">
+  1261→                                {ans?.essayAnswer || (
+  1262→                                  <span className="italic text-muted-foreground">
+  1263→                                    Tidak dijawab
+  1264→                                  </span>
+  1265→                                )}
+  1266→                              </p>
+  1267→                            </div>
+  1268→                            <div className="flex items-center gap-2">
+  1269→                              <span className="text-xs text-muted-foreground">
+  1270→                                Poin yang diperoleh:
+  1271→                              </span>
+  1272→                              <span className="text-sm font-semibold text-[#1F3864]">
+  1273→                                {ans?.pointsEarned ?? 0}
+  1274→                              </span>
+  1275→                              <span className="text-xs text-muted-foreground">
+  1276→                                / {aq.points}
+  1277→                              </span>
+  1278→                            </div>
+  1279→                          </div>
+  1280→                        )}
+  1281→                      </CardContent>
+  1282→                    </Card>
+  1283→                  );
+  1284→                })}
+  1285→              </div>
+  1286→            )}
+  1287→
+  1288→            {/* No questions case */}
+  1289→            {questions.length === 0 && resultSubmission && (
+  1290→              <Card className="border-none shadow-sm bg-white">
+  1291→                <CardContent className="p-6 text-center">
+  1292→                  <p className="text-sm text-muted-foreground">
+  1293→                    Tugas ini tidak memiliki soal dari bank soal
+  1294→                  </p>
+  1295→                </CardContent>
+  1296→              </Card>
+  1297→            )}
+  1298→
+  1299→            {/* Back button */}
+  1300→            <div className="pt-2">
+  1301→              <Button
+  1302→                variant="outline"
+  1303→                className="border-[#1F3864]/30 text-[#1F3864] hover:bg-[#1F3864]/5"
+  1304→                onClick={goToList}
+  1305→              >
+  1306→                <ChevronLeft className="h-4 w-4 mr-2" />
+  1307→                Kembali ke Daftar Tugas
+  1308→              </Button>
+  1309→            </div>
+  1310→          </>
+  1311→        )}
+  1312→      </div>
+  1313→    );
+  1314→  }
+  1315→
+  1316→  // Fallback
+  1317→  return null;
+  1318→}
+  1319→

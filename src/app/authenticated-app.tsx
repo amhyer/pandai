@@ -93,7 +93,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-laporan': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruLaporanView }))),
 
   // GURU — new interactive views
-  'guru-tugas': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruTugasView }))),
+  'guru-tugas': React.lazy(() => import('@/components/views/assignment/guru-assignment-view').then(m => ({ default: m.GuruAssignmentView }))),
   'guru-kehadiran': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruKehadiranView }))),
   'guru-rekap-kehadiran': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruRekapKehadiranView }))),
   'guru-karakter': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruKarakterView }))),
@@ -103,13 +103,13 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
 
   // SISWA — new views
   'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
-  'siswa-tugas': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaTugasView }))),
+  'siswa-tugas': React.lazy(() => import('@/components/views/assignment/siswa-assignment-view').then(m => ({ default: m.SiswaAssignmentView }))),
   'siswa-riwayat': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaRiwayatView }))),
   'siswa-nilai': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaNilaiView }))),
   'siswa-kehadiran': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaKehadiranView }))),
   'siswa-pandai-ai': React.lazy(() => import('@/components/views/siswa-ai-views').then(m => ({ default: m.SiswaPandaiAiView }))),
 
-  // ORANG_TUA — existing components
+  // ORANG_TUA — existing components (nilai view shows assignment scores too via /api/scores)
   'ortu-nilai': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuNilaiView }))),
   'ortu-materi': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuMateriView }))),
   'ortu-kehadiran': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuKehadiranView }))),

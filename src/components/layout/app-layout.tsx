@@ -180,7 +180,7 @@ const NAV_CONFIG: RoleNav = {
       section: 'Pembelajaran',
       items: [
         { label: 'Materi Pelajaran', view: 'guru-materi', icon: FileText },
-        { label: 'Tugas, Kuis & Ujian', view: 'guru-tugas', icon: ClipboardList },
+        { label: 'Tugas Terstruktur', view: 'guru-tugas', icon: ClipboardList },
       ],
     },
     {
@@ -233,7 +233,7 @@ const NAV_CONFIG: RoleNav = {
       section: 'Belajar',
       items: [
         { label: 'Materi Pelajaran', view: 'siswa-materi', icon: BookOpen },
-        { label: 'Tugas & Ujian', view: 'siswa-tugas', icon: ClipboardList },
+        { label: 'Tugas Terstruktur', view: 'siswa-tugas', icon: ClipboardList },
         { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: History },
       ],
     },
@@ -347,7 +347,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // GURU
   'guru-materi': 'Materi Pelajaran',
-  'guru-tugas': 'Tugas, Kuis & Ujian',
+  'guru-tugas': 'Tugas Terstruktur',
   'guru-kehadiran': 'Kehadiran Siswa',
   'guru-rekap-kehadiran': 'Rekap Kehadiran',
   'guru-karakter': 'Rekap Laporan 7 Kebiasaan',
@@ -360,7 +360,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // SISWA
   'siswa-materi': 'Materi Pelajaran',
-  'siswa-tugas': 'Tugas & Ujian',
+  'siswa-tugas': 'Tugas Terstruktur',
   'siswa-riwayat': 'Riwayat Pengerjaan',
   'siswa-nilai': 'Nilai Saya',
   'siswa-kehadiran': 'Kehadiran Saya',
