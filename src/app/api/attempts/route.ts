@@ -31,11 +31,36 @@ export async function GET(request: Request) {
       include: {
         user: { select: { id: true, name: true } },
         answers: true,
+        remedialAttempts: { select: { id: true, status: true, score: true, submittedAt: true, isRemedial: true } },
       },
       orderBy: { startedAt: 'desc' },
     });
 
-    return NextResponse.json(attempts);
+    // Enrich: for each original attempt, add remedial status
+    const enriched = await Promise.all(attempts.map(async (att) => {
+      const extra: Record<string, unknown> = {};
+      if (!att.isRemedial && att.remedialAttempts.length > 0) {
+        const remedial = att.remedialAttempts[0];
+        extra.hasRemedial = true;
+        extra.remedialId = remedial.id;
+        extra.remedialStatus = remedial.status;
+        extra.remedialScore = remedial.score;
+        // "Active score" = remedial score if remedial exists and is submitted/graded
+        if (remedial.status === 'submitted' || remedial.status === 'graded') {
+          extra.activeScore = remedial.score;
+          extra.originalScore = att.score;
+        } else {
+          extra.activeScore = att.score; // original still the active one
+          extra.originalScore = att.score;
+        }
+      } else {
+        extra.hasRemedial = false;
+        extra.activeScore = att.score;
+      }
+      return { ...att, ...extra };
+    }));
+
+    return NextResponse.json(enriched);
   } catch (error) {
     logError({ error, route: '/api/attempts', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
