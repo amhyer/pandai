@@ -297,3 +297,36 @@ Stage Summary:
   - Siswa works on remedial (draft+submit flow reused)
   - After remedial graded: activeScore = remedial score, originalScore = original
   - Guard: 409 if remedial already exists for same attempt/submission
+
+---
+Task ID: R43
+Agent: Main Agent
+Task: Bank Soal Page + Integration for Guru (SD/SMP/SMA/SMK)
+
+Work Log:
+- Analyzed existing codebase: sidebar nav config, question API, assignment question picker, import dialog
+- Added `guru-bank-soal` to ViewType in store
+- Added "Bank Soal" menu item in GURU sidebar (after Materi Pelajaran, before Tugas Terstruktur) — applies to ALL school levels (SD/SMP/SMA/SMK)
+- Added lazy import in authenticated-app.tsx mapping `guru-bank-soal` → `GuruBankSoalView`
+- Created comprehensive `guru-bank-soal-view.tsx` component with:
+  - Stats cards (total, published, draft, archived, mine)
+  - Multi-filter bar (search, subject, type, difficulty, status, mine-only checkbox)
+  - Question list with expand/collapse detail view
+  - Create/Edit question dialog (PG options with dynamic add/remove, isian/esai answer, explanation)
+  - Delete confirmation dialog
+  - Publish/Draft status toggle per question
+  - Import from Word dialog (reused existing ImportSoalWordDialog)
+- Enhanced `/api/questions` GET endpoint with new filters: `createdBy`, `search`, `difficulty`
+- Verified "Ambil Soal" button already exists in Tugas Terstruktur page (guru-assignment-view.tsx)
+- ESLint passes clean
+- Dev server compiles successfully (GET / 200 in 4.4s, no errors)
+
+Stage Summary:
+- Bank Soal is a single focused page for all question CRUD operations
+- Workflow: Materi Ajar → Bank Soal → Tugas Terstruktur (Ambil Soal) → Publish to Siswa
+- Key files changed:
+  - `src/store/use-store.ts` — added ViewType
+  - `src/components/layout/app-layout.tsx` — added sidebar nav item
+  - `src/app/authenticated-app.tsx` — added lazy import
+  - `src/app/api/questions/route.ts` — enhanced GET filters
+  - `src/components/views/bank-soal/guru-bank-soal-view.tsx` — NEW: full Bank Soal page

@@ -196,6 +196,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
   if (role === 'GURU') {
     const pembelajaran: NavItem[] = [
       { label: 'Materi Pelajaran', view: 'guru-materi', icon: FileText },
+      { label: 'Bank Soal', view: 'guru-bank-soal' as ViewType, icon: Database },
       { label: 'Tugas Terstruktur', view: 'guru-tugas', icon: ClipboardList },
       { label: 'Tryout TKA', view: 'guru-nilai', icon: PenLine }, // Tryout di semua jenjang
     ];

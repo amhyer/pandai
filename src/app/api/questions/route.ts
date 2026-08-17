@@ -11,6 +11,10 @@ export async function GET(request: Request) {
     const status = searchParams.get('status');
     const global = searchParams.get('global') === 'true';
 
+    const createdBy = searchParams.get('createdBy');
+    const search = searchParams.get('search');
+    const difficulty = searchParams.get('difficulty');
+
     const where: any = {};
     if (global) {
       where.schoolId = null;
@@ -20,6 +24,11 @@ export async function GET(request: Request) {
     if (subjectId) where.subjectId = subjectId;
     if (type) where.type = type;
     if (status) where.status = status;
+    if (createdBy) where.createdBy = createdBy;
+    if (difficulty) where.difficulty = difficulty;
+    if (search) {
+      where.content = { contains: search };
+    }
 
     const questions = await db.question.findMany({
       where,

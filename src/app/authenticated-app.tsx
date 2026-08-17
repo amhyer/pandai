@@ -92,7 +92,8 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-analisis': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruAnalisisView }))),
   'guru-laporan': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruLaporanView }))),
 
-  // GURU — new interactive views
+  // GURU — bank soal & interactive views
+  'guru-bank-soal': React.lazy(() => import('@/components/views/bank-soal/guru-bank-soal-view').then(m => ({ default: m.GuruBankSoalView }))),
   'guru-tugas': React.lazy(() => import('@/components/views/assignment/guru-assignment-view').then(m => ({ default: m.GuruAssignmentView }))),
   'guru-kehadiran': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruKehadiranView }))),
   'guru-rekap-kehadiran': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruRekapKehadiranView }))),

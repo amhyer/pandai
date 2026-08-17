@@ -36,6 +36,7 @@ export type ViewType =
 
   // ── GURU ──
   | 'guru-materi'          // Materi Pelajaran
+  | 'guru-bank-soal'       // Bank Soal
   | 'guru-tugas'           // Tugas, Kuis & Ujian
   | 'guru-kehadiran'        // Kehadiran Siswa
   | 'guru-rekap-kehadiran'  // Rekap Kehadiran

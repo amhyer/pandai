@@ -1,0 +1,1718 @@
+   560→        status: 'published',
+   561→      };
+   562→      if (quizSource === 'external' && formExternalUrl.trim()) {
+   563→        body.externalUrl = formExternalUrl.trim();
+   564→        body.scoreEntryMode = formScoreEntryMode;
+   565→      }
+   566→      const res = await fetch('/api/materials', {
+   567→        method: 'POST',
+   568→        headers: { 'Content-Type': 'application/json' },
+   569→        body: JSON.stringify(body),
+   570→      });
+   571→      if (!res.ok) throw new Error('Create failed');
+   572→      toast.success('Materi berhasil dibuat!');
+   573→      setDialogOpen(false);
+   574→      fetchMaterials();
+   575→    } catch {
+   576→      toast.error('Gagal membuat materi. Coba lagi.');
+   577→    } finally {
+   578→      setSubmitting(false);
+   579→    }
+   580→  }, [formTitle, formSubjectId, formDescription, formContent, formType, quizSource, formExternalUrl, formScoreEntryMode, user, fetchMaterials]);
+   581→
+   582→  const handleDelete = useCallback(async () => {
+   583→    if (!deleteTarget) return;
+   584→    setDeleting(true);
+   585→    try {
+   586→      const res = await fetch(`/api/materials?id=${deleteTarget.id}`, { method: 'DELETE' });
+   587→      if (!res.ok) throw new Error('Delete failed');
+   588→      toast.success('Materi berhasil dihapus');
+   589→      setDeleteTarget(null);
+   590→      fetchMaterials();
+   591→    } catch {
+   592→      toast.error('Gagal menghapus materi. Coba lagi.');
+   593→    } finally {
+   594→      setDeleting(false);
+   595→    }
+   596→  }, [deleteTarget, fetchMaterials]);
+   597→
+   598→  return (
+   599→    <div className="space-y-6">
+   600→      <PageHeader icon={BookOpen} title="Materi Ajar" description="Kelola materi pelajaran untuk persiapan TKA siswa Anda.">
+   601→        <div className="flex items-center gap-2">
+   602→          <Button
+   603→            className="bg-amber-500 text-white transition-all duration-200 hover:bg-amber-600 hover:shadow-sm active:scale-[0.98]"
+   604→            onClick={() => setImportSoalOpen(true)}
+   605→          >
+   606→            <Upload className="mr-2 h-4 w-4" />
+   607→            Import Soal Word
+   608→          </Button>
+   609→          <Button
+   610→            className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+   611→            onClick={handleOpenDialog}
+   612→          >
+   613→            <Plus className="mr-2 h-4 w-4" />
+   614→            Tambah Materi
+   615→          </Button>
+   616→        </div>
+   617→      </PageHeader>
+   618→
+   619→      {/* Stats */}
+   620→      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+   621→        <StatCard icon={BookOpen} label="Total Materi" value={totalMateri} gradientFrom="from-[#1F3864]" gradientTo="to-[#2d5289]" />
+   622→        <SoftStatCard icon={CheckCircle2} label="Dipublikasikan" value={published} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
+   623→        <SoftStatCard icon={FileText} label="Draft" value={draft} iconColor="text-amber-600" iconBg="bg-amber-50" />
+   624→      </div>
+   625→
+   626→      {/* Search + Filter pills */}
+   627→      <Card className="rounded-xl shadow-sm">
+   628→        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+   629→          <div className="relative flex-1">
+   630→            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+   631→            <Input
+   632→              placeholder="Cari materi..."
+   633→              className="rounded-lg pl-9 focus-visible:ring-[#1F3864]/30"
+   634→              value={search}
+   635→              onChange={(e) => setSearch(e.target.value)}
+   636→            />
+   637→          </div>
+   638→          <div className="flex flex-wrap gap-2">
+   639→            <FilterPill active={subjectFilter === 'Semua'} onClick={() => setSubjectFilter('Semua')}>Semua</FilterPill>
+   640→            {uniqueSubjectNames.map((s) => (
+   641→              <FilterPill key={s} active={subjectFilter === s} onClick={() => setSubjectFilter(s)}>{s}</FilterPill>
+   642→            ))}
+   643→          </div>
+   644→        </CardContent>
+   645→      </Card>
+   646→
+   647→      {/* Grid */}
+   648→      {loading ? (
+   649→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   650→          {Array.from({ length: 6 }).map((_, i) => (
+   651→            <Card key={i} className="rounded-xl shadow-sm">
+   652→              <CardHeader className="pb-3">
+   653→                <Skeleton className="h-5 w-3/4" />
+   654→                <Skeleton className="h-4 w-1/2" />
+   655→              </CardHeader>
+   656→              <CardContent className="space-y-2">
+   657→                <Skeleton className="h-4 w-full" />
+   658→                <Skeleton className="h-4 w-5/6" />
+   659→                <Skeleton className="h-4 w-2/3" />
+   660→              </CardContent>
+   661→            </Card>
+   662→          ))}
+   663→        </div>
+   664→      ) : filteredMaterials.length === 0 ? (
+   665→        <EmptyState
+   666→          icon={BookOpen}
+   667→          title="Belum ada materi"
+   668→          description="Materi untuk filter ini belum tersedia. Klik 'Tambah Materi' untuk membuat materi baru."
+   669→        />
+   670→      ) : (
+   671→        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+   672→          {filteredMaterials.map((materi) => (
+   673→            <Card key={materi.id} className="flex flex-col rounded-xl shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+   674→              <CardHeader className="pb-3">
+   675→                <div className="flex items-start justify-between gap-2">
+   676→                  <CardTitle className="text-base leading-snug">{materi.title}</CardTitle>
+   677→                  <div className="flex items-center gap-1.5 shrink-0">
+   678→                    {materi.externalProvider && (
+   679→                      <Badge className={cn('text-[10px] font-medium px-1.5 py-0.5 rounded-full border', PROVIDER_ICONS[materi.externalProvider]?.color || 'bg-gray-100 text-gray-700')}>
+   680→                        {PROVIDER_ICONS[materi.externalProvider]?.emoji || '🔗'} {materi.externalProvider}
+   681→                      </Badge>
+   682→                    )}
+   683→                    {materi.status === 'draft' && (
+   684→                      <Badge variant="secondary" className="shrink-0 rounded-full bg-amber-100 text-xs text-amber-700">
+   685→                        Draft
+   686→                      </Badge>
+   687→                    )}
+   688→                  </div>
+   689→                </div>
+   690→                {materi.subject && (
+   691→                  <Badge className={cn('w-fit rounded-full text-xs', subjectColor(materi.subject.name))}>
+   692→                    {materi.subject.name}
+   693→                  </Badge>
+   694→                )}
+   695→              </CardHeader>
+   696→              <CardContent className="flex flex-1 flex-col justify-between gap-4">
+   697→                <p className="line-clamp-3 text-sm text-muted-foreground">{materi.description || 'Tidak ada deskripsi'}</p>
+   698→                <div className="flex items-center justify-between border-t pt-3">
+   699→                  <span className="text-xs text-muted-foreground">{formatTanggal(materi.createdAt)}</span>
+   700→                  <div className="flex gap-1">
+   701→                    <Button
+   702→                      variant="outline"
+   703→                      size="sm"
+   704→                      className="h-7 gap-1 rounded-lg text-xs transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+   705→                      onClick={() => setViewMaterial(materi)}
+   706→                    >
+   707→                      <Eye className="h-3 w-3" />
+   708→                      Lihat
+   709→                    </Button>
+   710→                    <Button
+   711→                      variant="outline"
+   712→                      size="sm"
+   713→                      className="h-7 gap-1 rounded-lg text-xs text-red-600 transition-all duration-200 hover:bg-red-50 hover:shadow-sm active:scale-[0.98]"
+   714→                      onClick={() => setDeleteTarget(materi)}
+   715→                    >
+   716→                      <Trash2 className="h-3 w-3" />
+   717→                      Hapus
+   718→                    </Button>
+   719→                  </div>
+   720→                </div>
+   721→              </CardContent>
+   722→            </Card>
+   723→          ))}
+   724→        </div>
+   725→      )}
+   726→
+   727→      {/* Create Dialog */}
+   728→      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+   729→        <DialogContent className="max-w-lg rounded-xl">
+   730→          <DialogHeader>
+   731→            <DialogTitle className="flex items-center gap-2">
+   732→              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white">
+   733→                <Plus className="h-4 w-4" />
+   734→              </div>
+   735→              Tambah Materi Baru
+   736→            </DialogTitle>
+   737→            <DialogDescription>Isi form di bawah untuk membuat materi pelajaran baru.</DialogDescription>
+   738→          </DialogHeader>
+   739→          <div className="space-y-4 py-2">
+   740→            <div className="space-y-2">
+   741→              <Label htmlFor="materi-title">Judul *</Label>
+   742→              <Input
+   743→                id="materi-title"
+   744→                placeholder="Contoh: Kuis Hukum Newton"
+   745→                className="rounded-lg focus-visible:ring-[#1F3864]/30"
+   746→                value={formTitle}
+   747→                onChange={(e) => setFormTitle(e.target.value)}
+   748→              />
+   749→            </div>
+   750→            <div className="space-y-2">
+   751→              <Label htmlFor="materi-subject">Mata Pelajaran</Label>
+   752→              <Select value={formSubjectId} onValueChange={setFormSubjectId}>
+   753→                <SelectTrigger className="rounded-lg focus:ring-[#1F3864]/30">
+   754→                  <SelectValue placeholder="Pilih mata pelajaran" />
+   755→                </SelectTrigger>
+   756→                <SelectContent>
+   757→                  {subjects.map((s) => (
+   758→                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+   759→                  ))}
+   760→                </SelectContent>
+   761→              </Select>
+   762→            </div>
+   763→            <div className="space-y-2">
+   764→              <Label htmlFor="materi-type">Tipe</Label>
+   765→              <Select value={formType} onValueChange={(v) => { setFormType(v); if (v !== 'quiz') setQuizSource('internal'); }}>
+   766→                <SelectTrigger className="rounded-lg focus:ring-[#1F3864]/30">
+   767→                  <SelectValue placeholder="Pilih tipe" />
+   768→                </SelectTrigger>
+   769→                <SelectContent>
+   770→                  <SelectItem value="materi">Materi Pelajaran</SelectItem>
+   771→                  <SelectItem value="tugas">Tugas</SelectItem>
+   772→                  <SelectItem value="quiz">Kuis</SelectItem>
+   773→                </SelectContent>
+   774→              </Select>
+   775→            </div>
+   776→
+   777→            {/* Quiz source toggle — only shown when type=quiz */}
+   778→            {formType === 'quiz' && (
+   779→              <div className="space-y-3 p-4 rounded-xl border bg-muted/30">
+   780→                <Label className="text-sm font-semibold text-foreground">Sumber Soal</Label>
+   781→                <div className="flex gap-3">
+   782→                  <button
+   783→                    type="button"
+   784→                    onClick={() => setQuizSource('internal')}
+   785→                    className={cn(
+   786→                      'flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all cursor-pointer',
+   787→                      quizSource === 'internal'
+   788→                        ? 'border-[#1F3864] bg-[#1F3864]/5 text-[#1F3864]'
+   789→                        : 'border-border hover:border-gray-300'
+   790→                    )}
+   791→                  >
+   792→                    📝 Disusun di Aplikasi
+   793→                  </button>
+   794→                  <button
+   795→                    type="button"
+   796→                    onClick={() => setQuizSource('external')}
+   797→                    className={cn(
+   798→                      'flex-1 p-3 rounded-lg border-2 text-sm font-medium transition-all cursor-pointer',
+   799→                      quizSource === 'external'
+   800→                        ? 'border-amber-500 bg-amber-50 text-amber-700'
+   801→                        : 'border-border hover:border-gray-300'
+   802→                    )}
+   803→                  >
+   804→                    🔗 Tautan Luar
+   805→                  </button>
+   806→                </div>
+   807→
+   808→                {/* External quiz URL */}
+   809→                {quizSource === 'external' && (
+   810→                  <div className="space-y-3 mt-2">
+   811→                    <div className="space-y-2">
+   812→                      <Label htmlFor="external-url">URL Kuis *</Label>
+   813→                      <Input
+   814→                        id="external-url"
+   815→                        placeholder="https://docs.google.com/forms/d/..."
+   816→                        className="rounded-lg focus-visible:ring-amber-500/30"
+   817→                        value={formExternalUrl}
+   818→                        onChange={(e) => setFormExternalUrl(e.target.value)}
+   819→                      />
+   820→                    </div>
+   821→                    {formExternalUrl && (
+   822→                      <div className="flex items-center gap-2">
+   823→                        <span className="text-xs text-muted-foreground">Provider terdeteksi:</span>
+   824→                        {providerInfo ? (
+   825→                          <Badge className={cn('text-xs font-medium px-2 py-0.5 rounded-lg border', providerInfo.color)}>
+   826→                            {providerInfo.emoji} {detectedProvider}
+   827→                          </Badge>
+   828→                        ) : (
+   829→                          <span className="text-xs text-muted-foreground italic">Tidak dikenali</span>
+   830→                        )}
+   831→                      </div>
+   832→                    )}
+   833→                    <div className="space-y-2">
+   834→                      <Label className="text-xs font-medium text-muted-foreground">Mode Input Nilai</Label>
+   835→                      <div className="flex gap-3">
+   836→                        <button
+   837→                          type="button"
+   838→                          onClick={() => setFormScoreEntryMode('SELF_REPORTED')}
+   839→                          className={cn(
+   840→                            'flex-1 p-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer',
+   841→                            formScoreEntryMode === 'SELF_REPORTED'
+   842→                              ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+   843→                              : 'border-border hover:border-gray-300'
+   844→                          )}
+   845→                        >
+   846→                          👤 Siswa Lapor Sendiri
+   847→                        </button>
+   848→                        <button
+   849→                          type="button"
+   850→                          onClick={() => setFormScoreEntryMode('TEACHER_ENTERED')}
+   851→                          className={cn(
+   852→                            'flex-1 p-2.5 rounded-lg border text-xs font-medium transition-all cursor-pointer',
+   853→                            formScoreEntryMode === 'TEACHER_ENTERED'
+   854→                              ? 'border-sky-500 bg-sky-50 text-sky-700'
+   855→                              : 'border-border hover:border-gray-300'
+   856→                          )}
+   857→                        >
+   858→                          👨‍🏫 Guru Input Manual
+   859→                        </button>
+   860→                      </div>
+   861→                      <p className="text-[11px] text-muted-foreground">
+   862→                        {formScoreEntryMode === 'SELF_REPORTED'
+   863→                          ? 'Siswa mengisi nilai sendiri setelah mengerjakan kuis di tautan luar'
+   864→                          : 'Guru yang menginput nilai secara manual untuk setiap siswa'}
+   865→                      </p>
+   866→                    </div>
+   867→                  </div>
+   868→                )}
+   869→              </div>
+   870→            )}
+   871→
+   872→            <div className="space-y-2">
+   873→              <Label htmlFor="materi-desc">Deskripsi</Label>
+   874→              <Textarea
+   875→                id="materi-desc"
+   876→                placeholder="Deskripsi singkat..."
+   877→                className="min-h-[80px] rounded-lg focus-visible:ring-[#1F3864]/30"
+   878→                value={formDescription}
+   879→                onChange={(e) => setFormDescription(e.target.value)}
+   880→              />
+   881→            </div>
+   882→            {quizSource === 'internal' && (
+   883→              <div className="space-y-2">
+   884→                <Label htmlFor="materi-content">Konten Materi</Label>
+   885→                <Textarea
+   886→                  id="materi-content"
+   887→                  placeholder="Tulis konten materi di sini..."
+   888→                  className="min-h-[150px] rounded-lg focus-visible:ring-[#1F3864]/30"
+   889→                  value={formContent}
+   890→                  onChange={(e) => setFormContent(e.target.value)}
+   891→                />
+   892→              </div>
+   893→            )}
+   894→          </div>
+   895→          <DialogFooter className="gap-2">
+   896→            <Button variant="outline" className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => setDialogOpen(false)}>
+   897→              Batal
+   898→            </Button>
+   899→            <Button
+   900→              className="rounded-lg bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+   901→              onClick={handleCreate}
+   902→              disabled={submitting}
+   903→            >
+   904→              {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+   905→              {submitting ? 'Menyimpan...' : 'Buat Materi'}
+   906→            </Button>
+   907→          </DialogFooter>
+   908→        </DialogContent>
+   909→      </Dialog>
+   910→
+   911→      {/* Delete Confirmation */}
+   912→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+   913→        <AlertDialogContent className="rounded-xl">
+   914→          <AlertDialogHeader>
+   915→            <AlertDialogTitle className="flex items-center gap-2">
+   916→              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-100 text-red-600">
+   917→                <AlertTriangle className="h-4 w-4" />
+   918→              </div>
+   919→              Hapus Materi
+   920→            </AlertDialogTitle>
+   921→            <AlertDialogDescription>
+   922→              Apakah Anda yakin ingin menghapus materi <strong>&quot;{deleteTarget?.title}&quot;</strong>? Tindakan ini tidak dapat dibatalkan.
+   923→            </AlertDialogDescription>
+   924→          </AlertDialogHeader>
+   925→          <AlertDialogFooter className="gap-2">
+   926→            <AlertDialogCancel className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]">Batal</AlertDialogCancel>
+   927→            <AlertDialogAction
+   928→              className="rounded-lg bg-red-600 transition-all duration-200 hover:bg-red-700 hover:shadow-sm active:scale-[0.98]"
+   929→              onClick={handleDelete}
+   930→              disabled={deleting}
+   931→            >
+   932→              {deleting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+   933→              {deleting ? 'Menghapus...' : 'Hapus'}
+   934→            </AlertDialogAction>
+   935→          </AlertDialogFooter>
+   936→        </AlertDialogContent>
+   937→      </AlertDialog>
+   938→
+   939→      {/* View Detail Dialog */}
+   940→      <Dialog open={!!viewMaterial} onOpenChange={(open) => { if (!open) setViewMaterial(null); }}>
+   941→        <DialogContent className="max-w-lg rounded-xl">
+   942→          <DialogHeader>
+   943→            <DialogTitle className="flex items-center gap-2">
+   944→              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white">
+   945→                <Eye className="h-4 w-4" />
+   946→              </div>
+   947→              Detail Materi
+   948→            </DialogTitle>
+   949→          </DialogHeader>
+   950→          {viewMaterial && (
+   951→            <div className="space-y-4 py-2">
+   952→              <div>
+   953→                <Label className="text-muted-foreground">Judul</Label>
+   954→                <p className="mt-1 text-lg font-semibold">{viewMaterial.title}</p>
+   955→              </div>
+   956→              {viewMaterial.subject && (
+   957→                <div>
+   958→                  <Label className="text-muted-foreground">Mata Pelajaran</Label>
+   959→                  <p className="mt-1">
+   960→                    <Badge className={cn('rounded-full', subjectColor(viewMaterial.subject.name))}>{viewMaterial.subject.name}</Badge>
+   961→                  </p>
+   962→                </div>
+   963→              )}
+   964→              <div>
+   965→                <Label className="text-muted-foreground">Deskripsi</Label>
+   966→                <p className="mt-1 text-sm leading-relaxed text-foreground">{viewMaterial.description || 'Tidak ada deskripsi'}</p>
+   967→              </div>
+   968→              {viewMaterial.content && (
+   969→                <div>
+   970→                  <Label className="text-muted-foreground">Konten</Label>
+   971→                  <div className="mt-1 max-h-60 overflow-y-auto rounded-lg border p-3 text-sm leading-relaxed whitespace-pre-wrap">
+   972→                    {viewMaterial.content}
+   973→                  </div>
+   974→                </div>
+   975→              )}
+   976→              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+   977→                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatTanggal(viewMaterial.createdAt)}</span>
+   978→                <Badge variant="outline" className="rounded-full text-xs">{viewMaterial.status}</Badge>
+   979→              </div>
+   980→            </div>
+   981→          )}
+   982→          <DialogFooter>
+   983→            <Button variant="outline" className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => setViewMaterial(null)}>
+   984→              Tutup
+   985→            </Button>
+   986→          </DialogFooter>
+   987→        </DialogContent>
+   988→      </Dialog>
+   989→      <ImportSoalWordDialog open={importSoalOpen} onOpenChange={setImportSoalOpen} subjects={subjects} onImportComplete={fetchMaterials} />
+   990→    </div>
+   991→  );
+   992→}
+   993→
+   994→// ═══════════════════════════════════════════════════════════════════
+   995→// 2. GURU SOAL VIEW  (DESIGN UPGRADE ONLY)
+   996→// ═══════════════════════════════════════════════════════════════════
+   997→
+   998→export function GuruSoalView() {
+   999→  const [search, setSearch] = useState('');
+  1000→  const [subjectFilter, setSubjectFilter] = useState('all');
+  1001→  const [difficultyFilter, setDifficultyFilter] = useState('all');
+  1002→  const [typeFilter, setTypeFilter] = useState('all');
+  1003→
+  1004→  const filtered = MOCK_SOAL.filter((s) => {
+  1005→    if (search && !s.topic.toLowerCase().includes(search.toLowerCase()) && !s.subject.toLowerCase().includes(search.toLowerCase())) return false;
+  1006→    if (subjectFilter !== 'all' && s.subject !== subjectFilter) return false;
+  1007→    if (difficultyFilter !== 'all' && s.difficulty !== difficultyFilter) return false;
+  1008→    if (typeFilter !== 'all' && s.type !== typeFilter) return false;
+  1009→    return true;
+  1010→  });
+  1011→
+  1012→  const totalSoal = MOCK_SOAL.length;
+  1013→  const terpublikasi = MOCK_SOAL.filter((s) => s.status === 'Terpublikasi').length;
+  1014→  const draft = MOCK_SOAL.filter((s) => s.status === 'Draft').length;
+  1015→  const hots = MOCK_SOAL.filter((s) => s.hots).length;
+  1016→
+  1017→  return (
+  1018→    <div className="space-y-6">
+  1019→      <PageHeader icon={ClipboardList} title="Bank Soal" description="Kelola dan organisir soal-soal yang telah Anda buat untuk persiapan TKA.">
+  1020→        <Button className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Fitur pembuat soal segera hadir')}>
+  1021→          <Plus className="mr-2 h-4 w-4" />
+  1022→          Buat Soal Baru
+  1023→        </Button>
+  1024→      </PageHeader>
+  1025→
+  1026→      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+  1027→        <StatCard icon={ClipboardList} label="Total Soal" value={totalSoal} gradientFrom="from-[#1F3864]" gradientTo="to-[#2d5289]" />
+  1028→        <SoftStatCard icon={CheckCircle2} label="Terpublikasi" value={terpublikasi} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
+  1029→        <SoftStatCard icon={FileText} label="Draft" value={draft} iconColor="text-amber-600" iconBg="bg-amber-50" />
+  1030→        <SoftStatCard icon={Brain} label="HOTS" value={hots} iconColor="text-purple-600" iconBg="bg-purple-50" />
+  1031→      </div>
+  1032→
+  1033→      <Card className="rounded-xl shadow-sm">
+  1034→        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
+  1035→          <div className="relative flex-1">
+  1036→            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+  1037→            <Input placeholder="Cari topik atau mata pelajaran..." className="rounded-lg pl-9 focus-visible:ring-[#1F3864]/30" value={search} onChange={(e) => setSearch(e.target.value)} />
+  1038→          </div>
+  1039→          <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+  1040→            <SelectTrigger className="w-full rounded-lg sm:w-[180px]">
+  1041→              <Filter className="mr-2 h-4 w-4" />
+  1042→              <SelectValue placeholder="Mata Pelajaran" />
+  1043→            </SelectTrigger>
+  1044→            <SelectContent>
+  1045→              <SelectItem value="all">Semua Mapel</SelectItem>
+  1046→              {SUBJECTS.map((s) => (<SelectItem key={s} value={s}>{s}</SelectItem>))}
+  1047→            </SelectContent>
+  1048→          </Select>
+  1049→          <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+  1050→            <SelectTrigger className="w-full rounded-lg sm:w-[160px]">
+  1051→              <SelectValue placeholder="Kesulitan" />
+  1052→            </SelectTrigger>
+  1053→            <SelectContent>
+  1054→              <SelectItem value="all">Semua Tingkat</SelectItem>
+  1055→              <SelectItem value="Mudah">Mudah</SelectItem>
+  1056→              <SelectItem value="Sedang">Sedang</SelectItem>
+  1057→              <SelectItem value="Sulit">Sulit</SelectItem>
+  1058→            </SelectContent>
+  1059→          </Select>
+  1060→          <Select value={typeFilter} onValueChange={setTypeFilter}>
+  1061→            <SelectTrigger className="w-full rounded-lg sm:w-[140px]">
+  1062→              <SelectValue placeholder="Tipe" />
+  1063→            </SelectTrigger>
+  1064→            <SelectContent>
+  1065→              <SelectItem value="all">Semua Tipe</SelectItem>
+  1066→              <SelectItem value="PG">Pilihan Ganda</SelectItem>
+  1067→              <SelectItem value="Isian">Isian Singkat</SelectItem>
+  1068→              <SelectItem value="Esai">Esai</SelectItem>
+  1069→            </SelectContent>
+  1070→          </Select>
+  1071→        </CardContent>
+  1072→      </Card>
+  1073→
+  1074→      <Card className="rounded-xl shadow-sm overflow-hidden">
+  1075→        <CardContent className="p-0">
+  1076→          <Table>
+  1077→            <TableHeader>
+  1078→              <TableRow className="bg-muted/50">
+  1079→                <TableHead className="w-12 text-center">No</TableHead>
+  1080→                <TableHead>Mata Pelajaran</TableHead>
+  1081→                <TableHead>Topik</TableHead>
+  1082→                <TableHead className="text-center">Tipe</TableHead>
+  1083→                <TableHead className="text-center">Kesulitan</TableHead>
+  1084→                <TableHead className="text-center">Status</TableHead>
+  1085→                <TableHead className="w-24 text-center">Aksi</TableHead>
+  1086→              </TableRow>
+  1087→            </TableHeader>
+  1088→            <TableBody>
+  1089→              {filtered.length === 0 ? (
+  1090→                <TableRow>
+  1091→                  <TableCell colSpan={7} className="h-40 text-center">
+  1092→                    <EmptyState icon={ClipboardList} title="Tidak ada soal ditemukan" description="Ubah filter atau buat soal baru untuk memulai." />
+  1093→                  </TableCell>
+  1094→                </TableRow>
+  1095→              ) : (
+  1096→                filtered.map((soal, idx) => (
+  1097→                  <TableRow key={soal.id} className="even:bg-muted/30 transition-colors hover:bg-muted/50">
+  1098→                    <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+  1099→                    <TableCell>
+  1100→                      <Badge className={cn('rounded-full text-xs', SUBJECT_BADGE_COLORS[soal.subject] ?? 'bg-muted text-muted-foreground')}>{soal.subject}</Badge>
+  1101→                    </TableCell>
+  1102→                    <TableCell>
+  1103→                      <div className="flex items-center gap-2">
+  1104→                        <span>{soal.topic}</span>
+  1105→                        {soal.hots && <Badge variant="outline" className="rounded-full border-purple-300 text-xs text-purple-600"><Brain className="mr-1 h-3 w-3" />HOTS</Badge>}
+  1106→                      </div>
+  1107→                    </TableCell>
+  1108→                    <TableCell className="text-center"><Badge variant="outline" className="rounded-full text-xs">{soal.type}</Badge></TableCell>
+  1109→                    <TableCell className="text-center"><Badge className={cn('rounded-full text-xs', DIFFICULTY_BADGE[soal.difficulty])}>{soal.difficulty}</Badge></TableCell>
+  1110→                    <TableCell className="text-center">
+  1111→                      <Badge className={cn('rounded-full text-xs', soal.status === 'Terpublikasi' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700')}>
+  1112→                        {soal.status === 'Terpublikasi' ? <CheckCircle2 className="mr-1 h-3 w-3" /> : <FileText className="mr-1 h-3 w-3" />}
+  1113→                        {soal.status}
+  1114→                      </Badge>
+  1115→                    </TableCell>
+  1116→                    <TableCell className="text-center">
+  1117→                      <div className="flex items-center justify-center gap-1">
+  1118→                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Edit soal: ' + soal.topic)}><Pencil className="h-4 w-4" /></Button>
+  1119→                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Hapus soal: ' + soal.topic)}><Trash2 className="h-4 w-4" /></Button>
+  1120→                      </div>
+  1121→                    </TableCell>
+  1122→                  </TableRow>
+  1123→                ))
+  1124→              )}
+  1125→            </TableBody>
+  1126→          </Table>
+  1127→        </CardContent>
+  1128→      </Card>
+  1129→    </div>
+  1130→  );
+  1131→}
+  1132→
+  1133→// ═══════════════════════════════════════════════════════════════════
+  1134→// 3. GURU TRYOUT VIEW  (DESIGN UPGRADE ONLY)
+  1135→// ═══════════════════════════════════════════════════════════════════
+  1136→
+  1137→export function GuruTryoutView() {
+  1138→  const [activeTab, setActiveTab] = useState('Aktif');
+  1139→  const filtered = MOCK_TRYOUT.filter((t) => t.status === activeTab);
+  1140→
+  1141→  return (
+  1142→    <div className="space-y-6">
+  1143→      <PageHeader icon={ClipboardList} title="Kelola Tryout" description="Buat, jadwalkan, dan pantau tryout untuk siswa Anda.">
+  1144→        <Button className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Fitur buat tryout segera hadir')}>
+  1145→          <Plus className="mr-2 h-4 w-4" />
+  1146→          Buat Tryout
+  1147→        </Button>
+  1148→      </PageHeader>
+  1149→
+  1150→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+  1151→        <TabsList className="h-auto flex-wrap">
+  1152→          <TabsTrigger value="Aktif" className="transition-all duration-200"><CircleDot className="mr-1.5 h-4 w-4 text-emerald-500" />Aktif</TabsTrigger>
+  1153→          <TabsTrigger value="Terjadwal" className="transition-all duration-200"><CalendarClock className="mr-1.5 h-4 w-4 text-blue-500" />Terjadwal</TabsTrigger>
+  1154→          <TabsTrigger value="Selesai" className="transition-all duration-200"><CheckCircle2 className="mr-1.5 h-4 w-4 text-gray-500" />Selesai</TabsTrigger>
+  1155→        </TabsList>
+  1156→
+  1157→        {['Aktif', 'Terjadwal', 'Selesai'].map((tab) => (
+  1158→          <TabsContent key={tab} value={tab} className="mt-6">
+  1159→            <Card className="rounded-xl shadow-sm overflow-hidden">
+  1160→              <CardContent className="p-0">
+  1161→                <Table>
+  1162→                  <TableHeader>
+  1163→                    <TableRow className="bg-muted/50">
+  1164→                      <TableHead>Judul Tryout</TableHead>
+  1165→                      <TableHead>Mata Pelajaran</TableHead>
+  1166→                      <TableHead className="text-center">Durasi</TableHead>
+  1167→                      <TableHead className="text-center">Jumlah Soal</TableHead>
+  1168→                      <TableHead className="text-center">Peserta</TableHead>
+  1169→                      <TableHead className="text-center">Status</TableHead>
+  1170→                      <TableHead className="w-24 text-center">Aksi</TableHead>
+  1171→                    </TableRow>
+  1172→                  </TableHeader>
+  1173→                  <TableBody>
+  1174→                    {filtered.length === 0 ? (
+  1175→                      <TableRow>
+  1176→                        <TableCell colSpan={7} className="h-48">
+  1177→                          <EmptyState
+  1178→                            icon={ClipboardList}
+  1179→                            title={"Tidak ada tryout " + tab.toLowerCase()}
+  1180→                            description={tab === 'Aktif' ? 'Tidak ada tryout yang sedang berlangsung saat ini.' : tab === 'Terjadwal' ? 'Belum ada tryout yang dijadwalkan.' : 'Belum ada tryout yang selesai.'}
+  1181→                          />
+  1182→                        </TableCell>
+  1183→                      </TableRow>
+  1184→                    ) : (
+  1185→                      filtered.map((tryout) => {
+  1186→                        const statusConf = TRYOUT_STATUS_BADGE[tryout.status];
+  1187→                        const StatusIcon = statusConf.icon;
+  1188→                        return (
+  1189→                          <TableRow key={tryout.id} className="even:bg-muted/30 transition-colors hover:bg-muted/50">
+  1190→                            <TableCell className="font-medium">{tryout.title}</TableCell>
+  1191→                            <TableCell>
+  1192→                              <Badge className={cn('rounded-full text-xs', SUBJECT_BADGE_COLORS[tryout.subject] ?? 'bg-muted text-muted-foreground')}>{tryout.subject}</Badge>
+  1193→                            </TableCell>
+  1194→                            <TableCell className="text-center"><div className="flex items-center justify-center gap-1 text-sm"><Timer className="h-4 w-4 text-muted-foreground" />{tryout.duration}</div></TableCell>
+  1195→                            <TableCell className="text-center">{tryout.questionCount} soal</TableCell>
+  1196→                            <TableCell className="text-center"><div className="flex items-center justify-center gap-1 text-sm"><Users className="h-4 w-4 text-muted-foreground" />{tryout.participants}</div></TableCell>
+  1197→                            <TableCell className="text-center">
+  1198→                              <Badge className={cn('rounded-full text-xs', statusConf.className)}><StatusIcon className="mr-1 h-3 w-3" />{tryout.status}</Badge>
+  1199→                            </TableCell>
+  1200→                            <TableCell className="text-center">
+  1201→                              <div className="flex items-center justify-center gap-1">
+  1202→                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Detail tryout: ' + tryout.title)}><Eye className="h-4 w-4" /></Button>
+  1203→                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Edit tryout: ' + tryout.title)}><Pencil className="h-4 w-4" /></Button>
+  1204→                              </div>
+  1205→                            </TableCell>
+  1206→                          </TableRow>
+  1207→                        );
+  1208→                      })
+  1209→                    )}
+  1210→                  </TableBody>
+  1211→                </Table>
+  1212→              </CardContent>
+  1213→            </Card>
+  1214→          </TabsContent>
+  1215→        ))}
+  1216→      </Tabs>
+  1217→    </div>
+  1218→  );
+  1219→}
+  1220→
+  1221→// ═══════════════════════════════════════════════════════════════════
+  1222→// 4. GURU NILAI VIEW  (UPGRADED WITH API)
+  1223→// ═══════════════════════════════════════════════════════════════════
+  1224→
+  1225→export function GuruNilaiView() {
+  1226→  const user = useAppStore((s) => s.user);
+  1227→  const [exams, setExams] = useState<ExamPackageData[]>([]);
+  1228→  const [attempts, setAttempts] = useState<AttemptData[]>([]);
+  1229→  const [students, setStudents] = useState<StudentData[]>([]);
+  1230→  const [selectedExam, setSelectedExam] = useState('');
+  1231→  const [loading, setLoading] = useState(true);
+  1232→  const [saving, setSaving] = useState(false);
+  1233→  const [nilaiMap, setNilaiMap] = useState<Record<string, string>>({});
+  1234→  const [learningObjective, setLearningObjective] = useState('');
+  1235→
+  1236→  const fetchExams = useCallback(async () => {
+  1237→    try {
+  1238→      const params = new URLSearchParams();
+  1239→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1240→      const res = await fetch(`/api/exams?${params.toString()}`);
+  1241→      if (!res.ok) throw new Error('API Error');
+  1242→      const data = await res.json();
+  1243→      setExams(Array.isArray(data) ? data : []);
+  1244→    } catch {
+  1245→      // silent fallback
+  1246→    }
+  1247→  }, [user?.schoolId]);
+  1248→
+  1249→  const fetchAttempts = useCallback(async (examPackageId?: string) => {
+  1250→    setLoading(true);
+  1251→    try {
+  1252→      const params = new URLSearchParams();
+  1253→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1254→      const res = await fetch(`/api/attempts?${params.toString()}`);
+  1255→      if (!res.ok) throw new Error('API Error');
+  1256→      const data = await res.json();
+  1257→      let all = Array.isArray(data) ? data : [];
+  1258→      if (examPackageId) {
+  1259→        all = all.filter((a: AttemptData) => a.examPackageId === examPackageId);
+  1260→      }
+  1261→      setAttempts(all);
+  1262→    } catch {
+  1263→      setAttempts([]);
+  1264→    } finally {
+  1265→      setLoading(false);
+  1266→    }
+  1267→  }, [user?.schoolId]);
+  1268→
+  1269→  const fetchStudents = useCallback(async () => {
+  1270→    try {
+  1271→      const params = new URLSearchParams();
+  1272→      params.set('role', 'SISWA');
+  1273→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1274→      const res = await fetch(`/api/users?${params.toString()}`);
+  1275→      if (!res.ok) throw new Error('API Error');
+  1276→      const data = await res.json();
+  1277→      setStudents(Array.isArray(data) ? data : []);
+  1278→    } catch {
+  1279→      setStudents([]);
+  1280→    }
+  1281→  }, [user?.schoolId]);
+  1282→
+  1283→  useEffect(() => {
+  1284→    fetchExams();
+  1285→    fetchStudents();
+  1286→    fetchAttempts();
+  1287→  }, [fetchExams, fetchStudents, fetchAttempts]);
+  1288→
+  1289→  const handleExamChange = useCallback((examId: string) => {
+  1290→    setSelectedExam(examId);
+  1291→    fetchAttempts(examId || undefined);
+  1292→    setNilaiMap({});
+  1293→    // Restore learningObjective from existing attempts
+  1294→    const examAttempts = attempts.filter((a) => a.examPackageId === examId);
+  1295→    const existingLO = examAttempts.find((a) => a.learningObjective);
+  1296→    setLearningObjective(existingLO?.learningObjective || '');
+  1297→  }, [fetchAttempts]);
+  1298→
+  1299→  const getNilai = useCallback((id: string, defaultVal: string) => nilaiMap[id] ?? defaultVal, [nilaiMap]);
+  1300→
+  1301→  const handleNilaiChange = useCallback((id: string, value: string) => {
+  1302→    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+  1303→      setNilaiMap((prev) => ({ ...prev, [id]: value }));
+  1304→    }
+  1305→  }, []);
+  1306→
+  1307→  const handleSave = useCallback(async () => {
+  1308→    setSaving(true);
+  1309→    try {
+  1310→      const entries = Object.entries(nilaiMap);
+  1311→      if (entries.length === 0) {
+  1312→        toast.info('Tidak ada nilai yang diubah');
+  1313→        setSaving(false);
+  1314→        return;
+  1315→      }
+  1316→      for (const [attemptId, nilaiStr] of entries) {
+  1317→        const nilai = parseFloat(nilaiStr);
+  1318→        if (isNaN(nilai)) continue;
+  1319→        const attempt = attempts.find((a) => a.id === attemptId);
+  1320→        if (!attempt) continue;
+  1321→        const totalItems = attempt.totalCorrect + attempt.totalWrong + attempt.totalUnanswered;
+  1322→        const benar = Math.round((nilai / 100) * totalItems);
+  1323→        await fetch('/api/attempts', {
+  1324→          method: 'POST',
+  1325→          headers: { 'Content-Type': 'application/json' },
+  1326→          body: JSON.stringify({
+  1327→            userId: attempt.userId,
+  1328→            examPackageId: attempt.examPackageId,
+  1329→            schoolId: attempt.schoolId,
+  1330→            classId: attempt.classId,
+  1331→            answers: Array.from({ length: totalItems || 1 }, (_, i) => ({
+  1332→              questionId: `placeholder-${i}`,
+  1333→              answer: i < benar ? 'correct' : 'wrong',
+  1334→              timeSpent: 0,
+  1335→            })),
+  1336→            duration: 0,
+  1337→            learningObjective: learningObjective.trim() || undefined,
+  1338→          }),
+  1339→        });
+  1340→      }
+  1341→      toast.success('Nilai berhasil disimpan!');
+  1342→      fetchAttempts(selectedExam || undefined);
+  1343→      setNilaiMap({});
+  1344→    } catch {
+  1345→      toast.error('Gagal menyimpan nilai. Coba lagi.');
+  1346→    } finally {
+  1347→      setSaving(false);
+  1348→    }
+  1349→  }, [nilaiMap, attempts, selectedExam, fetchAttempts]);
+  1350→
+  1351→  const handleActivateRemedial = useCallback(async (attemptId: string) => {
+  1352→    try {
+  1353→      const res = await fetch('/api/attempts/remedial', {
+  1354→        method: 'POST',
+  1355→        headers: { 'Content-Type': 'application/json' },
+  1356→        body: JSON.stringify({ attemptId }),
+  1357→      });
+  1358→      if (!res.ok) {
+  1359→        const err = await res.json().catch(() => ({}));
+  1360→        toast.error(err.error || 'Gagal mengaktifkan remedial');
+  1361→        return;
+  1362→      }
+  1363→      toast.success('Remedial berhasil diaktifkan');
+  1364→      fetchAttempts(selectedExam || undefined);
+  1365→    } catch {
+  1366→      toast.error('Gagal mengaktifkan remedial');
+  1367→    }
+  1368→  }, [fetchAttempts, selectedExam]);
+  1369→
+  1370→  const selectedExamData = exams.find((e) => e.id === selectedExam);
+  1371→
+  1372→  return (
+  1373→    <div className="space-y-6">
+  1374→      <PageHeader icon={Save} title="Input & Kelola Nilai" description="Masukkan dan kelola nilai siswa berdasarkan hasil tryout.">
+  1375→        <Button
+  1376→          className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+  1377→          onClick={handleSave}
+  1378→          disabled={saving}
+  1379→        >
+  1380→          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+  1381→          {saving ? 'Menyimpan...' : 'Simpan Nilai'}
+  1382→        </Button>
+  1383→      </PageHeader>
+  1384→
+  1385→      {/* Selectors */}
+  1386→      <Card className="rounded-xl shadow-sm">
+  1387→        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-end">
+  1388→          <div className="flex-1 space-y-1.5">
+  1389→            <Label className="text-sm font-medium">Pilih Tryout</Label>
+  1390→            <Select value={selectedExam} onValueChange={handleExamChange}>
+  1391→              <SelectTrigger className="rounded-lg focus:ring-[#1F3864]/30">
+  1392→                <GraduationCap className="mr-2 h-4 w-4" />
+  1393→                <SelectValue placeholder="Pilih tryout..." />
+  1394→              </SelectTrigger>
+  1395→              <SelectContent>
+  1396→                {exams.map((e) => (
+  1397→                  <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>
+  1398→                ))}
+  1399→              </SelectContent>
+  1400→            </Select>
+  1401→          </div>
+  1402→          <Button
+  1403→            variant="outline"
+  1404→            className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  1405→            onClick={() => fetchAttempts(selectedExam || undefined)}
+  1406→          >
+  1407→            <RefreshCw className="mr-2 h-4 w-4" />
+  1408→            Muat Data
+  1409→          </Button>
+  1410→        </CardContent>
+  1411→      </Card>
+  1412→
+  1413→      {/* Tujuan Pembelajaran — opsional, ditulis guru */}
+  1414→      <Card className="rounded-xl shadow-sm">
+  1415→        <CardContent className="p-4 space-y-1.5">
+  1416→          <Label className="text-sm font-medium flex items-center gap-2">
+  1417→            <Target className="h-4 w-4 text-[#1F3864]" />
+  1418→            Tujuan Pembelajaran
+  1419→            <span className="text-xs text-muted-foreground font-normal">(opsional)</span>
+  1420→          </Label>
+  1421→          <textarea
+  1422→            className="flex min-h-[60px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F3864]/30 focus-visible:ring-offset-2 resize-none"
+  1423→            placeholder="Contoh: Siswa mampu menganalisis struktur teks eksplanasi dan mengidentifikasi ciri kebahasaannya..."
+  1424→            value={learningObjective}
+  1425→            onChange={(e) => setLearningObjective(e.target.value)}
+  1426→            maxLength={500}
+  1427→          />
+  1428→          <p className="text-[11px] text-muted-foreground text-right">{learningObjective.length}/500</p>
+  1429→        </CardContent>
+  1430→      </Card>
+  1431→
+  1432→      {/* Stats overview */}
+  1433→      {attempts.length > 0 && (
+  1434→        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+  1435→          <SoftStatCard icon={Users} label="Peserta" value={attempts.length} iconColor="text-[#1F3864]" iconBg="bg-[#1F3864]/10" />
+  1436→          <SoftStatCard
+  1437→            icon={BarChart3}
+  1438→            label="Rata-rata"
+  1439→            value={attempts.length > 0 ? (attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length).toFixed(1) : '0'}
+  1440→            iconColor="text-emerald-600"
+  1441→            iconBg="bg-emerald-50"
+  1442→          />
+  1443→          <SoftStatCard
+  1444→            icon={TrendingUp}
+  1445→            label="Tertinggi"
+  1446→            value={attempts.length > 0 ? Math.max(...attempts.map((a) => a.percentage)).toFixed(1) : '0'}
+  1447→            iconColor="text-amber-500"
+  1448→            iconBg="bg-amber-50"
+  1449→          />
+  1450→          <SoftStatCard
+  1451→            icon={TrendingDown}
+  1452→            label="Terendah"
+  1453→            value={attempts.length > 0 ? Math.min(...attempts.map((a) => a.percentage)).toFixed(1) : '0'}
+  1454→            iconColor="text-red-600"
+  1455→            iconBg="bg-red-50"
+  1456→          />
+  1457→        </div>
+  1458→      )}
+  1459→
+  1460→      {/* Table */}
+  1461→      <Card className="rounded-xl shadow-sm overflow-hidden">
+  1462→        {/* Show existing learningObjective if any attempt has it */}
+  1463→        {attempts.length > 0 && attempts.some((a) => a.learningObjective) && (
+  1464→          <div className="bg-[#1F3864]/5 border-b px-4 py-2.5 flex items-start gap-2">
+  1465→            <Target className="h-4 w-4 text-[#1F3864] mt-0.5 shrink-0" />
+  1466→            <div className="min-w-0">
+  1467→              <p className="text-[11px] font-semibold text-[#1F3864] uppercase tracking-wide">Tujuan Pembelajaran</p>
+  1468→              <p className="text-xs text-slate-600 mt-0.5 break-words">{attempts.find((a) => a.learningObjective)?.learningObjective}</p>
+  1469→            </div>
+  1470→          </div>
+  1471→        )}
+  1472→        <CardContent className="p-0">
+  1473→          <Table>
+  1474→            <TableHeader>
+  1475→              <TableRow className="bg-muted/50">
+  1476→                <TableHead className="w-12 text-center">No</TableHead>
+  1477→                <TableHead>Nama Siswa</TableHead>
+  1478→                <TableHead className="text-center">NISN</TableHead>
+  1479→                <TableHead className="text-center">
+  1480→                  <div className="flex items-center justify-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />Benar</div>
+  1481→                </TableHead>
+  1482→                <TableHead className="text-center">
+  1483→                  <div className="flex items-center justify-center gap-1"><CircleSlash className="h-3.5 w-3.5 text-red-500" />Salah</div>
+  1484→                </TableHead>
+  1485→                <TableHead className="text-center">
+  1486→                  <div className="flex items-center justify-center gap-1"><CircleSlash className="h-3.5 w-3.5 text-gray-400" />Tidak Dijawab</div>
+  1487→                </TableHead>
+  1488→                <TableHead className="text-center">Skor</TableHead>
+  1489→                <TableHead className="w-32 text-center">Nilai (%)</TableHead>
+  1490→                <TableHead className="w-28 text-center">Aksi</TableHead>
+  1491→              </TableRow>
+  1492→            </TableHeader>
+  1493→            <TableBody>
+  1494→              {loading ? (
+  1495→                Array.from({ length: 5 }).map((_, i) => (
+  1496→                  <TableRow key={i}>
+  1497→                    <TableCell><Skeleton className="h-4 w-6" /></TableCell>
+  1498→                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+  1499→                    <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+  1500→                    <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+  1501→                    <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+  1502→                    <TableCell><Skeleton className="h-4 w-8" /></TableCell>
+  1503→                    <TableCell><Skeleton className="h-4 w-10" /></TableCell>
+  1504→                    <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+  1505→                  </TableRow>
+  1506→                ))
+  1507→              ) : attempts.length === 0 ? (
+  1508→                <TableRow>
+  1509→                  <TableCell colSpan={8} className="h-48">
+  1510→                    <EmptyState
+  1511→                      icon={ClipboardList}
+  1512→                      title="Belum ada data nilai"
+  1513→                      description={selectedExam ? 'Tidak ada siswa yang mengerjakan tryout ini.' : 'Pilih tryout untuk melihat data nilai siswa.'}
+  1514→                    />
+  1515→                  </TableCell>
+  1516→                </TableRow>
+  1517→              ) : (
+  1518→                attempts.map((attempt, idx) => {
+  1519→                  const currentNilai = getNilai(attempt.id, attempt.percentage.toFixed(1));
+  1520→                  const numNilai = parseFloat(currentNilai);
+  1521→                  const nilaiColor = numNilai >= 80 ? 'text-emerald-600' : numNilai >= 60 ? 'text-amber-600' : 'text-red-600';
+  1522→                  const studentName = attempt.user?.name || students.find((s) => s.id === attempt.userId)?.name || 'Unknown';
+  1523→                  const studentNisn = students.find((s) => s.id === attempt.userId)?.nisn || '-';
+  1524→                  return (
+  1525→                    <TableRow key={attempt.id} className="even:bg-muted/30 transition-colors hover:bg-muted/50">
+  1526→                      <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+  1527→                      <TableCell className="font-medium">{studentName}</TableCell>
+  1528→                      <TableCell className="text-center text-muted-foreground">{studentNisn}</TableCell>
+  1529→                      <TableCell className="text-center">
+  1530→                        <Badge variant="outline" className="rounded-full border-emerald-300 text-emerald-700">{attempt.totalCorrect}</Badge>
+  1531→                      </TableCell>
+  1532→                      <TableCell className="text-center">
+  1533→                        <Badge variant="outline" className="rounded-full border-red-300 text-red-700">{attempt.totalWrong}</Badge>
+  1534→                      </TableCell>
+  1535→                      <TableCell className="text-center">
+  1536→                        <Badge variant="outline" className="rounded-full border-gray-300 text-gray-600">{attempt.totalUnanswered}</Badge>
+  1537→                      </TableCell>
+  1538→                      <TableCell className="text-center font-semibold">{attempt.score}</TableCell>
+  1539→                      <TableCell className="text-center">
+  1540→                        <Input
+  1541→                          type="text"
+  1542→                          value={currentNilai}
+  1543→                          onChange={(e) => handleNilaiChange(attempt.id, e.target.value)}
+  1544→                          className={cn('h-8 w-20 text-center text-sm font-semibold rounded-lg focus-visible:ring-[#1F3864]/30', nilaiColor)}
+  1545→                        />
+  1546→                      </TableCell>
+  1547→                      <TableCell className="text-center">
+  1548→                        {!attempt.isRemedial && !attempt.hasRemedial && numNilai < 80 && (
+  1549→                          <Button
+  1550→                            size="sm"
+  1551→                            variant="outline"
+  1552→                            className="text-[10px] rounded-lg h-7 border-amber-300 text-amber-700 hover:bg-amber-50"
+  1553→                            onClick={() => handleActivateRemedial(attempt.id)}
+  1554→                          >
+  1555→                            <RotateCcw className="h-3 w-3 mr-1" />
+  1556→                            Remedial
+  1557→                          </Button>
+  1558→                        )}
+  1559→                        {!attempt.isRemedial && attempt.hasRemedial && attempt.remedialStatus && (
+  1560→                          <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600">
+  1561→                            Remedial {attempt.remedialStatus === 'submitted' || attempt.remedialStatus === 'graded' ? '✓' : '⏳'}
+  1562→                            {attempt.activeScore !== undefined && attempt.activeScore !== attempt.score && (
+  1563→                              <span className="ml-1 text-emerald-600">{attempt.activeScore}</span>
+  1564→                            )}
+  1565→                          </Badge>
+  1566→                        )}
+  1567→                        {attempt.isRemedial && (
+  1568→                          <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-600 bg-amber-50">
+  1569→                            Remedial
+  1570→                          </Badge>
+  1571→                        )}
+  1572→                      </TableCell>
+  1573→                    </TableRow>
+  1574→                  );
+  1575→                })
+  1576→              )}
+  1577→            </TableBody>
+  1578→          </Table>
+  1579→        </CardContent>
+  1580→      </Card>
+  1581→    </div>
+  1582→  );
+  1583→}
+  1584→
+  1585→// ═══════════════════════════════════════════════════════════════════
+  1586→// 5. GURU ANALISIS VIEW  (UPGRADED WITH API)
+  1587→// ═══════════════════════════════════════════════════════════════════
+  1588→
+  1589→interface SubjectPerformance {
+  1590→  subject: string;
+  1591→  avg: number;
+  1592→  max: number;
+  1593→  min: number;
+  1594→  students: number;
+  1595→ color: string;
+  1596→}
+  1597→
+  1598→interface QuestionAnalysis {
+  1599→  no: number;
+  1600→  difficulty: string;
+  1601→  dayaBeda: string;
+  1602→  avgSkor: number;
+  1603→}
+  1604→
+  1605→function SimpleBarChart({ data, maxValue = 100 }: { data: { label: string; value: number; color?: string }[]; maxValue?: number }) {
+  1606→  return (
+  1607→    <div className="space-y-3">
+  1608→      {data.map((d, i) => {
+  1609→        const pct = Math.min((d.value / maxValue) * 100, 100);
+  1610→        const barColor = d.color || (pct >= 75 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500');
+  1611→        return (
+  1612→          <div key={i} className="group">
+  1613→            <div className="mb-1 flex items-center justify-between text-sm">
+  1614→              <span className="font-medium">{d.label}</span>
+  1615→              <span className="tabular-nums font-semibold">{d.value.toFixed(1)}</span>
+  1616→            </div>
+  1617→            <div className="h-6 w-full overflow-hidden rounded-lg bg-muted/50">
+  1618→              <div
+  1619→                className={cn('flex h-full items-center justify-end rounded-lg pr-2 text-xs font-medium text-white transition-all duration-700', barColor)}
+  1620→                style={{ width: Math.max(pct, 8) + '%' }}
+  1621→              >
+  1622→                {pct > 15 && <span>{pct.toFixed(0)}%</span>}
+  1623→              </div>
+  1624→            </div>
+  1625→          </div>
+  1626→        );
+  1627→      })}
+  1628→    </div>
+  1629→  );
+  1630→}
+  1631→
+  1632→function DistributionChart({ data }: { data: { label: string; value: number }[] }) {
+  1633→  const max = Math.max(...data.map((d) => d.value), 1);
+  1634→  return (
+  1635→    <div className="flex h-48 items-end gap-2">
+  1636→      {data.map((d, i) => {
+  1637→        const pct = (d.value / max) * 100;
+  1638→        const color = pct >= 75 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-500' : 'bg-red-500';
+  1639→        return (
+  1640→          <div key={i} className="flex flex-1 flex-col items-center gap-1">
+  1641→            <span className="text-xs font-semibold tabular-nums">{d.value}</span>
+  1642→            <div className="w-full overflow-hidden rounded-t-md bg-muted/30" style={{ height: '140px' }}>
+  1643→              <div
+  1644→                className={cn('w-full rounded-t-md transition-all duration-700', color)}
+  1645→                style={{ height: Math.max(pct, 3) + '%', marginTop: `${100 - Math.max(pct, 3)}%` }}
+  1646→              />
+  1647→            </div>
+  1648→            <span className="mt-1 text-[10px] text-muted-foreground text-center leading-tight">{d.label}</span>
+  1649→          </div>
+  1650→        );
+  1651→      })}
+  1652→    </div>
+  1653→  );
+  1654→}
+  1655→
+  1656→export function GuruAnalisisView() {
+  1657→  const user = useAppStore((s) => s.user);
+  1658→  const [attempts, setAttempts] = useState<AttemptData[]>([]);
+  1659→  const [exams, setExams] = useState<ExamPackageData[]>([]);
+  1660→  const [selectedExam, setSelectedExam] = useState('');
+  1661→  const [loading, setLoading] = useState(true);
+  1662→  const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
+  1663→
+  1664→  const fetchExams = useCallback(async () => {
+  1665→    try {
+  1666→      const params = new URLSearchParams();
+  1667→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1668→      const res = await fetch(`/api/exams?${params.toString()}`);
+  1669→      if (!res.ok) throw new Error('API Error');
+  1670→      const data = await res.json();
+  1671→      setExams(Array.isArray(data) ? data : []);
+  1672→    } catch {
+  1673→      // silent
+  1674→    }
+  1675→  }, [user?.schoolId]);
+  1676→
+  1677→  const fetchAttempts = useCallback(async (examPackageId?: string) => {
+  1678→    setLoading(true);
+  1679→    try {
+  1680→      const params = new URLSearchParams();
+  1681→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1682→      const res = await fetch(`/api/attempts?${params.toString()}`);
+  1683→      if (!res.ok) throw new Error('API Error');
+  1684→      const data = await res.json();
+  1685→      let all = Array.isArray(data) ? data : [];
+  1686→      if (examPackageId) {
+  1687→        all = all.filter((a: AttemptData) => a.examPackageId === examPackageId);
+  1688→      }
+  1689→      setAttempts(all);
+  1690→    } catch {
+  1691→      setAttempts([]);
+  1692→    } finally {
+  1693→      setLoading(false);
+  1694→    }
+  1695→  }, [user?.schoolId]);
+  1696→
+  1697→  const fetchAnalytics = useCallback(async () => {
+  1698→    try {
+  1699→      const params = new URLSearchParams();
+  1700→      params.set('type', 'dashboard');
+  1701→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1702→      const res = await fetch(`/api/analytics?${params.toString()}`);
+  1703→      if (!res.ok) throw new Error('API Error');
+  1704→      const data = await res.json();
+  1705→      if (data && typeof data === 'object') setAnalyticsData(data);
+  1706→    } catch {
+  1707→      // silent
+  1708→    }
+  1709→  }, [user?.schoolId]);
+  1710→
+  1711→  useEffect(() => {
+  1712→    fetchExams();
+  1713→    fetchAttempts();
+  1714→    fetchAnalytics();
+  1715→  }, [fetchExams, fetchAttempts, fetchAnalytics]);
+  1716→
+  1717→  const handleExamChange = useCallback((examId: string) => {
+  1718→    setSelectedExam(examId);
+  1719→    fetchAttempts(examId || undefined);
+  1720→  }, [fetchAttempts]);
+  1721→
+  1722→  // Computed stats from real attempts
+  1723→  const stats = useMemo(() => {
+  1724→    if (attempts.length === 0) return { avg: 0, max: 0, min: 0, stdDev: 0 };
+  1725→    const percentages = attempts.map((a) => a.percentage);
+  1726→    const avg = percentages.reduce((s, v) => s + v, 0) / percentages.length;
+  1727→    const max = Math.max(...percentages);
+  1728→    const min = Math.min(...percentages);
+  1729→    const variance = percentages.reduce((s, v) => s + Math.pow(v - avg, 2), 0) / percentages.length;
+  1730→    const stdDev = Math.sqrt(variance);
+  1731→    return { avg: Math.round(avg * 10) / 10, max: Math.round(max * 10) / 10, min: Math.round(min * 10) / 10, stdDev: Math.round(stdDev * 10) / 10 };
+  1732→  }, [attempts]);
+  1733→
+  1734→  // Subject performance from attempts
+  1735→  const subjectPerformance = useMemo((): SubjectPerformance[] => {
+  1736→    if (attempts.length === 0) return [];
+  1737→    const grouped: Record<string, number[]> = {};
+  1738→    attempts.forEach((a) => {
+  1739→      const exam = exams.find((e) => e.id === a.examPackageId);
+  1740→      const subject = exam?.title || 'Lainnya';
+  1741→      if (!grouped[subject]) grouped[subject] = [];
+  1742→      grouped[subject].push(a.percentage);
+  1743→    });
+  1744→    const colors = ['bg-emerald-500', 'bg-blue-500', 'bg-amber-500', 'bg-purple-500', 'bg-rose-500', 'bg-cyan-500'];
+  1745→    return Object.entries(grouped).map(([subject, pcts], i) => ({
+  1746→      subject,
+  1747→      avg: Math.round((pcts.reduce((s, v) => s + v, 0) / pcts.length) * 10) / 10,
+  1748→      max: Math.round(Math.max(...pcts) * 10) / 10,
+  1749→      min: Math.round(Math.min(...pcts) * 10) / 10,
+  1750→      students: pcts.length,
+  1751→      color: colors[i % colors.length],
+  1752→    }));
+  1753→  }, [attempts, exams]);
+  1754→
+  1755→  // Question analysis (derived from attempts)
+  1756→  const questionAnalysis = useMemo((): QuestionAnalysis[] => {
+  1757→    if (attempts.length === 0) return [];
+  1758→    // Generate per-student analysis rows
+  1759→    return attempts.slice(0, 15).map((a, i) => {
+  1760→      const total = a.totalCorrect + a.totalWrong + a.totalUnanswered;
+  1761→      const pct = total > 0 ? (a.totalCorrect / total) * 100 : 0;
+  1762→      const dayaBeda = pct >= 70 ? 'Baik' : pct >= 50 ? 'Cukup' : 'Kurang';
+  1763→      const difficulty = pct >= 75 ? 'Mudah' : pct >= 50 ? 'Sedang' : 'Sulit';
+  1764→      return { no: i + 1, difficulty, dayaBeda, avgSkor: Math.round(pct * 10) / 10 };
+  1765→    });
+  1766→  }, [attempts]);
+  1767→
+  1768→  // Bar chart data
+  1769→  const barChartData = useMemo(() => {
+  1770→    return subjectPerformance.map((sp) => ({ label: sp.subject, value: sp.avg, color: sp.color }));
+  1771→  }, [subjectPerformance]);
+  1772→
+  1773→  // Distribution data
+  1774→  const distributionData = useMemo(() => {
+  1775→    if (attempts.length === 0) return [];
+  1776→    const ranges = [
+  1777→      { label: '0-20', min: 0, max: 20 },
+  1778→      { label: '21-40', min: 21, max: 40 },
+  1779→      { label: '41-60', min: 41, max: 60 },
+  1780→      { label: '61-80', min: 61, max: 80 },
+  1781→      { label: '81-100', min: 81, max: 100 },
+  1782→    ];
+  1783→    return ranges.map((r) => ({
+  1784→      label: r.label,
+  1785→      value: attempts.filter((a) => a.percentage >= r.min && a.percentage <= r.max).length,
+  1786→    }));
+  1787→  }, [attempts]);
+  1788→
+  1789→  return (
+  1790→    <div className="space-y-6">
+  1791→      <PageHeader icon={BarChart3} title="Analisis Hasil Belajar" description="Analisis mendalam hasil tryout siswa untuk evaluasi pembelajaran.">
+  1792→        <Select value={selectedExam} onValueChange={handleExamChange}>
+  1793→          <SelectTrigger className="w-[280px] rounded-lg focus:ring-[#1F3864]/30">
+  1794→            <SelectValue placeholder="Pilih tryout..." />
+  1795→          </SelectTrigger>
+  1796→          <SelectContent>
+  1797→            {exams.map((e) => (
+  1798→              <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>
+  1799→            ))}
+  1800→          </SelectContent>
+  1801→        </Select>
+  1802→      </PageHeader>
+  1803→
+  1804→      {/* Overview Stats */}
+  1805→      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+  1806→        <StatCard icon={BarChart3} label="Rata-rata Kelas" value={stats.avg} gradientFrom="from-[#1F3864]" gradientTo="to-[#2d5289]" />
+  1807→        <SoftStatCard icon={TrendingUp} label="Nilai Tertinggi" value={stats.max} iconColor="text-emerald-600" iconBg="bg-emerald-50" />
+  1808→        <SoftStatCard icon={TrendingDown} label="Nilai Terendah" value={stats.min} iconColor="text-red-600" iconBg="bg-red-50" />
+  1809→        <SoftStatCard icon={Target} label="Standar Deviasi" value={stats.stdDev} iconColor="text-amber-600" iconBg="bg-amber-50" />
+  1810→      </div>
+  1811→
+  1812→      {loading ? (
+  1813→        <div className="grid gap-4 sm:grid-cols-2">
+  1814→          <Card className="rounded-xl shadow-sm"><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>
+  1815→          <Card className="rounded-xl shadow-sm"><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>
+  1816→        </div>
+  1817→      ) : attempts.length === 0 ? (
+  1818→        <EmptyState icon={BarChart3} title="Belum ada data analisis" description="Data akan muncul setelah siswa mengerjakan tryout." />
+  1819→      ) : (
+  1820→        <>
+  1821→          {/* Charts Row */}
+  1822→          <div className="grid gap-4 sm:grid-cols-2">
+  1823→            {/* Subject Performance Bar Chart */}
+  1824→            <Card className="rounded-xl shadow-sm">
+  1825→              <CardHeader>
+  1826→                <CardTitle className="flex items-center gap-2 text-lg">
+  1827→                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white">
+  1828→                    <BookMarked className="h-4 w-4" />
+  1829→                  </div>
+  1830→                  Performa Per Ujian
+  1831→                </CardTitle>
+  1832→                <CardDescription>Rata-rata nilai siswa berdasarkan ujian</CardDescription>
+  1833→              </CardHeader>
+  1834→              <CardContent>
+  1835→                {barChartData.length > 0 ? (
+  1836→                  <SimpleBarChart data={barChartData} />
+  1837→                ) : (
+  1838→                  <p className="py-8 text-center text-sm text-muted-foreground">Belum ada data</p>
+  1839→                )}
+  1840→              </CardContent>
+  1841→            </Card>
+  1842→
+  1843→            {/* Score Distribution */}
+  1844→            <Card className="rounded-xl shadow-sm">
+  1845→              <CardHeader>
+  1846→                <CardTitle className="flex items-center gap-2 text-lg">
+  1847→                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-500 text-white">
+  1848→                    <BarChart3 className="h-4 w-4" />
+  1849→                  </div>
+  1850→                  Distribusi Nilai
+  1851→                </CardTitle>
+  1852→                <CardDescription>Sebaran nilai siswa dalam rentang tertentu</CardDescription>
+  1853→              </CardHeader>
+  1854→              <CardContent>
+  1855→                {distributionData.length > 0 ? (
+  1856→                  <DistributionChart data={distributionData} />
+  1857→                ) : (
+  1858→                  <p className="py-8 text-center text-sm text-muted-foreground">Belum ada data</p>
+  1859→                )}
+  1860→              </CardContent>
+  1861→            </Card>
+  1862→          </div>
+  1863→
+  1864→          {/* Subject Performance Detail */}
+  1865→          <Card className="rounded-xl shadow-sm">
+  1866→            <CardHeader>
+  1867→              <CardTitle className="text-lg">Detail Performa Per Ujian</CardTitle>
+  1868→              <CardDescription>Statistik lengkap setiap ujian yang dipilih</CardDescription>
+  1869→            </CardHeader>
+  1870→            <CardContent>
+  1871→              <div className="space-y-5">
+  1872→                {subjectPerformance.length > 0 ? subjectPerformance.map((sp) => (
+  1873→                  <div key={sp.subject} className="space-y-1.5">
+  1874→                    <div className="flex items-center justify-between">
+  1875→                      <div className="flex items-center gap-2">
+  1876→                        <Badge className={cn('rounded-full text-xs', 'bg-gray-100 text-gray-700')}>{sp.subject}</Badge>
+  1877→                        <span className="text-sm text-muted-foreground">{sp.students} peserta</span>
+  1878→                      </div>
+  1879→                      <div className="flex items-center gap-3 text-sm">
+  1880→                        <span className="text-muted-foreground">Min: <span className="font-medium text-red-600">{sp.min}</span></span>
+  1881→                        <span className="text-muted-foreground">Max: <span className="font-medium text-emerald-600">{sp.max}</span></span>
+  1882→                        <span className="font-bold">{sp.avg}</span>
+  1883→                      </div>
+  1884→                    </div>
+  1885→                    <PerformanceBar value={sp.avg} />
+  1886→                  </div>
+  1887→                )) : (
+  1888→                  <p className="py-8 text-center text-sm text-muted-foreground">Belum ada data performa</p>
+  1889→                )}
+  1890→              </div>
+  1891→            </CardContent>
+  1892→          </Card>
+  1893→
+  1894→          {/* Question Analysis Table */}
+  1895→          <Card className="rounded-xl shadow-sm overflow-hidden">
+  1896→            <CardHeader>
+  1897→              <CardTitle className="text-lg">Analisis Per Peserta</CardTitle>
+  1898→              <CardDescription>Detail performa setiap peserta pada tryout yang dipilih</CardDescription>
+  1899→            </CardHeader>
+  1900→            <CardContent className="p-0">
+  1901→              <Table>
+  1902→                <TableHeader>
+  1903→                  <TableRow className="bg-muted/50">
+  1904→                    <TableHead className="w-20 text-center">No</TableHead>
+  1905→                    <TableHead className="text-center">Siswa</TableHead>
+  1906→                    <TableHead className="text-center">Tingkat</TableHead>
+  1907→                    <TableHead className="text-center">Kategori</TableHead>
+  1908→                    <TableHead className="text-center">Skor (%)</TableHead>
+  1909→                    <TableHead className="min-w-[200px]">Distribusi</TableHead>
+  1910→                  </TableRow>
+  1911→                </TableHeader>
+  1912→                <TableBody>
+  1913→                  {questionAnalysis.length === 0 ? (
+  1914→                    <TableRow>
+  1915→                      <TableCell colSpan={6} className="h-40">
+  1916→                        <EmptyState icon={Target} title="Belum ada analisis" description="Data analisis akan tersedia setelah ada peserta." />
+  1917→                      </TableCell>
+  1918→                    </TableRow>
+  1919→                  ) : (
+  1920→                    questionAnalysis.map((qa, idx) => {
+  1921→                      const attempt = attempts[idx];
+  1922→                      return (
+  1923→                        <TableRow key={qa.no} className="even:bg-muted/30 transition-colors hover:bg-muted/50">
+  1924→                          <TableCell className="text-center font-semibold">{qa.no}</TableCell>
+  1925→                          <TableCell className="text-center text-sm">{attempt?.user?.name || '-'}</TableCell>
+  1926→                          <TableCell className="text-center">
+  1927→                            <Badge className={cn('rounded-full text-xs', DIFFICULTY_BADGE[qa.difficulty])}>{qa.difficulty}</Badge>
+  1928→                          </TableCell>
+  1929→                          <TableCell className="text-center">
+  1930→                            <Badge className={cn('rounded-full text-xs', DAYA_BEDA_COLORS[qa.dayaBeda])}>{qa.dayaBeda}</Badge>
+  1931→                          </TableCell>
+  1932→                          <TableCell className="text-center font-semibold">{qa.avgSkor.toFixed(1)}</TableCell>
+  1933→                          <TableCell>
+  1934→                            <PerformanceBar value={qa.avgSkor} height="h-2" />
+  1935→                          </TableCell>
+  1936→                        </TableRow>
+  1937→                      );
+  1938→                    })
+  1939→                  )}
+  1940→                </TableBody>
+  1941→              </Table>
+  1942→            </CardContent>
+  1943→          </Card>
+  1944→        </>
+  1945→      )}
+  1946→    </div>
+  1947→  );
+  1948→}
+  1949→
+  1950→// ═══════════════════════════════════════════════════════════════════
+  1951→// 6. GURU LAPORAN VIEW  (UPGRADED WITH API)
+  1952→// ═══════════════════════════════════════════════════════════════════
+  1953→
+  1954→export function GuruLaporanView() {
+  1955→  const user = useAppStore((s) => s.user);
+  1956→  const [activeTab, setActiveTab] = useState('buat');
+  1957→  const [students, setStudents] = useState<StudentData[]>([]);
+  1958→  const [attempts, setAttempts] = useState<AttemptData[]>([]);
+  1959→  const [exams, setExams] = useState<ExamPackageData[]>([]);
+  1960→  const [loading, setLoading] = useState(true);
+  1961→  const [generating, setGenerating] = useState<string | null>(null);
+  1962→
+  1963→  // Printable report state
+  1964→  const [showReport, setShowReport] = useState(false);
+  1965→  const [reportType, setReportType] = useState('per-tryout');
+  1966→  const [reportExamId, setReportExamId] = useState('');
+  1967→
+  1968→  const fetchStudents = useCallback(async () => {
+  1969→    try {
+  1970→      const params = new URLSearchParams();
+  1971→      params.set('role', 'SISWA');
+  1972→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1973→      const res = await fetch(`/api/users?${params.toString()}`);
+  1974→      if (!res.ok) throw new Error('API Error');
+  1975→      const data = await res.json();
+  1976→      setStudents(Array.isArray(data) ? data : []);
+  1977→    } catch {
+  1978→      setStudents([]);
+  1979→    }
+  1980→  }, [user?.schoolId]);
+  1981→
+  1982→  const fetchAttempts = useCallback(async () => {
+  1983→    try {
+  1984→      const params = new URLSearchParams();
+  1985→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  1986→      const res = await fetch(`/api/attempts?${params.toString()}`);
+  1987→      if (!res.ok) throw new Error('API Error');
+  1988→      const data = await res.json();
+  1989→      setAttempts(Array.isArray(data) ? data : []);
+  1990→    } catch {
+  1991→      setAttempts([]);
+  1992→    } finally {
+  1993→      setLoading(false);
+  1994→    }
+  1995→  }, [user?.schoolId]);
+  1996→
+  1997→  const fetchExams = useCallback(async () => {
+  1998→    try {
+  1999→      const params = new URLSearchParams();
+  2000→      if (user?.schoolId) params.set('schoolId', user.schoolId);
+  2001→      const res = await fetch(`/api/exams?${params.toString()}`);
+  2002→      if (!res.ok) throw new Error('API Error');
+  2003→      const data = await res.json();
+  2004→      setExams(Array.isArray(data) ? data : []);
+  2005→    } catch {
+  2006→      // silent
+  2007→    }
+  2008→  }, [user?.schoolId]);
+  2009→
+  2010→  useEffect(() => {
+  2011→    fetchStudents();
+  2012→    fetchAttempts();
+  2013→    fetchExams();
+  2014→  }, [fetchStudents, fetchAttempts, fetchExams]);
+  2015→
+  2016→  const handleGenerate = useCallback((reportId: string, title: string) => {
+  2017→    setGenerating(reportId);
+  2018→    setTimeout(() => {
+  2019→      setGenerating(null);
+  2020→      setReportType(reportId);
+  2021→      setShowReport(true);
+  2022→      toast.success('Laporan "' + title + '" berhasil dibuat!');
+  2023→    }, 1200);
+  2024→  }, []);
+  2025→
+  2026→  const handlePrint = useCallback(() => {
+  2027→    window.print();
+  2028→  }, []);
+  2029→
+  2030→  // Report data computations
+  2031→  const reportData = useMemo(() => {
+  2032→    if (reportType === 'per-tryout') {
+  2033→      const exam = exams.find((e) => e.id === reportExamId);
+  2034→      const filtered = reportExamId ? attempts.filter((a) => a.examPackageId === reportExamId) : attempts;
+  2035→      const sorted = [...filtered].sort((a, b) => b.percentage - a.percentage);
+  2036→      return { title: exam?.title || 'Semua Tryout', subtitle: `Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`, entries: sorted.map((a, i) => ({ no: i + 1, name: a.user?.name || '-', nisn: students.find((s) => s.id === a.userId)?.nisn || '-', score: a.percentage, correct: a.totalCorrect, wrong: a.totalWrong, unanswered: a.totalUnanswered, tka: a.tkaPrediction })) };
+  2037→    }
+  2038→    if (reportType === 'peringkat') {
+  2039→      const studentMap = new Map<string, { name: string; nisn: string; totalScore: number; count: number }>();
+  2040→      attempts.forEach((a) => {
+  2041→        const existing = studentMap.get(a.userId) || { name: a.user?.name || '-', nisn: students.find((s) => s.id === a.userId)?.nisn || '-', totalScore: 0, count: 0 };
+  2042→        studentMap.set(a.userId, { ...existing, name: a.user?.name || existing.name, totalScore: existing.totalScore + a.percentage, count: existing.count + 1 });
+  2043→      });
+  2044→      const ranked = Array.from(studentMap.entries()).map(([userId, data]) => ({ ...data, userId, avg: Math.round(data.totalScore / data.count * 10) / 10 })).sort((a, b) => b.avg - a.avg);
+  2045→      return { title: 'Laporan Peringkat Siswa', subtitle: `Total ${ranked.length} siswa`, entries: ranked.map((r, i) => ({ no: i + 1, name: r.name, nisn: r.nisn, score: r.avg, correct: 0, wrong: 0, unanswered: 0, tka: null })) };
+  2046→    }
+  2047→    if (reportType === 'per-matapelajaran') {
+  2048→      const examGroups = new Map<string, { examTitle: string; pcts: number[] }>();
+  2049→      attempts.forEach((a) => {
+  2050→        const exam = exams.find((e) => e.id === a.examPackageId);
+  2051→        const title = exam?.title || 'Lainnya';
+  2052→        const existing = examGroups.get(title) || { examTitle: title, pcts: [] };
+  2053→        examGroups.set(title, { ...existing, pcts: [...existing.pcts, a.percentage] });
+  2054→      });
+  2055→      const entries = Array.from(examGroups.values()).map((g) => ({ no: 0, name: g.examTitle, nisn: '', score: Math.round(g.pcts.reduce((s, v) => s + v, 0) / g.pcts.length * 10) / 10, correct: g.pcts.length, wrong: 0, unanswered: 0, tka: null }));
+  2056→      return { title: 'Laporan Per Mata Pelajaran', subtitle: `Total ${entries.length} ujian`, entries };
+  2057→    }
+  2058→    // Per siswa
+  2059→    const sortedStudents = [...students].sort((a, b) => a.name.localeCompare(b.name));
+  2060→    return { title: 'Laporan Per Siswa', subtitle: `Total ${sortedStudents.length} siswa`, entries: sortedStudents.map((s, i) => {
+  2061→      const studentAttempts = attempts.filter((a) => a.userId === s.id);
+  2062→      const avgPct = studentAttempts.length > 0 ? Math.round(studentAttempts.reduce((sum, a) => sum + a.percentage, 0) / studentAttempts.length * 10) / 10 : 0;
+  2063→      return { no: i + 1, name: s.name, nisn: s.nisn || '-', score: avgPct, correct: studentAttempts.length, wrong: 0, unanswered: 0, tka: null };
+  2064→    })};
+  2065→  }, [reportType, reportExamId, attempts, students, exams]);
+  2066→
+  2067→  return (
+  2068→    <div className="space-y-6">
+  2069→      <PageHeader icon={FileBarChart} title="Laporan Siswa" description="Buat, unduh, dan kelola laporan hasil belajar siswa." />
+  2070→
+  2071→      <Tabs value={activeTab} onValueChange={setActiveTab}>
+  2072→        <TabsList className="h-auto flex-wrap">
+  2073→          <TabsTrigger value="buat" className="transition-all duration-200">Buat Laporan</TabsTrigger>
+  2074→          <TabsTrigger value="riwayat" className="transition-all duration-200">Riwayat Laporan</TabsTrigger>
+  2075→        </TabsList>
+  2076→
+  2077→        {/* Buat Laporan */}
+  2078→        <TabsContent value="buat" className="mt-6">
+  2079→          <div className="grid gap-4 sm:grid-cols-2">
+  2080→            {REPORT_TYPES.map((rt) => {
+  2081→              const Icon = rt.icon;
+  2082→              const isGenerating = generating === rt.id;
+  2083→              return (
+  2084→                <Card key={rt.id} className="rounded-xl shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-0.5">
+  2085→                  <CardHeader className="pb-3">
+  2086→                    <div className="flex items-start gap-3">
+  2087→                      <div className={cn('flex h-10 w-10 shrink-0 items-center justify-center rounded-xl', rt.bgColor, rt.color)}>
+  2088→                        <Icon className="h-5 w-5" />
+  2089→                      </div>
+  2090→                      <div>
+  2091→                        <CardTitle className="text-base">{rt.title}</CardTitle>
+  2092→                        <CardDescription className="mt-1 text-sm">{rt.description}</CardDescription>
+  2093→                      </div>
+  2094→                    </div>
+  2095→                  </CardHeader>
+  2096→                  <CardContent className="flex justify-end gap-2 border-t pt-4">
+  2097→                    <Button
+  2098→                      variant="outline"
+  2099→                      size="sm"
+  2100→                      className="gap-1.5 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+  2101→                      onClick={() => { handleGenerate(rt.id, rt.title); setReportExamId(''); }}
+  2102→                      disabled={isGenerating}
+  2103→                    >
+  2104→                      <Printer className="h-3.5 w-3.5" />
+  2105→                      {isGenerating ? 'Memproses...' : 'Cetak'}
+  2106→                    </Button>
+  2107→                    <Button
+  2108→                      size="sm"
+  2109→                      className="gap-1.5 rounded-lg bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+  2110→                      onClick={() => { handleGenerate(rt.id, rt.title); setReportExamId(''); }}
+  2111→                      disabled={isGenerating}
+  2112→                    >
+  2113→                      <Download className="h-3.5 w-3.5" />
+  2114→                      {isGenerating ? 'Memproses...' : 'Unduh PDF'}
+  2115→                    </Button>
+  2116→                  </CardContent>
+  2117→                </Card>
+  2118→              );
+  2119→            })}
+  2120→          </div>
+  2121→        </TabsContent>
+  2122→
+  2123→        {/* Riwayat Laporan */}
+  2124→        <TabsContent value="riwayat" className="mt-6">
+  2125→          <Card className="rounded-xl shadow-sm overflow-hidden">
+  2126→            <CardContent className="p-0">
+  2127→              <Table>
+  2128→                <TableHeader>
+  2129→                  <TableRow className="bg-muted/50">
+  2130→                    <TableHead className="w-12 text-center">No</TableHead>
+  2131→                    <TableHead>Judul Laporan</TableHead>
+  2132→                    <TableHead>Tipe</TableHead>
+  2133→                    <TableHead className="text-center">Tanggal</TableHead>
+  2134→                    <TableHead className="text-center">Status</TableHead>
+  2135→                    <TableHead className="w-24 text-center">Aksi</TableHead>
+  2136→                  </TableRow>
+  2137→                </TableHeader>
+  2138→                <TableBody>
+  2139→                  {attempts.length === 0 ? (
+  2140→                    <TableRow>
+  2141→                      <TableCell colSpan={6} className="h-48">
+  2142→                        <EmptyState icon={FileBarChart} title="Belum ada laporan" description="Laporan yang telah dibuat akan ditampilkan di sini." />
+  2143→                      </TableCell>
+  2144→                    </TableRow>
+  2145→                  ) : (
+  2146→                    REPORT_TYPES.map((rt, idx) => (
+  2147→                      <TableRow key={rt.id} className="even:bg-muted/30 transition-colors hover:bg-muted/50">
+  2148→                        <TableCell className="text-center font-medium">{idx + 1}</TableCell>
+  2149→                        <TableCell className="font-medium">{rt.title}</TableCell>
+  2150→                        <TableCell><Badge variant="outline" className="rounded-full text-xs">{rt.title.split(' ')[0]}</Badge></TableCell>
+  2151→                        <TableCell className="text-center text-muted-foreground">{formatTanggal(new Date().toISOString())}</TableCell>
+  2152→                        <TableCell className="text-center">
+  2153→                          <Badge className="rounded-full bg-emerald-100 text-xs text-emerald-700"><CheckCircle2 className="mr-1 h-3 w-3" />Selesai</Badge>
+  2154→                        </TableCell>
+  2155→                        <TableCell className="text-center">
+  2156→                          <div className="flex items-center justify-center gap-1">
+  2157→                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => { setReportType(rt.id); setReportExamId(''); setShowReport(true); }}><Eye className="h-4 w-4" /></Button>
+  2158→                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => { setReportType(rt.id); setReportExamId(''); setShowReport(true); setTimeout(() => window.print(), 300); }}><Printer className="h-4 w-4" /></Button>
+  2159→                          </div>
+  2160→                        </TableCell>
+  2161→                      </TableRow>
+  2162→                    ))
+  2163→                  )}
+  2164→                </TableBody>
+  2165→              </Table>
+  2166→            </CardContent>
+  2167→          </Card>
+  2168→        </TabsContent>
+  2169→      </Tabs>
+  2170→
+  2171→      {/* Printable Report Dialog */}
+  2172→      <Dialog open={showReport} onOpenChange={setShowReport}>
+  2173→        <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden rounded-xl flex flex-col">
+  2174→          <DialogHeader>
+  2175→            <DialogTitle className="flex items-center gap-2">
+  2176→              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white">
+  2177→                <FileBarChart className="h-4 w-4" />
+  2178→              </div>
+  2179→              {reportData.title}
+  2180→            </DialogTitle>
+  2181→            <DialogDescription>{reportData.subtitle}</DialogDescription>
+  2182→          </DialogHeader>
+  2183→
+  2184→          {/* Exam selector for per-tryout */}
+  2185→          {reportType === 'per-tryout' && (
+  2186→            <div className="flex items-center gap-2">
+  2187→              <Label className="text-sm font-medium shrink-0">Pilih Ujian:</Label>
+  2188→              <Select value={reportExamId} onValueChange={setReportExamId}>
+  2189→                <SelectTrigger className="rounded-lg focus:ring-[#1F3864]/30">
+  2190→                  <SelectValue placeholder="Semua Ujian" />
+  2191→                </SelectTrigger>
+  2192→                <SelectContent>
+  2193→                  <SelectItem value="">Semua Ujian</SelectItem>
+  2194→                  {exams.map((e) => (
+  2195→                    <SelectItem key={e.id} value={e.id}>{e.title}</SelectItem>
+  2196→                  ))}
+  2197→                </SelectContent>
+  2198→              </Select>
+  2199→            </div>
+  2200→          )}
+  2201→
+  2202→          {/* Print-friendly content */}
+  2203→          <div className="flex-1 overflow-y-auto">
+  2204→            <div id="printable-report" className="space-y-4 p-1">
+  2205→              {/* Report header */}
+  2206→              <div className="rounded-xl border bg-gradient-to-r from-[#1F3864]/5 to-[#2d5289]/5 p-4">
+  2207→                <h2 className="text-lg font-bold text-[#1F3864]">{reportData.title}</h2>
+  2208→                <p className="text-sm text-muted-foreground">{reportData.subtitle}</p>
+  2209→                {reportData.entries.length > 0 && (
+  2210→                  <div className="mt-2 flex gap-4 text-sm">
+  2211→                    <span className="text-muted-foreground">Peserta: <span className="font-semibold text-foreground">{reportData.entries.length}</span></span>
+  2212→                    <span className="text-muted-foreground">Rata-rata: <span className="font-semibold text-foreground">{reportData.entries.length > 0 ? (reportData.entries.reduce((s, e) => s + e.score, 0) / reportData.entries.length).toFixed(1) : 0}</span></span>
+  2213→                  </div>
+  2214→                )}
+  2215→              </div>
+  2216→
+  2217→              {/* Report table */}
+  2218→              <div className="overflow-x-auto">
+  2219→                <table className="w-full text-sm">
+  2220→                  <thead>
+  2221→                    <tr className="border-b bg-muted/50">
+  2222→                      <th className="p-2 text-center">No</th>
+  2223→                      <th className="p-2 text-left">Nama</th>
+  2224→                      {reportType !== 'per-matapelajaran' && <th className="p-2 text-center">NISN</th>}
+  2225→                      <th className="p-2 text-center">Nilai</th>
+  2226→                      {reportType === 'per-tryout' && <th className="p-2 text-center">Benar</th>}
+  2227→                      {reportType === 'per-tryout' && <th className="p-2 text-center">Salah</th>}
+  2228→                      {reportType === 'per-tryout' && <th className="p-2 text-center">Tidak Dijawab</th>}
+  2229→                      {reportType === 'per-tryout' && <th className="p-2 text-center">Prediksi TKA</th>}
+  2230→                      {reportType === 'per-matapelajaran' && <th className="p-2 text-center">Peserta</th>}
+  2231→                      {reportType === 'per-siswa' && <th className="p-2 text-center">Jumlah Ujian</th>}
+  2232→                    </tr>
+  2233→                  </thead>
+  2234→                  <tbody>
+  2235→                    {reportData.entries.map((entry) => {
+  2236→                      const nilaiColor = entry.score >= 80 ? 'text-emerald-600' : entry.score >= 60 ? 'text-amber-600' : 'text-red-600';
+  2237→                      return (
+  2238→                        <tr key={entry.no} className="border-b even:bg-muted/30">
+  2239→                          <td className="p-2 text-center">{entry.no}</td>
+  2240→                          <td className="p-2 font-medium">{entry.name}</td>
+  2241→                          {reportType !== 'per-matapelajaran' && <td className="p-2 text-center text-muted-foreground">{entry.nisn}</td>}
+  2242→                          <td className={cn('p-2 text-center font-bold', nilaiColor)}>{entry.score.toFixed(1)}</td>
+  2243→                          {reportType === 'per-tryout' && <td className="p-2 text-center"><span className="inline-flex items-center justify-center h-6 min-w-[24px] rounded-full bg-emerald-100 text-emerald-700 text-xs font-medium px-1.5">{entry.correct}</span></td>}
+  2244→                          {reportType === 'per-tryout' && <td className="p-2 text-center"><span className="inline-flex items-center justify-center h-6 min-w-[24px] rounded-full bg-red-100 text-red-700 text-xs font-medium px-1.5">{entry.wrong}</span></td>}
+  2245→                          {reportType === 'per-tryout' && <td className="p-2 text-center"><span className="inline-flex items-center justify-center h-6 min-w-[24px] rounded-full bg-gray-100 text-gray-700 text-xs font-medium px-1.5">{entry.unanswered}</span></td>}
+  2246→                          {reportType === 'per-tryout' && <td className="p-2 text-center font-semibold">{entry.tka || '-'}</td>}
+  2247→                          {reportType === 'per-matapelajaran' && <td className="p-2 text-center">{entry.correct}</td>}
+  2248→                          {reportType === 'per-siswa' && <td className="p-2 text-center">{entry.correct}</td>}
+  2249→                        </tr>
+  2250→                      );
+  2251→                    })}
+  2252→                  </tbody>
+  2253→                </table>
+  2254→              </div>
+  2255→            </div>
+  2256→          </div>
+  2257→
+  2258→          <DialogFooter className="gap-2 print:hidden">
+  2259→            <Button variant="outline" className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => setShowReport(false)}>
+  2260→              Tutup
+  2261→            </Button>
+  2262→            <Button
+  2263→              className="rounded-lg bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+  2264→              onClick={handlePrint}
+  2265→            >
+  2266→              <Printer className="mr-2 h-4 w-4" />
+  2267→              Cetak Laporan
+  2268→            </Button>
+  2269→          </DialogFooter>
+  2270→        </DialogContent>
+  2271→      </Dialog>
+  2272→    </div>
+  2273→  );
+  2274→}
+  2275→
+  2276→
+  2277→
