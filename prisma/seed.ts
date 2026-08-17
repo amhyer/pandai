@@ -100,118 +100,103 @@ const SISWAS = [
   { name: 'Dimas Kurniawan', nisn: '0060987658', namaOrtu: 'Ibu Lestari', jk: 'L', schoolIndex: 1, classIndex: 3 },
 ];
 
-// SD (kelas 1-6): Mata pelajaran dasar
-const SUBJECTS_SD = [
-  { name: 'Bahasa Indonesia', code: 'bindo-sd', type: 'wajib', sortOrder: 1 },
-  { name: 'Bahasa Inggris', code: 'bing-sd', type: 'wajib', sortOrder: 2 },
-  { name: 'Matematika', code: 'mat-sd', type: 'wajib', sortOrder: 3 },
-  { name: 'IPA (Ilmu Pengetahuan Alam)', code: 'ipa-sd', type: 'wajib', sortOrder: 4 },
-  { name: 'IPS (Ilmu Pengetahuan Sosial)', code: 'ips-sd', type: 'wajib', sortOrder: 5 },
-  { name: 'PKn (Pendidikan Kewarganegaraan)', code: 'pkn-sd', type: 'wajib', sortOrder: 6 },
-  { name: 'SBdP (Seni Budaya)', code: 'sbdp-sd', type: 'wajib', sortOrder: 7 },
-  { name: 'PJOK (Pendidikan Jasmani)', code: 'pjok-sd', type: 'wajib', sortOrder: 8 },
-];
-
-// SMP (kelas 7-9): Mata pelajaran menengah
-const SUBJECTS_SMP = [
-  { name: 'Bahasa Indonesia', code: 'bindo-smp', type: 'wajib', sortOrder: 1 },
-  { name: 'Bahasa Inggris', code: 'bing-smp', type: 'wajib', sortOrder: 2 },
-  { name: 'Matematika', code: 'mat-smp', type: 'wajib', sortOrder: 3 },
-  { name: 'IPA (Ilmu Pengetahuan Alam)', code: 'ipa-smp', type: 'wajib', sortOrder: 4 },
-  { name: 'IPS (Ilmu Pengetahuan Sosial)', code: 'ips-smp', type: 'wajib', sortOrder: 5 },
-  { name: 'PKn (Pendidikan Kewarganegaraan)', code: 'pkn-smp', type: 'wajib', sortOrder: 6 },
-  { name: 'Seni Budaya', code: 'sbud-smp', type: 'wajib', sortOrder: 7 },
-  { name: 'PJOK (Pendidikan Jasmani)', code: 'pjok-smp', type: 'wajib', sortOrder: 8 },
-  { name: 'Prakarya', code: 'prak-smp', type: 'wajib', sortOrder: 9 },
-  { name: 'Bahasa Daerah', code: 'bdaerah-smp', type: 'wajib', sortOrder: 10 },
+// Mata pelajaran global (digunakan SD, SMP, SMA, SMK — 1 entri per mapel)
+const SUBJECTS_DATA = [
+  { name: 'Bahasa Indonesia', code: 'bahasa-indonesia', type: 'wajib', sortOrder: 1 },
+  { name: 'Bahasa Inggris', code: 'bahasa-inggris', type: 'wajib', sortOrder: 2 },
+  { name: 'Matematika', code: 'matematika', type: 'wajib', sortOrder: 3 },
+  { name: 'IPA (Ilmu Pengetahuan Alam)', code: 'ipa', type: 'wajib', sortOrder: 4 },
+  { name: 'IPS (Ilmu Pengetahuan Sosial)', code: 'ips', type: 'wajib', sortOrder: 5 },
+  { name: 'PKn (Pendidikan Kewarganegaraan)', code: 'pkn', type: 'wajib', sortOrder: 6 },
+  { name: 'Seni Budaya', code: 'seni-budaya', type: 'wajib', sortOrder: 7 },
+  { name: 'PJOK (Pendidikan Jasmani)', code: 'pjok', type: 'wajib', sortOrder: 8 },
+  { name: 'Prakarya', code: 'prakarya', type: 'wajib', sortOrder: 9 },
+  { name: 'Bahasa Daerah', code: 'bahasa-daerah', type: 'wajib', sortOrder: 10 },
 ];
 
 const TOPICS_DATA: Record<string, { name: string; subtopics: string[] }[]> = {
-  // SD Topics
-  'bindo-sd': [
+  // Bahasa Indonesia (SD + SMP topics merged)
+  'bahasa-indonesia': [
+    // SD topics
     { name: 'Teks Deskripsi', subtopics: ['Ciri-ciri teks', 'Mengamati objek'] },
     { name: 'Teks Cerita Rakyat', subtopics: ['Unsur intrinsik', 'Nilai moral'] },
     { name: 'Pantun & Puisi', subtopics: ['Struktur pantun', 'Membaca puisi'] },
-  ],
-  'bing-sd': [
-    { name: 'Greetings & Introductions', subtopics: ['Saying hello', 'Introducing oneself'] },
-    { name: 'Things Around Us', subtopics: ['Vocabulary', 'Simple sentences'] },
-  ],
-  'mat-sd': [
-    { name: 'Pecahan & Desimal', subtopics: ['Operasi pecahan', 'Konversi desimal'] },
-    { name: 'Bangun Datar', subtopics: ['Luas & keliling', 'Segitiga & segiempat'] },
-    { name: 'Bangun Ruang', subtopics: ['Kubus & balok', 'Volume'] },
-  ],
-  'ipa-sd': [
-    { name: 'Sifat & Perubahan Wujud Benda', subtopics: ['Menguap', 'Membeku', 'Menyublim'] },
-    { name: 'Rantai Makanan', subtopics: ['Produsen', 'Konsumen', 'Dekomposer'] },
-  ],
-  'ips-sd': [
-    { name: 'Peta & Globe', subtopics: ['Membaca peta', 'Garis lintang'] },
-    { name: 'Sejarah Indonesia', subtopics: ['Kemerdekaan', 'Pahlawan nasional'] },
-  ],
-  'pkn-sd': [
-    { name: 'Nilai Pancasila', subtopics: ['Sila 1-5', 'Sila 6-10'] },
-    { name: 'Hak & Kewajiban', subtopics: ['Di rumah', 'Di sekolah'] },
-  ],
-  'sbdp-sd': [
-    { name: 'Seni Rupa', subtopics: ['Menggambar', 'Mewarnai'] },
-    { name: 'Seni Musik', subtopics: ['Nada', 'Irama'] },
-  ],
-  'pjok-sd': [
-    { name: 'Permainan Bola Besar', subtopics: ['Bola voli', 'Bola basket'] },
-    { name: 'Atletik', subtopics: ['Lari', 'Lompat', 'Lempar'] },
-  ],
-  // SMP Topics
-  'bindo-smp': [
+    // SMP topics
     { name: 'Teks Eksplanasi', subtopics: ['Struktur teks', 'Ciri kebahasaan'] },
     { name: 'Teks Persuasi', subtopics: ['Struktur teks', 'Ciri kebahasaan'] },
     { name: 'Teks Ceramah', subtopics: ['Struktur teks', 'Ciri kebahasaan'] },
   ],
-  'bing-smp': [
+  'bahasa-inggris': [
+    // SD topics
+    { name: 'Greetings & Introductions', subtopics: ['Saying hello', 'Introducing oneself'] },
+    { name: 'Things Around Us', subtopics: ['Vocabulary', 'Simple sentences'] },
+    // SMP topics
     { name: 'Analytical Exposition', subtopics: ['Generic structure', 'Language features'] },
     { name: 'Report Text', subtopics: ['Generic structure', 'Language features'] },
     { name: 'Narrative Text', subtopics: ['Orientation', 'Complication', 'Resolution'] },
   ],
-  'mat-smp': [
+  'matematika': [
+    // SD topics
+    { name: 'Pecahan & Desimal', subtopics: ['Operasi pecahan', 'Konversi desimal'] },
+    { name: 'Bangun Datar', subtopics: ['Luas & keliling', 'Segitiga & segiempat'] },
+    { name: 'Bangun Ruang', subtopics: ['Kubus & balok', 'Volume'] },
+    // SMP topics
     { name: 'Persamaan Linear Satu Variabel', subtopics: ['Menyelesaikan PLDV', 'Soal cerita'] },
     { name: 'Sistem Persamaan Linear Dua Variabel', subtopics: ['Metode substitusi', 'Metode eliminasi'] },
     { name: 'Relasi & Fungsi', subtopics: ['Domain & range', 'Fungsi linear'] },
     { name: 'Teorema Pythagoras', subtopics: ['Rumus', 'Soal cerita'] },
   ],
-  'ipa-smp': [
+  'ipa': [
+    // SD topics
+    { name: 'Sifat & Perubahan Wujud Benda', subtopics: ['Menguap', 'Membeku', 'Menyublim'] },
+    { name: 'Rantai Makanan', subtopics: ['Produsen', 'Konsumen', 'Dekomposer'] },
+    // SMP topics
     { name: 'Sistem Tata Surya', subtopics: ['Planet', 'Satelit', 'Gravitasi'] },
     { name: 'Zat Aditif & Adiktif', subtopics: ['Pengaruh', 'Dampak kesehatan'] },
     { name: 'Getaran & Gelombang', subtopics: ['Gelombang bunyi', 'Gelombang cahaya'] },
   ],
-  'ips-smp': [
+  'ips': [
+    // SD topics
+    { name: 'Peta & Globe', subtopics: ['Membaca peta', 'Garis lintang'] },
+    { name: 'Sejarah Indonesia', subtopics: ['Kemerdekaan', 'Pahlawan nasional'] },
+    // SMP topics
     { name: 'Kehidupan Masyarakat Praaksara', subtopics: ['Hunting', 'Gathering', 'Bercocok tanam'] },
     { name: 'Pemerintahan Daerah', subtopics: ['Otonomi', 'Pemekaran'] },
     { name: 'Interaksi Sosial', subtopics: ['Bentuk interaksi', 'Sosialisasi'] },
   ],
-  'pkn-smp': [
+  'pkn': [
+    // SD topics
+    { name: 'Nilai Pancasila', subtopics: ['Sila 1-5', 'Sila 6-10'] },
+    { name: 'Hak & Kewajiban', subtopics: ['Di rumah', 'Di sekolah'] },
+    // SMP topics
     { name: 'Norma & Keadilan', subtopics: ['Norma hukum', 'Norma sosial'] },
     { name: 'Keberagaman Budaya', subtopics: ['Multikulturalisme', 'Toleransi'] },
   ],
-  'sbud-smp': [
+  'seni-budaya': [
+    // SD topics (SBdP)
+    { name: 'Seni Rupa', subtopics: ['Menggambar', 'Mewarnai'] },
+    { name: 'Seni Musik', subtopics: ['Nada', 'Irama'] },
+    // SMP topics
     { name: 'Seni Rupa Tradisional', subtopics: ['Batik', 'Ukiran'] },
     { name: 'Tari Tradisional', subtopics: ['Gerakan', 'Iringan'] },
   ],
-  'pjok-smp': [
-    { name: 'Permainan Bola Besar', subtopics: ['Bola voli', 'Bola basket', 'Bola sepak'] },
+  'pjok': [
+    // SD topics
+    { name: 'Permainan Bola Besar', subtopics: ['Bola voli', 'Bola basket'] },
+    { name: 'Atletik', subtopics: ['Lari', 'Lompat', 'Lempar'] },
+    // SMP topics
+    { name: 'Permainan Bola Besar Lanjutan', subtopics: ['Bola sepak', 'Bola voli lanjutan'] },
     { name: 'Pencak Silat', subtopics: ['Kuda-kuda', 'Pukulan', 'Tendangan'] },
   ],
-  'prak-smp': [
+  'prakarya': [
     { name: 'Kerajinan Tangan', subtopics: ['Recycle', 'Bahan lunak'] },
     { name: 'Teknologi Ramah Lingkungan', subtopics: ['Energi terbarukan', 'Daur ulang'] },
   ],
-  'bdaerah-smp': [
+  'bahasa-daerah': [
     { name: 'Sastra Daerah', subtopics: ['Pantun', 'Cerita rakyat lokal'] },
     { name: 'Aksara Daerah', subtopics: ['Huruf Lontara', 'Huruf Jawa'] },
   ],
 };
-
-const SUBJECTS_DATA = [...SUBJECTS_SD, ...SUBJECTS_SMP];
 
 // ===== MAIN SEED FUNCTION =====
 async function main() {
