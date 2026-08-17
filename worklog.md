@@ -1,7 +1,23 @@
 ---
-Task ID: R38
+Task ID: R40
 Agent: Main Agent
-Task: Feature D Part 2 — Tujuan Pembelajaran di Sistem Tugas (Assignment/Material)
+Task: Bangun Ulang Sistem Tugas Lengkap — Assignment System
+
+Work Log:
+- R39 investigation confirmed: NO separate Assignment system existed (R24 was never built). Only Material type=tugas.
+- STEP 1 (a21e894): Added 4 Prisma models: Assignment, AssignmentQuestion, AssignmentSubmission, AssignmentAnswer
+- STEP 2 (dfc5c23): Built 5 API route files for CRUD, questions, submissions, grading
+- STEP 3 (9810330): Built GuruAssignmentView + SiswaAssignmentView + wired navigation
+- STEP 4 (cffad8e): Fixed TS errors + added verify script
+- Verification: All endpoints confirmed working via curl+DB
+
+Stage Summary:
+- 4 commits: a21e894, dfc5c23, 9810330, cffad8e — all pushed to main
+- Full assignment system with PG auto-score, essay manual grading, autosave, guards
+- Old Material type=tugas no longer wired to navigation
+
+---
+Task ID: R38
 
 Work Log:
 - Explored existing tugas system: uses `Material` model with `type="tugas"`, API at `/api/materials`, Guru UI in `GuruTugasView`, Siswa UI in `SiswaTugasView`
