@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 
-// GET /api/assignments/[id]/submissions — guru sees all submissions for an assignment
+// GET /api/assignments/[id]/submissions — guru sees all submissions, student sees their own
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -10,24 +10,47 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const studentId = searchParams.get('studentId');
 
     if (studentId) {
-      // Student-specific: get their submission with answers
-      const sub = await db.assignmentSubmission.findUnique({
-        where: { assignmentId_studentId: { assignmentId: id, studentId } },
+      // Student-specific: get their non-remedial submission with answers
+      const sub = await db.assignmentSubmission.findFirst({
+        where: { assignmentId: id, studentId, isRemedial: false },
         include: {
           answers: { include: { question: { include: { question: { select: { id: true, content: true, type: true, options: true } } } } } },
+          remedialSubmissions: { select: { id: true, status: true, score: true, submittedAt: true, isRemedial: true } },
         },
       });
+
       if (!sub) return NextResponse.json(null);
-      return NextResponse.json(sub);
+
+      // Enrich with remedial info
+      const extra: Record<string, unknown> = {};
+      if (sub.remedialSubmissions.length > 0) {
+        const remedial = sub.remedialSubmissions[0];
+        extra.hasRemedial = true;
+        extra.remedialId = remedial.id;
+        extra.remedialStatus = remedial.status;
+        extra.remedialScore = remedial.score;
+        if (remedial.status === 'submitted' || remedial.status === 'dinilai') {
+          extra.activeScore = remedial.score;
+          extra.originalScore = sub.score;
+        } else {
+          extra.activeScore = sub.score;
+          extra.originalScore = sub.score;
+        }
+      } else {
+        extra.hasRemedial = false;
+        extra.activeScore = sub.score;
+      }
+      return NextResponse.json({ ...sub, ...extra });
     }
 
-    // Guru view: all submissions with student info
+    // Guru view: all submissions (original + remedial) with student info
     const subs = await db.assignmentSubmission.findMany({
       where: { assignmentId: id },
       include: {
         answers: { select: { questionId: true, isCorrect: true, pointsEarned: true } },
+        originalSubmission: { select: { id: true, score: true } },
       },
-      orderBy: { submittedAt: 'asc' },
+      orderBy: { startedAt: 'asc' },
     });
 
     // Enrich with student names
@@ -43,11 +66,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 // POST /api/assignments/[id]/submissions — student submit (autosave draft or final submit)
+// Supports both normal and remedial submissions via `remedialSubmissionId` param
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
     const body = await req.json();
-    const { studentId, schoolId, classId, action, answers } = body; // action: 'draft' | 'submit'
+    const { studentId, schoolId, classId, action, answers, remedialSubmissionId } = body;
 
     if (!studentId) return NextResponse.json({ error: 'studentId wajib' }, { status: 400 });
     if (!action || !['draft', 'submit'].includes(action)) return NextResponse.json({ error: 'action harus draft atau submit' }, { status: 400 });
@@ -61,28 +85,48 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (assignment.status === 'draft') return NextResponse.json({ error: 'Tugas belum dipublish' }, { status: 403 });
     if (assignment.status === 'closed') return NextResponse.json({ error: 'Tugas sudah ditutup' }, { status: 403 });
 
-    // Check if student already submitted — prevent further changes
-    const existingSub = await db.assignmentSubmission.findUnique({
-      where: { assignmentId_studentId: { assignmentId: id, studentId } },
-    });
-    if (existingSub && (existingSub.status === 'submitted' || existingSub.status === 'dinilai')) {
-      return NextResponse.json({ error: 'Tugas sudah disubmit dan tidak bisa diubah lagi' }, { status: 403 });
+    // Determine which submission to update
+    let submission: { id: string; status: string };
+
+    if (remedialSubmissionId) {
+      // Working on remedial submission
+      submission = await db.assignmentSubmission.findUnique({ where: { id: remedialSubmissionId } }) as { id: string; status: string };
+      if (!submission) return NextResponse.json({ error: 'Submission remedial tidak ditemukan' }, { status: 404 });
+      if (!submission.isRemedial) return NextResponse.json({ error: 'Bukan submission remedial' }, { status: 400 });
+    } else {
+      // Working on normal (non-remedial) submission
+      // Find existing non-remedial submission
+      const existingSub = await db.assignmentSubmission.findFirst({
+        where: { assignmentId: id, studentId, isRemedial: false },
+      });
+      if (existingSub && (existingSub.status === 'submitted' || existingSub.status === 'dinilai')) {
+        return NextResponse.json({ error: 'Tugas sudah disubmit dan tidak bisa diubah lagi' }, { status: 403 });
+      }
+
+      // Upsert normal submission
+      if (existingSub) {
+        submission = existingSub;
+      } else {
+        const created = await db.assignmentSubmission.create({
+          data: {
+            assignmentId: id,
+            studentId,
+            schoolId: schoolId || null,
+            classId: classId || null,
+            status: action === 'submit' ? 'submitted' : 'dikerjakan',
+            submittedAt: action === 'submit' ? new Date() : null,
+          },
+        });
+        submission = created;
+      }
     }
 
-    // Upsert submission
-    const submission = await db.assignmentSubmission.upsert({
-      where: { assignmentId_studentId: { assignmentId: id, studentId } },
-      create: {
-        assignmentId: id,
-        studentId,
-        schoolId: schoolId || null,
-        classId: classId || null,
+    // Update status
+    await db.assignmentSubmission.update({
+      where: { id: submission.id },
+      data: {
         status: action === 'submit' ? 'submitted' : 'dikerjakan',
-        submittedAt: action === 'submit' ? new Date() : null,
-      },
-      update: {
-        status: action === 'submit' ? 'submitted' : 'dikerjakan',
-        submittedAt: action === 'submit' ? new Date() : undefined,
+        ...(action === 'submit' && { submittedAt: new Date() }),
       },
     });
 
@@ -138,14 +182,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       await db.assignmentSubmission.update({
         where: { id: submission.id },
         data: {
-          score: hasEssay ? null : totalPgScore, // null if has essay (needs manual grading)
-          status: hasEssay ? 'submitted' : 'dinilai', // auto-graded if no essay
+          score: hasEssay ? null : totalPgScore,
+          status: hasEssay ? 'submitted' : 'dinilai',
           gradedAt: hasEssay ? null : new Date(),
         },
       });
     }
 
-    // Fetch updated submission with full question data for frontend
+    // Fetch updated submission with full question data
     const updated = await db.assignmentSubmission.findUnique({
       where: { id: submission.id },
       include: {
