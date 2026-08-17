@@ -1,0 +1,30 @@
+============================================================
+ PANDAI — Akun Demo (dummy_users)
+ Sekolah: SD Negeri 1 Makassar + SMP Negeri 2 Surabaya
+============================================================
+
+| # | Role              | Login                  | Password    | Sekolah                |
+|---|-------------------|------------------------|-------------|------------------------|
+| 1 | Super Admin       | superadmin@pandai.id    | password123 | —                      |
+| 2 | Admin Sekolah SD  | admin.sdn1@pandai.id   | password123 | SD Negeri 1 Makassar   |
+| 3 | Admin Sekolah SMP | admin.smpn2@pandai.id  | password123 | SMP Negeri 2 Surabaya  |
+| 4 | Kepala Sekolah SD | kepsek.sdn1            | password123 | SD Negeri 1 Makassar   |
+| 5 | Kepala Sekolah SMP| kepsek.smpn2           | password123 | SMP Negeri 2 Surabaya  |
+| 6 | Guru SD           | 198504152010011001     | password123 | SD Negeri 1 Makassar   |
+| 7 | Guru SMP          | 3502155678090002       | password123 | SMP Negeri 2 Surabaya  |
+| 8 | Siswa SD          | 0051234567             | password123 | SD Negeri 1 Makassar   |
+| 9 | Siswa SMP         | 0060987654             | password123 | SMP Negeri 2 Surabaya  |
+|10 | Orang Tua SD      | rahman                 | 123         | SD Negeri 1 Makassar   |
+|11 | Orang Tua SMP     | wati                   | 123         | SMP Negeri 2 Surabaya  |
+
+============================================================
+ CATATAN:
+ - Super Admin: Tidak terikat sekolah
+ - Admin Sekolah SD/SMP: Mengelola data sekolah masing-masing
+ - Kepala Sekolah: Rekap agregat per sekolah
+ - Guru SD: Kelas 4A/4B, Mata Pelajaran SD (8 mapel)
+ - Guru SMP: Kelas 8A/8B, Mata Pelajaran SMP (10 mapel)
+ - Siswa login pakai NISN
+ - Orang Tua login pakai nama depan, password: 123
+ - Total: 27 users (11 akun utama + 8 siswa lain + 8 ortu lain)
+============================================================
