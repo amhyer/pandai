@@ -1,6 +1,6 @@
 /**
  * PANDAI - Seed Script
- * Membuat data dummy untuk testing: 2 sekolah, 4 role RBAC, rombel, dan mata pelajaran
+ * Membuat data dummy untuk testing: 1 SD, 1 SMP, semua role RBAC, rombel, dan mata pelajaran
  *
  * Usage: bun run prisma/seed.ts
  */
@@ -23,138 +23,195 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 // ===== DATA DUMMY =====
-const DUMMY_PASSWORD = 'password123'; // Password universal semua akun dummy
+const DUMMY_PASSWORD = 'password123'; // Password universal semua akun dummy (kecuali Orang Tua: 123)
 
 const SCHOOLS = [
   {
-    name: 'SMA Negeri 1 Makassar',
-    code: 'SMAN1-MKS',
-    npsn: '40201234',
-    address: 'Jl. Sultan Alauddin No. 5, Makassar',
+    name: 'SD Negeri 1 Makassar',
+    code: 'SDN1-MKS',
+    npsn: '40200101',
+    address: 'Jl. Sultan Alauddin No. 10, Makassar',
     phone: '0411-873456',
-    email: 'info@sman1makassar.sch.id',
+    email: 'info@sdn1makassar.sch.id',
     province: 'Sulawesi Selatan',
     city: 'Kota Makassar',
     district: 'Kec. Mariso',
-    principalName: 'Dr. H. Ahmad Daud, M.Pd.',
+    principalName: 'Hj. Aminah Rasyid, S.Pd., M.Pd.',
     accreditation: 'A',
-    schoolType: 'SMA',
-    established: '1962',
+    schoolType: 'SD',
+    established: '1978',
     curriculum: 'Kurikulum Merdeka',
     plan: 'pro',
-    maxStudents: 500,
+    maxStudents: 300,
   },
   {
-    name: 'SMK Negeri 2 Surabaya',
-    code: 'SMKN2-SBY',
-    npsn: '20504567',
-    address: 'Jl. Rungkut Industri No. 12, Surabaya',
+    name: 'SMP Negeri 2 Surabaya',
+    code: 'SMPN2-SBY',
+    npsn: '20502001',
+    address: 'Jl. Rungkut Industri No. 5, Surabaya',
     phone: '031-8781234',
-    email: 'info@smkn2surabaya.sch.id',
+    email: 'info@smpn2surabaya.sch.id',
     province: 'Jawa Timur',
     city: 'Kota Surabaya',
     district: 'Kec. Rungkut',
-    principalName: 'Ir. Bambang Suryanto, M.T.',
+    principalName: 'Drs. Hendra Wijaya, M.Pd.',
     accreditation: 'A',
-    schoolType: 'SMK',
-    established: '1975',
+    schoolType: 'SMP',
+    established: '1985',
     curriculum: 'Kurikulum Merdeka',
     plan: 'starter',
-    maxStudents: 300,
+    maxStudents: 400,
   },
 ];
 
 const ADMINS = [
-  { email: 'admin.sman1@pandai.id', name: 'Hj. Siti Rahmawati, S.Pd.', schoolIndex: 0 },
-  { email: 'admin.smkn2@pandai.id', name: 'Drs. Budi Prasetyo', schoolIndex: 1 },
+  { email: 'admin.sdn1@pandai.id', name: 'Siti Nurjannah, S.Pd.', schoolIndex: 0 },
+  { email: 'admin.smpn2@pandai.id', name: 'Drs. Budi Prasetyo', schoolIndex: 1 },
 ];
 
 const GURUS = [
-  { name: 'Andi Mustafa, S.Pd., M.Si.', nip: '198504152010011001', schoolIndex: 0 },
-  { name: 'Linda Permata, S.Kom., M.Pd.', nik: '3502155678090002', schoolIndex: 1 },
+  { name: 'Andi Mustafa, S.Pd.', nip: '198504152010011001', schoolIndex: 0 },
+  { name: 'Linda Permata, S.Pd.', nik: '3502155678090002', schoolIndex: 1 },
 ];
 
 const CLASSES = [
-  { name: 'XII IPA 1', grade: 12, academicYear: '2024/2025', schoolIndex: 0 },
-  { name: 'XII IPA 2', grade: 12, academicYear: '2024/2025', schoolIndex: 0 },
-  { name: 'XII TKJ 1', grade: 12, academicYear: '2024/2025', schoolIndex: 1 },
-  { name: 'XII RPL 1', grade: 12, academicYear: '2024/2025', schoolIndex: 1 },
+  // SD Negeri 1 Makassar
+  { name: 'Kelas 4A', grade: 4, academicYear: '2024/2025', schoolIndex: 0 },
+  { name: 'Kelas 4B', grade: 4, academicYear: '2024/2025', schoolIndex: 0 },
+  // SMP Negeri 2 Surabaya
+  { name: 'Kelas 8A', grade: 8, academicYear: '2024/2025', schoolIndex: 1 },
+  { name: 'Kelas 8B', grade: 8, academicYear: '2024/2025', schoolIndex: 1 },
 ];
 
 const SISWAS = [
-  // SMA Negeri 1 Makassar - XII IPA 1
-  { name: 'Ahmad Fadli Rahman', nisn: '0051234567', namaOrtu: 'Rahman', jk: 'L', schoolIndex: 0, classIndex: 0 },
-  { name: 'Siti Nurhaliza Putri', nisn: '0051234568', namaOrtu: 'Haji Putri', jk: 'P', schoolIndex: 0, classIndex: 0 },
-  { name: 'Rudi Hartono', nisn: '0051234569', namaOrtu: 'Hartono', jk: 'L', schoolIndex: 0, classIndex: 0 },
-  // SMA Negeri 1 Makassar - XII IPA 2
-  { name: 'Dewi Anggraeni', nisn: '0051234570', namaOrtu: 'Anggraeni', jk: 'P', schoolIndex: 0, classIndex: 1 },
-  { name: 'Farhan Maulana', nisn: '0051234571', namaOrtu: 'Maulana', jk: 'L', schoolIndex: 0, classIndex: 1 },
-  // SMK Negeri 2 Surabaya - XII TKJ 1
-  { name: 'Bagus Saputra', nisn: '0060987654', namaOrtu: 'Saputra', jk: 'L', schoolIndex: 1, classIndex: 2 },
-  { name: 'Rina Wati', nisn: '0060987655', namaOrtu: 'Wati', jk: 'P', schoolIndex: 1, classIndex: 2 },
-  { name: 'Joko Widodo Putra', nisn: '0060987656', namaOrtu: 'Widodo', jk: 'L', schoolIndex: 1, classIndex: 2 },
-  // SMK Negeri 2 Surabaya - XII RPL 1
-  { name: 'Maya Indah', nisn: '0060987657', namaOrtu: 'Indah', jk: 'P', schoolIndex: 1, classIndex: 3 },
-  { name: 'Dimas Prayoga', nisn: '0060987658', namaOrtu: 'Prayoga', jk: 'L', schoolIndex: 1, classIndex: 3 },
+  // SD Negeri 1 Makassar - Kelas 4A
+  { name: 'Ahmad Fadli Rahman', nisn: '0051234567', namaOrtu: 'Bapak Rahman', jk: 'L', schoolIndex: 0, classIndex: 0 },
+  { name: 'Siti Nurhaliza Putri', nisn: '0051234568', namaOrtu: 'Ibu Hajar', jk: 'P', schoolIndex: 0, classIndex: 0 },
+  { name: 'Rudi Hartono', nisn: '0051234569', namaOrtu: 'Bapak Hartono', jk: 'L', schoolIndex: 0, classIndex: 0 },
+  // SD Negeri 1 Makassar - Kelas 4B
+  { name: 'Dewi Anggraeni', nisn: '0051234570', namaOrtu: 'Ibu Anggraeni', jk: 'P', schoolIndex: 0, classIndex: 1 },
+  { name: 'Farhan Maulana', nisn: '0051234571', namaOrtu: 'Bapak Maulana', jk: 'L', schoolIndex: 0, classIndex: 1 },
+  // SMP Negeri 2 Surabaya - Kelas 8A
+  { name: 'Bagus Saputra', nisn: '0060987654', namaOrtu: 'Ibu Wati', jk: 'L', schoolIndex: 1, classIndex: 2 },
+  { name: 'Rina Wulandari', nisn: '0060987655', namaOrtu: 'Bapak Widodo', jk: 'P', schoolIndex: 1, classIndex: 2 },
+  { name: 'Joko Prasetyo', nisn: '0060987656', namaOrtu: 'Ibu Indah', jk: 'L', schoolIndex: 1, classIndex: 2 },
+  // SMP Negeri 2 Surabaya - Kelas 8B
+  { name: 'Maya Sari', nisn: '0060987657', namaOrtu: 'Bapak Prayoga', jk: 'P', schoolIndex: 1, classIndex: 3 },
+  { name: 'Dimas Kurniawan', nisn: '0060987658', namaOrtu: 'Ibu Lestari', jk: 'L', schoolIndex: 1, classIndex: 3 },
 ];
 
-const SUBJECTS_DATA = [
-  { name: 'Bahasa Indonesia', code: 'bindo', type: 'wajib', sortOrder: 1 },
-  { name: 'Bahasa Inggris', code: 'bing', type: 'wajib', sortOrder: 2 },
-  { name: 'Matematika', code: 'mat', type: 'wajib', sortOrder: 3 },
-  { name: 'Fisika', code: 'fis', type: 'pilihan', sortOrder: 4 },
-  { name: 'Kimia', code: 'kim', type: 'pilihan', sortOrder: 5 },
-  { name: 'Biologi', code: 'bio', type: 'pilihan', sortOrder: 6 },
-  { name: 'Ekonomi', code: 'eko', type: 'pilihan', sortOrder: 7 },
-  { name: 'Sosiologi', code: 'sos', type: 'pilihan', sortOrder: 8 },
-  { name: 'Sejarah', code: 'sej', type: 'pilihan', sortOrder: 9 },
-  { name: 'Geografi', code: 'geo', type: 'pilihan', sortOrder: 10 },
+// SD (kelas 1-6): Mata pelajaran dasar
+const SUBJECTS_SD = [
+  { name: 'Bahasa Indonesia', code: 'bindo-sd', type: 'wajib', sortOrder: 1 },
+  { name: 'Bahasa Inggris', code: 'bing-sd', type: 'wajib', sortOrder: 2 },
+  { name: 'Matematika', code: 'mat-sd', type: 'wajib', sortOrder: 3 },
+  { name: 'IPA (Ilmu Pengetahuan Alam)', code: 'ipa-sd', type: 'wajib', sortOrder: 4 },
+  { name: 'IPS (Ilmu Pengetahuan Sosial)', code: 'ips-sd', type: 'wajib', sortOrder: 5 },
+  { name: 'PKn (Pendidikan Kewarganegaraan)', code: 'pkn-sd', type: 'wajib', sortOrder: 6 },
+  { name: 'SBdP (Seni Budaya)', code: 'sbdp-sd', type: 'wajib', sortOrder: 7 },
+  { name: 'PJOK (Pendidikan Jasmani)', code: 'pjok-sd', type: 'wajib', sortOrder: 8 },
+];
+
+// SMP (kelas 7-9): Mata pelajaran menengah
+const SUBJECTS_SMP = [
+  { name: 'Bahasa Indonesia', code: 'bindo-smp', type: 'wajib', sortOrder: 1 },
+  { name: 'Bahasa Inggris', code: 'bing-smp', type: 'wajib', sortOrder: 2 },
+  { name: 'Matematika', code: 'mat-smp', type: 'wajib', sortOrder: 3 },
+  { name: 'IPA (Ilmu Pengetahuan Alam)', code: 'ipa-smp', type: 'wajib', sortOrder: 4 },
+  { name: 'IPS (Ilmu Pengetahuan Sosial)', code: 'ips-smp', type: 'wajib', sortOrder: 5 },
+  { name: 'PKn (Pendidikan Kewarganegaraan)', code: 'pkn-smp', type: 'wajib', sortOrder: 6 },
+  { name: 'Seni Budaya', code: 'sbud-smp', type: 'wajib', sortOrder: 7 },
+  { name: 'PJOK (Pendidikan Jasmani)', code: 'pjok-smp', type: 'wajib', sortOrder: 8 },
+  { name: 'Prakarya', code: 'prak-smp', type: 'wajib', sortOrder: 9 },
+  { name: 'Bahasa Daerah', code: 'bdaerah-smp', type: 'wajib', sortOrder: 10 },
 ];
 
 const TOPICS_DATA: Record<string, { name: string; subtopics: string[] }[]> = {
-  bindo: [
+  // SD Topics
+  'bindo-sd': [
+    { name: 'Teks Deskripsi', subtopics: ['Ciri-ciri teks', 'Mengamati objek'] },
+    { name: 'Teks Cerita Rakyat', subtopics: ['Unsur intrinsik', 'Nilai moral'] },
+    { name: 'Pantun & Puisi', subtopics: ['Struktur pantun', 'Membaca puisi'] },
+  ],
+  'bing-sd': [
+    { name: 'Greetings & Introductions', subtopics: ['Saying hello', 'Introducing oneself'] },
+    { name: 'Things Around Us', subtopics: ['Vocabulary', 'Simple sentences'] },
+  ],
+  'mat-sd': [
+    { name: 'Pecahan & Desimal', subtopics: ['Operasi pecahan', 'Konversi desimal'] },
+    { name: 'Bangun Datar', subtopics: ['Luas & keliling', 'Segitiga & segiempat'] },
+    { name: 'Bangun Ruang', subtopics: ['Kubus & balok', 'Volume'] },
+  ],
+  'ipa-sd': [
+    { name: 'Sifat & Perubahan Wujud Benda', subtopics: ['Menguap', 'Membeku', 'Menyublim'] },
+    { name: 'Rantai Makanan', subtopics: ['Produsen', 'Konsumen', 'Dekomposer'] },
+  ],
+  'ips-sd': [
+    { name: 'Peta & Globe', subtopics: ['Membaca peta', 'Garis lintang'] },
+    { name: 'Sejarah Indonesia', subtopics: ['Kemerdekaan', 'Pahlawan nasional'] },
+  ],
+  'pkn-sd': [
+    { name: 'Nilai Pancasila', subtopics: ['Sila 1-5', 'Sila 6-10'] },
+    { name: 'Hak & Kewajiban', subtopics: ['Di rumah', 'Di sekolah'] },
+  ],
+  'sbdp-sd': [
+    { name: 'Seni Rupa', subtopics: ['Menggambar', 'Mewarnai'] },
+    { name: 'Seni Musik', subtopics: ['Nada', 'Irama'] },
+  ],
+  'pjok-sd': [
+    { name: 'Permainan Bola Besar', subtopics: ['Bola voli', 'Bola basket'] },
+    { name: 'Atletik', subtopics: ['Lari', 'Lompat', 'Lempar'] },
+  ],
+  // SMP Topics
+  'bindo-smp': [
     { name: 'Teks Eksplanasi', subtopics: ['Struktur teks', 'Ciri kebahasaan'] },
     { name: 'Teks Persuasi', subtopics: ['Struktur teks', 'Ciri kebahasaan'] },
     { name: 'Teks Ceramah', subtopics: ['Struktur teks', 'Ciri kebahasaan'] },
   ],
-  bing: [
+  'bing-smp': [
     { name: 'Analytical Exposition', subtopics: ['Generic structure', 'Language features'] },
     { name: 'Report Text', subtopics: ['Generic structure', 'Language features'] },
+    { name: 'Narrative Text', subtopics: ['Orientation', 'Complication', 'Resolution'] },
   ],
-  mat: [
-    { name: 'Induksi Matematika', subtopics: ['Langkah induksi', 'Bukti'] },
-    { name: 'Program Linear', subtopics: ['Nilai optimum', 'Daerah feasibel'] },
-    { name: 'Matriks', subtopics: ['Operasi matriks', 'Determinan', 'Invers'] },
+  'mat-smp': [
+    { name: 'Persamaan Linear Satu Variabel', subtopics: ['Menyelesaikan PLDV', 'Soal cerita'] },
+    { name: 'Sistem Persamaan Linear Dua Variabel', subtopics: ['Metode substitusi', 'Metode eliminasi'] },
+    { name: 'Relasi & Fungsi', subtopics: ['Domain & range', 'Fungsi linear'] },
+    { name: 'Teorema Pythagoras', subtopics: ['Rumus', 'Soal cerita'] },
   ],
-  fis: [
-    { name: 'Gerak Harmonik', subtopics: ['Persamaan umum', 'Energi'] },
-    { name: 'Gelombang', subtopics: ['Sifat gelombang', 'Interferensi'] },
+  'ipa-smp': [
+    { name: 'Sistem Tata Surya', subtopics: ['Planet', 'Satelit', 'Gravitasi'] },
+    { name: 'Zat Aditif & Adiktif', subtopics: ['Pengaruh', 'Dampak kesehatan'] },
+    { name: 'Getaran & Gelombang', subtopics: ['Gelombang bunyi', 'Gelombang cahaya'] },
   ],
-  kim: [
-    { name: 'Larutan Penyangga', subtopics: ['Asam-basa', 'pH larutan'] },
-    { name: 'Termokimia', subtopics: ['Reaksi eksoterm', 'Reaksi endoterm'] },
+  'ips-smp': [
+    { name: 'Kehidupan Masyarakat Praaksara', subtopics: ['Hunting', 'Gathering', 'Bercocok tanam'] },
+    { name: 'Pemerintahan Daerah', subtopics: ['Otonomi', 'Pemekaran'] },
+    { name: 'Interaksi Sosial', subtopics: ['Bentuk interaksi', 'Sosialisasi'] },
   ],
-  bio: [
-    { name: 'Genetika', subtopics: ['Hukum Mendel', 'Mutasi'] },
-    { name: 'Evolusi', subtopics: ['Teori Darwin', 'Seleksi alam'] },
+  'pkn-smp': [
+    { name: 'Norma & Keadilan', subtopics: ['Norma hukum', 'Norma sosial'] },
+    { name: 'Keberagaman Budaya', subtopics: ['Multikulturalisme', 'Toleransi'] },
   ],
-  eko: [
-    { name: 'Pertumbuhan Ekonomi', subtopics: ['Indikator', 'Faktor'] },
-    { name: 'APBN & APBD', subtopics: ['Struktur', 'Kebijakan fiskal'] },
+  'sbud-smp': [
+    { name: 'Seni Rupa Tradisional', subtopics: ['Batik', 'Ukiran'] },
+    { name: 'Tari Tradisional', subtopics: ['Gerakan', 'Iringan'] },
   ],
-  sos: [
-    { name: 'Struktur Sosial', subtopics: ['Stratifikasi', 'Mobilitas sosial'] },
-    { name: 'Konflik Sosial', subtopics: ['Penyebab', 'Penyelesaian'] },
+  'pjok-smp': [
+    { name: 'Permainan Bola Besar', subtopics: ['Bola voli', 'Bola basket', 'Bola sepak'] },
+    { name: 'Pencak Silat', subtopics: ['Kuda-kuda', 'Pukulan', 'Tendangan'] },
   ],
-  sej: [
-    { name: 'Sejarah Indonesia Modern', subtopics: ['Orde Baru', 'Reformasi'] },
-    { name: 'Perang Dunia II', subtopics: ['Penyebab', 'Dampak'] },
+  'prak-smp': [
+    { name: 'Kerajinan Tangan', subtopics: ['Recycle', 'Bahan lunak'] },
+    { name: 'Teknologi Ramah Lingkungan', subtopics: ['Energi terbarukan', 'Daur ulang'] },
   ],
-  geo: [
-    { name: 'Atmosfer', subtopics: ['Lapisan atmosfer', 'Iklim'] },
-    { name: 'Hidrosfer', subtopics: ['Arus laut', 'Dampak perubahan'] },
+  'bdaerah-smp': [
+    { name: 'Sastra Daerah', subtopics: ['Pantun', 'Cerita rakyat lokal'] },
+    { name: 'Aksara Daerah', subtopics: ['Huruf Lontara', 'Huruf Jawa'] },
   ],
 };
+
+const SUBJECTS_DATA = [...SUBJECTS_SD, ...SUBJECTS_SMP];
 
 // ===== MAIN SEED FUNCTION =====
 async function main() {
@@ -163,42 +220,49 @@ async function main() {
   const hashedPassword = await hashPassword(DUMMY_PASSWORD);
   console.log(`🔐 Password hash: ${hashedPassword.substring(0, 16)}...`);
 
-  // 1. Bersihkan data lama (opsional - uncomment jika ingin reset total)
-  // await prisma.studentAnswer.deleteMany();
-  // await prisma.studentAttempt.deleteMany();
-  // await prisma.examAssignment.deleteMany();
-  // await prisma.examSession.deleteMany();
-  // await prisma.examItem.deleteMany();
-  // await prisma.examPackage.deleteMany();
-  // await prisma.question.deleteMany();
-  // await prisma.diagnosticResult.deleteMany();
-  // await prisma.topic.deleteMany();
-  // await prisma.subject.deleteMany();
-  // await prisma.user.deleteMany();
-  // await prisma.class.deleteMany();
-  // await prisma.subscription.deleteMany();
-  // await prisma.school.deleteMany();
+  // 1. Bersihkan data lama (seed idempotent via skip logic, but for clean reseed:)
+  // Hapus semua data terkait users
+  await prisma.assignmentAnswer.deleteMany();
+  await prisma.assignmentSubmission.deleteMany();
+  await prisma.assignmentQuestion.deleteMany();
+  await prisma.assignment.deleteMany();
+  await prisma.studentAnswer.deleteMany();
+  await prisma.studentAttempt.deleteMany();
+  await prisma.examAssignment.deleteMany();
+  await prisma.examSession.deleteMany();
+  await prisma.examItem.deleteMany();
+  await prisma.examPackage.deleteMany();
+  await prisma.question.deleteMany();
+  await prisma.diagnosticResult.deleteMany();
+  await prisma.externalQuizScore.deleteMany();
+  await prisma.characterReport.deleteMany();
+  await prisma.attendance.deleteMany();
+  await prisma.teachingJournal.deleteMany();
+  await prisma.teacherAssignment.deleteMany();
+  await prisma.timetable.deleteMany();
+  await prisma.topic.deleteMany();
+  await prisma.subject.deleteMany();
+  await prisma.chatMessage.deleteMany();
+  await prisma.chatbotSession.deleteMany();
+  await prisma.activityLog.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.class.deleteMany();
+  await prisma.subscription.deleteMany();
+  await prisma.school.deleteMany();
+  console.log('🧹 Data lama dihapus');
 
   // 2. Buat Sekolah
   console.log('\n🏫 Membuat sekolah...');
   const schoolIds: string[] = [];
   for (const schoolData of SCHOOLS) {
-    const existing = await prisma.school.findFirst({ where: { npsn: schoolData.npsn } });
-    if (existing) {
-      console.log(`   ✅ Skip: ${schoolData.name} (NPSN: ${schoolData.npsn}) sudah ada`);
-      schoolIds.push(existing.id);
-      continue;
-    }
     const school = await prisma.school.create({ data: schoolData });
-    console.log(`   ✅ Created: ${school.name} (${school.code})`);
+    console.log(`   ✅ Created: ${school.name} (${school.code}) — ${school.schoolType}`);
     schoolIds.push(school.id);
   }
 
   // 3. Buat Subscription
   console.log('\n💰 Membuat subscription...');
   for (let i = 0; i < schoolIds.length; i++) {
-    const existing = await prisma.subscription.findFirst({ where: { schoolId: schoolIds[i] } });
-    if (existing) continue;
     await prisma.subscription.create({
       data: {
         schoolId: schoolIds[i],
@@ -214,30 +278,20 @@ async function main() {
   // 4. Buat Super Admin
   console.log('\n👤 Membuat Super Admin...');
   const superAdminEmail = 'superadmin@pandai.id';
-  const existingSA = await prisma.user.findFirst({ where: { email: superAdminEmail } });
-  if (existingSA) {
-    console.log(`   ✅ Skip: ${superAdminEmail} sudah ada`);
-  } else {
-    await prisma.user.create({
-      data: {
-        email: superAdminEmail,
-        password: hashedPassword,
-        name: 'Super Admin PANDAI',
-        role: 'SUPER_ADMIN',
-        isActive: true,
-      },
-    });
-    console.log(`   ✅ Created: ${superAdminEmail}`);
-  }
+  await prisma.user.create({
+    data: {
+      email: superAdminEmail,
+      password: hashedPassword,
+      name: 'Super Admin PANDAI',
+      role: 'SUPER_ADMIN',
+      isActive: true,
+    },
+  });
+  console.log(`   ✅ Created: ${superAdminEmail}`);
 
   // 5. Buat Admin Sekolah
   console.log('\n👨‍💼 Membuat Admin Sekolah...');
   for (const adminData of ADMINS) {
-    const existing = await prisma.user.findFirst({ where: { email: adminData.email } });
-    if (existing) {
-      console.log(`   ✅ Skip: ${adminData.email} sudah ada`);
-      continue;
-    }
     await prisma.user.create({
       data: {
         email: adminData.email,
@@ -254,15 +308,10 @@ async function main() {
   // 5.5 Buat Kepala Sekolah
   console.log('\n🎓 Membuat Kepala Sekolah...');
   const KEPALA_SEKOLAH = [
-    { username: 'kepsek.sman1', name: 'Dr. H. Muhammad Arif, M.Pd.', schoolIndex: 0 },
-    { username: 'kepsek.smkn2', name: 'Ir. Surya Dewi, M.T.', schoolIndex: 1 },
+    { username: 'kepsek.sdn1', name: 'Hj. Aminah Rasyid, S.Pd., M.Pd.', schoolIndex: 0 },
+    { username: 'kepsek.smpn2', name: 'Drs. Hendra Wijaya, M.Pd.', schoolIndex: 1 },
   ];
   for (const kepsekData of KEPALA_SEKOLAH) {
-    const existing = await prisma.user.findFirst({ where: { username: kepsekData.username } });
-    if (existing) {
-      console.log(`   ✅ Skip: ${kepsekData.username} sudah ada`);
-      continue;
-    }
     await prisma.user.create({
       data: {
         username: kepsekData.username,
@@ -280,11 +329,6 @@ async function main() {
   console.log('\n👩‍🏫 Membuat Guru...');
   for (const guruData of GURUS) {
     const loginId = guruData.nip || guruData.nik;
-    const existing = await prisma.user.findFirst({ where: { username: loginId } });
-    if (existing) {
-      console.log(`   ✅ Skip: ${loginId} sudah ada`);
-      continue;
-    }
     await prisma.user.create({
       data: {
         username: loginId,
@@ -304,18 +348,6 @@ async function main() {
   console.log('\n🏫 Membuat Rombel...');
   const classIds: string[] = [];
   for (const classData of CLASSES) {
-    const existing = await prisma.class.findFirst({
-      where: {
-        schoolId: schoolIds[classData.schoolIndex],
-        name: classData.name,
-        academicYear: classData.academicYear,
-      },
-    });
-    if (existing) {
-      console.log(`   ✅ Skip: ${classData.name} sudah ada`);
-      classIds.push(existing.id);
-      continue;
-    }
     const cls = await prisma.class.create({
       data: {
         name: classData.name,
@@ -331,23 +363,17 @@ async function main() {
   // 8. Buat Siswa (login pakai NISN) + auto-create Orang Tua
   console.log('\n👨‍🎓 Membuat Siswa & Orang Tua...');
   const ortuHash = await hashPassword('123');
+  const ORTU_ACCOUNTS: { username: string; name: string; schoolIndex: number }[] = [];
   for (const siswaData of SISWAS) {
-    const existing = await prisma.user.findFirst({ where: { nisn: siswaData.nisn } });
-    if (existing) {
-      console.log(`   ✅ Skip: NISN ${siswaData.nisn} sudah ada`);
-      continue;
-    }
-
     // Auto-create Orang Tua
     let parentId: string | undefined;
     if (siswaData.namaOrtu) {
-      const ortuFirstName = siswaData.namaOrtu.trim().split(/\s+/)[0].toLowerCase();
+      const ortuFirstName = siswaData.namaOrtu.trim().split(/\s+/).slice(1)[0]?.toLowerCase() || siswaData.namaOrtu.trim().split(/\s+/)[0].toLowerCase();
       // Check if ortu already exists
-      const existingOrtu = await prisma.user.findFirst({
-        where: { role: 'ORANG_TUA', schoolId: schoolIds[siswaData.schoolIndex], name: siswaData.namaOrtu.trim(), isActive: true },
-      });
+      const existingOrtu = ORTU_ACCOUNTS.find(o => o.schoolIndex === siswaData.schoolIndex && o.username === ortuFirstName);
       if (existingOrtu) {
-        parentId = existingOrtu.id;
+        const ortuUser = await prisma.user.findFirst({ where: { username: existingOrtu.username, role: 'ORANG_TUA' } });
+        parentId = ortuUser?.id;
       } else {
         // Generate unique username
         let ortuUsername = ortuFirstName;
@@ -366,6 +392,7 @@ async function main() {
           },
         });
         parentId = ortu.id;
+        ORTU_ACCOUNTS.push({ username: ortuUsername, name: ortu.name, schoolIndex: siswaData.schoolIndex });
         console.log(`   👨‍👩‍👧 Created Ortu: ${ortu.name} (login: ${ortuUsername}, password: 123)`);
       }
     }
@@ -391,15 +418,9 @@ async function main() {
   // 9. Buat Mata Pelajaran & Topik (global)
   console.log('\n📚 Membuat Mata Pelajaran & Topik...');
   for (const subjectData of SUBJECTS_DATA) {
-    const existingSubject = await prisma.subject.findFirst({ where: { code: subjectData.code } });
-    const subjectId = existingSubject?.id || (await prisma.subject.create({
+    const subject = await prisma.subject.create({
       data: subjectData,
-    })).id;
-
-    if (existingSubject) {
-      console.log(`   ✅ Skip: ${subjectData.name} sudah ada`);
-      continue;
-    }
+    });
     console.log(`   ✅ Created: ${subjectData.name}`);
 
     const topics = TOPICS_DATA[subjectData.code] || [];
@@ -407,7 +428,7 @@ async function main() {
       const topic = await prisma.topic.create({
         data: {
           name: topicData.name,
-          subjectId,
+          subjectId: subject.id,
           sortOrder: topics.indexOf(topicData) + 1,
         },
       });
@@ -415,7 +436,7 @@ async function main() {
         await prisma.topic.create({
           data: {
             name: subtopic,
-            subjectId,
+            subjectId: subject.id,
             parentId: topic.id,
           },
         });
@@ -430,16 +451,28 @@ async function main() {
   const totalSubjects = await prisma.subject.count();
   const totalTopics = await prisma.topic.count();
 
-  console.log('\n' + '='.repeat(55));
+  console.log('\n' + '='.repeat(60));
   console.log('✅ SEED COMPLETED SUCCESSFULLY');
-  console.log('='.repeat(55));
+  console.log('='.repeat(60));
   console.log(`   👤 Total Users    : ${totalUsers}`);
-  console.log(`   🏫 Total Schools  : ${totalSchools}`);
+  console.log(`   🏫 Total Schools  : ${totalSchools} (1 SD + 1 SMP)`);
   console.log(`   📋 Total Classes  : ${totalClasses}`);
   console.log(`   📚 Total Subjects : ${totalSubjects}`);
   console.log(`   📝 Total Topics   : ${totalTopics}`);
-  console.log(`   🔑 Password       : ${DUMMY_PASSWORD}`);
-  console.log('='.repeat(55));
+  console.log('');
+  console.log('📋 DAFTAR AKUN DEMO:');
+  console.log('   Super Admin     : superadmin@pandai.id / password123');
+  console.log('   Admin Sekolah SD: admin.sdn1@pandai.id / password123');
+  console.log('   Admin Sekolah SMP: admin.smpn2@pandai.id / password123');
+  console.log('   Kepala Sekolah SD: kepsek.sdn1 / password123');
+  console.log('   Kepala Sekolah SMP: kepsek.smpn2 / password123');
+  console.log('   Guru SD         : 198504152010011001 / password123');
+  console.log('   Guru SMP        : 3502155678090002 / password123');
+  console.log('   Siswa SD        : 0051234567 / password123');
+  console.log('   Siswa SMP       : 0060987654 / password123');
+  console.log('   Orang Tua SD    : rahman / 123');
+  console.log('   Orang Tua SMP   : wati / 123');
+  console.log('='.repeat(60));
 }
 
 main()

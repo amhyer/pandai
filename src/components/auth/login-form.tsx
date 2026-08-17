@@ -11,11 +11,11 @@ import { Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck, Users, ArrowLeft, 
 
 const DEMO_ACCOUNTS = [
   { label: 'Super Admin', username: 'superadmin@pandai.id', password: 'password123', icon: Shield, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100', text: 'text-violet-700', iconColor: 'text-violet-500' },
-  { label: 'Admin Sekolah', username: 'admin.sman1@pandai.id', password: 'password123', icon: UserCheck, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverBg: 'hover:bg-emerald-100', text: 'text-emerald-700', iconColor: 'text-emerald-500' },
-  { label: 'Guru (NIP)', username: '198504152010011001', password: 'password123', icon: BookOpen, color: 'from-sky-500 to-blue-600', bg: 'bg-sky-50', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100', text: 'text-sky-700', iconColor: 'text-sky-500' },
-  { label: 'Siswa (NISN)', username: '0051234567', password: 'password123', icon: GraduationCap, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100', text: 'text-amber-700', iconColor: 'text-amber-500' },
-  { label: 'Orang Tua', username: 'ahmad', password: '123', icon: Users, color: 'from-rose-400 to-pink-500', bg: 'bg-rose-50', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100', text: 'text-rose-700', iconColor: 'text-rose-500' },
-  { label: 'Kepala Sekolah', username: 'kepsek.sman1', password: 'password123', icon: Crown, color: 'from-[#1F3864] to-[#2a4a7a]', bg: 'bg-slate-100', border: 'border-slate-200', hoverBg: 'hover:bg-slate-200', text: 'text-[#1F3864]', iconColor: 'text-[#1F3864]' },
+  { label: 'Admin Sekolah', username: 'admin.sdn1@pandai.id', password: 'password123', icon: UserCheck, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverBg: 'hover:bg-emerald-100', text: 'text-emerald-700', iconColor: 'text-emerald-500' },
+  { label: 'Kepala Sekolah', username: 'kepsek.sdn1', password: 'password123', icon: Crown, color: 'from-[#1F3864] to-[#2a4a7a]', bg: 'bg-slate-100', border: 'border-slate-200', hoverBg: 'hover:bg-slate-200', text: 'text-[#1F3864]', iconColor: 'text-[#1F3864]' },
+  { label: 'Guru SD', username: '198504152010011001', password: 'password123', icon: BookOpen, color: 'from-sky-500 to-blue-600', bg: 'bg-sky-50', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100', text: 'text-sky-700', iconColor: 'text-sky-500' },
+  { label: 'Siswa SD', username: '0051234567', password: 'password123', icon: GraduationCap, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100', text: 'text-amber-700', iconColor: 'text-amber-500' },
+  { label: 'Orang Tua', username: 'rahman', password: '123', icon: Users, color: 'from-rose-400 to-pink-500', bg: 'bg-rose-50', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100', text: 'text-rose-700', iconColor: 'text-rose-500' },
 ];
 
 export function LoginForm() {
