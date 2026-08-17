@@ -47,6 +47,7 @@ export type ViewType =
   | 'guru-analisis'        // Analisis Hasil Belajar
   | 'guru-laporan'         // Laporan Siswa
   | 'guru-pandai-ai'       // PANDAI AI (Asisten AI)
+  | 'guru-kotak-masukan'   // Kotak Masukan
 
   // ── SISWA ──
   | 'siswa-materi'         // Materi Pelajaran
@@ -64,12 +65,14 @@ export type ViewType =
   | 'ortu-kehadiran'       // Kehadiran
   | 'ortu-kuis'            // Riwayat Pengerjaan
   | 'ortu-laporan'         // Laporan Cetak
+  | 'ortu-kotak-masukan'   // Kotak Masukan
 
   // ── KEPALA_SEKOLAH ──
   | 'dashboard-kepsek'           // Dashboard Kepala Sekolah
   | 'kepsek-rekap-kelas'         // Rekap Per Kelas
   | 'kepsek-rekap-guru'          // Rekap Per Guru
   | 'kepsek-rekap-karakter'      // Rekap 7 Kebiasaan
+  | 'kepsek-kotak-masukan'      // Kotak Masukan
 
   // ── Shared ──
   | 'profile'

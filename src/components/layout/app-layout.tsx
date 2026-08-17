@@ -68,6 +68,7 @@ import {
   PenLine,
   BrainCircuit,
   Crown,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
@@ -249,6 +250,12 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
           { label: 'PANDAI AI', view: 'guru-pandai-ai', icon: BrainCircuit },
         ],
       },
+      {
+        section: 'Komunikasi',
+        items: [
+          { label: 'Kotak Masukan', view: 'guru-kotak-masukan' as ViewType, icon: MessageSquare },
+        ],
+      },
     ];
 
     // SMA: tambah seksi Penjurusan
@@ -366,6 +373,12 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
           { label: 'Laporan Cetak', view: 'ortu-laporan', icon: Printer },
         ],
       },
+      {
+        section: 'Komunikasi',
+        items: [
+          { label: 'Kotak Masukan', view: 'ortu-kotak-masukan' as ViewType, icon: MessageSquare },
+        ],
+      },
     ];
   }
 
@@ -386,6 +399,12 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
           { label: 'Rekap Per Kelas', view: 'kepsek-rekap-kelas', icon: GraduationCap },
           { label: 'Rekap Per Guru', view: 'kepsek-rekap-guru', icon: Users },
           { label: 'Rekap 7 Kebiasaan', view: 'kepsek-rekap-karakter', icon: Star },
+        ],
+      },
+      {
+        section: 'Komunikasi',
+        items: [
+          { label: 'Kotak Masukan', view: 'kepsek-kotak-masukan' as ViewType, icon: MessageSquare },
         ],
       },
     ];
@@ -460,6 +479,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-analisis': 'Analisis Hasil Belajar',
   'guru-laporan': 'Laporan Siswa',
   'guru-pandai-ai': 'PANDAI AI',
+  'guru-kotak-masukan': 'Kotak Masukan',
 
   // SISWA
   'siswa-materi': 'Materi Pelajaran',
@@ -477,12 +497,14 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'ortu-kehadiran': 'Kehadiran',
   'ortu-kuis': 'Riwayat Pengerjaan',
   'ortu-laporan': 'Laporan Cetak',
+  'ortu-kotak-masukan': 'Kotak Masukan',
 
   // KEPALA_SEKOLAH
   'dashboard-kepsek': 'Dashboard Kepala Sekolah',
   'kepsek-rekap-kelas': 'Rekap Per Kelas',
   'kepsek-rekap-guru': 'Rekap Per Guru',
   'kepsek-rekap-karakter': 'Rekap 7 Kebiasaan',
+  'kepsek-kotak-masukan': 'Kotak Masukan',
 
   // Shared
   profile: 'Profil',
@@ -525,6 +547,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-analisis': [{ label: VIEW_LABELS['guru-analisis'] }],
     'guru-laporan': [{ label: VIEW_LABELS['guru-laporan'] }],
     'guru-pandai-ai': [{ label: VIEW_LABELS['guru-pandai-ai'] }],
+    'guru-kotak-masukan': [{ label: VIEW_LABELS['guru-kotak-masukan'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
     'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
@@ -538,10 +561,12 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'ortu-kehadiran': [{ label: VIEW_LABELS['ortu-kehadiran'] }],
     'ortu-kuis': [{ label: VIEW_LABELS['ortu-kuis'] }],
     'ortu-laporan': [{ label: VIEW_LABELS['ortu-laporan'] }],
+    'ortu-kotak-masukan': [{ label: VIEW_LABELS['ortu-kotak-masukan'] }],
     'dashboard-kepsek': [{ label: VIEW_LABELS['dashboard-kepsek'] }],
     'kepsek-rekap-kelas': [{ label: VIEW_LABELS['kepsek-rekap-kelas'] }],
     'kepsek-rekap-guru': [{ label: VIEW_LABELS['kepsek-rekap-guru'] }],
     'kepsek-rekap-karakter': [{ label: VIEW_LABELS['kepsek-rekap-karakter'] }],
+    'kepsek-kotak-masukan': [{ label: VIEW_LABELS['kepsek-kotak-masukan'] }],
     profile: [{ label: VIEW_LABELS.profile }],
     notifications: [{ label: VIEW_LABELS.notifications }],
     broadcasts: [{ label: VIEW_LABELS.broadcasts }],
