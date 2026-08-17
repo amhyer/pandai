@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Target, Plus, Eye, Pencil, Trash2, ClipboardList, Clock, Users, CheckCircle2, AlertCircle, ChevronLeft, Save, FileText, BookOpen, Loader2, Star } from 'lucide-react';
+import { Target, Plus, Eye, Pencil, Trash2, ClipboardList, Clock, Users, CheckCircle2, AlertCircle, ChevronLeft, Save, FileText, BookOpen, Loader2, Star, RotateCcw } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -65,6 +65,12 @@ interface StudentRow {
   submissionId: string | null;
   submissionStatus: SubStatus;
   score: number | null;
+  hasRemedial?: boolean;
+  remedialId?: string;
+  remedialStatus?: string;
+  remedialScore?: number;
+  activeScore?: number;
+  originalScore?: number;
 }
 
 interface SubmissionDetail {
@@ -490,12 +496,23 @@ export function GuruAssignmentView() {
                 const stuData = await stuRes.json();
                 const stuList = Array.isArray(stuData) ? stuData : stuData.data ?? stuData.users ?? [];
                 const rows: StudentRow[] = stuList.map((s: { id: string; name: string }) => {
-                  const sub = subs.find((sub: { studentId: string; score: number | null }) => sub.studentId === s.id);
+                  // Find non-remedial submission for this student
+                  const sub = subs.find((sub: { studentId: string; isRemedial: boolean }) => sub.studentId === s.id && !sub.isRemedial);
+                  // Find remedial submission if exists
+                  const remedial = subs.find((sub: { studentId: string; isRemedial: boolean }) => sub.studentId === s.id && sub.isRemedial);
                   let status: SubStatus = 'belum_dikerjakan';
                   if (sub) {
-                    status = sub.score !== null ? 'dinilai' : 'submitted';
+                    status = sub.score !== null ? 'dinilai' : sub.status === 'submitted' ? 'submitted' : sub.status === 'dikerjakan' ? 'dikerjakan' : 'belum_dikerjakan';
                   }
-                  return { id: s.id, name: s.name, submissionId: sub?.id ?? null, submissionStatus: status, score: sub?.score ?? null };
+                  return {
+                    id: s.id, name: s.name, submissionId: sub?.id ?? null, submissionStatus: status, score: sub?.score ?? null,
+                    hasRemedial: !!remedial,
+                    remedialId: remedial?.id,
+                    remedialStatus: remedial?.status as SubStatus | undefined,
+                    remedialScore: remedial?.score ?? undefined,
+                    activeScore: (remedial && (remedial.status === 'submitted' || remedial.status === 'dinilai')) ? remedial.score : sub?.score ?? undefined,
+                    originalScore: sub?.score ?? undefined,
+                  };
                 });
                 if (!cancelled) setStudents(rows);
               }
@@ -586,6 +603,28 @@ export function GuruAssignmentView() {
       toast.error(err instanceof Error ? err.message : 'Gagal menyimpan nilai');
     } finally {
       setGradingSaving(false);
+    }
+  };
+
+  const handleActivateRemedial = async (studentId: string) => {
+    if (!detailId) return;
+    try {
+      const res = await fetch(`/api/assignments/${detailId}/submissions/remedial`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Gagal mengaktifkan remedial');
+        return;
+      }
+      toast.success('Remedial berhasil diaktifkan');
+      setDetailId(detailId);
+      setDetail(null);
+      setStudents([]);
+    } catch {
+      toast.error('Gagal mengaktifkan remedial');
     }
   };
 
@@ -1244,6 +1283,25 @@ export function GuruAssignmentView() {
                                   <Pencil className="h-3 w-3 mr-1" />
                                   Nilai
                                 </Button>
+                              )}
+                              {s.submissionStatus === 'dinilai' && s.score !== null && s.score < (detail?.maxScore ?? 100) * 0.8 && !s.hasRemedial && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-[10px] rounded-lg h-7 ml-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                  onClick={() => handleActivateRemedial(s.id)}
+                                >
+                                  <RotateCcw className="h-3 w-3 mr-1" />
+                                  Remedial
+                                </Button>
+                              )}
+                              {s.hasRemedial && s.remedialStatus && (
+                                <Badge variant="outline" className="text-[10px] ml-1 border-blue-200 text-blue-600">
+                                  Remedial {s.remedialStatus === 'dinilai' || s.remedialStatus === 'submitted' ? '✓' : '⏳'}
+                                  {s.activeScore !== undefined && s.activeScore !== s.score && (
+                                    <span className="ml-1 text-emerald-600">{s.activeScore}</span>
+                                  )}
+                                </Badge>
                               )}
                             </TableCell>
                           </TableRow>

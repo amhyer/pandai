@@ -68,6 +68,7 @@ import {
   BookCopy,
   UserCheck,
   RefreshCw,
+  RotateCcw,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════
@@ -127,6 +128,13 @@ interface AttemptData {
   duration: number;
   status: string;
   startedAt: string;
+  isRemedial?: boolean;
+  hasRemedial?: boolean;
+  remedialId?: string;
+  remedialStatus?: string;
+  remedialScore?: number;
+  activeScore?: number;
+  originalScore?: number;
   submittedAt: string | null;
   createdAt: string;
   learningObjective?: string | null;
@@ -1326,6 +1334,25 @@ export function GuruNilaiView() {
     }
   }, [nilaiMap, attempts, selectedExam, fetchAttempts]);
 
+  const handleActivateRemedial = useCallback(async (attemptId: string) => {
+    try {
+      const res = await fetch('/api/attempts/remedial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ attemptId }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Gagal mengaktifkan remedial');
+        return;
+      }
+      toast.success('Remedial berhasil diaktifkan');
+      fetchAttempts(selectedExam || undefined);
+    } catch {
+      toast.error('Gagal mengaktifkan remedial');
+    }
+  }, [fetchAttempts, selectedExam]);
+
   const selectedExamData = exams.find((e) => e.id === selectedExam);
 
   return (
@@ -1446,6 +1473,7 @@ export function GuruNilaiView() {
                 </TableHead>
                 <TableHead className="text-center">Skor</TableHead>
                 <TableHead className="w-32 text-center">Nilai (%)</TableHead>
+                <TableHead className="w-28 text-center">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1501,6 +1529,32 @@ export function GuruNilaiView() {
                           onChange={(e) => handleNilaiChange(attempt.id, e.target.value)}
                           className={cn('h-8 w-20 text-center text-sm font-semibold rounded-lg focus-visible:ring-[#1F3864]/30', nilaiColor)}
                         />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {!attempt.isRemedial && !attempt.hasRemedial && numNilai < 80 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-[10px] rounded-lg h-7 border-amber-300 text-amber-700 hover:bg-amber-50"
+                            onClick={() => handleActivateRemedial(attempt.id)}
+                          >
+                            <RotateCcw className="h-3 w-3 mr-1" />
+                            Remedial
+                          </Button>
+                        )}
+                        {!attempt.isRemedial && attempt.hasRemedial && attempt.remedialStatus && (
+                          <Badge variant="outline" className="text-[10px] border-blue-200 text-blue-600">
+                            Remedial {attempt.remedialStatus === 'submitted' || attempt.remedialStatus === 'graded' ? '✓' : '⏳'}
+                            {attempt.activeScore !== undefined && attempt.activeScore !== attempt.score && (
+                              <span className="ml-1 text-emerald-600">{attempt.activeScore}</span>
+                            )}
+                          </Badge>
+                        )}
+                        {attempt.isRemedial && (
+                          <Badge variant="outline" className="text-[10px] border-amber-200 text-amber-600 bg-amber-50">
+                            Remedial
+                          </Badge>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
