@@ -330,3 +330,24 @@ Stage Summary:
   - `src/app/authenticated-app.tsx` — added lazy import
   - `src/app/api/questions/route.ts` — enhanced GET filters
   - `src/components/views/bank-soal/guru-bank-soal-view.tsx` — NEW: full Bank Soal page
+
+---
+Task ID: R42E
+Agent: Main Agent
+Task: Fitur E — Remedial System (Tryout & Tugas) — Siswa Views + API Fixes
+
+Work Log:
+- Verified schema: isRemedial + remedialOfId already on StudentAttempt & AssignmentSubmission with self-relations
+- Verified API endpoints already exist: POST /api/attempts/remedial, POST /api/assignments/[id]/submissions/remedial
+- Verified guru UI already has remedial: handleActivateRemedial + badges in guru-views.tsx + guru-assignment-view.tsx
+- Fixed /api/scores: now excludes remedial from stats, uses activeScore (remedial overrides original when submitted/graded), shows originalScore alongside
+- Fixed /api/assignments GET (studentId): enriches mySubmission with hasRemedial, remedialId, remedialStatus, remedialScore, activeScore, originalScore
+- Updated siswa-views.tsx: added remedial fields to Attempt interface, remedial badges, activeScore display with strikethrough original, learning objective context box, remedial info banner
+- Updated siswa-assignment-view.tsx: added remedial fields to MySubmission interface, remedial badge, activeScore with strikethrough
+- Ran full E2E test via direct DB operations — all tests passed
+
+Stage Summary:
+- Commit: 17cbe54 — pushed to origin/main
+- E2E verified: original attempt untouched → remedial created with inherited learningObjective → remedial completed → activeScore=100 (overrides original 66.67) → guard prevents double remedial
+- E2E verified: original submission untouched → remedial created → completed with score 80 → guard prevents double remedial
+- Files changed: src/app/api/scores/route.ts, src/app/api/assignments/route.ts, src/components/views/siswa-views.tsx, src/components/views/assignment/siswa-assignment-view.tsx
