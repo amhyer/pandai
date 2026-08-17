@@ -129,6 +129,7 @@ interface AttemptData {
   startedAt: string;
   submittedAt: string | null;
   createdAt: string;
+  learningObjective?: string | null;
   user?: { id: string; name: string } | null;
   answers?: unknown[];
 }
@@ -1208,6 +1209,7 @@ export function GuruNilaiView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [nilaiMap, setNilaiMap] = useState<Record<string, string>>({});
+  const [learningObjective, setLearningObjective] = useState('');
 
   const fetchExams = useCallback(async () => {
     try {
@@ -1266,6 +1268,10 @@ export function GuruNilaiView() {
     setSelectedExam(examId);
     fetchAttempts(examId || undefined);
     setNilaiMap({});
+    // Restore learningObjective from existing attempts
+    const examAttempts = attempts.filter((a) => a.examPackageId === examId);
+    const existingLO = examAttempts.find((a) => a.learningObjective);
+    setLearningObjective(existingLO?.learningObjective || '');
   }, [fetchAttempts]);
 
   const getNilai = useCallback((id: string, defaultVal: string) => nilaiMap[id] ?? defaultVal, [nilaiMap]);
@@ -1306,6 +1312,7 @@ export function GuruNilaiView() {
               timeSpent: 0,
             })),
             duration: 0,
+            learningObjective: learningObjective.trim() || undefined,
           }),
         });
       }
@@ -1362,6 +1369,25 @@ export function GuruNilaiView() {
         </CardContent>
       </Card>
 
+      {/* Tujuan Pembelajaran — opsional, ditulis guru */}
+      <Card className="rounded-xl shadow-sm">
+        <CardContent className="p-4 space-y-1.5">
+          <Label className="text-sm font-medium flex items-center gap-2">
+            <Target className="h-4 w-4 text-[#1F3864]" />
+            Tujuan Pembelajaran
+            <span className="text-xs text-muted-foreground font-normal">(opsional)</span>
+          </Label>
+          <textarea
+            className="flex min-h-[60px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F3864]/30 focus-visible:ring-offset-2 resize-none"
+            placeholder="Contoh: Siswa mampu menganalisis struktur teks eksplanasi dan mengidentifikasi ciri kebahasaannya..."
+            value={learningObjective}
+            onChange={(e) => setLearningObjective(e.target.value)}
+            maxLength={500}
+          />
+          <p className="text-[11px] text-muted-foreground text-right">{learningObjective.length}/500</p>
+        </CardContent>
+      </Card>
+
       {/* Stats overview */}
       {attempts.length > 0 && (
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -1392,6 +1418,16 @@ export function GuruNilaiView() {
 
       {/* Table */}
       <Card className="rounded-xl shadow-sm overflow-hidden">
+        {/* Show existing learningObjective if any attempt has it */}
+        {attempts.length > 0 && attempts.some((a) => a.learningObjective) && (
+          <div className="bg-[#1F3864]/5 border-b px-4 py-2.5 flex items-start gap-2">
+            <Target className="h-4 w-4 text-[#1F3864] mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold text-[#1F3864] uppercase tracking-wide">Tujuan Pembelajaran</p>
+              <p className="text-xs text-slate-600 mt-0.5 break-words">{attempts.find((a) => a.learningObjective)?.learningObjective}</p>
+            </div>
+          </div>
+        )}
         <CardContent className="p-0">
           <Table>
             <TableHeader>

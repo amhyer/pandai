@@ -85,6 +85,7 @@ interface ScoreEntry {
   date: string;
   score: number;
   status: 'Lulus' | 'Belum Lulus';
+  learningObjective?: string | null;
 }
 
 interface MaterialItem {
@@ -681,6 +682,20 @@ export function OrtuNilaiView() {
                       <TableCell className="text-center">{statusBadge(s.status)}</TableCell>
                     </TableRow>
                   ))}
+                  {/* Show unique learningObjectives below table */}
+                  {recentScores.some((s) => s.learningObjective) && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="bg-[#1F3864]/5">
+                        <div className="flex items-start gap-2 py-1">
+                          <Target className="h-3.5 w-3.5 text-[#1F3864] mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-[11px] font-semibold text-[#1F3864] uppercase tracking-wide">Tujuan Pembelajaran</p>
+                            <p className="text-xs text-slate-600 mt-0.5">{recentScores.find((s) => s.learningObjective)?.learningObjective}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
             </div>

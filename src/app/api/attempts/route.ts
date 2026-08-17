@@ -46,7 +46,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const { userId, examSessionId, examPackageId, schoolId, classId, answers, duration } = data;
+    const { userId, examSessionId, examPackageId, schoolId, classId, answers, duration, learningObjective } = data;
 
     // Calculate score
     let totalCorrect = 0;
@@ -112,6 +112,7 @@ export async function POST(request: Request) {
         tkaPrediction,
         duration: duration || 0,
         status: 'submitted',
+        learningObjective: learningObjective || null,
         submittedAt: new Date(),
         answers: {
           create: answerRecords,
@@ -124,5 +125,41 @@ export async function POST(request: Request) {
     logError({ error, route: '/api/attempts', method: 'POST' });
     console.error('Submit attempt error:', error);
     return NextResponse.json({ error: 'Gagal submit jawaban' }, { status: 500 });
+  }
+}
+
+// PATCH update attempt (e.g., update learningObjective)
+export async function PATCH(request: Request) {
+  try {
+    const role = request.headers.get('X-User-Role');
+    if (role !== 'GURU' && role !== 'ADMIN_SCHOOL' && role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Hanya guru atau admin yang dapat mengubah data attempt' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { id, learningObjective } = body;
+    if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    const updateData: Record<string, unknown> = {};
+    if (learningObjective !== undefined) {
+      updateData.learningObjective = learningObjective || null;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ error: 'Tidak ada data yang diubah' }, { status: 400 });
+    }
+
+    const attempt = await db.studentAttempt.update({
+      where: { id },
+      data: updateData,
+    });
+
+    return NextResponse.json(attempt);
+  } catch (error: any) {
+    logError({ error, route: '/api/attempts', method: 'PATCH' });
+    return NextResponse.json({ error: 'Gagal mengupdate data attempt' }, { status: 500 });
   }
 }

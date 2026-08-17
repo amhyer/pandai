@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
         : new Date(a.startedAt).toISOString().split('T')[0],
       score: scores[idx],
       status: scores[idx] >= 70 ? 'Lulus' : 'Belum Lulus',
+      learningObjective: a.learningObjective || null,
     }));
 
     // Class rank estimation

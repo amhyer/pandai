@@ -260,6 +260,7 @@ model StudentAttempt {
   tkaPrediction Float?
   duration      Int      @default(0) // detik yang dipakai
   status        String   @default("in_progress") // in_progress, submitted, graded
+  learningObjective String? // Tujuan Pembelajaran (opsional, ditulis guru saat input)
   startedAt     DateTime @default(now())
   submittedAt   DateTime?
   createdAt     DateTime @default(now())
