@@ -1,4 +1,43 @@
 ---
+Task ID: R38
+Agent: Main Agent
+Task: Feature D Part 2 — Tujuan Pembelajaran di Sistem Tugas (Assignment/Material)
+
+Work Log:
+- Explored existing tugas system: uses `Material` model with `type="tugas"`, API at `/api/materials`, Guru UI in `GuruTugasView`, Siswa UI in `SiswaTugasView`
+- Added `learningObjective` (String?, nullable, optional) to `Material` model in Prisma schema
+- Ran `bunx prisma db push` — schema synced
+- Updated POST /api/materials: destructures `learningObjective`, saves as `learningObjective || null`
+- Updated PATCH /api/materials: supports updating `learningObjective` (set to null if empty)
+- Guru UI (guru-new-views.tsx):
+  - Added `learningObjective` to `TugasItem` interface and form state
+  - Added textarea with `Target` icon, "Tujuan Pembelajaran (opsional)" label, placeholder, maxLength=500, char counter
+  - Style matches Tryout form exactly (same classes, same icon, same label format)
+  - Sends `learningObjective` in POST body
+  - Shows learningObjective in task cards (compact line-clamp-1 with Target icon)
+  - Shows learningObjective in detail dialog (same format as Tryout rekap)
+- Siswa UI (siswa-new-views.tsx):
+  - Added `learningObjective` to `Task` interface
+  - Maps `learningObjective` from API response
+  - Displays in task cards with Target icon and line-clamp-2
+- GET /api/materials automatically includes `learningObjective` in response (Prisma findMany returns all fields)
+
+Verification (6 tests, all passed):
+1. POST tugas WITH learningObjective → 201, learningObjective stored in DB
+2. POST tugas WITHOUT learningObjective → 201, learningObjective = null in DB (no validation error)
+3. DB direct query confirmed both records correct
+4. GET materials returns learningObjective (1 with, 1 without)
+5. PATCH to add learningObjective to existing tugas → 200, DB updated
+6. DB query after PATCH confirmed update
+
+Stage Summary:
+- Commit: 32f01a2 pushed to main
+- 4 files changed, 54 insertions, 9 deletions
+- Files: prisma/schema.prisma, src/app/api/materials/route.ts, src/components/views/guru-new-views.tsx, src/components/views/siswa-new-views.tsx
+- Tujuan Pembelajaran now available in BOTH Tryout (StudentAttempt, R37) and Tugas (Material, R38) systems
+- Consistent UX: same Target icon, same "(opsional)" label, same textarea style, same 500 char limit, same placeholder format
+
+---
 Task ID: R31
 Agent: Main Agent
 Task: Checklist & Persiapan Deployment Production (Soft-Launch)
