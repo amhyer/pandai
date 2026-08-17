@@ -7,10 +7,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   try {
     const { id, studentId } = await params;
     const body = await req.json();
-    const { score, feedback, essayScores } = body; // essayScores: [{questionId, pointsEarned}]
+    const { score, feedback, essayScores, isRemedial } = body; // essayScores: [{questionId, pointsEarned}]
 
-    const submission = await db.assignmentSubmission.findUnique({
-      where: { assignmentId_studentId: { assignmentId: id, studentId } },
+    const submission = await db.assignmentSubmission.findFirst({
+      where: { assignmentId: id, studentId, ...(isRemedial ? { isRemedial: true } : { isRemedial: false }) },
     });
 
     if (!submission) return NextResponse.json({ error: 'Submission tidak ditemukan' }, { status: 404 });

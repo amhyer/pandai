@@ -86,11 +86,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     if (assignment.status === 'closed') return NextResponse.json({ error: 'Tugas sudah ditutup' }, { status: 403 });
 
     // Determine which submission to update
-    let submission: { id: string; status: string };
+    let submission: { id: string; status: string; isRemedial: boolean };
 
     if (remedialSubmissionId) {
       // Working on remedial submission
-      submission = await db.assignmentSubmission.findUnique({ where: { id: remedialSubmissionId } }) as { id: string; status: string };
+      submission = await db.assignmentSubmission.findUnique({ where: { id: remedialSubmissionId } }) as typeof submission;
       if (!submission) return NextResponse.json({ error: 'Submission remedial tidak ditemukan' }, { status: 404 });
       if (!submission.isRemedial) return NextResponse.json({ error: 'Bukan submission remedial' }, { status: 400 });
     } else {

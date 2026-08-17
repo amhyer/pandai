@@ -39,8 +39,8 @@ export async function GET(req: NextRequest) {
     // If studentId, enrich with submission status per assignment
     if (studentId) {
       const enriched = await Promise.all(assignments.map(async (a) => {
-        const sub = await db.assignmentSubmission.findUnique({
-          where: { assignmentId_studentId: { assignmentId: a.id, studentId } },
+        const sub = await db.assignmentSubmission.findFirst({
+          where: { assignmentId: a.id, studentId, isRemedial: false },
         });
         return { ...a, mySubmission: sub || null };
       }));
