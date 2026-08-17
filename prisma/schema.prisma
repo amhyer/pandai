@@ -175,6 +175,7 @@ model Question {
   creator   User    @relation("QuestionCreator", fields: [createdBy], references: [id])
   examItems ExamItem[]
   studentAnswers StudentAnswer[]
+  assignmentQuestions AssignmentQuestion[] @relation("AssignmentQuestions")
 
   @@index([schoolId])
   @@index([subjectId])
@@ -543,4 +544,89 @@ model Timetable {
   @@index([schoolId])
   @@index([classId])
   @@index([teacherId])
+}
+
+// ===== ASSIGNMENT (TUGAS TERSTRUKTUR — GANTI SISTEM MATERIAL TYPE=TUGAS) =====
+model Assignment {
+  id                 String   @id @default(cuid())
+  title              String
+  description        String?
+  instructions       String?              // instruksi kerja tugas
+  subjectId          String?
+  classId            String?
+  teacherId          String?
+  schoolId           String?
+  deadline           String               // YYYY-MM-DDTHH:mm
+  learningObjective String?              // Tujuan Pembelajaran (opsional, konsisten dengan StudentAttempt)
+  submissionType     String   @default("essay_only") // pg_only, essay_only, mixed
+  maxScore           Int      @default(100)
+  status             String   @default("draft") // draft, published, closed
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  questions    AssignmentQuestion[]
+  submissions  AssignmentSubmission[]
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([classId])
+  @@index([status])
+}
+
+// ===== ASSIGNMENT QUESTION (SOAL DALAM TUGAS — REUSE BANK SOAL) =====
+model AssignmentQuestion {
+  id           String   @id @default(cuid())
+  assignmentId String
+  questionId   String   // FK ke Question (bank soal)
+  orderNum     Int      @default(0)
+  points       Float    @default(1)
+
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  question     Question   @relation("AssignmentQuestions", fields: [questionId], references: [id])
+  answers      AssignmentAnswer[]
+
+  @@unique([assignmentId, questionId])
+  @@index([assignmentId])
+}
+
+// ===== ASSIGNMENT SUBMISSION (SISWA MENGERJAKAN TUGAS) =====
+model AssignmentSubmission {
+  id           String    @id @default(cuid())
+  assignmentId String
+  studentId    String
+  schoolId     String?
+  classId      String?
+  status       String    @default("belum_dikerjakan") // belum_dikerjakan, dikerjakan, submitted, dinilai
+  score        Float?    // total skor setelah dinilai
+  feedback     String?   // feedback guru
+  startedAt    DateTime  @default(now())
+  submittedAt  DateTime?
+  gradedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  answers    AssignmentAnswer[]
+
+  @@unique([assignmentId, studentId])
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([schoolId])
+}
+
+// ===== ASSIGNMENT ANSWER (JAWABAN PER SOAL DALAM TUGAS) =====
+model AssignmentAnswer {
+  id           String   @id @default(cuid())
+  submissionId String
+  questionId   String
+  answer       String?   // jawaban PG (option label: A/B/C/D)
+  essayAnswer  String?   // jawaban esai (text panjang)
+  isCorrect    Boolean?  // auto-score untuk PG
+  pointsEarned Float    @default(0)
+
+  submission AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question   AssignmentQuestion    @relation(fields: [questionId], references: [id])
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
 }
