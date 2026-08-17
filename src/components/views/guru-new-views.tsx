@@ -29,7 +29,7 @@ import {
 // SHARED TYPES & CONSTANTS
 // ═══════════════════════════════════════════════════════════════════
 
-interface TugasItem { id: string; title: string; description: string; type: 'tugas' | 'quiz' | 'ujian'; dueDate: string; status: 'published' | 'completed' | 'draft' | 'late'; content?: string; }
+interface TugasItem { id: string; title: string; description: string; type: 'tugas' | 'quiz' | 'ujian'; dueDate: string; status: 'published' | 'completed' | 'draft' | 'late'; content?: string; learningObjective?: string; }
 interface Student { id: string; name: string; nisn: string; }
 interface AttendanceRecord { studentId: string; status: 'Hadir' | 'Izin' | 'Sakit' | 'Alpa'; note: string; }
 interface RekapKehadiran { studentId: string; studentName: string; hadir: number; izin: number; sakit: number; alpa: number; persentase: number; }
@@ -292,7 +292,7 @@ export function GuruTugasView() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState(false);
   const [selected, setSelected] = useState<TugasItem | null>(null);
-  const [form, setForm] = useState({ title: '', description: '', type: 'tugas' as 'tugas' | 'quiz' | 'ujian', dueDate: '', content: '' });
+  const [form, setForm] = useState({ title: '', description: '', type: 'tugas' as 'tugas' | 'quiz' | 'ujian', dueDate: '', content: '', learningObjective: '' });
   const [saving, setSaving] = useState(false);
   const fetchedRef = useRef(false);
 
@@ -311,6 +311,7 @@ export function GuruTugasView() {
         const mapped = (Array.isArray(data) ? data : []).map((m: Record<string, string>) => ({
           id: m.id, title: m.title, description: m.description || '', type: (m.type || 'tugas') as TugasItem['type'],
           dueDate: m.dueDate || m.createdAt || '', status: (m.status || 'published') as TugasItem['status'], content: m.content || '',
+          learningObjective: m.learningObjective || '',
         }));
         if (mapped.length > 0) setItems(mapped);
       } catch { /* use mock */ }
@@ -337,14 +338,14 @@ export function GuruTugasView() {
     try {
       const res = await fetch('/api/materials', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title, description: form.description, content: form.content, schoolId: user?.schoolId, teacherId: user?.id, type: form.type, dueDate: form.dueDate, status: 'published' }),
+        body: JSON.stringify({ title: form.title, description: form.description, content: form.content, schoolId: user?.schoolId, teacherId: user?.id, type: form.type, dueDate: form.dueDate, status: 'published', learningObjective: form.learningObjective.trim() || undefined }),
       });
-      if (res.ok) { toast.success('Tugas berhasil dibuat'); setDialogOpen(false); setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '' }); setSaving(false); return; }
+      if (res.ok) { toast.success('Tugas berhasil dibuat'); setDialogOpen(false); setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '', learningObjective: '' }); setSaving(false); return; }
     } catch { /* fallback */ }
     const newItem: TugasItem = { id: `t${Date.now()}`, ...form, status: 'published' };
     setItems((prev) => [newItem, ...prev]);
     toast.success('Tugas berhasil dibuat (lokal)'); setDialogOpen(false);
-    setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '' }); setSaving(false);
+    setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '', learningObjective: '' }); setSaving(false);
   };
 
   const handleDelete = () => {
@@ -360,7 +361,7 @@ export function GuruTugasView() {
   return (
     <div className="space-y-6">
       <PageHeader icon={<ClipboardList className="w-5 h-5" />} title="Tugas, Kuis & Ujian" description="Kelola tugas, kuis, dan ujian untuk siswa Anda"
-        action={<Button onClick={() => { setSelected(null); setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '' }); setDialogOpen(true); }} className="bg-[#1F3864] hover:bg-[#2d5289] text-white transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
+        action={<Button onClick={() => { setSelected(null); setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '', learningObjective: '' }); setDialogOpen(true); }} className="bg-[#1F3864] hover:bg-[#2d5289] text-white transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
           <Plus className="w-4 h-4 mr-2" />Buat Tugas Baru
         </Button>} />
 
@@ -416,12 +417,18 @@ export function GuruTugasView() {
                     </div>
                     <div className="flex gap-0.5 shrink-0">
                       <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelected(item); setDetailOpen(true); }}><Eye className="w-3.5 h-3.5" /></Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelected(item); setForm({ title: item.title, description: item.description, type: item.type, dueDate: item.dueDate, content: item.content || '' }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => { setSelected(item); setForm({ title: item.title, description: item.description, type: item.type, dueDate: item.dueDate, content: item.content || '', learningObjective: item.learningObjective || '' }); setDialogOpen(true); }}><Pencil className="w-3.5 h-3.5" /></Button>
                       <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => { setSelected(item); setDeleteOpen(true); }}><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
                   </div>
                   <h3 className="font-semibold text-sm text-foreground mb-1 leading-tight">{item.title}</h3>
                   <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{item.description}</p>
+                  {item.learningObjective && (
+                    <div className="flex items-start gap-1.5 mb-3 text-xs text-slate-600 bg-[#1F3864]/5 rounded-md px-2 py-1.5">
+                      <Target className="h-3 w-3 text-[#1F3864] mt-0.5 shrink-0" />
+                      <span className="line-clamp-1">{item.learningObjective}</span>
+                    </div>
+                  )}
                   <div className={cn('flex items-center gap-2 px-3 py-2 rounded-lg', typeAccentBg[item.type])}>
                     <CalendarClock className={cn('w-3.5 h-3.5', typeAccentColor[item.type])} />
                     <span className={cn('text-xs font-medium', countdown.urgent ? 'text-red-600' : 'text-muted-foreground')}>{formatDate(item.dueDate)}</span>
@@ -455,6 +462,22 @@ export function GuruTugasView() {
             </div>
             <div className="space-y-2"><Label>Tanggal Tenggat *</Label><Input type="date" className="rounded-lg" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Konten / Instruksi</Label><Textarea placeholder="Tulis instruksi tugas..." rows={5} className="rounded-lg" value={form.content} onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))} /></div>
+            {/* Tujuan Pembelajaran — opsional, ditulis guru */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Target className="h-4 w-4 text-[#1F3864]" />
+                Tujuan Pembelajaran
+                <span className="text-xs text-muted-foreground font-normal">(opsional)</span>
+              </Label>
+              <textarea
+                className="flex min-h-[60px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F3864]/30 focus-visible:ring-offset-2 resize-none"
+                placeholder="Contoh: Siswa mampu menganalisis struktur teks eksplanasi dan mengidentifikasi ciri kebahasaannya..."
+                value={form.learningObjective}
+                onChange={(e) => setForm((f) => ({ ...f, learningObjective: e.target.value }))}
+                maxLength={500}
+              />
+              <p className="text-[11px] text-muted-foreground text-right">{form.learningObjective.length}/500</p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => { setDialogOpen(false); setSelected(null); }} className="rounded-lg transition-all duration-200">Batal</Button>
@@ -473,6 +496,15 @@ export function GuruTugasView() {
             <div className="space-y-4">
               <div className="flex gap-2"><TypeBadge type={selected.type} /> <StatusBadge status={selected.status} /></div>
               <p className="text-sm text-muted-foreground">{selected.description}</p>
+              {selected.learningObjective && (
+                <div className="flex items-start gap-2 bg-[#1F3864]/5 rounded-lg px-3 py-2.5">
+                  <Target className="h-4 w-4 text-[#1F3864] mt-0.5 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold text-[#1F3864] uppercase tracking-wide">Tujuan Pembelajaran</p>
+                    <p className="text-xs text-slate-600 mt-0.5 break-words">{selected.learningObjective}</p>
+                  </div>
+                </div>
+              )}
               <div className={cn('flex items-center gap-2 text-sm p-3 rounded-lg', typeAccentBg[selected.type])}>
                 <CalendarClock className={cn('w-4 h-4', typeAccentColor[selected.type])} />
                 <span>Tenggat: <strong>{formatDate(selected.dueDate)}</strong></span>

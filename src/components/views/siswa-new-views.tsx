@@ -125,6 +125,7 @@ interface Task {
   externalProvider?: string;
   scoreEntryMode?: 'SELF_REPORTED' | 'TEACHER_ENTERED';
   scores?: ExternalQuizScore[];
+  learningObjective?: string;
 }
 
 interface AttendanceDay {
@@ -735,6 +736,7 @@ export function SiswaTugasView() {
               externalProvider: item.externalProvider || undefined,
               scoreEntryMode: item.scoreEntryMode || undefined,
               scores: item.scores || undefined,
+              learningObjective: item.learningObjective || undefined,
             }));
             setTasks(mapped);
           } else {
@@ -1120,6 +1122,14 @@ export function SiswaTugasView() {
                   </div>
 
                   <h3 className="font-semibold text-sm md:text-base mb-2 line-clamp-2">{task.title}</h3>
+
+                  {/* Tujuan Pembelajaran — ditampilkan jika ada */}
+                  {task.learningObjective && (
+                    <div className="flex items-start gap-1.5 mb-2 text-xs bg-[#1F3864]/5 rounded-md px-2.5 py-2">
+                      <Target className="h-3 w-3 text-[#1F3864] mt-0.5 shrink-0" />
+                      <span className="text-slate-600 line-clamp-2">{task.learningObjective}</span>
+                    </div>
+                  )}
 
                   <div className="space-y-1.5 mb-4 text-xs text-muted-foreground">
                     <div className="flex items-center gap-1.5">

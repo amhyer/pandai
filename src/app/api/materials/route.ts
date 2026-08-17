@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { title, description, content, subjectId, topicId, classId, schoolId, teacherId, type, status, dueDate, externalUrl, scoreEntryMode } = body;
+    const { title, description, content, subjectId, topicId, classId, schoolId, teacherId, type, status, dueDate, externalUrl, scoreEntryMode, learningObjective } = body;
 
     if (!title) {
       return NextResponse.json({ error: 'Judul wajib diisi' }, { status: 400 });
@@ -98,6 +98,7 @@ export async function POST(req: NextRequest) {
         externalUrl: externalUrl || null,
         externalProvider,
         scoreEntryMode: externalUrl ? (scoreEntryMode || 'SELF_REPORTED') : null,
+        learningObjective: learningObjective || null,
       },
     });
 
@@ -112,7 +113,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const body = await req.json();
-    const { id, title, description, content, type, status, dueDate, externalUrl, scoreEntryMode } = body;
+    const { id, title, description, content, type, status, dueDate, externalUrl, scoreEntryMode, learningObjective } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
 
     // Validate external URL if being updated
@@ -135,6 +136,7 @@ export async function PATCH(req: NextRequest) {
         ...(externalUrl !== undefined && { externalUrl: externalUrl || null }),
         ...(externalProvider !== undefined && { externalProvider: externalProvider || null }),
         ...(scoreEntryMode !== undefined && { scoreEntryMode }),
+        ...(learningObjective !== undefined && { learningObjective: learningObjective || null }),
       },
     });
 
