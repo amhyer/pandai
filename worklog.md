@@ -235,3 +235,30 @@ Stage Summary:
   - 13 files changed, 736 insertions
   - Commit: cc92433 pushed to main
   - Demo users: kepsek.sman1/password123 (Dr. H. Muhammad Arif, M.Pd.), kepsek.smkn2/password123 (Ir. Surya Dewi, M.T.)
+
+---
+Task ID: R41
+Agent: Main Agent
+Task: Prove autosave/draft works correctly — fix bugs found during verification
+
+Work Log:
+- Read worklog, schema, and submission API code
+- Ran initial 8-step test: ALL FAILED — "Foreign key constraint violated on the foreign key"
+- Identified Bug 1 (Critical FK): AssignmentAnswer.questionId FK → AssignmentQuestion.id, but code passed Question.id from request body
+- Identified Bug 2 (Missing Guard): No check preventing draft updates after final submit (would revert status to 'dikerjakan')
+- Fixed both bugs in /api/assignments/[id]/submissions/route.ts
+- Rebuilt production, re-ran all 8 steps → 8 passed, 0 failed
+- Committed a81a297 and pushed to main
+
+Stage Summary:
+- 2 bugs fixed in submissions API:
+  1. FK constraint: Use aq.id (AssignmentQuestion.id) instead of questionId (Question.id) in upsert
+  2. Submit guard: Check existingSub.status === 'submitted'|'dinilai' → return 403 with clear message
+- Autosave flow verified:
+  - Draft #1 saves only PG #1 → DB confirms 1 answer
+  - Reopen loads saved PG #1 answer
+  - Draft #2 adds PG #2 + Essay without overwriting PG #1 → DB confirms 3 answers
+  - Final submit → status='submitted', score=null (essay needs manual grading), PG auto-scored (2×33=66pts)
+  - Draft after submit → 403 "Tugas sudah disubmit dan tidak bisa diubah lagi"
+- Commit: a81a297 pushed to main
+- Test script: scripts/r41-test.mjs (reusable, 8 steps)
