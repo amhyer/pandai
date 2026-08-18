@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
+import { requireRole, AuthError } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
@@ -14,14 +15,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // ─── AUTH GUARD ───
-    // Even in development, require SUPER_ADMIN role header.
-    const userRole = request.headers.get('X-User-Role');
-    if (userRole !== 'SUPER_ADMIN') {
-      return NextResponse.json(
-        { error: 'Only SUPER_ADMIN can seed data.' },
-        { status: 403 }
-      );
+    // ─── AUTH GUARD (JWT) ───
+    try { await requireRole(request, ['SUPER_ADMIN']); } catch (error) {
+      if (error instanceof AuthError) {
+        return NextResponse.json({ error: error.message }, { status: error.status });
+      }
     }
 
     // Clear existing data (order matters for FK constraints)

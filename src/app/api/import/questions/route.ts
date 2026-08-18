@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import mammoth from 'mammoth';
 
 // ─── FORMAT YANG DIDUKUT ────────────────────────────────────────
@@ -178,11 +179,11 @@ function parseQuestions(text: string): ParsedQuestion[] {
 // POST /api/import/questions — Upload .docx, auto-parse, save to DB
 export async function POST(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const subjectId = formData.get('subjectId') as string | null;
     const schoolId = (formData.get('schoolId') as string | null) || null;
-    const createdBy = formData.get('createdBy') as string | null;
     const topicId = formData.get('topicId') as string | null;
 
     if (!file) {
@@ -198,12 +199,14 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!subjectId || !createdBy) {
+    if (!subjectId) {
       return NextResponse.json(
-        { success: false, message: 'subjectId dan createdBy diperlukan' },
+        { success: false, message: 'subjectId diperlukan' },
         { status: 400 }
       );
     }
+
+    const createdBy = auth.userId;
 
     // Extract text from Word
     const text = await extractText(file);
@@ -288,6 +291,7 @@ export async function POST(request: Request) {
       ...(errors.length > 0 && { errors }),
     });
   } catch (error: any) {
+    if (error instanceof AuthError) { return NextResponse.json({ success: false, message: error.message }, { status: error.status }); }
     logError({ error, route: '/api/import/questions', method: 'POST' });
     return NextResponse.json(
       { success: false, message: error.message || 'Gagal mengimpor soal' },

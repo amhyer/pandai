@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH']);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const grade = searchParams.get('grade');
@@ -22,6 +24,9 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(classes);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/classes', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data kelas' }, { status: 500 });
   }
@@ -30,6 +35,7 @@ export async function GET(request: Request) {
 // PUT /api/classes — Update class (e.g. assign wali kelas)
 export async function PUT(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { id, waliKelasId, name, grade, academicYear } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
@@ -49,6 +55,9 @@ export async function PUT(request: Request) {
     });
     return NextResponse.json(cls);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/classes', method: 'PUT' });
     return NextResponse.json({ error: 'Gagal memperbarui kelas' }, { status: 500 });
   }

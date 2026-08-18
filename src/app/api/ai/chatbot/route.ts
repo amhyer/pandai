@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } from '@/lib/ai-helper';
 import { logError } from '@/lib/error-log';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const schoolId = searchParams.get('schoolId');
@@ -35,6 +37,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(result);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/ai/chatbot', method: 'GET' });
     console.error('Get chatbot sessions error:', error);
     return NextResponse.json({ error: 'Gagal mengambil sesi chatbot' }, { status: 500 });
@@ -43,6 +48,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await requireAuth(request);
     const data = await request.json();
     const { action, userId, schoolId, sessionId, subjectId, content } = data;
 
@@ -176,6 +182,9 @@ Aturan:
 
     return NextResponse.json({ error: 'Aksi tidak valid' }, { status: 400 });
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/ai/chatbot', method: 'POST' });
     console.error('Chatbot error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal memproses chatbot';
@@ -185,6 +194,7 @@ Aturan:
 
 export async function DELETE(request: Request) {
   try {
+    await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
     if (!sessionId) {
@@ -196,6 +206,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true, message: 'Sesi berhasil dihapus' });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/ai/chatbot', method: 'DELETE' });
     console.error('Delete chatbot session error:', error);
     return NextResponse.json({ error: 'Gagal menghapus sesi' }, { status: 500 });

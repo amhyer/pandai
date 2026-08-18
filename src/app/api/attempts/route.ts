@@ -1,13 +1,15 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
 // GET attempts
 export async function GET(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+
     // RBAC: Kepala Sekolah cannot access individual attempt data
-    const role = request.headers.get('X-User-Role');
-    if (role === 'KEPALA_SEKOLAH') {
+    if (auth.role === 'KEPALA_SEKOLAH') {
       return NextResponse.json(
         { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
         { status: 403 }
@@ -45,12 +47,11 @@ export async function GET(request: Request) {
         extra.remedialId = remedial.id;
         extra.remedialStatus = remedial.status;
         extra.remedialScore = remedial.score;
-        // "Active score" = remedial score if remedial exists and is submitted/graded
         if (remedial.status === 'submitted' || remedial.status === 'graded') {
           extra.activeScore = remedial.score;
           extra.originalScore = att.score;
         } else {
-          extra.activeScore = att.score; // original still the active one
+          extra.activeScore = att.score;
           extra.originalScore = att.score;
         }
       } else {
@@ -62,6 +63,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(enriched);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/attempts', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
   }
@@ -70,10 +74,10 @@ export async function GET(request: Request) {
 // POST submit attempt
 export async function POST(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const data = await request.json();
     const { userId, examSessionId, examPackageId, schoolId, classId, answers, duration, learningObjective } = data;
 
-    // Calculate score
     let totalCorrect = 0;
     let totalWrong = 0;
     let totalUnanswered = 0;
@@ -84,11 +88,7 @@ export async function POST(request: Request) {
       if (!a.answer || a.answer === '') {
         totalUnanswered++;
         answerRecords.push({
-          questionId: a.questionId,
-          answer: null,
-          isCorrect: false,
-          pointsEarned: 0,
-          timeSpent: a.timeSpent || 0,
+          questionId: a.questionId, answer: null, isCorrect: false, pointsEarned: 0, timeSpent: a.timeSpent || 0,
         });
       } else {
         const question = await db.question.findUnique({ where: { id: a.questionId } });
@@ -103,7 +103,6 @@ export async function POST(request: Request) {
             isCorrect = a.answer.toLowerCase().trim() === question.answer?.toLowerCase().trim();
             points = isCorrect ? 1 : 0;
           } else {
-            // Esai - pending manual grading
             points = 0;
             isCorrect = false;
           }
@@ -114,39 +113,31 @@ export async function POST(request: Request) {
         totalPoints += points;
 
         answerRecords.push({
-          questionId: a.questionId,
-          answer: a.answer,
-          isCorrect,
-          pointsEarned: points,
-          timeSpent: a.timeSpent || 0,
+          questionId: a.questionId, answer: a.answer, isCorrect, pointsEarned: points, timeSpent: a.timeSpent || 0,
         });
       }
     }
 
     const totalQuestions = answers.length;
     const percentage = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
-    const tkaPrediction = Math.round(percentage * 8 + 200); // Simple TKA prediction formula
+    const tkaPrediction = Math.round(percentage * 8 + 200);
 
     const attempt = await db.studentAttempt.create({
       data: {
-        userId, examSessionId, examPackageId,
-        schoolId, classId,
-        score: totalPoints,
-        totalCorrect, totalWrong, totalUnanswered,
-        percentage: Math.round(percentage * 100) / 100,
-        tkaPrediction,
-        duration: duration || 0,
-        status: 'submitted',
-        learningObjective: learningObjective || null,
-        submittedAt: new Date(),
-        answers: {
-          create: answerRecords,
-        },
+        userId, examSessionId, examPackageId, schoolId, classId,
+        score: totalPoints, totalCorrect, totalWrong, totalUnanswered,
+        percentage: Math.round(percentage * 100) / 100, tkaPrediction,
+        duration: duration || 0, status: 'submitted',
+        learningObjective: learningObjective || null, submittedAt: new Date(),
+        answers: { create: answerRecords },
       },
     });
 
     return NextResponse.json(attempt);
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/attempts', method: 'POST' });
     console.error('Submit attempt error:', error);
     return NextResponse.json({ error: 'Gagal submit jawaban' }, { status: 500 });
@@ -156,13 +147,7 @@ export async function POST(request: Request) {
 // PATCH update attempt (e.g., update learningObjective)
 export async function PATCH(request: Request) {
   try {
-    const role = request.headers.get('X-User-Role');
-    if (role !== 'GURU' && role !== 'ADMIN_SCHOOL' && role !== 'SUPER_ADMIN') {
-      return NextResponse.json(
-        { error: 'Hanya guru atau admin yang dapat mengubah data attempt' },
-        { status: 403 }
-      );
-    }
+    const auth = await requireRole(request, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
 
     const body = await request.json();
     const { id, learningObjective } = body;
@@ -177,13 +162,12 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Tidak ada data yang diubah' }, { status: 400 });
     }
 
-    const attempt = await db.studentAttempt.update({
-      where: { id },
-      data: updateData,
-    });
-
+    const attempt = await db.studentAttempt.update({ where: { id }, data: updateData });
     return NextResponse.json(attempt);
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/attempts', method: 'PATCH' });
     return NextResponse.json({ error: 'Gagal mengupdate data attempt' }, { status: 500 });
   }

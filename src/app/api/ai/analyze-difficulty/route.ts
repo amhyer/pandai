@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion } from '@/lib/ai-helper';
 import { logError } from '@/lib/error-log';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireAuth(request);
     const data = await request.json();
     const { schoolId, userId, classId, subjectId } = data;
 
@@ -93,6 +95,9 @@ Buat analisis yang mencakup:
 
     return NextResponse.json({ success: true, analysis });
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/ai/analyze-difficulty', method: 'POST' });
     console.error('Analyze difficulty error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal menganalisis kesulitan';

@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
     const schoolId = searchParams.get('schoolId');
@@ -54,6 +56,9 @@ export async function GET(request: Request) {
       schoolTotalToday: schoolTotal,
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Get usage error:', error);
     return NextResponse.json({ error: 'Gagal mengambil data penggunaan' }, { status: 500 });
   }

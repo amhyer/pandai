@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     if (!schoolId) {
@@ -16,6 +18,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(config);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Get AI config error:', error);
     return NextResponse.json({ error: 'Gagal mengambil konfigurasi AI' }, { status: 500 });
   }
@@ -23,6 +28,7 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await requireAuth(request);
     const data = await request.json();
     const { schoolId, ...updateData } = data;
     if (!schoolId) {
@@ -55,6 +61,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json(config);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Update AI config error:', error);
     return NextResponse.json({ error: 'Gagal mengupdate konfigurasi AI' }, { status: 500 });
   }

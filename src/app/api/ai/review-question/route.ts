@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function PATCH(request: Request) {
   try {
+    await requireAuth(request);
     const data = await request.json();
     const { questionId, action, reviewerId, schoolId } = data;
 
@@ -38,6 +40,9 @@ export async function PATCH(request: Request) {
     const statusLabel = action === 'approve' ? 'disetujui' : 'ditolak';
     return NextResponse.json({ success: true, question: updated, message: `Soal berhasil ${statusLabel}` });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/ai/review-question', method: 'PATCH' });
     console.error('Review question error:', error);
     return NextResponse.json({ error: 'Gagal mereview soal' }, { status: 500 });

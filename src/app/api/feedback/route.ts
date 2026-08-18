@@ -1,13 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-
-// Helper: auth headers
-function getAuth(req: NextRequest) {
-  const userId = req.headers.get('X-User-Id');
-  const schoolId = req.headers.get('X-School-Id');
-  const userRole = req.headers.get('X-User-Role');
-  return { userId, schoolId, userRole };
-}
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
 // Roles allowed to send feedback
 const SENDER_ROLES = ['ORANG_TUA', 'GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL', 'SUPER_ADMIN'];
@@ -15,13 +8,9 @@ const SENDER_ROLES = ['ORANG_TUA', 'GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL', 'SU
 // POST /api/feedback — kirim feedback baru
 export async function POST(req: NextRequest) {
   try {
-    const { userId, schoolId, userRole } = getAuth(req);
+    const auth = await requireAuth(req);
 
-    if (!userId || !schoolId || !userRole) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    if (!SENDER_ROLES.includes(userRole)) {
+    if (!SENDER_ROLES.includes(auth.role)) {
       return NextResponse.json({ error: 'Role tidak diizinkan mengirim feedback' }, { status: 403 });
     }
 
@@ -37,26 +26,21 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'category harus: saran, kritik, atau apresiasi' }, { status: 400 });
     }
 
-    // SUPER_ADMIN mungkin tidak punya schoolId — skip jika kosong
-    const finalSchoolId = schoolId || '';
+    const finalSchoolId = auth.schoolId || '';
 
     const feedback = await db.feedback.create({
       data: {
-        schoolId: finalSchoolId,
-        fromUserId: userId,
-        fromRole: userRole,
-        category,
-        subject: subject.trim().slice(0, 200),
-        message: message.trim().slice(0, 5000),
-        status: 'baru',
+        schoolId: finalSchoolId, fromUserId: auth.userId, fromRole: auth.role,
+        category, subject: subject.trim().slice(0, 200), message: message.trim().slice(0, 5000), status: 'baru',
       },
-      include: {
-        fromUser: { select: { id: true, name: true, role: true } },
-      },
+      include: { fromUser: { select: { id: true, name: true, role: true } } },
     });
 
     return NextResponse.json({ data: feedback }, { status: 201 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('[POST /api/feedback]', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
   }
@@ -65,11 +49,7 @@ export async function POST(req: NextRequest) {
 // GET /api/feedback — list feedback dengan guard privasi
 export async function GET(req: NextRequest) {
   try {
-    const { userId, schoolId, userRole } = getAuth(req);
-
-    if (!userId || !userRole) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    const auth = await requireAuth(req);
 
     const { searchParams } = new URL(req.url);
     const statusFilter = searchParams.get('status');
@@ -77,34 +57,27 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    if (userRole === 'ORANG_TUA') {
-      // ORANG_TUA: HANYA feedback yang dia kirim sendiri
-      where.fromUserId = userId;
+    if (auth.role === 'ORANG_TUA') {
+      where.fromUserId = auth.userId;
     }
 
-    // GURU, KEPALA_SEKOLAH, ADMIN_SCHOOL: semua feedback sekolahnya
-    if (['GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL'].includes(userRole)) {
-      if (schoolId) where.schoolId = schoolId;
+    if (['GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL'].includes(auth.role)) {
+      if (auth.schoolId) where.schoolId = auth.schoolId;
     }
-
-    // SUPER_ADMIN: lihat semua
-    // (no schoolId filter for SUPER_ADMIN)
 
     if (statusFilter) where.status = statusFilter;
     if (categoryFilter) where.category = categoryFilter;
 
     const feedbacks = await db.feedback.findMany({
-      where,
-      orderBy: [{ createdAt: 'desc' }],
-      take: 200,
-      include: {
-        fromUser: { select: { id: true, name: true, role: true } },
-        responder: { select: { id: true, name: true, role: true } },
-      },
+      where, orderBy: [{ createdAt: 'desc' }], take: 200,
+      include: { fromUser: { select: { id: true, name: true, role: true } }, responder: { select: { id: true, name: true, role: true } } },
     });
 
     return NextResponse.json({ data: feedbacks });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('[GET /api/feedback]', error);
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
   }

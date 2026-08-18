@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion } from '@/lib/ai-helper';
 import { logError } from '@/lib/error-log';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    await requireAuth(request);
     const data = await request.json();
     const { schoolId, userId, studentId } = data;
 
@@ -134,6 +136,9 @@ Tulis dalam bentuk paragraf yang mengalir, 3-4 paragraf. Gunakan bahasa yang pos
 
     return NextResponse.json({ success: true, description });
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/ai/generate-report-desc', method: 'POST' });
     console.error('Generate report desc error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal menghasilkan deskripsi rapor';

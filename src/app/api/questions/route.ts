@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const subjectId = searchParams.get('subjectId');
@@ -38,6 +40,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(questions);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/questions', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil soal' }, { status: 500 });
   }
@@ -45,6 +50,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const data = await request.json();
     const { subjectId, topicId, schoolId, type, content, options, answer, explanation, cognitiveLevel, difficulty, createdBy } = data;
 
@@ -58,13 +64,16 @@ export async function POST(request: Request) {
         explanation: explanation || null,
         cognitiveLevel: cognitiveLevel || 'C3',
         difficulty: difficulty || 'sedang',
-        createdBy,
+        createdBy: createdBy || auth.userId,
         status: 'published',
       },
     });
 
     return NextResponse.json(question);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/questions', method: 'POST' });
     console.error('Create question error:', error);
     return NextResponse.json({ error: 'Gagal membuat soal' }, { status: 500 });
@@ -73,12 +82,16 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { id, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     if (data.options) data.options = JSON.stringify(data.options);
     const question = await db.question.update({ where: { id }, data });
     return NextResponse.json(question);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/questions', method: 'PATCH' });
     return NextResponse.json({ error: 'Gagal update soal' }, { status: 500 });
   }
@@ -86,12 +99,16 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     await db.question.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/questions', method: 'DELETE' });
     return NextResponse.json({ error: 'Gagal hapus soal' }, { status: 500 });
   }

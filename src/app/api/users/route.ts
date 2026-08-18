@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
 import { logError } from '@/lib/error-log';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
 // Helper: extract first name from full name
 function getFirstName(fullName: string): string {
@@ -43,8 +44,6 @@ async function autoCreateOrtuForSiswa(siswaData: {
   });
 
   if (existingOrtu) {
-    // Orang tua already exists — just link the new siswa to them
-    // (the caller should set parentId = existingOrtu.id)
     return {
       ortuId: existingOrtu.id,
       ortuUsername: existingOrtu.username || '',
@@ -57,7 +56,7 @@ async function autoCreateOrtuForSiswa(siswaData: {
   const ortu = await db.user.create({
     data: {
       username: ortuUsername,
-      password: await hashPassword('123'), // Default password
+      password: await hashPassword('123'),
       name: siswaData.namaOrtu.trim(),
       role: 'ORANG_TUA',
       schoolId: siswaData.schoolId,
@@ -74,9 +73,10 @@ async function autoCreateOrtuForSiswa(siswaData: {
 
 export async function GET(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+
     // RBAC: Kepala Sekolah cannot access individual user data
-    const role = (request.headers.get('X-User-Role') || '').toUpperCase();
-    if (role === 'KEPALA_SEKOLAH') {
+    if (auth.role === 'KEPALA_SEKOLAH') {
       return NextResponse.json(
         { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
         { status: 403 }
@@ -87,10 +87,15 @@ export async function GET(request: Request) {
     const schoolId = searchParams.get('schoolId');
     const userRole = searchParams.get('role');
     const classId = searchParams.get('classId');
-    const parentId = searchParams.get('parentId'); // Get children of a parent
+    const parentId = searchParams.get('parentId');
 
     const where: any = { isActive: true };
-    if (schoolId) where.schoolId = schoolId;
+    // Non-super-admin can only see their own school
+    if (auth.role !== 'SUPER_ADMIN') {
+      where.schoolId = auth.schoolId;
+    } else if (schoolId) {
+      where.schoolId = schoolId;
+    }
     if (userRole) where.role = userRole;
     if (classId) where.classId = classId;
     if (parentId) where.parentId = parentId;
@@ -102,6 +107,9 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(users);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/users', method: 'GET' });
     return NextResponse.json({ error: 'Gagal mengambil data' }, { status: 500 });
   }
@@ -109,6 +117,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const data = await request.json();
     const { name, role, schoolId, classId, phone, nisn, nip, nik, namaOrtu, jk } = data;
 
@@ -125,13 +134,11 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'NIP atau NIK wajib diisi untuk guru' }, { status: 400 });
       }
 
-      // Check uniqueness
       if (nip) {
         const existingNip = await db.user.findUnique({ where: { nip } });
         if (existingNip) return NextResponse.json({ error: 'NIP sudah terdaftar' }, { status: 409 });
       }
       if (nik) {
-        // NIK is not globally unique but check within school
         const existingNik = await db.user.findFirst({ where: { nik, schoolId } });
         if (existingNik) return NextResponse.json({ error: 'NIK sudah terdaftar di sekolah ini' }, { status: 409 });
       }
@@ -165,14 +172,13 @@ export async function POST(request: Request) {
       const existingNisn = await db.user.findUnique({ where: { nisn: nisn.trim() } });
       if (existingNisn) return NextResponse.json({ error: 'NISN sudah terdaftar' }, { status: 409 });
 
-      // Auto-create orang tua
       let parentId: string | undefined;
       let ortuMessage = '';
       if (namaOrtu && namaOrtu.trim()) {
         const ortuResult = await autoCreateOrtuForSiswa({
           namaOrtu: namaOrtu.trim(),
           schoolId: schoolId!,
-          siswaId: '', // will be linked after siswa creation
+          siswaId: '',
           siswaName: name,
         });
         if (ortuResult) {
@@ -230,6 +236,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ user, message: `Pengguna ${name} berhasil ditambahkan` });
   } catch (error: any) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/users', method: 'POST' });
     console.error('Create user error:', error);
     return NextResponse.json({ error: error.message || 'Gagal membuat pengguna' }, { status: 500 });
@@ -238,22 +247,18 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { id, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     if (data.password) data.password = await hashPassword(data.password);
-
-    // If updating NISN, also update username
-    if (data.nisn) {
-      data.username = data.nisn.trim();
-    }
-    // If updating NIP, also update username
-    if (data.nip) {
-      data.username = data.nip.trim();
-    }
-
+    if (data.nisn) data.username = data.nisn.trim();
+    if (data.nip) data.username = data.nip.trim();
     const user = await db.user.update({ where: { id }, data });
     return NextResponse.json(user);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/users', method: 'PATCH' });
     return NextResponse.json({ error: 'Gagal update pengguna' }, { status: 500 });
   }
@@ -262,6 +267,7 @@ export async function PATCH(request: Request) {
 // PUT /api/users — Profile update (uses id from body, accepts name/email/phone)
 export async function PUT(request: Request) {
   try {
+    const auth = await requireAuth(request);
     const { id, name, email, phone } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
@@ -273,6 +279,9 @@ export async function PUT(request: Request) {
     const user = await db.user.update({ where: { id }, data });
     return NextResponse.json(user);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/users', method: 'PUT' });
     return NextResponse.json({ error: 'Gagal memperbarui profil' }, { status: 500 });
   }
@@ -280,12 +289,16 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     await db.user.update({ where: { id }, data: { isActive: false } });
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/users', method: 'DELETE' });
     return NextResponse.json({ error: 'Gagal hapus pengguna' }, { status: 500 });
   }

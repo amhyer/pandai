@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const schools = await db.school.findMany({
       where: { status: { not: 'deleted' } },
       include: {
@@ -13,6 +15,9 @@ export async function GET() {
     });
     return NextResponse.json(schools);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Get schools error:', error);
     return NextResponse.json({ error: 'Gagal mengambil data sekolah' }, { status: 500 });
   }
@@ -20,6 +25,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN']);
     const data = await request.json();
     const { name, code, address, phone, plan, maxStudents, expiresAt } = data;
     if (!name || !code) return NextResponse.json({ error: 'Nama dan kode wajib' }, { status: 400 });
@@ -45,6 +51,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(school);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Create school error:', error);
     return NextResponse.json({ error: 'Gagal membuat sekolah' }, { status: 500 });
   }
@@ -52,6 +61,7 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN']);
     const { id, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     const school = await db.school.update({
@@ -60,18 +70,25 @@ export async function PATCH(request: Request) {
     });
     return NextResponse.json(school);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: 'Gagal update sekolah' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN']);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     await db.school.update({ where: { id }, data: { status: 'deleted' } });
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: 'Gagal hapus sekolah' }, { status: 500 });
   }
 }

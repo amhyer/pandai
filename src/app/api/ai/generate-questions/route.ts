@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } from '@/lib/ai-helper';
 import { logError } from '@/lib/error-log';
+import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
+    await requireAuth(request);
     const data = await request.json();
     const { schoolId, userId, subjectId, topicId, count, difficulty, cognitiveLevel, subjectName } = data;
 
@@ -90,6 +92,9 @@ Pastikan hanya mengembalikan JSON array tanpa teks tambahan.`;
 
     return NextResponse.json({ success: true, questions: created, count: created.length });
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     logError({ error, route: '/api/ai/generate-questions', method: 'POST' });
     console.error('Generate questions error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal menghasilkan soal';
