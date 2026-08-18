@@ -87,29 +87,29 @@ export const STATUS_LABELS: Record<string, string> = {
   ended: 'Berakhir',
 };
 
-// Helper untuk hashing password (simple implementation)
-// Salt is loaded from env var; falls back to a default for development only.
+// Legacy password hashing — kept only for migration.
+// New code should use `import { hashPassword, verifyPassword } from '@/lib/auth'`
+// which uses bcrypt.
 function getSalt(): string {
   const salt = process.env.PASSWORD_SALT;
   if (!salt || salt === 'CHANGE_ME_IN_PRODUCTION') {
-    // Only warn in non-test environments
     if (process.env.NODE_ENV === 'production') {
-      console.error('[SECURITY] PASSWORD_SALT env var is not set! Using insecure fallback.');
+      console.error('[SECURITY] PASSWORD_SALT env var is not set!');
     }
-    return 'pandai_dev_salt_2024'; // Dev-only fallback
+    return 'pandai_dev_salt_2024';
   }
   return salt;
 }
 
+/** @deprecated Use import from '@/lib/auth' instead */
 export async function hashPassword(password: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + getSalt());
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  // Re-export from auth module (bcrypt)
+  const { hashPassword: bcryptHash } = await import('@/lib/auth');
+  return bcryptHash(password);
 }
 
+/** @deprecated Use import from '@/lib/auth' instead */
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const hashed = await hashPassword(password);
-  return hashed === hash;
+  const { verifyPassword: bcryptVerify } = await import('@/lib/auth');
+  return bcryptVerify(password, hash);
 }

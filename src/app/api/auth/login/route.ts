@@ -1,19 +1,25 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { verifyPassword } from '@/lib/constants';
+import { verifyPassword, rehashIfNeeded, createSession, createSessionCookie } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
+import { ratelimit } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
+    // Rate limit: 5 attempts per 60 seconds per IP
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const { success } = await ratelimit.limit(ip);
+    if (!success) {
+      return NextResponse.json({ error: 'Terlalu banyak percobaan login. Coba lagi dalam 60 detik.' }, { status: 429 });
+    }
+
     const { username, password } = await request.json();
 
-    // Accept either 'username' or 'email' field from client
     const identifier = (username || '').trim();
     if (!identifier || !password) {
       return NextResponse.json({ error: 'Username/email dan password wajib diisi' }, { status: 400 });
     }
 
-    // Find user by username OR email (case-insensitive)
     let user = await db.user.findUnique({
       where: { username: identifier },
       include: { school: true, class: true },
@@ -39,12 +45,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Username atau password salah' }, { status: 401 });
     }
 
+    // Re-hash legacy SHA-256 passwords to bcrypt after successful login
+    await rehashIfNeeded(user.id, password, user.password);
+
     await db.user.update({
       where: { id: user.id },
       data: { lastLogin: new Date() },
     });
 
-    return NextResponse.json({
+    // Create JWT session token
+    const token = await createSession({
+      id: user.id,
+      role: user.role,
+      schoolId: user.schoolId,
+    });
+
+    const response = NextResponse.json({
       id: user.id,
       username: user.username,
       email: user.email,
@@ -65,6 +81,18 @@ export async function POST(request: Request) {
       className: user.class?.name,
       isActive: user.isActive,
     });
+
+    // Set httpOnly cookie with JWT
+    const cookie = createSessionCookie(token);
+    response.cookies.set(cookie.name, cookie.value, {
+      httpOnly: cookie.httpOnly,
+      secure: cookie.secure,
+      sameSite: cookie.sameSite,
+      path: cookie.path,
+      maxAge: cookie.maxAge,
+    });
+
+    return response;
   } catch (error: any) {
     logError({ error, route: '/api/auth/login', method: 'POST' });
     console.error('Login error:', error);
