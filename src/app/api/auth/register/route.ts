@@ -3,6 +3,13 @@ import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
 import { logError } from '@/lib/error-log';
 
+/**
+ * Roles allowed for self-service registration (no login required).
+ * GURU, ADMIN_SCHOOL, KEPALA_SEKOLAH, SUPER_ADMIN must be created via
+ * the protected POST /api/users endpoint (requires SUPER_ADMIN or ADMIN_SCHOOL).
+ */
+const ALLOWED_SELF_REGISTER_ROLES = ['SISWA', 'ORANG_TUA'];
+
 export async function POST(request: Request) {
   try {
     const { email, password, name, role, schoolCode } = await request.json();
@@ -15,14 +22,23 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Password minimal 6 karakter' }, { status: 400 });
     }
 
+    // ── Role whitelist enforcement ──
+    const requestedRole = (role || 'SISWA').toUpperCase();
+    if (!ALLOWED_SELF_REGISTER_ROLES.includes(requestedRole)) {
+      return NextResponse.json(
+        { error: 'Role tidak diizinkan untuk pendaftaran mandiri' },
+        { status: 403 }
+      );
+    }
+
     const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } });
     if (existing) {
       return NextResponse.json({ error: 'Email sudah terdaftar' }, { status: 409 });
     }
 
-    // If role requires a school, find it
+    // ── schoolCode: only applicable for roles that need school membership ──
     let schoolId: string | undefined;
-    if (role !== 'SUPER_ADMIN' && schoolCode) {
+    if (schoolCode) {
       const school = await db.school.findUnique({ where: { code: schoolCode } });
       if (!school) {
         return NextResponse.json({ error: 'Kode sekolah tidak ditemukan' }, { status: 404 });
@@ -36,8 +52,9 @@ export async function POST(request: Request) {
         email: email.toLowerCase(),
         password: hashedPassword,
         name,
-        role: role || 'SISWA',
+        role: requestedRole,
         schoolId,
+        isActive: true,
       },
       include: { school: true },
     });

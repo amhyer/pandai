@@ -469,6 +469,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // GURU
   'guru-materi': 'Materi Pelajaran',
+  'guru-bank-soal': 'Bank Soal',
   'guru-tugas': 'Tugas Terstruktur',
   'guru-kehadiran': 'Kehadiran Siswa',
   'guru-rekap-kehadiran': 'Rekap Kehadiran',

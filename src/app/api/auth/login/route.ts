@@ -2,15 +2,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { verifyPassword, rehashIfNeeded, createSession, createSessionCookie } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
-import { ratelimit } from '@/lib/rate-limit';
+import { checkRateLimit, RATE_LOGIN } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
     // Rate limit: 5 attempts per 60 seconds per IP
     const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
-    const { success } = await ratelimit.limit(ip);
-    if (!success) {
-      return NextResponse.json({ error: 'Terlalu banyak percobaan login. Coba lagi dalam 60 detik.' }, { status: 429 });
+    const result = checkRateLimit(`login:${ip}`, RATE_LOGIN.max, RATE_LOGIN.windowMs);
+    if (!result.allowed) {
+      return NextResponse.json({ error: 'Terlalu banyak percobaan login. Coba lagi nanti.' }, { status: 429 });
     }
 
     const { username, password } = await request.json();
