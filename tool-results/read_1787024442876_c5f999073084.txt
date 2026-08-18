@@ -1,0 +1,528 @@
+     1→import { NextResponse } from 'next/server';
+     2→import { db } from '@/lib/db';
+     3→import { hashPassword } from '@/lib/constants';
+     4→import { requireRole, AuthError } from '@/lib/auth';
+     5→
+     6→export async function POST(request: Request) {
+     7→  try {
+     8→    // ─── PRODUCTION GUARD ───
+     9→    // Seed endpoint is DANGEROUS — it deletes ALL data and creates demo accounts.
+    10→    // In production, it must NEVER be callable.
+    11→    if (process.env.NODE_ENV === 'production') {
+    12→      return NextResponse.json(
+    13→        { error: 'Seed endpoint is disabled in production.' },
+    14→        { status: 403 }
+    15→      );
+    16→    }
+    17→
+    18→    // ─── AUTH GUARD (JWT) ───
+    19→    try { await requireRole(request, ['SUPER_ADMIN']); } catch (error) {
+    20→      if (error instanceof AuthError) {
+    21→        return NextResponse.json({ error: error.message }, { status: error.status });
+    22→      }
+    23→    }
+    24→
+    25→    // Clear existing data (order matters for FK constraints)
+    26→    await db.studentAnswer.deleteMany();
+    27→    await db.studentAttempt.deleteMany();
+    28→    await db.examAssignment.deleteMany();
+    29→    await db.examSession.deleteMany();
+    30→    await db.examItem.deleteMany();
+    31→    await db.examPackage.deleteMany();
+    32→    await db.diagnosticResult.deleteMany();
+    33→    await db.question.deleteMany();
+    34→    await db.topic.deleteMany();
+    35→    await db.subject.deleteMany();
+    36→    await db.attendance.deleteMany();
+    37→    await db.teacherAssignment.deleteMany();
+    38→    await db.teachingJournal.deleteMany();
+    39→    await db.characterReport.deleteMany();
+    40→    await db.activityLog.deleteMany();
+    41→    await db.material.deleteMany();
+    42→    await db.user.deleteMany();
+    43→    await db.class.deleteMany();
+    44→    await db.subscription.deleteMany();
+    45→    await db.school.deleteMany();
+    46→
+    47→    // ===== SEKOLAH =====
+    48→    const sma1 = await db.school.create({
+    49→      data: { name: 'SMA Negeri 1 Jakarta', code: 'SMA1JKT', address: 'Jl. Sudirman No. 1, Jakarta', plan: 'pro', maxStudents: 500, status: 'active' },
+    50→    });
+    51→    const sma2 = await db.school.create({
+    52→      data: { name: 'SMA Negeri 3 Bandung', code: 'SMA3BDG', address: 'Jl. Asia Afrika No. 3, Bandung', plan: 'starter', maxStudents: 200, status: 'active' },
+    53→    });
+    54→    const sma3 = await db.school.create({
+    55→      data: { name: 'SMK Negeri 2 Surabaya', code: 'SMK2SBY', address: 'Jl. Pahlawan No. 2, Surabaya', plan: 'free', maxStudents: 50, status: 'active' },
+    56→    });
+    57→
+    58→    // Subscriptions
+    59→    await db.subscription.createMany({
+    60→      data: [
+    61→        { schoolId: sma1.id, plan: 'pro', startDate: new Date('2024-01-01'), endDate: new Date('2025-12-31'), amount: 500000 },
+    62→        { schoolId: sma2.id, plan: 'starter', startDate: new Date('2024-03-01'), endDate: new Date('2025-02-28'), amount: 250000 },
+    63→        { schoolId: sma3.id, plan: 'free', startDate: new Date('2024-06-01'), amount: 0 },
+    64→      ],
+    65→    });
+    66→
+    67→    // ===== SUBJECTS =====
+    68→    const subjects = await db.subject.createMany({
+    69→      data: [
+    70→        { name: 'Bahasa Indonesia', code: 'bindo', type: 'wajib', sortOrder: 1 },
+    71→        { name: 'Bahasa Inggris', code: 'bing', type: 'wajib', sortOrder: 2 },
+    72→        { name: 'Matematika', code: 'mat', type: 'wajib', sortOrder: 3 },
+    73→        { name: 'Fisika', code: 'fis', type: 'pilihan', sortOrder: 4 },
+    74→        { name: 'Kimia', code: 'kim', type: 'pilihan', sortOrder: 5 },
+    75→        { name: 'Biologi', code: 'bio', type: 'pilihan', sortOrder: 6 },
+    76→        { name: 'Ekonomi', code: 'eko', type: 'pilihan', sortOrder: 7 },
+    77→        { name: 'Sosiologi', code: 'sos', type: 'pilihan', sortOrder: 8 },
+    78→        { name: 'Sejarah', code: 'sej', type: 'pilihan', sortOrder: 9 },
+    79→        { name: 'Geografi', code: 'geo', type: 'pilihan', sortOrder: 10 },
+    80→      ],
+    81→    });
+    82→
+    83→    const subjectRecords = await db.subject.findMany();
+    84→
+    85→    // ===== TOPICS =====
+    86→    const topicData: any[] = [];
+    87→    const bindo = subjectRecords.find(s => s.code === 'bindo')!;
+    88→    const bing = subjectRecords.find(s => s.code === 'bing')!;
+    89→    const mat = subjectRecords.find(s => s.code === 'mat')!;
+    90→    const fis = subjectRecords.find(s => s.code === 'fis')!;
+    91→
+    92→    const topicNames = {
+    93→      [bindo.id]: ['Teks Narasi', 'Teks Deskripsi', 'Teks Eksposisi', 'Teks Argumentasi', 'Teks Persuasi', 'Teks Drama', 'Puisi', 'Prosedur', 'Telaah Struktur & Kebahasaan'],
+    94→      [bing.id]: ['Reading Comprehension', 'Grammar - Tenses', 'Grammar - Conditional', 'Vocabulary', 'Writing - Essay', 'Listening Comprehension', 'Idioms & Expressions'],
+    95→      [mat.id]: ['Aljabar', 'Logaritma', 'Trigonometri', 'Fungsi', 'Turunan (Kalkulus)', 'Integral', 'Statistika', 'Peluang', 'Matriks', 'Program Linear', 'Vektor', 'Barisan & Deret', 'Garis & Lingkaran'],
+    96→      [fis.id]: ['Kinematika', 'Dinamika', 'Usaha & Energi', 'Impuls & Momentum', 'Fluida Statis', 'Termodinamika', 'Listrik Statis', 'Listrik Dinamis', 'Magnet', 'Gelombang', 'Optika', 'Fisika Modern'],
+    97→    };
+    98→
+    99→    for (const [subjId, topics] of Object.entries(topicNames)) {
+   100→      for (let i = 0; i < (topics as string[]).length; i++) {
+   101→        topicData.push({ name: (topics as string[])[i], subjectId: subjId, sortOrder: i });
+   102→      }
+   103→    }
+   104→    await db.topic.createMany({ data: topicData });
+   105→
+   106→    // ===== USERS =====
+   107→    const pw = await hashPassword('password123');
+   108→    const pwOrtu = await hashPassword('123');
+   109→
+   110→    // Super Admin
+   111→    const superAdmin = await db.user.create({
+   112→      data: { username: 'superadmin@pandai.id', email: 'admin@nalar.id', password: pw, name: 'Admin NALAR', role: 'SUPER_ADMIN', isActive: true },
+   113→    });
+   114→
+   115→    // Admin Sekolah SMA1
+   116→    await db.user.create({
+   117→      data: { username: 'admin.sman1@pandai.id', email: 'admin@sma1jkt.sch.id', password: pw, name: 'Dra. Siti Rahayu', role: 'ADMIN_SCHOOL', schoolId: sma1.id, isActive: true },
+   118→    });
+   119→    // Admin SMA2
+   120→    await db.user.create({
+   121→      data: { email: 'admin@sma3bdg.sch.id', password: pw, name: 'Dr. Budi Santoso', role: 'ADMIN_SCHOOL', schoolId: sma2.id, isActive: true },
+   122→    });
+   123→
+   124→    // Guru SMA1
+   125→    const guruBindo = await db.user.create({
+   126→      data: { username: '198504152010011001', nip: '198504152010011001', email: 'guru.bindo@sma1jkt.sch.id', password: pw, name: 'Hj. Ratna Dewi, M.Pd', role: 'GURU', schoolId: sma1.id, isActive: true },
+   127→    });
+   128→    const guruBing = await db.user.create({
+   129→      data: { email: 'guru.bing@sma1jkt.sch.id', password: pw, name: 'Mr. John Smith, M.Ed', role: 'GURU', schoolId: sma1.id, isActive: true },
+   130→    });
+   131→    const guruMat = await db.user.create({
+   132→      data: { email: 'guru.mat@sma1jkt.sch.id', password: pw, name: 'Ir. Agus Prasetyo, M.Si', role: 'GURU', schoolId: sma1.id, isActive: true },
+   133→    });
+   134→
+   135→    // Kelas SMA1
+   136→    const kelas = await db.class.createMany({
+   137→      data: [
+   138→        { name: 'XII IPA 1', grade: 12, academicYear: '2024/2025', schoolId: sma1.id },
+   139→        { name: 'XII IPA 2', grade: 12, academicYear: '2024/2025', schoolId: sma1.id },
+   140→        { name: 'XII IPS 1', grade: 12, academicYear: '2024/2025', schoolId: sma1.id },
+   141→        { name: 'XI IPA 1', grade: 11, academicYear: '2024/2025', schoolId: sma1.id },
+   142→      ],
+   143→    });
+   144→    const classRecords = await db.class.findMany({ where: { schoolId: sma1.id } });
+   145→
+   146→    // Siswa SMA1
+   147→    const siswaNames = [
+   148→      'Ahmad Rizky Pratama', 'Siti Nurhaliza', 'Muhammad Farhan', 'Dewi Lestari', 'Budi Hartono',
+   149→      'Anisa Rahma', 'Rizky Aditya', 'Putri Wulandari', 'Dimas Saputra', 'Rina Marlina',
+   150→      'Fajar Nugroho', 'Fitria Handayani', 'Galih Permana', 'Hani Oktaviani', 'Irfan Maulana',
+   151→    ];
+   152→    const siswaRecords: any[] = [];
+   153→    for (let i = 0; i < siswaNames.length; i++) {
+   154→      const cls = classRecords[i % classRecords.length];
+   155→      siswaRecords.push({
+   156→        email: `siswa${i + 1}@sma1jkt.sch.id`,
+   157→        username: i === 0 ? '0051234567' : undefined,
+   158→        nisn: i === 0 ? '0051234567' : undefined,
+   159→        password: pw,
+   160→        name: siswaNames[i],
+   161→        role: 'SISWA',
+   162→        schoolId: sma1.id,
+   163→        classId: cls.id,
+   164→        isActive: true,
+   165→      });
+   166→    }
+   167→    await db.user.createMany({ data: siswaRecords });
+   168→
+   169→    // ===== GLOBAL QUESTIONS (NALAR) =====
+   170→    const globalQuestions: any[] = [];
+   171→    const systemUserId = superAdmin.id; // Use super admin as system creator
+   172→
+   173→    // Bahasa Indonesia questions
+   174→    const qOptions1 = JSON.stringify([
+   175→      { label: 'A', text: 'Teks narasi', isCorrect: false },
+   176→      { label: 'B', text: 'Teks eksposisi', isCorrect: true },
+   177→      { label: 'C', text: 'Teks persuasi', isCorrect: false },
+   178→      { label: 'D', text: 'Teks prosedur', isCorrect: false },
+   179→      { label: 'E', text: 'Teks deskripsi', isCorrect: false },
+   180→    ]);
+   181→    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Teks yang bertujuan untuk menjelaskan atau memberitahukan sesuatu agar pembaca mengetahui dan memahami hal yang dibahas disebut...', options: qOptions1, answer: 'B', explanation: 'Teks eksposisi bertujuan untuk memberikan informasi atau penjelasan kepada pembaca.', cognitiveLevel: 'C2', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
+   182→
+   183→    const qOptions2 = JSON.stringify([
+   184→      { label: 'A', text: 'Amatan langsung', isCorrect: false },
+   185→      { label: 'B', text: 'Fakta dan opini', isCorrect: false },
+   186→      { label: 'C', text: 'Tesis, argumentasi, dan penegasan ulang', isCorrect: true },
+   187→      { label: 'D', text: 'Orientasi, komplikasi, resolusi', isCorrect: false },
+   188→      { label: 'E', text: 'Identifikasi, deskripsi bagian, deskripsi kesimpulan', isCorrect: false },
+   189→    ]);
+   190→    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Struktur teks argumentasi terdiri atas...', options: qOptions2, answer: 'C', explanation: 'Struktur argumentasi: tesis (gagasan pokok), argumentasi (alasan), dan penegasan ulang (kesimpulan).', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
+   191→
+   192→    const qOptions3 = JSON.stringify([
+   193→      { label: 'A', text: 'Sinonim', isCorrect: false },
+   194→      { label: 'B', text: 'Antonim', isCorrect: true },
+   195→      { label: 'C', text: 'Polisemi', isCorrect: false },
+   196→      { label: 'D', text: 'Homonim', isCorrect: false },
+   197→      { label: 'E', text: 'Hipernim', isCorrect: false },
+   198→    ]);
+   199→    globalQuestions.push({ subjectId: bindo.id, schoolId: null, type: 'pg', content: 'Hubungan kata "panas" dan "dingin" merupakan...', options: qOptions3, answer: 'B', explanation: 'Antonim adalah hubungan kata yang berlawanan makna.', cognitiveLevel: 'C2', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
+   200→
+   201→    // Bahasa Inggris
+   202→    const qOptions4 = JSON.stringify([
+   203→      { label: 'A', text: 'have been working', isCorrect: true },
+   204→      { label: 'B', text: 'had worked', isCorrect: false },
+   205→      { label: 'C', text: 'has working', isCorrect: false },
+   206→      { label: 'D', text: 'were working', isCorrect: false },
+   207→      { label: 'E', text: 'is worked', isCorrect: false },
+   208→    ]);
+   209→    globalQuestions.push({ subjectId: bing.id, schoolId: null, type: 'pg', content: 'She ___ in this company for five years.', options: qOptions4, answer: 'A', explanation: 'Present Perfect Continuous: has/have + been + V-ing, digunakan untuk aksi yang dimulai di masa lalu dan masih berlanjut.', cognitiveLevel: 'C3', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
+   210→
+   211→    const qOptions5 = JSON.stringify([
+   212→      { label: 'A', text: 'beautiful', isCorrect: false },
+   213→      { label: 'B', text: 'beauty', isCorrect: true },
+   214→      { label: 'C', text: 'beautifully', isCorrect: false },
+   215→      { label: 'D', text: 'beautify', isCorrect: false },
+   216→      { label: 'E', text: 'beautified', isCorrect: false },
+   217→    ]);
+   218→    globalQuestions.push({ subjectId: bing.id, schoolId: null, type: 'pg', content: 'The ___ of the sunset was breathtaking. (Choose the correct noun form)', options: qOptions5, answer: 'B', explanation: '"Beauty" adalah bentuk noun dari adjective "beautiful".', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
+   219→
+   220→    // Matematika
+   221→    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'isian', content: 'Jika f(x) = 2x + 3, maka f(5) = ...', answer: '13', explanation: 'f(5) = 2(5) + 3 = 10 + 3 = 13', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
+   222→
+   223→    const qOptions6 = JSON.stringify([
+   224→      { label: 'A', text: '5 dan -5', isCorrect: false },
+   225→      { label: 'B', text: '7 dan -7', isCorrect: true },
+   226→      { label: 'C', text: '49', isCorrect: false },
+   227→      { label: 'D', text: '-49', isCorrect: false },
+   228→      { label: 'E', text: 'Tidak ada jawaban', isCorrect: false },
+   229→    ]);
+   230→    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'pg', content: 'Akar-akar persamaan x² - 49 = 0 adalah...', options: qOptions6, answer: 'B', explanation: 'x² - 49 = 0 → x² = 49 → x = ±7', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
+   231→
+   232→    const qOptions7 = JSON.stringify([
+   233→      { label: 'A', text: '2x + 3y = 12', isCorrect: false },
+   234→      { label: 'B', text: 'x - y = 3', isCorrect: false },
+   235→      { label: 'C', text: '2x + y = 4', isCorrect: true },
+   236→      { label: 'D', text: 'x + 2y = 6', isCorrect: false },
+   237→      { label: 'E', text: '3x - y = 1', isCorrect: false },
+   238→    ]);
+   239→    globalQuestions.push({ subjectId: mat.id, schoolId: null, type: 'pg', content: 'Diketahui sistem persamaan linear: x + y = 3 dan 3x + 2y = 7. Nilai y yang memenuhi adalah...', options: qOptions7, answer: 'C', explanation: 'Dari x + y = 3, x = 3-y. Substitusi: 3(3-y)+2y=7 → 9-3y+2y=7 → -y=-2 → y=2, maka x=1. Jawaban: 2(1)+2=4 ✓', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
+   240→
+   241→    // Fisika
+   242→    globalQuestions.push({ subjectId: fis.id, schoolId: null, type: 'isian', content: 'Sebuah benda bermassa 2 kg bergerak dengan kecepatan 4 m/s. Berapa momentum benda tersebut? (dalam kg·m/s)', answer: '8', explanation: 'p = m × v = 2 kg × 4 m/s = 8 kg·m/s', cognitiveLevel: 'C3', difficulty: 'mudah', createdBy: systemUserId, status: 'published' });
+   243→
+   244→    const qOptions8 = JSON.stringify([
+   245→      { label: 'A', text: 'Energi kinetik berkurang', isCorrect: false },
+   246→      { label: 'B', text: 'Energi potensial bertambah', isCorrect: true },
+   247→      { label: 'C', text: 'Kecepatan bertambah', isCorrect: false },
+   248→      { label: 'D', text: 'Gaya gravitasi berkurang', isCorrect: false },
+   249→      { label: 'E', text: 'Massa berubah', isCorrect: false },
+   250→    ]);
+   251→    globalQuestions.push({ subjectId: fis.id, schoolId: null, type: 'pg', content: 'Ketika sebuah benda dilempar vertikal ke atas, yang terjadi adalah...', options: qOptions8, answer: 'B', explanation: 'Saat benda naik, ketinggiannya bertambah sehingga energi potensial gravitasi bertambah.', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: systemUserId, status: 'published' });
+   252→
+   253→    await db.question.createMany({ data: globalQuestions });
+   254→
+   255→    // ===== PRIVATE QUESTIONS (SMA1) =====
+   256→    const privateQuestions: any[] = [];
+   257→    const pq1 = JSON.stringify([
+   258→      { label: 'A', text: 'Latar', isCorrect: false },
+   259→      { label: 'B', text: 'Amanat', isCorrect: true },
+   260→      { label: 'C', text: 'Tema', isCorrect: false },
+   261→      { label: 'D', text: 'Tokoh', isCorrect: false },
+   262→      { label: 'E', text: 'Alur', isCorrect: false },
+   263→    ]);
+   264→    privateQuestions.push({ subjectId: bindo.id, schoolId: sma1.id, type: 'pg', content: 'Pesan yang ingin disampaikan penulis kepada pembaca melalui cerita disebut...', options: pq1, answer: 'B', explanation: 'Amanat adalah pesan moral atau pelajaran yang terkandung dalam sebuah karya sastra.', cognitiveLevel: 'C4', difficulty: 'sedang', createdBy: guruBindo.id, status: 'published' });
+   265→
+   266→    const pq2 = JSON.stringify([
+   267→      { label: 'A', text: 'would have gone', isCorrect: true },
+   268→      { label: 'B', text: 'will go', isCorrect: false },
+   269→      { label: 'C', text: 'goes', isCorrect: false },
+   270→      { label: 'D', text: 'went', isCorrect: false },
+   271→      { label: 'E', text: 'has gone', isCorrect: false },
+   272→    ]);
+   273→    privateQuestions.push({ subjectId: bing.id, schoolId: sma1.id, type: 'pg', content: 'If I had known about the meeting, I ___ to the office.', options: pq2, answer: 'A', explanation: 'Type 3 Conditional: If + S + had + V3, S + would have + V3.', cognitiveLevel: 'C5', difficulty: 'sulit', createdBy: guruBing.id, status: 'published' });
+   274→
+   275→    privateQuestions.push({ subjectId: mat.id, schoolId: sma1.id, type: 'isian', content: 'Turunan pertama dari f(x) = x³ - 6x² + 12x - 8 adalah f\'(x) = ...', answer: '3x²-12x+12', explanation: 'f\'(x) = 3x² - 12x + 12', cognitiveLevel: 'C3', difficulty: 'sedang', createdBy: guruMat.id, status: 'published' });
+   276→
+   277→    await db.question.createMany({ data: privateQuestions });
+   278→
+   279→    // ===== EXAM PACKAGES =====
+   280→    const allQuestions = await db.question.findMany();
+   281→    const globalQs = allQuestions.filter(q => !q.schoolId);
+   282→    const examPkg1 = await db.examPackage.create({
+   283→      data: { title: 'Diagnostic Test TKA - Wajib', description: 'Tes diagnostik untuk mata uji wajib TKA', schoolId: null, duration: 60, totalQuestions: globalQs.length, status: 'published', createdBy: systemUserId },
+   284→    });
+   285→    // Add items to exam package
+   286→    for (let i = 0; i < globalQs.length; i++) {
+   287→      await db.examItem.create({
+   288→        data: { examPackageId: examPkg1.id, questionId: globalQs[i].id, orderNum: i, points: 1 },
+   289→      });
+   290→    }
+   291→
+   292→    // Exam session
+   293→    const examSession = await db.examSession.create({
+   294→      data: {
+   295→        examPackageId: examPkg1.id,
+   296→        title: 'Tryout TKA Desember 2024',
+   297→        schoolId: sma1.id,
+   298→        startDate: new Date('2024-12-01T08:00:00'),
+   299→        endDate: new Date('2024-12-15T23:59:59'),
+   300→        duration: 60,
+   301→        shuffleQuestions: true,
+   302→        status: 'active',
+   303→        createdBy: guruBindo.id,
+   304→      },
+   305→    });
+   306→
+   307→    // Assign to classes
+   308→    for (const cls of classRecords) {
+   309→      await db.examAssignment.create({
+   310→        data: { examSessionId: examSession.id, schoolId: sma1.id, classId: cls.id },
+   311→      });
+   312→    }
+   313→
+   314→    // ===== SIMULATED ATTEMPTS =====
+   315→    const students = await db.user.findMany({ where: { role: 'SISWA', schoolId: sma1.id } });
+   316→    const sessionQuestions = await db.examItem.findMany({ where: { examPackageId: examPkg1.id }, include: { question: true } });
+   317→
+   318→    for (let s = 0; s < Math.min(students.length, 8); s++) {
+   319→      const student = students[s];
+   320→      const cls = classRecords[s % classRecords.length];
+   321→      let correct = 0;
+   322→      const answerData: any[] = [];
+   323→
+   324→      for (const item of sessionQuestions) {
+   325→        const isCorrect = Math.random() > 0.4; // ~60% correct rate
+   326→        if (isCorrect) correct++;
+   327→
+   328→        if (item.question.type === 'pg' || item.question.type === 'pg_kompleks') {
+   329→          const opts = item.question.options ? JSON.parse(item.question.options) : [];
+   330→          const selectedOpt = isCorrect
+   331→            ? opts.find((o: any) => o.isCorrect)?.label || 'A'
+   332→            : opts.find((o: any) => !o.isCorrect)?.label || 'B';
+   333→          answerData.push({
+   334→            questionId: item.questionId,
+   335→            answer: selectedOpt,
+   336→            isCorrect,
+   337→            pointsEarned: isCorrect ? 1 : 0,
+   338→            timeSpent: Math.floor(Math.random() * 120) + 20,
+   339→          });
+   340→        } else {
+   341→          answerData.push({
+   342→            questionId: item.questionId,
+   343→            answer: isCorrect ? item.question.answer : 'salah',
+   344→            isCorrect,
+   345→            pointsEarned: isCorrect ? 1 : 0,
+   346→            timeSpent: Math.floor(Math.random() * 180) + 30,
+   347→          });
+   348→        }
+   349→      }
+   350→
+   351→      const total = sessionQuestions.length;
+   352→      const pct = Math.round((correct / total) * 10000) / 100;
+   353→
+   354→      await db.studentAttempt.create({
+   355→        data: {
+   356→          userId: student.id,
+   357→          examSessionId: examSession.id,
+   358→          examPackageId: examPkg1.id,
+   359→          schoolId: sma1.id,
+   360→          classId: cls.id,
+   361→          score: correct,
+   362→          totalCorrect: correct,
+   363→          totalWrong: total - correct,
+   364→          totalUnanswered: 0,
+   365→          percentage: pct,
+   366→          tkaPrediction: Math.round(pct * 8 + 200),
+   367→          duration: Math.floor(Math.random() * 3000) + 1200,
+   368→          status: 'submitted',
+   369→          submittedAt: new Date(Date.now() - Math.random() * 7 * 86400000),
+   370→          answers: { create: answerData },
+   371→        },
+   372→      });
+   373→    }
+   374→
+   375→    // ===== TEACHER ASSIGNMENTS =====
+   376→    await db.teacherAssignment.createMany({
+   377→      data: [
+   378→        { teacherId: guruBindo.id, subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+   379→        { teacherId: guruBindo.id, subjectId: bindo.id, classId: classRecords[1].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+   380→        { teacherId: guruBing.id, subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+   381→        { teacherId: guruBing.id, subjectId: bing.id, classId: classRecords[3].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+   382→        { teacherId: guruMat.id, subjectId: mat.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+   383→        { teacherId: guruMat.id, subjectId: mat.id, classId: classRecords[1].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+   384→        { teacherId: guruMat.id, subjectId: fis.id, classId: classRecords[0].id, schoolId: sma1.id, academicYear: '2024/2025', semester: 'Ganjil' },
+   385→      ],
+   386→    });
+   387→
+   388→    // ===== ATTENDANCE (last 30 days) =====
+   389→    const statuses = ['hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'izin', 'sakit', 'alpa'];
+   390→    const attendanceData: any[] = [];
+   391→    const now = new Date();
+   392→    for (let dayOffset = 0; dayOffset < 30; dayOffset++) {
+   393→      const date = new Date(now);
+   394→      date.setDate(date.getDate() - dayOffset);
+   395→      const dayOfWeek = date.getDay();
+   396→      if (dayOfWeek === 0 || dayOfWeek === 6) continue; // Skip weekends
+   397→      const dateStr = date.toISOString().split('T')[0];
+   398→
+   399→      for (let s = 0; s < Math.min(students.length, 10); s++) {
+   400→        const student = students[s];
+   401→        const status = statuses[Math.floor(Math.random() * statuses.length)];
+   402→        attendanceData.push({
+   403→          studentId: student.id,
+   404→          classId: classRecords[s % classRecords.length].id,
+   405→          schoolId: sma1.id,
+   406→          date: dateStr,
+   407→          status,
+   408→          recordedBy: guruBindo.id,
+   409→        });
+   410→      }
+   411→    }
+   412→    // Batch insert (max 1000 at a time)
+   413→    for (let i = 0; i < attendanceData.length; i += 500) {
+   414→      await db.attendance.createMany({ data: attendanceData.slice(i, i + 500) });
+   415→    }
+   416→
+   417→    // ===== TEACHING JOURNALS =====
+   418→    await db.teachingJournal.createMany({
+   419→      data: [
+   420→        { teacherId: guruBindo.id, classId: classRecords[0].id, subjectId: bindo.id, schoolId: sma1.id, date: '2025-01-06', topic: 'Teks Eksposisi - Struktur dan Ciri', activities: 'Menjelaskan struktur teks eksposisi, membaca contoh teks, diskusi kelompok', notes: 'Siswa antusias dalam diskusi kelompok' },
+   421→        { teacherId: guruBindo.id, classId: classRecords[1].id, subjectId: bindo.id, schoolId: sma1.id, date: '2025-01-06', topic: 'Teks Argumentasi', activities: 'Analisis contoh teks argumentasi dari media massa', notes: 'Perlu drill lebih banyak soal' },
+   422→        { teacherId: guruBing.id, classId: classRecords[0].id, subjectId: bing.id, schoolId: sma1.id, date: '2025-01-07', topic: 'Conditional Sentences Type 1-3', activities: 'Penjelasan materi, latihan soal, role play', notes: null },
+   423→        { teacherId: guruBing.id, classId: classRecords[3].id, subjectId: bing.id, schoolId: sma1.id, date: '2025-01-07', topic: 'Reading Comprehension Strategies', activities: 'Skimming and scanning techniques, practice passages', notes: 'Beberapa siswa masih kesulitan inferensi' },
+   424→        { teacherId: guruMat.id, classId: classRecords[0].id, subjectId: mat.id, schoolId: sma1.id, date: '2025-01-08', topic: 'Turunan Fungsi - Konsep Dasar', activities: 'Definisi turunan, contoh perhitungan, latihan 20 soal', notes: 'Materi dipahami dengan baik' },
+   425→        { teacherId: guruMat.id, classId: classRecords[1].id, subjectId: mat.id, schoolId: sma1.id, date: '2025-01-08', topic: 'Integral Tentu', activities: 'Penjelasan konsep, hubungan turunan-integral, latihan', notes: null },
+   426→        { teacherId: guruMat.id, classId: classRecords[0].id, subjectId: fis.id, schoolId: sma1.id, date: '2025-01-09', topic: 'Hukum Newton tentang Gravitasi', activities: 'Demonstrasi, perhitungan gaya gravitasi, latihan soal', notes: 'Interaktif, siswa aktif bertanya' },
+   427→      ],
+   428→    });
+   429→
+   430→    // ===== CHARACTER REPORTS (7 Kebiasaan Anak Indonesia Hebat) =====
+   431→    const habitNames = ['bangun_pagi', 'beribadah', 'berolahraga', 'makan_sehat', 'gemar_belajar', 'bermasyarakat', 'tidur_cepat'];
+   432→    const charData: any[] = [];
+   433→    for (let dayOffset = 0; dayOffset < 20; dayOffset++) {
+   434→      const date = new Date(now);
+   435→      date.setDate(date.getDate() - dayOffset);
+   436→      if (date.getDay() === 0 || date.getDay() === 6) continue;
+   437→      const dateStr = date.toISOString().split('T')[0];
+   438→
+   439→      for (let s = 0; s < Math.min(students.length, 5); s++) {
+   440→        // Orang Tua reports (rating 1-4)
+   441→        for (const habit of habitNames.slice(0, 3 + Math.floor(Math.random() * 5))) {
+   442→          charData.push({
+   443→            studentId: students[s].id,
+   444→            classId: classRecords[s % classRecords.length].id,
+   445→            schoolId: sma1.id,
+   446→            reporterId: guruBindo.id, // Using guru as reporter placeholder; filledBy marks it as ORANG TUA report
+   447→            filledBy: 'ORANG_TUA',
+   448→            date: dateStr,
+   449→            habit,
+   450→            rating: Math.floor(Math.random() * 3) + 2, // 2-4
+   451→            note: Math.random() > 0.7 ? 'Menunjukkan perkembangan baik' : null,
+   452→          });
+   453→        }
+   454→      }
+   455→    }
+   456→    for (let i = 0; i < charData.length; i += 500) {
+   457→      await db.characterReport.createMany({ data: charData.slice(i, i + 500) });
+   458→    }
+   459→
+   460→    // ===== MATERIALS (Materi Pelajaran) =====
+   461→    await db.material.createMany({
+   462→      data: [
+   463→        { title: 'Pengantar Teks Eksposisi', description: 'Memahami konsep dasar teks eksposisi', content: 'Teks eksposisi adalah teks yang menjelaskan atau memberitahukan sesuatu agar pembaca mengetahui dan memahami hal yang dibahas.', subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBindo.id, type: 'materi', status: 'published' },
+   464→        { title: 'Struktur Teks Argumentasi', description: 'Tesis, argumentasi, dan penegasan ulang', content: 'Teks argumentasi memiliki tiga bagian utama...', subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBindo.id, type: 'materi', status: 'published' },
+   465→        { title: 'Conditional Sentences Review', description: 'Kembali mengulang conditional type 1-3', content: 'Conditional sentences digunakan untuk menyatakan...', subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBing.id, type: 'materi', status: 'published' },
+   466→        { title: 'Tips Reading Comprehension', description: 'Strategi menjawab soal reading', content: 'Skimming untuk gambaran umum, scanning untuk detail...', subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBing.id, type: 'materi', status: 'published' },
+   467→        { title: 'Turunan Fungsi Aljabar', description: 'Aturan dasar turunan', content: 'f\'(x) = limit h→0 [f(x+h) - f(x)] / h', subjectId: mat.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'materi', status: 'published' },
+   468→        { title: 'Hukum Newton tentang Gravitasi', description: 'F = G(m1*m2)/r²', content: 'Hukum gravitasi universal Newton menyatakan...', subjectId: fis.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'materi', status: 'published' },
+   469→        { title: 'Latihan Soal Eksposisi', description: '10 soal latihan teks eksposisi', content: 'Kerjakan 10 soal berikut...', subjectId: bindo.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBindo.id, type: 'tugas', status: 'published', dueDate: '2025-02-01' },
+   470→        { title: 'Kuis Conditional Sentences', description: 'Quiz online 15 soal', subjectId: bing.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruBing.id, type: 'quiz', status: 'published', dueDate: '2025-01-20' },
+   471→        { title: 'Tugas Turunan Fungsi', description: '20 soal turunan fungsi', content: 'Selesaikan turunan dari fungsi-fungsi berikut...', subjectId: mat.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'tugas', status: 'published', dueDate: '2025-01-25' },
+   472→        { title: 'Kuis Hukum Newton', description: '10 soal pilihan ganda', subjectId: fis.id, classId: classRecords[0].id, schoolId: sma1.id, teacherId: guruMat.id, type: 'quiz', status: 'published', dueDate: '2025-02-05' },
+   473→      ],
+   474→    });
+   475→
+   476→    // ===== ACTIVITY LOGS =====
+   477→    await db.activityLog.createMany({
+   478→      data: [
+   479→        { userId: superAdmin.id, action: 'Login ke sistem', detail: 'Super admin login', module: 'auth' },
+   480→        { userId: superAdmin.id, action: 'Melihat dashboard global', detail: null, module: 'dashboard' },
+   481→        { userId: superAdmin.id, schoolId: sma1.id, action: 'Membuat sekolah baru', detail: 'SMA Negeri 1 Jakarta', module: 'schools' },
+   482→        { schoolId: sma1.id, action: 'Seed data demo', detail: 'Semua data demo berhasil dimuat', module: 'system' },
+   483→        { userId: guruBindo.id, schoolId: sma1.id, action: 'Membuat materi baru', detail: 'Pengantar Teks Eksposisi', module: 'materials' },
+   484→        { userId: guruBindo.id, schoolId: sma1.id, action: 'Membuat tugas', detail: 'Latihan Soal Eksposisi', module: 'materials' },
+   485→        { userId: guruBing.id, schoolId: sma1.id, action: 'Membuat kuis', detail: 'Kuis Conditional Sentences', module: 'materials' },
+   486→        { userId: guruMat.id, schoolId: sma1.id, action: 'Input jurnal mengajar', detail: 'Turunan Fungsi - Konsep Dasar', module: 'journals' },
+   487→        { userId: guruMat.id, schoolId: sma1.id, action: 'Input kehadiran kelas XII IPA 1', detail: '15 siswa hadir, 1 izin', module: 'attendance' },
+   488→        { userId: guruBindo.id, schoolId: sma1.id, action: 'Input laporan karakter', detail: '7 Kebiasaan - XII IPA 1', module: 'character' },
+   489→        { schoolId: sma1.id, action: 'Tryout TKA dimulai', detail: 'Tryout TKA Desember 2024', module: 'exams' },
+   490→        { schoolId: sma1.id, action: 'Backup database', detail: 'Auto backup berhasil', module: 'system' },
+   491→        { userId: guruBing.id, schoolId: sma1.id, action: 'Membuat materi baru', detail: 'Tips Reading Comprehension', module: 'materials' },
+   492→        { userId: guruMat.id, schoolId: sma1.id, action: 'Input jurnal mengajar', detail: 'Hukum Newton tentang Gravitasi', module: 'journals' },
+   493→        { schoolId: sma1.id, action: 'Registrasi akun guru baru', detail: '3 guru terdaftar', module: 'users' },
+   494→        { schoolId: sma1.id, action: 'Registrasi akun siswa', detail: '15 siswa terdaftar', module: 'users' },
+   495→        { schoolId: sma1.id, action: 'Pembuatan kelas baru', detail: '4 kelas dibuat', module: 'classes' },
+   496→        { userId: guruMat.id, schoolId: sma1.id, action: 'Input nilai siswa', detail: 'XII IPA 1 - Matematika', module: 'grades' },
+   497→      ],
+   498→    });
+   499→
+   500→    // ===== ORANG TUA ACCOUNT =====
+   501→    const ortu1 = await db.user.create({
+   502→      data: { username: 'ahmad', email: 'ortu.ahmad@email.com', password: pwOrtu, name: 'Bpk. Hasan Basri', role: 'ORANG_TUA', schoolId: sma1.id, isActive: true },
+   503→    });
+   504→    // Link first student to this parent
+   505→    if (students.length > 0) {
+   506→      await db.user.update({
+   507→        where: { id: students[0].id },
+   508→        data: { parentId: ortu1.id, namaOrtu: 'Bpk. Hasan Basri' },
+   509→      });
+   510→    }
+   511→
+   512→    return NextResponse.json({
+   513→      success: true,
+   514→      message: 'Data demo berhasil di-seed!',
+   515→      accounts: {
+   516→        superAdmin: { email: 'admin@nalar.id', password: 'password123' },
+   517→        adminSekolah: { email: 'admin@sma1jkt.sch.id', password: 'password123' },
+   518→        guru: { email: 'guru.bindo@sma1jkt.sch.id', password: 'password123' },
+   519→        siswa: { email: 'siswa1@sma1jkt.sch.id', password: 'password123' },
+   520→        orangTua: { username: 'ahmad', password: '123' },
+   521→      },
+   522→    });
+   523→  } catch (error: any) {
+   524→    console.error('Seed error:', error);
+   525→    return NextResponse.json({ error: 'Gagal seed data: ' + error.message }, { status: 500 });
+   526→  }
+   527→}
+   528→
