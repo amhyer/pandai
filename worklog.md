@@ -103,3 +103,23 @@ Stage Summary:
 - All API routes now use JWT cookie-based auth with AuthError try/catch
 - No X-User-* header reads remain in any route across the entire project
 - Lint: PASS
+
+---
+Task ID: 1
+Agent: main
+Task: Fix 2 critical bugs — login crash + register role escalation
+
+Work Log:
+- Fixed login/route.ts: replaced `import { ratelimit }` (non-existent export) with `import { checkRateLimit, RATE_LOGIN }` and synchronous call pattern
+- Fixed register/route.ts: added `ALLOWED_SELF_REGISTER_ROLES = ['SISWA', 'ORANG_TUA']` whitelist, blocking SUPER_ADMIN/GURU/ADMIN_SCHOOL/KEPALA_SEKOLAH from self-service registration (returns 403)
+- Fixed dapodik/connector/download/route.ts: added missing `request` parameter to `requireAuth()` call (pre-existing build error)
+- Fixed app-layout.tsx: added missing `'guru-bank-soal': 'Bank Soal'` entry to VIEW_LABELS (pre-existing build error)
+- Ran `bun run build` — passed clean (all routes compiled)
+- Ran standalone logic tests — checkRateLimit works, role whitelist blocks all privileged roles
+- Ran production server with 4 curl verification tests — ALL PASSED
+
+Stage Summary:
+- Login no longer crashes — returns 200 with JWT cookie
+- Register rejects SUPER_ADMIN/GURU/ADMIN_SCHOOL/KEPALA_SEKOLAH with 403
+- /api/schools returns 401 without cookie (session-based auth works)
+- X-User-Role header spoofing has no effect (returns 401)
