@@ -149,7 +149,11 @@ export const useAppStore = create<AppState>((set) => ({
 
   // Actions
   setUser: (user) => set({ user, isAuthenticated: !!user }),
-  logout: () => set({ user: null, isAuthenticated: false, currentView: 'landing' }),
+  logout: () => {
+    // Clear server-side session cookie
+    fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    set({ user: null, isAuthenticated: false, currentView: 'landing' });
+  },
   setLoading: (isLoading) => set({ isLoading }),
   setCurrentView: (currentView) => set({ currentView }),
   setSelectedSchoolId: (selectedSchoolId) => set({ selectedSchoolId }),

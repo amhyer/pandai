@@ -886,8 +886,8 @@ export function SiswaTugasView() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Role': 'SISWA',
-          'X-User-Id': user.id,
+          
+          
         },
         body: JSON.stringify({
           materialId: taskId,

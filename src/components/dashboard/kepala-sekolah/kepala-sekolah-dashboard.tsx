@@ -102,9 +102,9 @@ export function KepalaSekolahDashboard() {
       try {
         const res = await fetch(`/api/kepsek/dashboard?schoolId=${schoolId}`, {
           headers: {
-            'X-User-Id': user?.id || '',
-            'X-School-Id': schoolId || '',
-            'X-User-Role': user?.role || '',
+            
+            
+            
           },
         });
         if (!res.ok) {

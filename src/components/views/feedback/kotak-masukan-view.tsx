@@ -106,9 +106,9 @@ export function KotakMasukanView() {
 
       const res = await fetch(`/api/feedback?${params.toString()}`, {
         headers: {
-          'X-User-Id': user?.id || '',
-          'X-School-Id': user?.schoolId || '',
-          'X-User-Role': role,
+          
+          
+          
         },
       });
       const json = await res.json();
@@ -136,9 +136,9 @@ export function KotakMasukanView() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-          'X-School-Id': user?.schoolId || '',
-          'X-User-Role': role,
+          
+          
+          
         },
         body: JSON.stringify({ category, subject, message }),
       });
@@ -167,9 +167,9 @@ export function KotakMasukanView() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-          'X-School-Id': user?.schoolId || '',
-          'X-User-Role': role,
+          
+          
+          
         },
         body: JSON.stringify({ status: newStatus }),
       });
@@ -199,9 +199,9 @@ export function KotakMasukanView() {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-Id': user?.id || '',
-          'X-School-Id': user?.schoolId || '',
-          'X-User-Role': role,
+          
+          
+          
         },
         body: JSON.stringify({ response: replyText, status: 'ditindaklanjuti' }),
       });
