@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { logError } from '@/lib/error-log';
 
 // Helper: auth headers
 function getAuth(req: NextRequest) {
@@ -79,7 +78,6 @@ export async function PATCH(
 
     return NextResponse.json({ data: updated });
   } catch (error) {
-    await logError('PATCH /api/feedback/[id]', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
   }
 }

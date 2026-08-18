@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { logError } from '@/lib/error-log';
 
 // Helper: auth headers
 function getAuth(req: NextRequest) {
@@ -58,8 +57,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ data: feedback }, { status: 201 });
   } catch (error) {
-    await logError('POST /api/feedback', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[POST /api/feedback]', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
 
@@ -106,7 +105,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data: feedbacks });
   } catch (error) {
-    await logError('GET /api/feedback', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    console.error('[GET /api/feedback]', error);
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Internal server error' }, { status: 500 });
   }
 }
