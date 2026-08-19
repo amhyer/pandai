@@ -1,14 +1,9 @@
-import PDFDocument from 'pdfkit';
+import { jsPDF } from 'jspdf';
 import { db } from './db';
 
 // ═══════════════════════════════════════════════════════════════
-// HELPERS
+// CONSTANTS
 // ═══════════════════════════════════════════════════════════════
-
-const A4_W = 595.28;
-const A4_H = 841.89;
-const MARGIN = 40;
-const COL_W = A4_W - MARGIN * 2;
 
 const HABIT_LABELS: Record<string, string> = {
   bangun_pagi: 'Bangun Pagi',
@@ -59,10 +54,43 @@ function predikat(n: number | null): string {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// RAPOR SISWA (1 halaman A4)
+// HELPER: shared data fetcher
 // ═══════════════════════════════════════════════════════════════
 
-export async function generateRaporSiswaPDF(studentId: string, term: string): Promise<Buffer> {
+interface RaporData {
+  student: {
+    id: string;
+    name: string;
+    nisn: string | null;
+    nip: string | null;
+    schoolId: string;
+    classId: string | null;
+    parentId: string | null;
+    jk: string | null;
+  };
+  school: {
+    id: string;
+    name: string;
+    npsn: string | null;
+    address: string | null;
+    province: string | null;
+    city: string | null;
+    accreditation: string | null;
+  } | null;
+  klass: { id: string; name: string } | null;
+  parent: { name: string } | null;
+  kepsek: { name: string; nip: string | null } | null;
+  components: { id: string; name: string; weight: number; sortOrder: number }[];
+  grades: { studentId: string; componentId: string; score: number; maxScore: number; source: string }[];
+  attendance: { hadir: number; izin: number; sakit: number; alpa: number };
+  habits: Record<string, number>;
+  dimAvg: Record<string, number>;
+  compResults: { name: string; weight: number; score: number | null; weighted: number | null }[];
+  finalGrade: number | null;
+  totalWeightFilled: number;
+}
+
+async function fetchRaporData(studentId: string, term: string): Promise<RaporData> {
   const student = await db.user.findUnique({
     where: { id: studentId },
     select: { id: true, name: true, nisn: true, nip: true, schoolId: true, classId: true, parentId: true, jk: true },
@@ -70,21 +98,18 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
   if (!student) throw new Error('Siswa tidak ditemukan');
 
   const school = await db.school.findUnique({ where: { id: student.schoolId! } });
-  if (!school) throw new Error('Sekolah tidak ditemukan');
-
   const klass = student.classId ? await db.class.findUnique({ where: { id: student.classId } }) : null;
   const parent = student.parentId ? await db.user.findUnique({ where: { id: student.parentId }, select: { name: true } }) : null;
-  const kepsek = await db.user.findFirst({ where: { role: 'KEPALA_SEKOLAH', schoolId: student.schoolId!, isActive: true }, select: { name: true, nip: true } });
+  const kepsek = await db.user.findFirst({
+    where: { role: 'KEPALA_SEKOLAH', schoolId: student.schoolId!, isActive: true },
+    select: { name: true, nip: true },
+  });
 
-  // Get grade components and student grades
   const components = await db.gradeComponent.findMany({
     where: { schoolId: student.schoolId!, term },
     orderBy: { sortOrder: 'asc' },
   });
-
-  const grades = await db.studentGrade.findMany({
-    where: { studentId, term },
-  });
+  const grades = await db.studentGrade.findMany({ where: { studentId, term } });
 
   // Best score per component
   const best: Record<string, { score: number; maxScore: number; source: string }> = {};
@@ -112,24 +137,23 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
     }
   }
 
-  const finalGrade = totalWeightFilled > 0 ? Math.round(weightedSum * 100 / totalWeightFilled * 100) / 100 : null;
+  const finalGrade = totalWeightFilled > 0 ? Math.round((weightedSum * 100 / totalWeightFilled) * 100) / 100 : null;
 
-  // Attendance recap
-  const attendanceRecords = await db.attendance.findMany({ where: { studentId, schoolId: student.schoolId! } });
-  const attCounts: Record<string, number> = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
-  for (const a of attendanceRecords) {
-    if (a.status in attCounts) attCounts[a.status]++;
+  // Attendance
+  const attRecs = await db.attendance.findMany({ where: { studentId, schoolId: student.schoolId! } });
+  const attendance = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
+  for (const a of attRecs) {
+    if (a.status in attendance) (attendance as Record<string, number>)[a.status]++;
   }
-  const totalAtt = Object.values(attCounts).reduce((s, v) => s + v, 0);
 
   // 7 Kebiasaan
   const charReports = await db.characterReport.findMany({
     where: { studentId, schoolId: student.schoolId! },
     select: { habit: true, rating: true },
   });
-  const habitMap: Record<string, number> = {};
+  const habits: Record<string, number> = {};
   for (const c of charReports) {
-    if (!habitMap[c.habit] || c.rating > habitMap[c.habit]) habitMap[c.habit] = c.rating;
+    if (!habits[c.habit] || c.rating > habits[c.habit]) habits[c.habit] = c.rating;
   }
 
   // 8 Dimensi Profil Lulusan
@@ -148,182 +172,237 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
     dimAvg[k] = Math.round((v.sum / v.count) * 100) / 100;
   }
 
-  // ═══ BUILD PDF ═══
-  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, bufferPages: true });
-  const chunks: Buffer[] = [];
-  doc.on('data', (c) => chunks.push(c as Buffer));
+  return {
+    student,
+    school,
+    klass,
+    parent,
+    kepsek,
+    components: components.map(c => ({ id: c.id, name: c.name, weight: c.weight, sortOrder: c.sortOrder })),
+    grades,
+    attendance,
+    habits,
+    dimAvg,
+    compResults,
+    finalGrade,
+    totalWeightFilled,
+  };
+}
 
-  let y = MARGIN;
+// ═══════════════════════════════════════════════════════════════
+// RAPOR SISWA PDF (A4)
+// ═══════════════════════════════════════════════════════════════
+
+export async function generateRaporSiswaPDF(studentId: string, term: string): Promise<Buffer> {
+  const d = await fetchRaporData(studentId, term);
+
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pw = doc.internal.pageSize.getWidth();
+  const m = 20; // margin
+  const cw = pw - m * 2; // content width
+  let y = m;
 
   // ── KOP SURAT ──
-  doc.fontSize(12).font('Helvetica-Bold').text(school.name.toUpperCase(), MARGIN, y, { width: COL_W, align: 'center' });
-  y += 16;
-  if (school.npsn) {
-    doc.fontSize(8).font('Helvetica').text(`NPSN: ${school.npsn}`, MARGIN, y, { width: COL_W, align: 'center' });
-    y += 12;
+  doc.setFontSize(14).setFont('helvetica', 'bold');
+  doc.text(d.school?.name?.toUpperCase() || '', pw / 2, y, { align: 'center' });
+  y += 7;
+  doc.setFontSize(9).setFont('helvetica', 'normal');
+  const kopLines: string[] = [];
+  if (d.school?.npsn) kopLines.push('NPSN: ' + d.school.npsn);
+  if (d.school?.address) kopLines.push(d.school.address);
+  if (d.school?.accreditation) kopLines.push('Akreditasi: ' + d.school.accreditation);
+  for (const line of kopLines) {
+    doc.text(line, pw / 2, y, { align: 'center' });
+    y += 5;
   }
-  if (school.address) {
-    doc.fontSize(8).font('Helvetica').text(school.address, MARGIN, y, { width: COL_W, align: 'center' });
-    y += 12;
-  }
-  if (school.accreditation) {
-    doc.fontSize(8).font('Helvetica').text(`Akreditasi: ${school.accreditation}`, MARGIN, y, { width: COL_W, align: 'center' });
-    y += 12;
-  }
-  y += 4;
-  doc.moveTo(MARGIN, y).lineTo(A4_W - MARGIN, y).stroke('#333');
-  y += 4;
-  doc.moveTo(MARGIN, y).lineTo(A4_W - MARGIN, y).stroke('#333');
-  y += 10;
+  y += 2;
+  doc.setLineWidth(0.5).line(m, y, pw - m, y).stroke();
+  y += 1;
+  doc.setLineWidth(0.3).line(m, y, pw - m, y).stroke();
+  y += 6;
 
   // ── JUDUL ──
-  doc.fontSize(12).font('Helvetica-Bold').text('LAPORAN HASIL BELAJAR SISWA', MARGIN, y, { width: COL_W, align: 'center' });
-  y += 16;
-  doc.fontSize(9).font('Helvetica').text(`Periode: ${term}`, MARGIN, y, { width: COL_W, align: 'center' });
-  y += 16;
+  doc.setFontSize(12).setFont('helvetica', 'bold');
+  doc.text('LAPORAN HASIL BELAJAR SISWA', pw / 2, y, { align: 'center' });
+  y += 7;
+  doc.setFontSize(9).setFont('helvetica', 'normal');
+  doc.text('Periode: ' + term, pw / 2, y, { align: 'center' });
+  y += 8;
 
   // ── IDENTITAS SISWA ──
-  const leftX = MARGIN;
-  const rightX = MARGIN + COL_W / 2 + 10;
-  doc.fontSize(9).font('Helvetica-Bold').text('Nama Siswa', leftX, y).font('Helvetica').text(`: ${student.name}`, leftX + 90, y);
-  doc.font('Helvetica-Bold').text('Kelas', rightX, y).font('Helvetica').text(`: ${klass?.name || '-'}`, rightX + 45, y);
-  y += 13;
-  doc.font('Helvetica-Bold').text('NIS/NISN', leftX, y).font('Helvetica').text(`: ${student.nisn || student.nip || '-'}`, leftX + 90, y);
-  doc.font('Helvetica-Bold').text('L/P', rightX, y).font('Helvetica').text(`: ${student.jk === 'L' ? 'Laki-laki' : student.jk === 'P' ? 'Perempuan' : '-'}`, rightX + 45, y);
-  y += 13;
-  doc.font('Helvetica-Bold').text('Orang Tua', leftX, y).font('Helvetica').text(`: ${parent?.name || '-'}`, leftX + 90, y);
-  y += 16;
+  doc.setFontSize(9);
+  const lx = m;
+  const rx = m + cw / 2 + 5;
+  const labelW = 30;
+  const valW = 50;
+
+  doc.setFont('helvetica', 'bold').text('Nama Siswa', lx, y);
+  doc.setFont('helvetica', 'normal').text(': ' + d.student.name, lx + labelW, y);
+  doc.setFont('helvetica', 'bold').text('Kelas', rx, y);
+  doc.setFont('helvetica', 'normal').text(': ' + (d.klass?.name || '-'), rx + labelW - 10, y);
+  y += 6;
+  doc.setFont('helvetica', 'bold').text('NIS/NISN', lx, y);
+  doc.setFont('helvetica', 'normal').text(': ' + (d.student.nisn || d.student.nip || '-'), lx + labelW, y);
+  doc.setFont('helvetica', 'bold').text('L/P', rx, y);
+  doc.setFont('helvetica', 'normal').text(
+    ': ' + (d.student.jk === 'L' ? 'Laki-laki' : d.student.jk === 'P' ? 'Perempuan' : '-'),
+    rx + labelW - 10, y,
+  );
+  y += 6;
+  doc.setFont('helvetica', 'bold').text('Orang Tua', lx, y);
+  doc.setFont('helvetica', 'normal').text(': ' + (d.parent?.name || '-'), lx + labelW, y);
+  y += 8;
 
   // ── TABEL NILAI PER KOMPONEN ──
-  doc.moveTo(MARGIN, y).lineTo(A4_W - MARGIN, y).stroke('#333');
-  y += 3;
-  const colW: number[] = [40, 140, 55, 80, 65, 75];
+  doc.setLineWidth(0.3).line(m, y, pw - m, y).stroke();
+  y += 2;
+  const cols = [12, 60, 22, 25, 25, 20]; // No, Komp, Bobot, Nilai, terbobot, Predikat
   const colLabels = ['No', 'Komponen', 'Bobot(%)', 'Nilai', 'Terbobot', 'Predikat'];
+  let cx = m;
   const colX: number[] = [];
-  let cx = MARGIN;
-  for (let i = 0; i < colW.length; i++) { colX.push(cx); cx += colW[i]; }
-
-  doc.fontSize(8).font('Helvetica-Bold');
-  for (let i = 0; i < colLabels.length; i++) {
-    doc.text(colLabels[i], colX[i] + 2, y, { width: colW[i] - 4 });
+  for (let i = 0; i < cols.length; i++) {
+    colX.push(cx);
+    cx += cols[i];
   }
-  y += 13;
-  doc.moveTo(MARGIN, y).lineTo(A4_W - MARGIN, y).stroke('#999');
+
+  doc.setFontSize(7).setFont('helvetica', 'bold');
+  for (let i = 0; i < colLabels.length; i++) {
+    doc.text(colLabels[i], colX[i] + 1, y, { width: cols[i] - 2 });
+  }
+  y += 5;
+  doc.setLineWidth(0.2).line(m, y, pw - m, y).stroke();
   y += 2;
 
-  doc.font('Helvetica');
-  compResults.forEach((r, idx) => {
-    doc.text(String(idx + 1), colX[0] + 2, y, { width: colW[0] - 4 });
-    doc.text(r.name, colX[1] + 2, y, { width: colW[1] - 4 });
-    doc.text(String(r.weight), colX[2] + 2, y, { width: colW[2] - 4, align: 'center' });
-    doc.text(r.score !== null ? String(r.score) : '-', colX[3] + 2, y, { width: colW[3] - 4, align: 'center' });
-    doc.text(r.weighted !== null ? String(r.weighted) : '-', colX[4] + 2, y, { width: colW[4] - 4, align: 'center' });
-    doc.text(predikat(r.score), colX[5] + 2, y, { width: colW[5] - 4, align: 'center' });
-    y += 12;
+  doc.setFontSize(7).setFont('helvetica', 'normal');
+  d.compResults.forEach((r, idx) => {
+    doc.text(String(idx + 1), colX[0] + 1, y);
+    doc.text(r.name, colX[1] + 1, y);
+    doc.text(String(r.weight), colX[2] + 1, y, { align: 'center', width: cols[2] - 2 });
+    doc.text(r.score !== null ? String(r.score) : '-', colX[3] + 1, y, { align: 'center', width: cols[3] - 2 });
+    doc.text(r.weighted !== null ? String(r.weighted) : '-', colX[4] + 1, y, { align: 'center', width: cols[4] - 2 });
+    doc.text(predikat(r.score), colX[5] + 1, y, { align: 'center', width: cols[5] - 2 });
+    y += 5;
   });
 
-  doc.moveTo(MARGIN, y).lineTo(A4_W - MARGIN, y).stroke('#999');
-  y += 3;
-  doc.font('Helvetica-Bold').fontSize(8);
-  doc.text('Nilai Akhir (Normalisasi)', MARGIN + 2, y);
-  doc.text(`${finalGrade ?? '-'}`, colX[3] + 2, y, { width: colW[3] - 4, align: 'center' });
-  doc.text(predikat(finalGrade), colX[5] + 2, y, { width: colW[5] - 4, align: 'center' });
-  y += 14;
-  doc.font('Helvetica').fontSize(7);
-  doc.fillColor('#666').text(
-    totalWeightFilled > 0 && totalWeightFilled < 100
-      ? `* Dinormalisasi terhadap ${totalWeightFilled}% bobot terisi (komponen kosong diabaikan)`
-      : '', MARGIN, y, { width: COL_W }
-  );
-  doc.fillColor('#000');
-  y += 14;
+  doc.setLineWidth(0.2).line(m, y, pw - m, y).stroke();
+  y += 2;
+  doc.setFontSize(7).setFont('helvetica', 'bold');
+  doc.text('Nilai Akhir (Normalisasi)', m + 1, y);
+  doc.text(d.finalGrade !== null ? String(d.finalGrade) : '-', colX[3] + 1, y, { align: 'center', width: cols[3] - 2 });
+  doc.text(predikat(d.finalGrade), colX[5] + 1, y, { align: 'center', width: cols[5] - 2 });
+  y += 5;
+
+  if (d.totalWeightFilled > 0 && d.totalWeightFilled < 100) {
+    doc.setFontSize(6).setFont('helvetica', 'normal');
+    doc.text('* Dinormalisasi terhadap ' + d.totalWeightFilled + '% bobot terisi', m + 1, y);
+    y += 4;
+  }
+  y += 4;
 
   // ── KEHADIRAN ──
-  doc.fontSize(9).font('Helvetica-Bold').text('Rekap Kehadiran', MARGIN, y);
-  y += 13;
-  doc.font('Helvetica').fontSize(8);
-  doc.text(`Hadir: ${attCounts.hadir} hari`, MARGIN + 10, y);
-  doc.text(`Izin: ${attCounts.izin} hari`, MARGIN + 140, y);
-  doc.text(`Sakit: ${attCounts.sakit} hari`, MARGIN + 250, y);
-  doc.text(`Alpa: ${attCounts.alpa} hari`, MARGIN + 360, y);
-  y += 16;
+  doc.setFontSize(9).setFont('helvetica', 'bold');
+  doc.text('Rekap Kehadiran', m, y);
+  y += 6;
+  doc.setFontSize(8).setFont('helvetica', 'normal');
+  doc.text('Hadir: ' + d.attendance.hadir + ' hari', m + 5, y);
+  doc.text('Izin: ' + d.attendance.izin + ' hari', m + 70, y);
+  doc.text('Sakit: ' + d.attendance.sakit + ' hari', m + 120, y);
+  doc.text('Alpa: ' + d.attendance.alpa + ' hari', m + 170, y);
+  y += 8;
 
   // ── 7 KEBIASAAN ──
-  doc.fontSize(9).font('Helvetica-Bold').text('Capaian 7 Kebiasaan Anak Indonesia Hebat', MARGIN, y);
-  y += 12;
-  const habits = Object.keys(HABIT_LABELS);
-  if (habits.some(h => habitMap[h])) {
-    doc.font('Helvetica').fontSize(7);
-    let hx = MARGIN + 10;
-    let hy = y;
-    for (const h of habits) {
-      const r = habitMap[h];
+  doc.setFontSize(9).setFont('helvetica', 'bold');
+  doc.text('Capaian 7 Kebiasaan Anak Indonesia Hebat', m, y);
+  y += 6;
+  const habKeys = Object.keys(HABIT_LABELS);
+  if (habKeys.some(h => d.habits[h])) {
+    doc.setFontSize(7).setFont('helvetica', 'normal');
+    let col = 0;
+    let rowY = y;
+    for (const h of habKeys) {
+      const r = d.habits[h];
       const label = HABIT_LABELS[h] || h;
-      const val = r ? HABIT_RATING[r] || `${r}` : '-';
-      doc.text(`${label}: ${val}`, hx, hy, { width: 230 });
-      hy += 10;
-      if (hy > y + 40) { hy = y; hx += 240; }
+      const val = r ? HABIT_RATING[r] || String(r) : '-';
+      const xPos = m + 5 + col * 85;
+      doc.text(label + ': ' + val, xPos, rowY);
+      rowY += 4.5;
+      if (rowY > y + 18) {
+        rowY = y;
+        col++;
+      }
     }
-    y += 50;
+    y += 22;
   } else {
-    doc.font('Helvetica').fontSize(8).fillColor('#999').text('Belum ada data kebiasaan', MARGIN + 10, y);
-    doc.fillColor('#000');
-    y += 14;
+    doc.setFontSize(8).setFont('helvetica', 'normal');
+    doc.setTextColor(150);
+    doc.text('Belum ada data kebiasaan', m + 5, y);
+    doc.setTextColor(0);
+    y += 6;
   }
+  y += 2;
 
   // ── 8 DIMENSI PROFIL LULUSAN ──
-  doc.fontSize(9).font('Helvetica-Bold').text('Profil Lulusan (8 Dimensi P5)', MARGIN, y);
-  y += 12;
-  const dims = Object.keys(DIM_LABELS);
-  if (dims.some(d => dimAvg[d] !== undefined)) {
-    doc.font('Helvetica').fontSize(7);
-    let dx = MARGIN + 10;
-    let dy = y;
-    for (const d of dims) {
-      const avg = dimAvg[d];
-      const label = DIM_SHORT[d] || d;
-      const val = avg !== undefined ? `${avg}` : '-';
-      doc.text(`${label}: ${val}`, dx, dy, { width: 230 });
-      dy += 10;
-      if (dy > y + 40) { dy = y; dx += 240; }
+  doc.setFontSize(9).setFont('helvetica', 'bold');
+  doc.text('Profil Lulusan (8 Dimensi P5)', m, y);
+  y += 6;
+  const dimKeys = Object.keys(DIM_LABELS);
+  if (dimKeys.some(dim => d.dimAvg[dim] !== undefined)) {
+    doc.setFontSize(7).setFont('helvetica', 'normal');
+    let col = 0;
+    let rowY = y;
+    for (const dim of dimKeys) {
+      const avg = d.dimAvg[dim];
+      const label = DIM_SHORT[dim] || dim;
+      const val = avg !== undefined ? String(avg) : '-';
+      const xPos = m + 5 + col * 85;
+      doc.text(label + ': ' + val, xPos, rowY);
+      rowY += 4.5;
+      if (rowY > y + 18) {
+        rowY = y;
+        col++;
+      }
     }
-    y += 50;
+    y += 22;
   } else {
-    doc.font('Helvetica').fontSize(8).fillColor('#999').text('Belum ada data profil lulusan', MARGIN + 10, y);
-    doc.fillColor('#000');
-    y += 14;
+    doc.setFontSize(8).setFont('helvetica', 'normal');
+    doc.setTextColor(150);
+    doc.text('Belum ada data profil lulusan', m + 5, y);
+    doc.setTextColor(0);
+    y += 6;
   }
+  y += 4;
 
   // ── CATATAN GURU ──
-  doc.fontSize(9).font('Helvetica-Bold').text('Catatan Guru:', MARGIN, y);
-  y += 13;
-  doc.font('Helvetica').fontSize(8).fillColor('#999').text('(Belum diisi)', MARGIN + 10, y);
-  doc.fillColor('#000');
-  y += 20;
+  doc.setFontSize(9).setFont('helvetica', 'bold');
+  doc.text('Catatan Guru:', m, y);
+  y += 6;
+  doc.setFontSize(8).setFont('helvetica', 'normal');
+  doc.setTextColor(150);
+  doc.text('(Belum diisi)', m + 5, y);
+  doc.setTextColor(0);
+  y += 8;
 
   // ── TANDA TANGAN ──
-  if (y > A4_H - 100) { doc.addPage(); y = MARGIN; }
-  y = Math.max(y, A4_H - 100);
+  const pageH = doc.internal.pageSize.getHeight();
+  y = Math.max(y, pageH - 50);
 
-  const sigY = y;
-  const sigW = COL_W / 3;
-  doc.fontSize(8).font('Helvetica');
-  doc.text('Wali Kelas,', MARGIN, sigY, { width: sigW, align: 'center' });
-  doc.text('Orang Tua,', MARGIN + sigW, sigY, { width: sigW, align: 'center' });
-  doc.text('Kepala Sekolah,', MARGIN + sigW * 2, sigY, { width: sigW, align: 'center' });
+  const sigW = cw / 3;
+  doc.setFontSize(8).setFont('helvetica', 'normal');
+  doc.text('Wali Kelas,', m, y, { width: sigW, align: 'center' });
+  doc.text('Orang Tua,', m + sigW, y, { width: sigW, align: 'center' });
+  doc.text('Kepala Sekolah,', m + sigW * 2, y, { width: sigW, align: 'center' });
 
-  const signGap = 50;
-  doc.fontSize(9).font('Helvetica-Bold');
-  doc.text('(____________________)', MARGIN, sigY + signGap, { width: sigW, align: 'center' });
-  doc.text('(____________________)', MARGIN + sigW, sigY + signGap, { width: sigW, align: 'center' });
-  doc.text(kepsek?.name || '(____________________)', MARGIN + sigW * 2, sigY + signGap, { width: sigW, align: 'center' });
-  if (kepsek?.nip) {
-    doc.font('Helvetica').fontSize(7);
-    doc.text(`NIP. ${kepsek.nip}`, MARGIN + sigW * 2, sigY + signGap + 14, { width: sigW, align: 'center' });
+  y += 22;
+  doc.setFontSize(9).setFont('helvetica', 'bold');
+  doc.text('(____________________)', m, y, { width: sigW, align: 'center' });
+  doc.text('(____________________)', m + sigW, y, { width: sigW, align: 'center' });
+  doc.text(d.kepsek?.name || '(____________________)', m + sigW * 2, y, { width: sigW, align: 'center' });
+  if (d.kepsek?.nip) {
+    doc.setFontSize(7).setFont('helvetica', 'normal');
+    doc.text('NIP. ' + d.kepsek.nip, m + sigW * 2, y + 5, { width: sigW, align: 'center' });
   }
 
-  doc.end();
-  return Buffer.concat(chunks);
+  return doc.output('arraybuffer') as unknown as Buffer;
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -331,72 +410,33 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
 // ═══════════════════════════════════════════════════════════════
 
 export async function getRaporSiswaData(studentId: string, term: string) {
-  const student = await db.user.findUnique({
-    where: { id: studentId },
-    select: { id: true, name: true, nisn: true, nip: true, schoolId: true, classId: true, parentId: true, jk: true },
-  });
-  if (!student) throw new Error('Siswa tidak ditemukan');
-
-  const school = await db.school.findUnique({ where: { id: student.schoolId! } });
-  const klass = student.classId ? await db.class.findUnique({ where: { id: student.classId } }) : null;
-  const parent = student.parentId ? await db.user.findUnique({ where: { id: student.parentId }, select: { name: true } }) : null;
-  const kepsek = await db.user.findFirst({ where: { role: 'KEPALA_SEKOLAH', schoolId: student.schoolId!, isActive: true }, select: { name: true, nip: true } });
-
-  const components = await db.gradeComponent.findMany({ where: { schoolId: student.schoolId!, term }, orderBy: { sortOrder: 'asc' } });
-  const grades = await db.studentGrade.findMany({ where: { studentId, term } });
-
-  const best: Record<string, { score: number; maxScore: number; source: string }> = {};
-  for (const g of grades) {
-    if (!best[g.componentId] || g.score > best[g.componentId].score) best[g.componentId] = { score: g.score, maxScore: g.maxScore, source: g.source };
-  }
-
-  let weightedSum = 0;
-  let totalWeightFilled = 0;
-  const compResults = components.map(comp => {
-    const g = best[comp.id];
-    if (g) {
-      const normalized = (g.score / Math.max(g.maxScore, 1)) * 100;
-      const weighted = (normalized * comp.weight) / 100;
-      weightedSum += weighted;
-      totalWeightFilled += comp.weight;
-      return { name: comp.name, weight: comp.weight, score: g.score, weighted: Math.round(weighted * 100) / 100 };
-    }
-    return { name: comp.name, weight: comp.weight, score: null, weighted: null };
-  });
-
-  const finalGrade = totalWeightFilled > 0 ? Math.round(weightedSum * 100 / totalWeightFilled * 100) / 100 : null;
-
-  const attRecs = await db.attendance.findMany({ where: { studentId, schoolId: student.schoolId! } });
-  const attendance = { hadir: 0, izin: 0, sakit: 0, alpa: 0 };
-  for (const a of attRecs) { if (a.status in attendance) (attendance as Record<string, number>)[a.status]++; }
-
-  const charReports = await db.characterReport.findMany({ where: { studentId, schoolId: student.schoolId! }, select: { habit: true, rating: true } });
-  const habits: Record<string, number> = {};
-  for (const c of charReports) { if (!habits[c.habit] || c.rating > habits[c.habit]) habits[c.habit] = c.rating; }
-
-  const compAssess = await db.competencyAssessment.findMany({ where: { studentId, term }, select: { dimension: true, rating: true } });
-  const dimMap: Record<string, { sum: number; count: number }> = {};
-  for (const a of compAssess) {
-    if (!dimMap[a.dimension]) dimMap[a.dimension] = { sum: 0, count: 0 };
-    dimMap[a.dimension].sum += a.rating;
-    dimMap[a.dimension].count++;
-  }
-  const profilLulusan: Record<string, number> = {};
-  for (const [k, v] of Object.entries(dimMap)) profilLulusan[k] = Math.round((v.sum / v.count) * 100) / 100;
-
+  const d = await fetchRaporData(studentId, term);
   return {
-    school: { name: school?.name, npsn: school?.npsn, address: school?.address, province: school?.province, city: school?.city, accreditation: school?.accreditation },
-    student: { name: student.name, nisn: student.nisn, kelas: klass?.name, jk: student.jk, ortuName: parent?.name },
-    kepsek: { name: kepsek?.name, nip: kepsek?.nip },
+    school: {
+      name: d.school?.name,
+      npsn: d.school?.npsn,
+      address: d.school?.address,
+      province: d.school?.province,
+      city: d.school?.city,
+      accreditation: d.school?.accreditation,
+    },
+    student: {
+      name: d.student.name,
+      nisn: d.student.nisn,
+      kelas: d.klass?.name,
+      jk: d.student.jk,
+      ortuName: d.parent?.name,
+    },
+    kepsek: { name: d.kepsek?.name, nip: d.kepsek?.nip },
     term,
-    components: compResults,
-    finalGrade,
-    totalWeightFilled,
-    totalWeightAll: components.reduce((s, c) => s + c.weight, 0),
-    predikat: predikat(finalGrade),
-    attendance,
-    habits,
-    profilLulusan,
+    components: d.compResults,
+    finalGrade: d.finalGrade,
+    totalWeightFilled: d.totalWeightFilled,
+    totalWeightAll: d.components.reduce((s, c) => s + c.weight, 0),
+    predikat: predikat(d.finalGrade),
+    attendance: d.attendance,
+    habits: d.habits,
+    profilLulusan: d.dimAvg,
   };
 }
 
@@ -405,7 +445,10 @@ export async function getRaporSiswaData(studentId: string, term: string) {
 // ═══════════════════════════════════════════════════════════════
 
 export async function getRekapKelasData(classId: string, term: string) {
-  const klass = await db.class.findUnique({ where: { id: classId }, include: { school: { select: { id: true, name: true } } } });
+  const klass = await db.class.findUnique({
+    where: { id: classId },
+    include: { school: { select: { id: true, name: true } } },
+  });
   if (!klass) throw new Error('Kelas tidak ditemukan');
 
   const students = await db.user.findMany({
@@ -414,38 +457,55 @@ export async function getRekapKelasData(classId: string, term: string) {
     orderBy: { name: 'asc' },
   });
 
-  const components = await db.gradeComponent.findMany({ where: { schoolId: klass.schoolId, term }, orderBy: { sortOrder: 'asc' } });
+  const components = await db.gradeComponent.findMany({
+    where: { schoolId: klass.schoolId, term },
+    orderBy: { sortOrder: 'asc' },
+  });
   const compIds = components.map(c => c.id);
 
-  const allGrades = compIds.length > 0
-    ? await db.studentGrade.findMany({ where: { studentId: { in: students.map(s => s.id) }, componentId: { in: compIds }, term } })
-    : [];
+  const allGrades =
+    compIds.length > 0
+      ? await db.studentGrade.findMany({
+          where: { studentId: { in: students.map(s => s.id) }, componentId: { in: compIds }, term },
+        })
+      : [];
 
   const studentResults = students.map(student => {
     const sGrades = allGrades.filter(g => g.studentId === student.id);
-    const best: Record<string, number> = {};
+    const best: Record<string, { score: number; maxScore: number }> = {};
     for (const g of sGrades) {
-      if (!best[g.componentId] || g.score > best[g.componentId]) best[g.componentId] = g.score;
+      if (!best[g.componentId] || g.score > best[g.componentId].score)
+        best[g.componentId] = { score: g.score, maxScore: g.maxScore };
     }
 
-    let wSum = 0, twf = 0;
+    let wSum = 0;
+    let twf = 0;
     for (const comp of components) {
       const s = best[comp.id];
-      if (s !== undefined) {
-        wSum += (s / 100) * comp.weight;
+      if (s) {
+        const norm = (s.score / Math.max(s.maxScore, 1)) * 100;
+        wSum += (norm * comp.weight) / 100;
         twf += comp.weight;
       }
     }
-    const fg = twf > 0 ? Math.round(wSum * 100 / twf * 100) / 100 : null;
+    const fg = twf > 0 ? Math.round((wSum * 100 / twf) * 100) / 100 : null;
     return { studentId: student.id, name: student.name, nisn: student.nisn, finalGrade: fg, predikat: predikat(fg) };
   });
 
   const grades = studentResults.map(r => r.finalGrade).filter((g): g is number => g !== null);
-  const avg = grades.length > 0 ? Math.round(grades.reduce((s, g) => s + g, 0) / grades.length * 100) / 100 : null;
+  const avg = grades.length > 0 ? Math.round((grades.reduce((s, g) => s + g, 0) / grades.length) * 100) / 100 : null;
   const max = grades.length > 0 ? Math.max(...grades) : null;
   const min = grades.length > 0 ? Math.min(...grades) : null;
 
-  return { kelas: { id: klass.id, name: klass.name, school: klass.school }, term, students: studentResults, rataRata: avg, nilaiTertinggi: max, nilaiTerendah: min, jumlahSiswa: students.length };
+  return {
+    kelas: { id: klass.id, name: klass.name, school: klass.school },
+    term,
+    students: studentResults,
+    rataRata: avg,
+    nilaiTertinggi: max,
+    nilaiTerendah: min,
+    jumlahSiswa: students.length,
+  };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -453,7 +513,10 @@ export async function getRekapKelasData(classId: string, term: string) {
 // ═══════════════════════════════════════════════════════════════
 
 export async function getLeggerData(classId: string, term: string) {
-  const klass = await db.class.findUnique({ where: { id: classId }, include: { school: { select: { id: true, name: true } } } });
+  const klass = await db.class.findUnique({
+    where: { id: classId },
+    include: { school: { select: { id: true, name: true } } },
+  });
   if (!klass) throw new Error('Kelas tidak ditemukan');
 
   const students = await db.user.findMany({
@@ -462,40 +525,59 @@ export async function getLeggerData(classId: string, term: string) {
     orderBy: { name: 'asc' },
   });
 
-  const components = await db.gradeComponent.findMany({ where: { schoolId: klass.schoolId, term }, orderBy: { sortOrder: 'asc' } });
+  const components = await db.gradeComponent.findMany({
+    where: { schoolId: klass.schoolId, term },
+    orderBy: { sortOrder: 'asc' },
+  });
   const compIds = components.map(c => c.id);
 
-  const allGrades = compIds.length > 0
-    ? await db.studentGrade.findMany({ where: { studentId: { in: students.map(s => s.id) }, componentId: { in: compIds }, term } })
-    : [];
+  const allGrades =
+    compIds.length > 0
+      ? await db.studentGrade.findMany({
+          where: { studentId: { in: students.map(s => s.id) }, componentId: { in: compIds }, term },
+        })
+      : [];
 
   const rows = students.map(student => {
     const sGrades = allGrades.filter(g => g.studentId === student.id);
-    const best: Record<string, number> = {};
+    const best: Record<string, { score: number; maxScore: number }> = {};
     for (const g of sGrades) {
-      if (!best[g.componentId] || g.score > best[g.componentId]) best[g.componentId] = g.score;
+      if (!best[g.componentId] || g.score > best[g.componentId].score)
+        best[g.componentId] = { score: g.score, maxScore: g.maxScore };
     }
 
-    let wSum = 0, twf = 0;
+    let wSum = 0;
+    let twf = 0;
     const compScores: Record<string, number | null> = {};
     for (const comp of components) {
       const s = best[comp.id];
-      compScores[comp.id] = s !== undefined ? s : null;
-      if (s !== undefined) { wSum += (s / 100) * comp.weight; twf += comp.weight; }
+      compScores[comp.id] = s ? (s.score / Math.max(s.maxScore, 1)) * 100 : null;
+      if (s) {
+        const norm = (s.score / Math.max(s.maxScore, 1)) * 100;
+        wSum += (norm * comp.weight) / 100;
+        twf += comp.weight;
+      }
     }
-    const fg = twf > 0 ? Math.round(wSum * 100 / twf * 100) / 100 : null;
-    return { studentId: student.id, name: student.name, nisn: student.nisn, scores: compScores, finalGrade: fg, predikat: predikat(fg) };
+    const fg = twf > 0 ? Math.round((wSum * 100 / twf) * 100) / 100 : null;
+    return {
+      studentId: student.id,
+      name: student.name,
+      nisn: student.nisn,
+      scores: compScores,
+      finalGrade: fg,
+      predikat: predikat(fg),
+    };
   });
 
   // Rata-rata per komponen
   const compAvgs: Record<string, number> = {};
   for (const comp of components) {
     const vals = rows.map(r => r.scores[comp.id]).filter((v): v is number => v !== null);
-    compAvgs[comp.id] = vals.length > 0 ? Math.round(vals.reduce((s, v) => s + v, 0) / vals.length * 100) / 100 : 0;
+    compAvgs[comp.id] = vals.length > 0 ? Math.round((vals.reduce((s, v) => s + v, 0) / vals.length) * 100) / 100 : 0;
   }
 
   const allFg = rows.map(r => r.finalGrade).filter((g): g is number => g !== null);
-  const avgFinal = allFg.length > 0 ? Math.round(allFg.reduce((s, g) => s + g, 0) / allFg.length * 100) / 100 : null;
+  const avgFinal = allFg.length > 0 ? Math.round((allFg.reduce((s, g) => s + g, 0) / allFg.length) * 100) / 100 : null;
 
   return {
     kelas: { id: klass.id, name: klass.name, school: klass.school },
@@ -508,82 +590,101 @@ export async function getLeggerData(classId: string, term: string) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// LEGGER PDF
+// LEGGER PDF (A4, landscape)
 // ═══════════════════════════════════════════════════════════════
 
 export async function generateLeggerPDF(classId: string, term: string): Promise<Buffer> {
   const data = await getLeggerData(classId, term);
 
-  const doc = new PDFDocument({ size: 'A4', margin: MARGIN, bufferPages: true });
-  const chunks: Buffer[] = [];
-  doc.on('data', (c) => chunks.push(c as Buffer));
+  const numComps = data.components.length;
+  const doc = new jsPDF('l', 'mm', 'a4'); // landscape
+  const pw = doc.internal.pageSize.getWidth();
+  const ph = doc.internal.pageSize.getHeight();
+  const m = 10;
+  const cw = pw - m * 2;
 
-  let y = MARGIN;
+  let y = m;
 
   // Header
-  doc.fontSize(10).font('Helvetica-Bold').text(`LEGGER NILAI - ${data.kelas.name}`, MARGIN, y, { width: COL_W, align: 'center' });
-  y += 14;
-  doc.fontSize(8).font('Helvetica').text(`${data.kelas.school.name} | Periode: ${term}`, MARGIN, y, { width: COL_W, align: 'center' });
-  y += 16;
+  doc.setFontSize(11).setFont('helvetica', 'bold');
+  doc.text('LEGGER NILAI - ' + data.kelas.name, pw / 2, y, { align: 'center' });
+  y += 6;
+  doc.setFontSize(8).setFont('helvetica', 'normal');
+  doc.text(data.kelas.school.name + ' | Periode: ' + term, pw / 2, y, { align: 'center' });
+  y += 8;
 
   // Table header
-  const numComps = data.components.length;
- const fixedCols = [35, 120, 50]; // No, Nama, NISN
-  const compColW = Math.min(45, (COL_W - fixedCols.reduce((s, v) => s + v, 0) - 50) / Math.max(numComps, 1));
-  const totalW = fixedCols.reduce((s, v) => s + v, 0) + compColW * numComps + 50;
-  const startX = MARGIN + Math.max(0, (COL_W - totalW) / 2);
+  const fixedCols = [8, 45, 22]; // No, Nama, NISN
+  const compColW = Math.min(20, (cw - fixedCols.reduce((s, v) => s + v, 0) - 20) / Math.max(numComps, 1));
+  const naColW = 18;
+  const pColW = 10;
+  const totalW = fixedCols.reduce((s, v) => s + v, 0) + compColW * numComps + naColW + pColW;
+  const startX = m + Math.max(0, (cw - totalW) / 2);
 
   let cx = startX;
-  doc.fontSize(6).font('Helvetica-Bold');
-  doc.text('No', cx, y, { width: fixedCols[0] - 2 }); cx += fixedCols[0];
-  doc.text('Nama', cx, y, { width: fixedCols[1] - 2 }); cx += fixedCols[1];
-  doc.text('NISN', cx, y, { width: fixedCols[2] - 2 }); cx += fixedCols[2];
-  for (const comp of data.components) {
-    const label = comp.name.length > 6 ? comp.name.substring(0, 6) : comp.name;
-    doc.text(label, cx, y, { width: compColW - 2, align: 'center' });
-    cx += compColW;
+  doc.setFontSize(6).setFont('helvetica', 'bold');
+  const headerLabels = [
+    'No',
+    'Nama',
+    'NISN',
+    ...data.components.map(c => (c.name.length > 6 ? c.name.substring(0, 6) : c.name)),
+    'NA',
+    'P',
+  ];
+  const colWidths = [...fixedCols, ...Array(numComps).fill(compColW), naColW, pColW];
+  for (let i = 0; i < headerLabels.length; i++) {
+    const align = i >= 3 && i < headerLabels.length - 2 ? 'center' : 'left';
+    doc.text(headerLabels[i], cx + 1, y, { width: colWidths[i] - 2, align });
+    cx += colWidths[i];
   }
-  doc.text('NA', cx, y, { width: 45, align: 'center' }); cx += 45;
-  doc.text('P', cx, y, { width: 20, align: 'center' });
-  y += 12;
-  doc.moveTo(startX, y).lineTo(startX + totalW, y).stroke('#333');
+  y += 4;
+  doc.setLineWidth(0.3).line(startX, y, startX + totalW, y).stroke();
   y += 2;
 
   // Rows
-  doc.font('Helvetica').fontSize(6);
-  for (const row of data.rows) {
+  doc.setFontSize(6).setFont('helvetica', 'normal');
+  for (let ri = 0; ri < data.rows.length; ri++) {
+    const row = data.rows[ri];
     cx = startX;
-    doc.text(String(data.rows.indexOf(row) + 1), cx, y, { width: fixedCols[0] - 2 }); cx += fixedCols[0];
-    doc.text(row.name, cx, y, { width: fixedCols[1] - 2 }); cx += fixedCols[1];
-    doc.text(row.nisn || '-', cx, y, { width: fixedCols[2] - 2 }); cx += fixedCols[2];
-    for (const comp of data.components) {
-      const s = row.scores[comp.id];
-      doc.text(s !== null ? String(s) : '-', cx, y, { width: compColW - 2, align: 'center' });
+    doc.text(String(ri + 1), cx + 1, y);
+    cx += fixedCols[0];
+    doc.text(row.name, cx + 1, y);
+    cx += fixedCols[1];
+    doc.text(row.nisn || '-', cx + 1, y);
+    cx += fixedCols[2];
+    for (let ci = 0; ci < numComps; ci++) {
+      const s = row.scores[data.components[ci].id];
+      doc.text(s !== null ? String(Math.round(s)) : '-', cx + 1, y, { width: compColW - 2, align: 'center' });
       cx += compColW;
     }
-    doc.text(row.finalGrade !== null ? String(row.finalGrade) : '-', cx, y, { width: 45, align: 'center' }); cx += 45;
-    doc.text(row.predikat, cx, y, { width: 20, align: 'center' });
-    y += 10;
-    if (y > A4_H - 40) { doc.addPage(); y = MARGIN; }
+    doc.text(row.finalGrade !== null ? String(row.finalGrade) : '-', cx + 1, y, { width: naColW - 2, align: 'center' });
+    cx += naColW;
+    doc.text(row.predikat, cx + 1, y, { width: pColW - 2, align: 'center' });
+    y += 5;
+    if (y > ph - 25) {
+      doc.addPage();
+      y = m;
+    }
   }
 
   // Average row
-  doc.moveTo(startX, y).lineTo(startX + totalW, y).stroke('#333');
-  y += 3;
-  doc.font('Helvetica-Bold').fontSize(6);
+  doc.setLineWidth(0.3).line(startX, y, startX + totalW, y).stroke();
+  y += 2;
+  doc.setFontSize(6).setFont('helvetica', 'bold');
   cx = startX;
-  doc.text('', cx, y, { width: fixedCols[0] - 2 }); cx += fixedCols[0];
-  doc.text('Rata-rata', cx, y, { width: fixedCols[1] - 2 }); cx += fixedCols[1];
-  doc.text('', cx, y, { width: fixedCols[2] - 2 }); cx += fixedCols[2];
-  for (const comp of data.components) {
-    doc.text(String(data.rataRataPerKomponen[comp.id] || 0), cx, y, { width: compColW - 2, align: 'center' });
+  doc.text('', cx + 1, y);
+  cx += fixedCols[0];
+  doc.text('Rata-rata', cx + 1, y);
+  cx += fixedCols[1];
+  doc.text('', cx + 1, y);
+  cx += fixedCols[2];
+  for (let ci = 0; ci < numComps; ci++) {
+    doc.text(String(data.rataRataPerKomponen[data.components[ci].id] || 0), cx + 1, y, { width: compColW - 2, align: 'center' });
     cx += compColW;
   }
-  doc.text(data.rataRataFinal !== null ? String(data.rataRataFinal) : '-', cx, y, { width: 45, align: 'center' });
-  y += 10;
+  doc.text(data.rataRataFinal !== null ? String(data.rataRataFinal) : '-', cx + 1, y, { width: naColW - 2, align: 'center' });
 
-  doc.end();
-  return Buffer.concat(chunks);
+  return doc.output('arraybuffer') as unknown as Buffer;
 }
 
 export { predikat, HABIT_LABELS, HABIT_RATING, DIM_LABELS, DIM_SHORT };

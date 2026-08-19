@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  serverExternalPackages: ["better-sqlite3"],
+  serverExternalPackages: ["better-sqlite3", "pdfkit"],
   allowedDevOrigins: ["*"],
   // Disable source maps in production to reduce build size & memory
   productionBrowserSourceMaps: false,

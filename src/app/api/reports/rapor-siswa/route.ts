@@ -26,6 +26,15 @@ export async function GET(request: Request) {
       if (!child) return NextResponse.json({ error: 'Bukan anak Anda' }, { status: 403 });
     }
 
+    // School isolation for GURU, KEPALA_SEKOLAH, ADMIN_SCHOOL
+    if (['GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL'].includes(auth.role) && auth.schoolId) {
+      const { db } = await import('@/lib/db');
+      const student = await db.user.findUnique({ where: { id: studentId }, select: { schoolId: true } });
+      if (!student || student.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
+
     if (format === 'pdf') {
       const pdf = await generateRaporSiswaPDF(studentId, term);
       return new NextResponse(new Uint8Array(pdf), {
