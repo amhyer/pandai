@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireRole, AuthError } from '@/lib/auth';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
 
 // ─── GET: List grade components ───

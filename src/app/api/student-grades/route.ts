@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     const component = await db.gradeComponent.findUnique({ where: { id: componentId } });
     if (!component) return NextResponse.json({ error: 'Komponen tidak ditemukan' }, { status: 404 });
 
-    const targetSchoolId = auth.role === 'SUPER_ADMIN' ? component.schoolId : auth.schoolId;
+    const targetSchoolId = (auth.role === 'SUPER_ADMIN' ? component.schoolId : auth.schoolId)!;
     if (auth.role !== 'SUPER_ADMIN' && component.schoolId !== auth.schoolId) {
       return NextResponse.json({ error: 'Akses ditolak — komponen dari sekolah lain' }, { status: 403 });
     }
