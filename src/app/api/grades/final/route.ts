@@ -120,8 +120,8 @@ async function calcStudentFinalGrades(
     let weightedScore: number | null = null;
 
     if (g) {
-      normalizedScore = Math.round((g.score / Math.max(g.maxScore, 1)) * 10000) / 100;
-      weightedScore = Math.round(normalizedScore * comp.weight / 10000) * 100 / 100;
+      normalizedScore = Math.round((g.score / Math.max(g.maxScore, 1)) * 100 * 100) / 100;
+      weightedScore = Math.round((normalizedScore * comp.weight) / 100 * 100) / 100;
       totalWeightFilled += comp.weight;
       weightedSum += weightedScore;
       filledCount++;
