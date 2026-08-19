@@ -102,6 +102,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-jurnal': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruJurnalView }))),
   'guru-pandai-ai': React.lazy(() => import('@/components/views/guru-ai-views').then(m => ({ default: m.GuruPandaiAiView }))),
   'guru-kotak-masukan': React.lazy(() => import('@/components/views/feedback/kotak-masukan-view').then(m => ({ default: m.KotakMasukanView }))),
+  'guru-profil-lulusan': React.lazy(() => import('@/components/views/competency/profil-lulusan-view').then(m => ({ default: m.ProfilLulusanView }))),
 
   // SISWA — new views
   'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
@@ -122,12 +123,14 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'ortu-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuKarakterView }))),
   'ortu-rekap-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuRekapKarakterView }))),
   'ortu-kotak-masukan': React.lazy(() => import('@/components/views/feedback/kotak-masukan-view').then(m => ({ default: m.KotakMasukanView }))),
+  'ortu-profil-lulusan': React.lazy(() => import('@/components/views/competency/profil-lulusan-view').then(m => ({ default: m.ProfilLulusanView }))),
 
   // KEPALA_SEKOLAH
   'kepsek-rekap-kelas': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
   'kepsek-rekap-guru': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
   'kepsek-rekap-karakter': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
   'kepsek-kotak-masukan': React.lazy(() => import('@/components/views/feedback/kotak-masukan-view').then(m => ({ default: m.KotakMasukanView }))),
+  'kepsek-profil-lulusan': React.lazy(() => import('@/components/views/competency/profil-lulusan-view').then(m => ({ default: m.ProfilLulusanView }))),
 
   // Shared
   'profile': React.lazy(() => import('@/components/views/shared-views').then(m => ({ default: m.ProfileView }))),
