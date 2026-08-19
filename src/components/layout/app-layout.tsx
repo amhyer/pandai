@@ -262,6 +262,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         items: [
           { label: 'Profil Lulusan', view: 'guru-profil-lulusan' as ViewType, icon: BarChart3 },
           { label: 'Komponen Nilai', view: 'guru-komponen-nilai' as ViewType, icon: Calculator },
+          { label: 'Laporan & Rapor', view: 'guru-rapor' as ViewType, icon: FileText },
         ],
       },
     ];
@@ -392,6 +393,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         items: [
           { label: 'Profil Lulusan', view: 'ortu-profil-lulusan' as ViewType, icon: BarChart3 },
           { label: 'Nilai Akhir', view: 'ortu-nilai-akhir' as ViewType, icon: Calculator },
+          { label: 'Rapor Anak', view: 'ortu-rapor' as ViewType, icon: FileText },
         ],
       },
     ];
@@ -426,6 +428,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         section: 'Profil Lulusan',
         items: [
           { label: 'Profil Lulusan', view: 'kepsek-profil-lulusan' as ViewType, icon: BarChart3 },
+          { label: 'Laporan & Rapor', view: 'kepsek-rapor' as ViewType, icon: FileText },
         ],
       },
     ];
@@ -504,6 +507,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-kotak-masukan': 'Kotak Masukan',
   'guru-profil-lulusan': 'Profil Lulusan',
   'guru-komponen-nilai': 'Komponen Nilai',
+  'guru-rapor': 'Laporan & Rapor',
 
   // SISWA
   'siswa-materi': 'Materi Pelajaran',
@@ -513,6 +517,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'siswa-kehadiran': 'Kehadiran Saya',
   'siswa-pandai-ai': 'PANDAI AI',
   'siswa-nilai-akhir': 'Nilai Akhir',
+  'siswa-rapor': 'Rapor Saya',
 
   // ORANG_TUA
   'ortu-karakter': 'Isi Laporan Harian',
@@ -525,6 +530,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'ortu-kotak-masukan': 'Kotak Masukan',
   'ortu-profil-lulusan': 'Profil Lulusan Anak',
   'ortu-nilai-akhir': 'Nilai Akhir Anak',
+  'ortu-rapor': 'Rapor Anak',
 
   // KEPALA_SEKOLAH
   'dashboard-kepsek': 'Dashboard Kepala Sekolah',
@@ -533,6 +539,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'kepsek-rekap-karakter': 'Rekap 7 Kebiasaan',
   'kepsek-kotak-masukan': 'Kotak Masukan',
   'kepsek-profil-lulusan': 'Profil Lulusan',
+  'kepsek-rapor': 'Laporan & Rapor',
 
   // Shared
   profile: 'Profil',
@@ -578,6 +585,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-kotak-masukan': [{ label: VIEW_LABELS['guru-kotak-masukan'] }],
     'guru-profil-lulusan': [{ label: VIEW_LABELS['guru-profil-lulusan'] }],
     'guru-komponen-nilai': [{ label: VIEW_LABELS['guru-komponen-nilai'] }],
+    'guru-rapor': [{ label: VIEW_LABELS['guru-rapor'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
     'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
@@ -585,6 +593,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'siswa-kehadiran': [{ label: VIEW_LABELS['siswa-kehadiran'] }],
     'siswa-pandai-ai': [{ label: VIEW_LABELS['siswa-pandai-ai'] }],
     'siswa-nilai-akhir': [{ label: VIEW_LABELS['siswa-nilai-akhir'] }],
+    'siswa-rapor': [{ label: VIEW_LABELS['siswa-rapor'] }],
     'ortu-karakter': [{ label: VIEW_LABELS['ortu-karakter'] }],
     'ortu-rekap-karakter': [{ label: VIEW_LABELS['ortu-rekap-karakter'] }],
     'ortu-nilai': [{ label: VIEW_LABELS['ortu-nilai'] }],
@@ -595,12 +604,14 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'ortu-kotak-masukan': [{ label: VIEW_LABELS['ortu-kotak-masukan'] }],
     'ortu-profil-lulusan': [{ label: VIEW_LABELS['ortu-profil-lulusan'] }],
     'ortu-nilai-akhir': [{ label: VIEW_LABELS['ortu-nilai-akhir'] }],
+    'ortu-rapor': [{ label: VIEW_LABELS['ortu-rapor'] }],
     'dashboard-kepsek': [{ label: VIEW_LABELS['dashboard-kepsek'] }],
     'kepsek-rekap-kelas': [{ label: VIEW_LABELS['kepsek-rekap-kelas'] }],
     'kepsek-rekap-guru': [{ label: VIEW_LABELS['kepsek-rekap-guru'] }],
     'kepsek-rekap-karakter': [{ label: VIEW_LABELS['kepsek-rekap-karakter'] }],
     'kepsek-kotak-masukan': [{ label: VIEW_LABELS['kepsek-kotak-masukan'] }],
     'kepsek-profil-lulusan': [{ label: VIEW_LABELS['kepsek-profil-lulusan'] }],
+    'kepsek-rapor': [{ label: VIEW_LABELS['kepsek-rapor'] }],
     profile: [{ label: VIEW_LABELS.profile }],
     notifications: [{ label: VIEW_LABELS.notifications }],
     broadcasts: [{ label: VIEW_LABELS.broadcasts }],
