@@ -147,3 +147,35 @@ Stage Summary:
 - API commit: 0405e24
 - UI commit: 7817f1e
 - 4/4 verification tests passed with DB evidence
+---
+Task ID: 1
+Agent: main
+Task: Fitur H — Komponen Nilai + Bobot (continuation from previous session)
+
+Work Log:
+- Previous session implemented full-stack Fitur H (schema, API, UI) but ran out of context before testing
+- Verified git state: 4 commits already on main for Fitur H (schema, API, UI, type fixes)
+- Confirmed Prisma schema in sync (GradeComponent + StudentGrade models, gradeComponentId on ExamPackage/Assignment)
+- Prisma db push + generate: already in sync, regenerated client
+- Build: passed clean (all routes compiled including /api/grade-components, /api/student-grades, /api/grades/final)
+- Started production server (NODE_OPTIONS='--max-old-space-size=4000') with pre-warming strategy
+- Ran 8 verification tests via curl: discovered normalization bug in grades/final/route.ts
+- BUG: formula was `(weightedSum / totalWeightFilled) * 100 / 100` = 0.7833 * 100 / 100 = 0.78
+- FIX: changed to `weightedSum * 100 / totalWeightFilled * 100 / 100` = 7833.33 / 100 = 78.33
+- Rebuilt, re-ran all 8 tests: 8/8 PASS
+- Browser verification not possible due to container network namespace isolation (Caddy PID 2 in root namespace, user processes in user namespace)
+- Removed test-grades.mjs (Node.js test script, replaced by bash script that was also cleaned up)
+- Committed and pushed: b619827
+
+Stage Summary:
+- 1 file changed: src/app/api/grades/final/route.ts (line 141, normalization formula fix)
+- 8/8 verification tests PASS:
+  1. Admin creates 5 components with total weight 100%
+  2. Guru inputs 2 manual grades
+  3. TRYOUT source grade stored correctly
+   4. 3/5 normalization = 78.33 (SIMANTAP-style)
+  5. 4/5 normalization = 80.00 (SIMANTAP-style)
+  6a. School isolation: Guru SD sees 0 SMP components
+  6b. School isolation: Guru SD gets 403 creating SMP student grade
+  6c. School isolation: Guru SD gets 403 creating component
+- Commit: b619827 pushed to main
