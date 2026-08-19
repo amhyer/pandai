@@ -41,6 +41,7 @@ model School {
   questions       Question[]
   subscriptions  Subscription[]
   feedbacks       Feedback[]
+  competencyAssessments CompetencyAssessment[]
 }
 
 // ===== SUBSCRIPTION =====
@@ -96,6 +97,8 @@ model User {
   timetableAsTeacher Timetable[]    @relation("TimetableTeacher")
   sentFeedback    Feedback[]        @relation("FeedbackSender")
   respondedFeedback Feedback[]      @relation("FeedbackResponder")
+  assessedStudents   CompetencyAssessment[] @relation("AssessorTeacher")
+  competencyAssessments CompetencyAssessment[] @relation("AssessedStudent")
 
   @@index([schoolId])
   @@index([role])
@@ -118,6 +121,7 @@ model Class {
   examAssignments ExamAssignment[]
   WaliKelas User?          @relation("WaliKelasClass", fields: [waliKelasId], references: [id])
   timetables Timetable[]
+  competencyAssessments CompetencyAssessment[]
 }
 
 // ===== SUBJECT (MATA UJI) =====
@@ -667,4 +671,34 @@ model Feedback {
   @@index([fromUserId])
   @@index([status])
   @@index([category])
+}
+
+// ===== COMPETENCY ASSESSMENT (Profil Lulusan 8 Dimensi) =====
+model CompetencyAssessment {
+  id         String    @id @default(cuid())
+  studentId  String
+  schoolId   String
+  classId    String?
+  subjectId  String?   // nullable — observasi bisa lintas mapel
+  dimension  String    // KEIMANAN_KETAKWAAN, KEWARGAAN, PENALARAN KRITIS, KREATIVITAS, KOLABORASI, KEMANDIRIAN, KESEHATAN, KOMUNIKASI
+  rating     Int       // 1-4: 1=Mulai Berkembang, 2=Berkembang, 3=Berkembang Sesuai Harapan, 4=Sangat Berkembang
+  assessedBy String    // guru userId
+  term       String    // periode, e.g. "2024/2025-Ganjil"
+  note       String?
+  date       String    // YYYY-MM-DD
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  student    User      @relation("AssessedStudent", fields: [studentId], references: [id])
+  assessor   User      @relation("AssessorTeacher", fields: [assessedBy], references: [id])
+  school     School    @relation(fields: [schoolId], references: [id])
+  class      Class?    @relation(fields: [classId], references: [id])
+
+  @@unique([studentId, dimension, term, assessedBy])  // satu guru, satu dimensi, satu siswa, satu periode
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([assessedBy])
+  @@index([term])
+  @@index([dimension])
 }
