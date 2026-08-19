@@ -103,6 +103,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-pandai-ai': React.lazy(() => import('@/components/views/guru-ai-views').then(m => ({ default: m.GuruPandaiAiView }))),
   'guru-kotak-masukan': React.lazy(() => import('@/components/views/feedback/kotak-masukan-view').then(m => ({ default: m.KotakMasukanView }))),
   'guru-profil-lulusan': React.lazy(() => import('@/components/views/competency/profil-lulusan-view').then(m => ({ default: m.ProfilLulusanView }))),
+  'guru-komponen-nilai': React.lazy(() => import('@/components/views/grades/komponen-nilai-view').then(m => ({ default: m.KomponenNilaiView }))),
 
   // SISWA — new views
   'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
@@ -111,6 +112,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'siswa-nilai': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaNilaiView }))),
   'siswa-kehadiran': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaKehadiranView }))),
   'siswa-pandai-ai': React.lazy(() => import('@/components/views/siswa-ai-views').then(m => ({ default: m.SiswaPandaiAiView }))),
+  'siswa-nilai-akhir': React.lazy(() => import('@/components/views/grades/komponen-nilai-view').then(m => ({ default: m.KomponenNilaiView }))),
 
   // ORANG_TUA — existing components (nilai view shows assignment scores too via /api/scores)
   'ortu-nilai': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuNilaiView }))),
@@ -124,6 +126,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'ortu-rekap-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuRekapKarakterView }))),
   'ortu-kotak-masukan': React.lazy(() => import('@/components/views/feedback/kotak-masukan-view').then(m => ({ default: m.KotakMasukanView }))),
   'ortu-profil-lulusan': React.lazy(() => import('@/components/views/competency/profil-lulusan-view').then(m => ({ default: m.ProfilLulusanView }))),
+  'ortu-nilai-akhir': React.lazy(() => import('@/components/views/grades/komponen-nilai-view').then(m => ({ default: m.KomponenNilaiView }))),
 
   // KEPALA_SEKOLAH
   'kepsek-rekap-kelas': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),

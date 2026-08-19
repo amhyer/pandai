@@ -69,6 +69,7 @@ import {
   BrainCircuit,
   Crown,
   MessageSquare,
+  Calculator,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
@@ -260,6 +261,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         section: 'Penilaian Dimensi',
         items: [
           { label: 'Profil Lulusan', view: 'guru-profil-lulusan' as ViewType, icon: BarChart3 },
+          { label: 'Komponen Nilai', view: 'guru-komponen-nilai' as ViewType, icon: Calculator },
         ],
       },
     ];
@@ -389,6 +391,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         section: 'Profil Anak',
         items: [
           { label: 'Profil Lulusan', view: 'ortu-profil-lulusan' as ViewType, icon: BarChart3 },
+          { label: 'Nilai Akhir', view: 'ortu-nilai-akhir' as ViewType, icon: Calculator },
         ],
       },
     ];
@@ -500,6 +503,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-pandai-ai': 'PANDAI AI',
   'guru-kotak-masukan': 'Kotak Masukan',
   'guru-profil-lulusan': 'Profil Lulusan',
+  'guru-komponen-nilai': 'Komponen Nilai',
 
   // SISWA
   'siswa-materi': 'Materi Pelajaran',
@@ -508,6 +512,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'siswa-nilai': 'Nilai Saya',
   'siswa-kehadiran': 'Kehadiran Saya',
   'siswa-pandai-ai': 'PANDAI AI',
+  'siswa-nilai-akhir': 'Nilai Akhir',
 
   // ORANG_TUA
   'ortu-karakter': 'Isi Laporan Harian',
@@ -519,6 +524,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'ortu-laporan': 'Laporan Cetak',
   'ortu-kotak-masukan': 'Kotak Masukan',
   'ortu-profil-lulusan': 'Profil Lulusan Anak',
+  'ortu-nilai-akhir': 'Nilai Akhir Anak',
 
   // KEPALA_SEKOLAH
   'dashboard-kepsek': 'Dashboard Kepala Sekolah',
@@ -571,12 +577,14 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-pandai-ai': [{ label: VIEW_LABELS['guru-pandai-ai'] }],
     'guru-kotak-masukan': [{ label: VIEW_LABELS['guru-kotak-masukan'] }],
     'guru-profil-lulusan': [{ label: VIEW_LABELS['guru-profil-lulusan'] }],
+    'guru-komponen-nilai': [{ label: VIEW_LABELS['guru-komponen-nilai'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
     'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
     'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
     'siswa-kehadiran': [{ label: VIEW_LABELS['siswa-kehadiran'] }],
     'siswa-pandai-ai': [{ label: VIEW_LABELS['siswa-pandai-ai'] }],
+    'siswa-nilai-akhir': [{ label: VIEW_LABELS['siswa-nilai-akhir'] }],
     'ortu-karakter': [{ label: VIEW_LABELS['ortu-karakter'] }],
     'ortu-rekap-karakter': [{ label: VIEW_LABELS['ortu-rekap-karakter'] }],
     'ortu-nilai': [{ label: VIEW_LABELS['ortu-nilai'] }],
@@ -586,6 +594,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'ortu-laporan': [{ label: VIEW_LABELS['ortu-laporan'] }],
     'ortu-kotak-masukan': [{ label: VIEW_LABELS['ortu-kotak-masukan'] }],
     'ortu-profil-lulusan': [{ label: VIEW_LABELS['ortu-profil-lulusan'] }],
+    'ortu-nilai-akhir': [{ label: VIEW_LABELS['ortu-nilai-akhir'] }],
     'dashboard-kepsek': [{ label: VIEW_LABELS['dashboard-kepsek'] }],
     'kepsek-rekap-kelas': [{ label: VIEW_LABELS['kepsek-rekap-kelas'] }],
     'kepsek-rekap-guru': [{ label: VIEW_LABELS['kepsek-rekap-guru'] }],

@@ -49,6 +49,7 @@ export type ViewType =
   | 'guru-pandai-ai'       // PANDAI AI (Asisten AI)
   | 'guru-kotak-masukan'   // Kotak Masukan
   | 'guru-profil-lulusan' // Profil Lulusan 8 Dimensi
+  | 'guru-komponen-nilai' // Komponen Nilai & Bobot
 
   // ── SISWA ──
   | 'siswa-materi'         // Materi Pelajaran
@@ -57,6 +58,7 @@ export type ViewType =
   | 'siswa-nilai'          // Nilai Saya
   | 'siswa-kehadiran'      // Kehadiran Saya
   | 'siswa-pandai-ai'      // PANDAI AI
+  | 'siswa-nilai-akhir'   // Nilai Akhir Semester
 
   // ── ORANG_TUA ──
   | 'ortu-karakter'        // Isi Laporan Harian (7 Kebiasaan)
@@ -68,6 +70,7 @@ export type ViewType =
   | 'ortu-laporan'         // Laporan Cetak
   | 'ortu-kotak-masukan'   // Kotak Masukan
   | 'ortu-profil-lulusan' // Profil Lulusan Anak
+  | 'ortu-nilai-akhir'   // Nilai Akhir Anak
 
   // ── KEPALA_SEKOLAH ──
   | 'dashboard-kepsek'           // Dashboard Kepala Sekolah
