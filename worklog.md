@@ -123,3 +123,27 @@ Stage Summary:
 - Register rejects SUPER_ADMIN/GURU/ADMIN_SCHOOL/KEPALA_SEKOLAH with 403
 - /api/schools returns 401 without cookie (session-based auth works)
 - X-User-Role header spoofing has no effect (returns 401)
+
+---
+Task ID: 2
+Agent: main
+Task: Fitur G - Profil Lulusan 8 Dimensi (full stack)
+
+Work Log:
+- Added CompetencyAssessment model to prisma/schema.prisma with 8-dimension support, unique constraint (student+dimension+term+assessor), school isolation
+- Created src/lib/competency-dimensions.ts with constants, validation, rating labels
+- Created POST/GET/PATCH /api/competency-assessments with role-based access (GURU writes, SISWA/ORTU read-only, school isolation)
+- Created GET recap mode (recap=student for per-student averages, recap=class for per-class averages)
+- Created DELETE /api/competency-assessments/[id]
+- Added ViewType entries: guru-profil-lulusan, ortu-profil-lulusan, kepsek-profil-lulusan
+- Added nav items for GURU, ORANG_TUA, KEPALA_SEKOLAH in app-layout.tsx
+- Added VIEW_LABELS and breadcrumbs for all 3 views
+- Created ProfilLulusanView component (1146 lines, role-adaptive: guru=input+rekap, ortu=read-only, kepsek=read-only rekap)
+- Added JWT_SECRET to .env for production build support
+- All 4 verification tests passed
+
+Stage Summary:
+- Schema commit: 8bbb869
+- API commit: 0405e24
+- UI commit: 7817f1e
+- 4/4 verification tests passed with DB evidence
