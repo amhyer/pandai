@@ -138,7 +138,7 @@ async function calcStudentFinalGrades(
   }
 
   const totalWeightAll = components.reduce((s, c) => s + c.weight, 0);
-  const finalGrade = filledCount > 0 ? Math.round((weightedSum / totalWeightFilled) * 100) / 100 : null;
+  const finalGrade = filledCount > 0 ? Math.round(weightedSum * 100 / totalWeightFilled * 100) / 100 : null;
   const calculation = filledCount > 0
     ? `(${calcSteps.filter(s => !s.includes('belum')).join(' + ')}) / ${totalWeightFilled} = ${finalGrade}`
     : 'Belum ada nilai';
