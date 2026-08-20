@@ -65,6 +65,9 @@ backups/
 
 # Upload artifacts
 /upload/extracted/
-/upload/*.exe_extracted/backups/
+/upload/*.exe_extracted/
 scripts/backup.sh
 scripts/restore.sh
+
+# Tool output artifacts
+tool-results/
