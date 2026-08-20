@@ -13,7 +13,10 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "seed": "bun run prisma/seed.ts"
+    "seed": "bun run prisma/seed.ts",
+    "backup": "bun scripts/backup.mjs",
+    "backup:list": "bun scripts/restore.mjs --list",
+    "backup:restore": "bun scripts/restore.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

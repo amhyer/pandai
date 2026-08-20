@@ -60,6 +60,9 @@ server.log
 db/*.db
 db/*.db-journal
 
+# Backups
+backups/
+
 # Upload artifacts
 /upload/extracted/
 /upload/*.exe_extracted/backups/
