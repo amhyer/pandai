@@ -179,3 +179,25 @@ Stage Summary:
   6b. School isolation: Guru SD gets 403 creating SMP student grade
   6c. School isolation: Guru SD gets 403 creating component
 - Commit: b619827 pushed to main
+
+---
+Task ID: QW
+Agent: main
+Task: Bonus quick wins — .gitignore, pre-commit hook, package.json scripts, README.md
+
+Work Log:
+- Added `backups/` to .gitignore to prevent backup database file commits
+- Added `tool-results/` and `/upload/*.exe_extracted/` to .gitignore to prevent artifact leaks
+- Created `.git/hooks/pre-commit` hook that blocks .db, .db-journal, .db-wal, .db-shm, .sql, .env files from being committed (verified: exit code 1 when .db staged)
+- Added 3 convenience scripts to package.json: `bun run backup`, `bun run backup:list`, `bun run backup:restore`
+- Created README.md with project overview, tech stack table, features A-I list, quickstart guide, useful commands, project structure, and security notes
+- Discovered commit 79aec8f contained 1576 files including backups/*.db, tool-results/, upload/*.dll — all accidental artifacts. Soft-reset to origin/main and recommitted only clean files.
+- Separated .github/workflows/ci.yml from push (PAT lacks `workflow` scope) — file exists locally at .github/workflows/ci.yml, ready to push once PAT is updated
+- Pushed 2 clean commits: aa7c00a (README + gitignore + scripts), 7576685 (additional gitignore entries)
+- Verified dev server starts and serves 200 OK (no code changes affect app logic)
+
+Stage Summary:
+- Remote HEAD: 7576685 (synced with origin/main)
+- Local only: .github/workflows/ci.yml (awaiting PAT workflow scope fix)
+- Pre-commit hook: active at .git/hooks/pre-commit (local, not tracked in git)
+- All changes are non-breaking (only docs, gitignore, and convenience scripts)
