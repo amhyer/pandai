@@ -470,19 +470,19 @@ function RekapPerSiswa({
   readOnly?: boolean;
 }) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
-  const [students, setStudents] = useState<StudentItem[]>([]);
+  const [studentsState, setStudentsState] = useState<StudentItem[]>([]);
+  const students = (selectedClassId && schoolId) ? studentsState : [];
   const [selectedClassId, setSelectedClassId] = useState('');
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [term, setTerm] = useState(DEFAULT_TERM);
   const [recapData, setRecapData] = useState<StudentRecapResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const loading = !recapData && !!selectedStudentId && !!term;
   const [loadingClasses, setLoadingClasses] = useState(true);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   useEffect(() => {
     if (!schoolId) return;
     let cancelled = false;
-    setLoadingClasses(true);
     fetch(`/api/classes?schoolId=${schoolId}`)
       .then((r) => r.json())
       .then((data: ClassItem[]) => {
@@ -494,36 +494,31 @@ function RekapPerSiswa({
   }, [schoolId]);
 
   useEffect(() => {
-    if (!selectedClassId || !schoolId) {
-      setStudents([]);
-      return;
-    }
+    if (!selectedClassId || !schoolId) return;
     let cancelled = false;
     setLoadingStudents(true);
     fetch(`/api/users?role=SISWA&schoolId=${schoolId}&classId=${selectedClassId}`)
       .then((r) => r.json())
       .then((data: StudentItem[]) => {
         if (!cancelled) {
-          setStudents(Array.isArray(data) ? data : []);
+          setStudentsState(Array.isArray(data) ? data : []);
           setSelectedStudentId('');
         }
       })
-      .catch(() => setStudents([]))
+      .catch(() => setStudentsState([]))
       .finally(() => !cancelled && setLoadingStudents(false));
     return () => { cancelled = true; };
   }, [selectedClassId, schoolId]);
 
   const fetchRecap = useCallback(() => {
     if (!selectedStudentId || !term) return;
-    setLoading(true);
     fetch(`/api/competency-assessments?recap=student&studentId=${selectedStudentId}&term=${encodeURIComponent(term)}`)
       .then((r) => r.json())
       .then((data: StudentRecapResponse) => {
         if (data && data.recap) setRecapData(data);
         else setRecapData(null);
       })
-      .catch(() => setRecapData(null))
-      .finally(() => setLoading(false));
+      .catch(() => setRecapData(null));
   }, [selectedStudentId, term]);
 
   useEffect(() => {
@@ -536,6 +531,7 @@ function RekapPerSiswa({
       const res = await fetch(`/api/competency-assessments/${id}`, { method: 'DELETE' });
       if (res.ok) {
         toast.success('Penilaian dihapus');
+        setRecapData(null);
         fetchRecap();
       } else {
         const d = await res.json();
@@ -700,13 +696,12 @@ function RekapPerKelas({
   const [selectedClassId, setSelectedClassId] = useState('');
   const [term, setTerm] = useState(DEFAULT_TERM);
   const [recapData, setRecapData] = useState<ClassRecapResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const loading = !recapData && !!selectedClassId && !!term;
   const [loadingClasses, setLoadingClasses] = useState(true);
 
   useEffect(() => {
     if (!schoolId) return;
     let cancelled = false;
-    setLoadingClasses(true);
     fetch(`/api/classes?schoolId=${schoolId}`)
       .then((r) => r.json())
       .then((data: ClassItem[]) => {
@@ -719,15 +714,13 @@ function RekapPerKelas({
 
   const fetchRecap = useCallback(() => {
     if (!selectedClassId || !term) return;
-    setLoading(true);
     fetch(`/api/competency-assessments?recap=class&classId=${selectedClassId}&term=${encodeURIComponent(term)}`)
       .then((r) => r.json())
       .then((data: ClassRecapResponse) => {
         if (data && data.recap) setRecapData(data);
         else setRecapData(null);
       })
-      .catch(() => setRecapData(null))
-      .finally(() => setLoading(false));
+      .catch(() => setRecapData(null));
   }, [selectedClassId, term]);
 
   useEffect(() => {
@@ -907,14 +900,13 @@ function OrtuView({
   const [selectedChildId, setSelectedChildId] = useState('');
   const [term, setTerm] = useState(DEFAULT_TERM);
   const [recapData, setRecapData] = useState<StudentRecapResponse | null>(null);
-  const [loading, setLoading] = useState(false);
+  const loading = !recapData && !!selectedChildId && !!term;
   const [loadingChildren, setLoadingChildren] = useState(true);
 
   // Fetch children
   useEffect(() => {
     if (!userId) return;
     let cancelled = false;
-    setLoadingChildren(true);
     fetch(`/api/users?parentId=${userId}&schoolId=${schoolId}`)
       .then((r) => r.json())
       .then((data: StudentItem[]) => {
@@ -931,15 +923,13 @@ function OrtuView({
 
   const fetchRecap = useCallback(() => {
     if (!selectedChildId || !term) return;
-    setLoading(true);
     fetch(`/api/competency-assessments?recap=student&studentId=${selectedChildId}&term=${encodeURIComponent(term)}`)
       .then((r) => r.json())
       .then((data: StudentRecapResponse) => {
         if (data && data.recap) setRecapData(data);
         else setRecapData(null);
       })
-      .catch(() => setRecapData(null))
-      .finally(() => setLoading(false));
+      .catch(() => setRecapData(null));
   }, [selectedChildId, term]);
 
   useEffect(() => {

@@ -188,10 +188,12 @@ function GuruView() {
   const [classes, setClasses] = useState<ClassOption[]>([]);
   const [components, setComponents] = useState<GradeComponent[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
-  const [existingGrades, setExistingGrades] = useState<StudentGrade[]>([]);
-  const [scoreInputs, setScoreInputs] = useState<Record<string, string>>({});
+  const [existingGradesState, setExistingGradesState] = useState<StudentGrade[]>([]);
+  const [scoreInputsState, setScoreInputsState] = useState<Record<string, string>>({});
+  const existingGrades = (selectedComponentId && selectedClassId) ? existingGradesState : [];
+  const scoreInputs = (selectedComponentId && selectedClassId) ? scoreInputsState : {};
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('input');
 
@@ -214,7 +216,6 @@ function GuruView() {
   // --- Fetch components when term changes ---
   useEffect(() => {
     if (!term || !schoolId) return;
-    setLoading(true);
     fetch(`/api/grade-components?term=${encodeURIComponent(term)}&schoolId=${schoolId}`)
       .then((r) => r.json())
       .then((data) => {
@@ -236,11 +237,7 @@ function GuruView() {
 
   // --- Fetch existing grades when component + class selected ---
   useEffect(() => {
-    if (!selectedComponentId || !selectedClassId) {
-      setExistingGrades([]);
-      setScoreInputs({});
-      return;
-    }
+    if (!selectedComponentId || !selectedClassId) return;
     const params = new URLSearchParams({
       componentId: selectedComponentId,
       classId: selectedClassId,
@@ -250,16 +247,16 @@ function GuruView() {
       .then((r) => r.json())
       .then((data) => {
         const grades: StudentGrade[] = Array.isArray(data) ? data : [];
-        setExistingGrades(grades);
+        setExistingGradesState(grades);
         const inputs: Record<string, string> = {};
         grades.forEach((g) => {
           inputs[g.studentId] = String(g.score);
         });
-        setScoreInputs(inputs);
+        setScoreInputsState(inputs);
       })
       .catch(() => {
-        setExistingGrades([]);
-        setScoreInputs({});
+        setExistingGradesState([]);
+        setScoreInputsState({});
       });
   }, [selectedComponentId, selectedClassId, term]);
 
@@ -313,10 +310,10 @@ function GuruView() {
         .then((r) => r.json())
         .then((data) => {
           const grades: StudentGrade[] = Array.isArray(data) ? data : [];
-          setExistingGrades(grades);
+          setExistingGradesState(grades);
           const inputs: Record<string, string> = {};
           grades.forEach((g) => { inputs[g.studentId] = String(g.score); });
-          setScoreInputs(inputs);
+          setScoreInputsState(inputs);
         })
         .catch(() => {});
     }
@@ -328,7 +325,6 @@ function GuruView() {
   // --- Fetch rekap ---
   const fetchRekap = useCallback(() => {
     if (!rekapClassId || !rekapTerm) return;
-    setRekapLoading(true);
     const params = new URLSearchParams({
       mode: 'class',
       classId: rekapClassId,
@@ -337,8 +333,7 @@ function GuruView() {
     fetch(`/api/grades/final?${params}`)
       .then((r) => r.json())
       .then((data) => setRekapData(Array.isArray(data) ? data : []))
-      .catch(() => setRekapData([]))
-      .finally(() => setRekapLoading(false));
+      .catch(() => setRekapData([]));
   }, [rekapClassId, rekapTerm]);
 
   useEffect(() => {
@@ -482,7 +477,7 @@ function GuruView() {
                                       max={100}
                                       value={scoreInputs[s.id] ?? ''}
                                       onChange={(e) =>
-                                        setScoreInputs((prev) => ({
+                                        setScoreInputsState((prev) => ({
                                           ...prev,
                                           [s.id]: e.target.value,
                                         }))
@@ -1061,7 +1056,6 @@ function SiswaOrtuView({ mode }: { mode: 'SISWA' | 'ORANG_TUA' }) {
   const fetchFinal = useCallback(() => {
     const studentId = mode === 'SISWA' ? user.id : selectedChildId;
     if (!studentId || !term) return;
-    setLoading(true);
     const params = new URLSearchParams({
       mode: 'student',
       studentId,
@@ -1075,8 +1069,7 @@ function SiswaOrtuView({ mode }: { mode: 'SISWA' | 'ORANG_TUA' }) {
         else if (data && data.studentId) setFinalData([data]);
         else setFinalData([]);
       })
-      .catch(() => setFinalData([]))
-      .finally(() => setLoading(false));
+      .catch(() => setFinalData([]));
   }, [mode, user.id, user.schoolId, selectedChildId, term]);
 
   useEffect(() => { fetchFinal(); }, [fetchFinal]);
@@ -1262,27 +1255,23 @@ function KepsekView() {
 
   const fetchComponents = useCallback(() => {
     if (!term || !schoolId) return;
-    setLoading(true);
     const params = new URLSearchParams({ term, schoolId });
     if (selectedSubjectId) params.set('subjectId', selectedSubjectId);
     if (selectedClassId) params.set('classId', selectedClassId);
     fetch(`/api/grade-components?${params}`)
       .then((r) => r.json())
       .then((d) => setComponents(Array.isArray(d) ? d : []))
-      .catch(() => setComponents([]))
-      .finally(() => setLoading(false));
+      .catch(() => setComponents([]));
   }, [term, schoolId, selectedSubjectId, selectedClassId]);
 
   useEffect(() => { fetchComponents(); }, [fetchComponents]);
 
   const fetchRekap = useCallback(() => {
     if (!rekapClassId || !rekapTerm) return;
-    setRekapLoading(true);
     fetch(`/api/grades/final?mode=class&classId=${rekapClassId}&term=${encodeURIComponent(rekapTerm)}`)
       .then((r) => r.json())
       .then((d) => setRekapData(Array.isArray(d) ? d : []))
-      .catch(() => setRekapData([]))
-      .finally(() => setRekapLoading(false));
+      .catch(() => setRekapData([]));
   }, [rekapClassId, rekapTerm]);
 
   useEffect(() => { fetchRekap(); }, [fetchRekap]);
