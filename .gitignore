@@ -62,4 +62,6 @@ db/*.db-journal
 
 # Upload artifacts
 /upload/extracted/
-/upload/*.exe_extracted/
+/upload/*.exe_extracted/backups/
+scripts/backup.sh
+scripts/restore.sh
