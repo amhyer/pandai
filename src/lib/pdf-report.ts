@@ -63,7 +63,7 @@ interface RaporData {
     name: string;
     nisn: string | null;
     nip: string | null;
-    schoolId: string;
+    schoolId: string | null;
     classId: string | null;
     parentId: string | null;
     jk: string | null;
@@ -267,7 +267,7 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
 
   doc.setFontSize(7).setFont('helvetica', 'bold');
   for (let i = 0; i < colLabels.length; i++) {
-    doc.text(colLabels[i], colX[i] + 1, y, { width: cols[i] - 2 });
+    doc.text(colLabels[i], colX[i] + 1, y, { maxWidth: cols[i] - 2 });
   }
   y += 5;
   doc.setLineWidth(0.2).line(m, y, pw - m, y).stroke();
@@ -277,10 +277,10 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
   d.compResults.forEach((r, idx) => {
     doc.text(String(idx + 1), colX[0] + 1, y);
     doc.text(r.name, colX[1] + 1, y);
-    doc.text(String(r.weight), colX[2] + 1, y, { align: 'center', width: cols[2] - 2 });
-    doc.text(r.score !== null ? String(r.score) : '-', colX[3] + 1, y, { align: 'center', width: cols[3] - 2 });
-    doc.text(r.weighted !== null ? String(r.weighted) : '-', colX[4] + 1, y, { align: 'center', width: cols[4] - 2 });
-    doc.text(predikat(r.score), colX[5] + 1, y, { align: 'center', width: cols[5] - 2 });
+    doc.text(String(r.weight), colX[2] + 1, y, { align: 'center', maxWidth: cols[2] - 2 });
+    doc.text(r.score !== null ? String(r.score) : '-', colX[3] + 1, y, { align: 'center', maxWidth: cols[3] - 2 });
+    doc.text(r.weighted !== null ? String(r.weighted) : '-', colX[4] + 1, y, { align: 'center', maxWidth: cols[4] - 2 });
+    doc.text(predikat(r.score), colX[5] + 1, y, { align: 'center', maxWidth: cols[5] - 2 });
     y += 5;
   });
 
@@ -288,8 +288,8 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
   y += 2;
   doc.setFontSize(7).setFont('helvetica', 'bold');
   doc.text('Nilai Akhir (Normalisasi)', m + 1, y);
-  doc.text(d.finalGrade !== null ? String(d.finalGrade) : '-', colX[3] + 1, y, { align: 'center', width: cols[3] - 2 });
-  doc.text(predikat(d.finalGrade), colX[5] + 1, y, { align: 'center', width: cols[5] - 2 });
+  doc.text(d.finalGrade !== null ? String(d.finalGrade) : '-', colX[3] + 1, y, { align: 'center', maxWidth: cols[3] - 2 });
+  doc.text(predikat(d.finalGrade), colX[5] + 1, y, { align: 'center', maxWidth: cols[5] - 2 });
   y += 5;
 
   if (d.totalWeightFilled > 0 && d.totalWeightFilled < 100) {
@@ -388,18 +388,18 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
 
   const sigW = cw / 3;
   doc.setFontSize(8).setFont('helvetica', 'normal');
-  doc.text('Wali Kelas,', m, y, { width: sigW, align: 'center' });
-  doc.text('Orang Tua,', m + sigW, y, { width: sigW, align: 'center' });
-  doc.text('Kepala Sekolah,', m + sigW * 2, y, { width: sigW, align: 'center' });
+  doc.text('Wali Kelas,', m, y, { maxWidth: sigW, align: 'center' });
+  doc.text('Orang Tua,', m + sigW, y, { maxWidth: sigW, align: 'center' });
+  doc.text('Kepala Sekolah,', m + sigW * 2, y, { maxWidth: sigW, align: 'center' });
 
   y += 22;
   doc.setFontSize(9).setFont('helvetica', 'bold');
-  doc.text('(____________________)', m, y, { width: sigW, align: 'center' });
-  doc.text('(____________________)', m + sigW, y, { width: sigW, align: 'center' });
-  doc.text(d.kepsek?.name || '(____________________)', m + sigW * 2, y, { width: sigW, align: 'center' });
+  doc.text('(____________________)', m, y, { maxWidth: sigW, align: 'center' });
+  doc.text('(____________________)', m + sigW, y, { maxWidth: sigW, align: 'center' });
+  doc.text(d.kepsek?.name || '(____________________)', m + sigW * 2, y, { maxWidth: sigW, align: 'center' });
   if (d.kepsek?.nip) {
     doc.setFontSize(7).setFont('helvetica', 'normal');
-    doc.text('NIP. ' + d.kepsek.nip, m + sigW * 2, y + 5, { width: sigW, align: 'center' });
+    doc.text('NIP. ' + d.kepsek.nip, m + sigW * 2, y + 5, { maxWidth: sigW, align: 'center' });
   }
 
   return doc.output('arraybuffer') as unknown as Buffer;
@@ -634,7 +634,7 @@ export async function generateLeggerPDF(classId: string, term: string): Promise<
   const colWidths = [...fixedCols, ...Array(numComps).fill(compColW), naColW, pColW];
   for (let i = 0; i < headerLabels.length; i++) {
     const align = i >= 3 && i < headerLabels.length - 2 ? 'center' : 'left';
-    doc.text(headerLabels[i], cx + 1, y, { width: colWidths[i] - 2, align });
+    doc.text(headerLabels[i], cx + 1, y, { maxWidth: colWidths[i] - 2, align });
     cx += colWidths[i];
   }
   y += 4;
@@ -654,12 +654,12 @@ export async function generateLeggerPDF(classId: string, term: string): Promise<
     cx += fixedCols[2];
     for (let ci = 0; ci < numComps; ci++) {
       const s = row.scores[data.components[ci].id];
-      doc.text(s !== null ? String(Math.round(s)) : '-', cx + 1, y, { width: compColW - 2, align: 'center' });
+      doc.text(s !== null ? String(Math.round(s)) : '-', cx + 1, y, { maxWidth: compColW - 2, align: 'center' });
       cx += compColW;
     }
-    doc.text(row.finalGrade !== null ? String(row.finalGrade) : '-', cx + 1, y, { width: naColW - 2, align: 'center' });
+    doc.text(row.finalGrade !== null ? String(row.finalGrade) : '-', cx + 1, y, { maxWidth: naColW - 2, align: 'center' });
     cx += naColW;
-    doc.text(row.predikat, cx + 1, y, { width: pColW - 2, align: 'center' });
+    doc.text(row.predikat, cx + 1, y, { maxWidth: pColW - 2, align: 'center' });
     y += 5;
     if (y > ph - 25) {
       doc.addPage();
@@ -679,10 +679,10 @@ export async function generateLeggerPDF(classId: string, term: string): Promise<
   doc.text('', cx + 1, y);
   cx += fixedCols[2];
   for (let ci = 0; ci < numComps; ci++) {
-    doc.text(String(data.rataRataPerKomponen[data.components[ci].id] || 0), cx + 1, y, { width: compColW - 2, align: 'center' });
+    doc.text(String(data.rataRataPerKomponen[data.components[ci].id] || 0), cx + 1, y, { maxWidth: compColW - 2, align: 'center' });
     cx += compColW;
   }
-  doc.text(data.rataRataFinal !== null ? String(data.rataRataFinal) : '-', cx + 1, y, { width: naColW - 2, align: 'center' });
+  doc.text(data.rataRataFinal !== null ? String(data.rataRataFinal) : '-', cx + 1, y, { maxWidth: naColW - 2, align: 'center' });
 
   return doc.output('arraybuffer') as unknown as Buffer;
 }

@@ -471,8 +471,8 @@ function RekapPerSiswa({
 }) {
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [studentsState, setStudentsState] = useState<StudentItem[]>([]);
-  const students = (selectedClassId && schoolId) ? studentsState : [];
   const [selectedClassId, setSelectedClassId] = useState('');
+  const students = (selectedClassId && schoolId) ? studentsState : [];
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [term, setTerm] = useState(DEFAULT_TERM);
   const [recapData, setRecapData] = useState<StudentRecapResponse | null>(null);
