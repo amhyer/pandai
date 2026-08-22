@@ -77,21 +77,31 @@ async function autoCreateOrtuForSiswa(siswaData: {
 
 export async function GET(request: Request) {
   try {
-    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireAuth(request);
+    const { searchParams } = new URL(request.url);
+    const parentId = searchParams.get('parentId');
 
-    // RBAC: Kepala Sekolah cannot access individual user data
-    if (auth.role === 'KEPALA_SEKOLAH') {
-      return NextResponse.json(
-        { error: 'Kepala Sekolah hanya dapat mengakses data agregat. Akses data individu tidak diizinkan.' },
-        { status: 403 }
-      );
+    // ORANG_TUA: can only see own children (parentId must be own userId)
+    if (auth.role === 'ORANG_TUA') {
+      if (parentId && parentId !== auth.userId) {
+        return NextResponse.json({ error: 'Tidak diizinkan melihat anak orang lain' }, { status: 403 });
+      }
+      const children = await db.user.findMany({
+        where: { parentId: auth.userId, isActive: true, schoolId: auth.schoolId },
+        include: { school: true, class: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      return NextResponse.json(children);
     }
 
-    const { searchParams } = new URL(request.url);
+    // Non-ortu: require ADMIN role
+    if (auth.role !== 'SUPER_ADMIN' && auth.role !== 'ADMIN_SCHOOL') {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+
     const schoolId = searchParams.get('schoolId');
     const userRole = searchParams.get('role');
     const classId = searchParams.get('classId');
-    const parentId = searchParams.get('parentId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '100');
     const skip = (page - 1) * limit;

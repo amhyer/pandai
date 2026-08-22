@@ -5,7 +5,7 @@ import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 // GET /api/attendance
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA', 'ORANG_TUA']);
 
     // RBAC: Kepala Sekolah cannot access individual attendance data
     if (auth.role === 'KEPALA_SEKOLAH') {
@@ -23,9 +23,28 @@ export async function GET(req: NextRequest) {
     const month = searchParams.get('month');
 
     const where: Record<string, unknown> = {};
-    if (schoolId) where.schoolId = schoolId;
-    if (classId) where.classId = classId;
-    if (studentId) where.studentId = studentId;
+
+    // ORANG_TUA: only see attendance for own children
+    if (auth.role === 'ORANG_TUA') {
+      const children = await db.user.findMany({
+        where: { parentId: auth.userId, schoolId: auth.schoolId },
+        select: { id: true },
+      });
+      if (children.length === 0) return NextResponse.json([]);
+      where.studentId = { in: children.map(c => c.id) };
+      if (studentId) {
+        const childIds = children.map(c => c.id);
+        if (!childIds.includes(studentId)) {
+          return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+        }
+        where.studentId = studentId;
+      }
+    } else {
+      if (schoolId) where.schoolId = schoolId;
+      if (classId) where.classId = classId;
+      if (studentId) where.studentId = studentId;
+    }
+
     if (date) where.date = date;
     if (month) {
       where.date = { startsWith: month } as any;

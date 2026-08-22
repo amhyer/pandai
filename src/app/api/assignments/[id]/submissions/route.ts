@@ -70,10 +70,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // POST /api/assignments/[id]/submissions — student submit
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { id } = await params;
     const body = await req.json();
-    const { studentId, schoolId, classId, action, answers, remedialSubmissionId } = body;
+    let { studentId, schoolId, classId, action, answers, remedialSubmissionId } = body;
+
+    // IDOR fix: SISWA can only submit for themselves — ignore body studentId
+    if (auth.role === 'SISWA') {
+      if (studentId && studentId !== auth.userId) {
+        return NextResponse.json({ error: 'Tidak diizinkan submit atas nama siswa lain' }, { status: 403 });
+      }
+      studentId = auth.userId;
+    }
 
     if (!studentId) return NextResponse.json({ error: 'studentId wajib' }, { status: 400 });
     if (!action || !['draft', 'submit'].includes(action)) return NextResponse.json({ error: 'action harus draft atau submit' }, { status: 400 });

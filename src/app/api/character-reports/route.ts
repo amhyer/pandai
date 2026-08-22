@@ -40,9 +40,29 @@ export async function GET(req: NextRequest) {
     const filledBy = searchParams.get('filledBy');
 
     const where: Record<string, unknown> = {};
-    if (schoolId) where.schoolId = schoolId;
-    if (classId) where.classId = classId;
-    if (studentId) where.studentId = studentId;
+
+    // ORANG_TUA: only see character reports for own children
+    if (auth.role === 'ORANG_TUA') {
+      const children = await db.user.findMany({
+        where: { parentId: auth.userId, schoolId: auth.schoolId },
+        select: { id: true },
+      });
+      if (children.length === 0) return NextResponse.json([]);
+      const childIds = children.map(c => c.id);
+      if (studentId) {
+        if (!childIds.includes(studentId)) {
+          return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+        }
+        where.studentId = studentId;
+      } else {
+        where.studentId = { in: childIds };
+      }
+    } else {
+      if (schoolId) where.schoolId = schoolId;
+      if (classId) where.classId = classId;
+      if (studentId) where.studentId = studentId;
+    }
+
     if (reporterId) where.reporterId = reporterId;
     if (date) where.date = date;
     if (month) { where.date = { startsWith: month } as any; }

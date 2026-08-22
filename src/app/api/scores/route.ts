@@ -4,7 +4,7 @@ import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
 export async function GET(req: NextRequest) {
   try {
-    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'SISWA']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'SISWA', 'ORANG_TUA']);
 
     // RBAC: Kepala Sekolah cannot access individual student data
     if (auth.role === 'KEPALA_SEKOLAH') {

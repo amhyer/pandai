@@ -209,12 +209,38 @@ export function ClassManager() {
     fetchData();
   }, [fetchData]);
 
+  const [submitting, setSubmitting] = useState(false);
+
   const handleSubmit = async (form: ClassFormData) => {
-    // No dedicated class API — just inform the user
-    toast.info(
-      `Kelas "${form.name}" (Tingkat ${form.grade}, TA ${form.academicYear}) dicatat. \nSiswa dapat di-assign ke kelas ini saat ditambahkan.`
-    );
-    setDialogOpen(false);
+    if (!user?.schoolId) {
+      toast.error('Data sekolah tidak ditemukan');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/classes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          grade: form.grade,
+          academicYear: form.academicYear,
+          schoolId: user.schoolId,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || `Gagal membuat kelas (${res.status})`);
+        return;
+      }
+      toast.success(`Kelas "${form.name}" berhasil dibuat!`);
+      setDialogOpen(false);
+      fetchData();
+    } catch {
+      toast.error('Gagal membuat kelas');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const totalStudents = allUsers.filter((u) => u.role === 'SISWA').length;

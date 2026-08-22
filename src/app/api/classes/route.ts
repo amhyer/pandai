@@ -32,6 +32,53 @@ export async function GET(request: Request) {
   }
 }
 
+// POST /api/classes — Create new class (ADMIN_SCHOOL, SUPER_ADMIN)
+export async function POST(request: Request) {
+  try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const { name, grade, academicYear, schoolId, waliKelasId } = await request.json();
+
+    if (!name || !grade) {
+      return NextResponse.json({ error: 'Nama dan tingkat kelas wajib diisi' }, { status: 400 });
+    }
+
+    const effectiveSchoolId = schoolId || auth.schoolId;
+    if (!effectiveSchoolId) {
+      return NextResponse.json({ error: 'School ID diperlukan' }, { status: 400 });
+    }
+
+    // Check for duplicate class name in same school
+    const existing = await db.class.findFirst({
+      where: { schoolId: effectiveSchoolId, name, grade: Number(grade) },
+    });
+    if (existing) {
+      return NextResponse.json({ error: 'Kelas dengan nama dan tingkat yang sama sudah ada di sekolah ini' }, { status: 409 });
+    }
+
+    const cls = await db.class.create({
+      data: {
+        name,
+        grade: Number(grade),
+        academicYear: academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`,
+        schoolId: effectiveSchoolId,
+        waliKelasId: waliKelasId || null,
+      },
+      include: {
+        _count: { select: { users: true } },
+        WaliKelas: { select: { id: true, name: true, nip: true } },
+      },
+    });
+
+    return NextResponse.json(cls, { status: 201 });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    logError({ error, route: '/api/classes', method: 'POST' });
+    return NextResponse.json({ error: 'Gagal membuat kelas' }, { status: 500 });
+  }
+}
+
 // PUT /api/classes — Update class (e.g. assign wali kelas)
 export async function PUT(request: Request) {
   try {

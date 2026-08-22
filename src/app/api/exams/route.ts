@@ -6,11 +6,52 @@ import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 // GET exam packages and sessions
 export async function GET(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const type = searchParams.get('type');
     const status = searchParams.get('status');
+
+    // SISWA: only see exam sessions assigned to their class
+    if (auth.role === 'SISWA') {
+      const student = await db.user.findUnique({
+        where: { id: auth.userId },
+        select: { classId: true, schoolId: true },
+      });
+      if (!student?.classId) return NextResponse.json([]);
+
+      if (type === 'session') {
+        const sessions = await db.examAssignment.findMany({
+          where: { classId: student.classId, schoolId: student.schoolId },
+          include: {
+            examSession: { include: { examPackage: true } },
+            class: { select: { id: true, name: true } },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 50,
+        });
+        return NextResponse.json(sessions.map(s => ({ ...s.examSession, _assignment: { classId: s.classId, className: s.class?.name } })));
+      }
+
+      // Default: return exam sessions via assignments to student's class
+      const assignments = await db.examAssignment.findMany({
+        where: { classId: student.classId, schoolId: student.schoolId },
+        include: {
+          examSession: {
+            include: {
+              examPackage: { include: { _count: { select: { examItems: true } } } },
+            },
+          },
+          class: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      });
+      return NextResponse.json(assignments.map(a => ({
+        ...a.examSession,
+        _assignment: { classId: a.classId, className: a.class?.name },
+      })));
+    }
 
     if (type === 'session') {
       const sessions = await db.examSession.findMany({
