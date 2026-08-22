@@ -1,0 +1,73 @@
+{
+  "summary": {
+    "rombel": 2,
+    "students": 58,
+    "parentCoveragePct": 51.7,
+    "studentCoveragePct": 51.7,
+    "avgMasteryPct": 78,
+    "avgAttendancePct": 91,
+    "academicYear": "2025/2026"
+  },
+  "rows": [
+    {
+      "key": "cls_5a_guru_siti",
+      "classId": "c_5a_sdn01",
+      "className": "5A",
+      "grade": 5,
+      "academicYear": "2025/2026",
+      "teacherId": "u_guru_siti",
+      "teacherName": "Siti Aminah, S.Pd.",
+      "teacherActive": true,
+      "teacherMissing": false,
+      "subjectLabel": "Matematika",
+      "studentCount": 28,
+      "parentAccountCount": 22,
+      "parentAccountPct": 78.6,
+      "studentAccountCount": 18,
+      "studentAccountPct": 64.3,
+      "avgScore": 81.2,
+      "masteryPct": 86,
+      "attendancePct": 94,
+      "kaihFamilyCount": 19,
+      "kaihFamilyPct": 67.9,
+      "updatedAt": "2026-08-22T06:15:00.000Z",
+      "hasData": true
+    },
+    {
+      "key": "cls_5b_guru_budi",
+      "classId": "c_5b_sdn01",
+      "className": "5B",
+      "grade": 5,
+      "academicYear": "2025/2026",
+      "teacherId": "u_guru_budi",
+      "teacherName": "Budi Santoso, S.Pd.",
+      "teacherActive": true,
+      "teacherMissing": false,
+      "subjectLabel": "Bahasa Indonesia",
+      "studentCount": 30,
+      "parentAccountCount": 8,
+      "parentAccountPct": 26.7,
+      "studentAccountCount": 12,
+      "studentAccountPct": 40,
+      "avgScore": 74,
+      "masteryPct": 70,
+      "attendancePct": 88,
+      "kaihFamilyCount": 8,
+      "kaihFamilyPct": 26.7,
+      "updatedAt": "2026-08-21T09:40:00.000Z",
+      "hasData": true
+    }
+  ],
+  "pengelola": [
+    {
+      "name": "Drs. Ahmad Fauzi",
+      "role": "KEPALA_SEKOLAH",
+      "lastLogin": "2026-08-22T04:00:00.000Z"
+    },
+    {
+      "name": "Admin SDN 01",
+      "role": "ADMIN_SCHOOL",
+      "lastLogin": "2026-08-21T11:20:00.000Z"
+    }
+  ]
+}
