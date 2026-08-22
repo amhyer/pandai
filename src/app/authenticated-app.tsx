@@ -5,8 +5,6 @@ import dynamic from 'next/dynamic';
 import { useAppStore } from '@/store/use-store';
 import AppLayout from '@/components/layout/app-layout';
 
-// ─── Loading Skeleton ──────────────────────────────────────────────
-
 function ViewSkeleton() {
   return (
     <div className="space-y-6 animate-pulse">
@@ -24,8 +22,6 @@ function ViewSkeleton() {
     </div>
   );
 }
-
-// ─── Placeholder view for pages not yet built ─────────────────────
 
 function PlaceholderView({ title }: { title: string }) {
   const navigateTo = useAppStore((s) => s.navigateTo);
@@ -51,11 +47,7 @@ function PlaceholderView({ title }: { title: string }) {
   );
 }
 
-// ─── Dynamic view components (lazy loaded per view) ─────────────────
-// Each view is loaded only when navigated to, reducing initial bundle size
-
 const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
-  // Dashboards
   'dashboard-super': React.lazy(() => import('@/components/dashboard/super-admin/super-admin-dashboard').then(m => ({ default: m.SuperAdminDashboard }))),
   'dashboard-admin': React.lazy(() => import('@/components/dashboard/admin-sekolah/admin-sekolah-dashboard').then(m => ({ default: m.AdminSekolahDashboard }))),
   'dashboard-guru': React.lazy(() => import('@/components/dashboard/guru/guru-dashboard').then(m => ({ default: m.GuruDashboard }))),
@@ -63,7 +55,6 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'dashboard-ortu': React.lazy(() => import('@/components/dashboard/orang-tua/orang-tua-dashboard').then(m => ({ default: m.OrangTuaDashboard }))),
   'dashboard-kepsek': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
 
-  // SUPER_ADMIN
   'schools': React.lazy(() => import('@/components/dashboard/super-admin/school-manager').then(m => ({ default: m.SchoolManager }))),
   'school-detail': React.lazy(() => import('@/components/dashboard/super-admin/school-manager').then(m => ({ default: m.SchoolManager }))),
   'users-global': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.UsersGlobalView }))),
@@ -72,11 +63,9 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'analytics-global': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.AnalyticsGlobalView }))),
   'settings': React.lazy(() => import('@/components/views/super-admin-views').then(m => ({ default: m.SettingsView }))),
 
-  // ADMIN_SCHOOL — existing components
   'classes': React.lazy(() => import('@/components/dashboard/admin-sekolah/class-manager').then(m => ({ default: m.ClassManager }))),
   'users': React.lazy(() => import('@/components/dashboard/admin-sekolah/user-manager').then(m => ({ default: m.UserManager }))),
 
-  // ADMIN_SCHOOL — new views
   'subjects': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.SubjectsView }))),
   'teacher-assignments': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.TeacherAssignmentsView }))),
   'backup-restore': React.lazy(() => import('@/components/views/admin-school-new-views').then(m => ({ default: m.BackupRestoreView }))),
@@ -86,13 +75,11 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'import-csv': React.lazy(() => import('@/components/views/admin-school-import').then(m => ({ default: m.ImportCsvView }))),
   'dapodik-sync': React.lazy(() => import('@/components/views/admin-school-dapodik').then(m => ({ default: m.DapodikSyncView }))),
 
-  // GURU — existing components
   'guru-materi': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruMateriView }))),
   'guru-nilai': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruNilaiView }))),
   'guru-analisis': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruAnalisisView }))),
   'guru-laporan': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruLaporanView }))),
 
-  // GURU — bank soal & interactive views
   'guru-bank-soal': React.lazy(() => import('@/components/views/bank-soal/guru-bank-soal-view').then(m => ({ default: m.GuruBankSoalView }))),
   'guru-tugas': React.lazy(() => import('@/components/views/assignment/guru-assignment-view').then(m => ({ default: m.GuruAssignmentView }))),
   'guru-kehadiran': React.lazy(() => import('@/components/views/guru-new-views').then(m => ({ default: m.GuruKehadiranView }))),
@@ -106,7 +93,6 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-komponen-nilai': React.lazy(() => import('@/components/views/grades/komponen-nilai-view').then(m => ({ default: m.KomponenNilaiView }))),
   'guru-rapor': React.lazy(() => import('@/components/views/reports/rapor-view').then(m => ({ default: m.RaporView }))),
 
-  // SISWA — new views
   'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
   'siswa-tugas': React.lazy(() => import('@/components/views/assignment/siswa-assignment-view').then(m => ({ default: m.SiswaAssignmentView }))),
   'siswa-riwayat': React.lazy(() => import('@/components/views/siswa-views').then(m => ({ default: m.SiswaRiwayatView }))),
@@ -116,14 +102,12 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'siswa-nilai-akhir': React.lazy(() => import('@/components/views/grades/komponen-nilai-view').then(m => ({ default: m.KomponenNilaiView }))),
   'siswa-rapor': React.lazy(() => import('@/components/views/reports/rapor-view').then(m => ({ default: m.RaporView }))),
 
-  // ORANG_TUA — existing components (nilai view shows assignment scores too via /api/scores)
   'ortu-nilai': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuNilaiView }))),
   'ortu-materi': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuMateriView }))),
   'ortu-kehadiran': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuKehadiranView }))),
   'ortu-kuis': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuKuisView }))),
   'ortu-laporan': React.lazy(() => import('@/components/views/orang-tua-views').then(m => ({ default: m.OrtuLaporanView }))),
 
-  // ORANG_TUA — new views
   'ortu-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuKarakterView }))),
   'ortu-rekap-karakter': React.lazy(() => import('@/components/views/ortu-new-views').then(m => ({ default: m.OrtuRekapKarakterView }))),
   'ortu-kotak-masukan': React.lazy(() => import('@/components/views/feedback/kotak-masukan-view').then(m => ({ default: m.KotakMasukanView }))),
@@ -132,6 +116,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'ortu-rapor': React.lazy(() => import('@/components/views/reports/rapor-view').then(m => ({ default: m.RaporView }))),
 
   // KEPALA_SEKOLAH
+  'kepsek-peta-kelas': React.lazy(() => import('@/components/views/kepsek/kepsek-peta-kelas-view').then(m => ({ default: m.KepsekPetaKelasView }))),
   'kepsek-rekap-kelas': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
   'kepsek-rekap-guru': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
   'kepsek-rekap-karakter': React.lazy(() => import('@/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard').then(m => ({ default: m.KepalaSekolahDashboard }))),
@@ -139,19 +124,15 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'kepsek-profil-lulusan': React.lazy(() => import('@/components/views/competency/profil-lulusan-view').then(m => ({ default: m.ProfilLulusanView }))),
   'kepsek-rapor': React.lazy(() => import('@/components/views/reports/rapor-view').then(m => ({ default: m.RaporView }))),
 
-  // Shared
   'profile': React.lazy(() => import('@/components/views/shared-views').then(m => ({ default: m.ProfileView }))),
   'notifications': React.lazy(() => import('@/components/views/shared-views').then(m => ({ default: m.NotificationsView }))),
   'broadcasts': React.lazy(() => import('@/components/views/shared-views').then(m => ({ default: m.BroadcastsView }))),
 };
 
-// ─── View Router ─────────────────────────────────────────────────────
-
 function ViewRouter() {
   const currentView = useAppStore((s) => s.currentView);
   const user = useAppStore((s) => s.user);
 
-  // Dashboard maps to role-specific component
   if (currentView === 'dashboard') {
     const roleDashboards: Record<string, string> = {
       'SUPER_ADMIN': 'dashboard-super',
@@ -181,8 +162,6 @@ function ViewRouter() {
 
   return <ViewSkeleton />;
 }
-
-// ─── Export ─────────────────────────────────────────────────────────
 
 export default function AuthenticatedApp() {
   return (
