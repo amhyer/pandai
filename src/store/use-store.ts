@@ -13,76 +13,77 @@ export type ViewType =
   | 'dashboard'
 
   // ── SUPER_ADMIN ──
-  | 'schools'              // Kelola Sekolah
-  | 'school-detail'        // Detail Sekolah (sub)
-  | 'users-global'         // Semua Pengguna lintas sekolah
-  | 'questions-global'     // Bank Soal Global (NALAR)
-  | 'reports-global'       // Laporan Global
-  | 'analytics-global'     // Analitik lintas sekolah
-  | 'settings'             // Pengaturan Aplikasi
+  | 'schools'
+  | 'school-detail'
+  | 'users-global'
+  | 'questions-global'
+  | 'reports-global'
+  | 'analytics-global'
+  | 'settings'
 
   // ── ADMIN_SCHOOL ──
-  | 'classes'              // Rombel (Kelas)
-  | 'subjects'             // Mata Pelajaran
-  | 'users'                // Data Siswa
-  | 'teacher-assignments'   // Penugasan Guru
-  | 'timetable'            // Jadwal Pelajaran
-  | 'wali-kelas'            // Wali Kelas
-  | 'import-csv'            // Import Data
-  | 'dapodik-sync'          // Tarik Data Dapodik
-  | 'settings'             // Pengaturan Aplikasi
-  | 'backup-restore'        // Cadangkan & Pulihkan
-  | 'activity-log'         // Log Aktivitas
+  | 'classes'
+  | 'subjects'
+  | 'users'
+  | 'teacher-assignments'
+  | 'timetable'
+  | 'wali-kelas'
+  | 'import-csv'
+  | 'dapodik-sync'
+  | 'settings'
+  | 'backup-restore'
+  | 'activity-log'
 
   // ── GURU ──
-  | 'guru-materi'          // Materi Pelajaran
-  | 'guru-bank-soal'       // Bank Soal
-  | 'guru-tugas'           // Tugas, Kuis & Ujian
-  | 'guru-kehadiran'        // Kehadiran Siswa
-  | 'guru-rekap-kehadiran'  // Rekap Kehadiran
-  | 'guru-karakter'        // Isi Laporan 7 Kebiasaan
-  | 'guru-rekap-karakter'  // Rekap 7 Kebiasaan
-  | 'guru-jurnal'          // Jurnal Mengajar
-  | 'guru-nilai'           // Input Nilai
-  | 'guru-analisis'        // Analisis Hasil Belajar
-  | 'guru-laporan'         // Laporan Siswa
-  | 'guru-pandai-ai'       // PANDAI AI (Asisten AI)
-  | 'guru-kotak-masukan'   // Kotak Masukan
-  | 'guru-profil-lulusan' // Profil Lulusan 8 Dimensi
-  | 'guru-komponen-nilai' // Komponen Nilai & Bobot
-  | 'guru-rapor'           // Laporan & Rapor
+  | 'guru-materi'
+  | 'guru-bank-soal'
+  | 'guru-tugas'
+  | 'guru-kehadiran'
+  | 'guru-rekap-kehadiran'
+  | 'guru-karakter'
+  | 'guru-rekap-karakter'
+  | 'guru-jurnal'
+  | 'guru-nilai'
+  | 'guru-analisis'
+  | 'guru-laporan'
+  | 'guru-pandai-ai'
+  | 'guru-kotak-masukan'
+  | 'guru-profil-lulusan'
+  | 'guru-komponen-nilai'
+  | 'guru-rapor'
 
   // ── SISWA ──
-  | 'siswa-materi'         // Materi Pelajaran
-  | 'siswa-tugas'          // Tugas & Ujian
-  | 'siswa-riwayat'        // Riwayat Pengerjaan
-  | 'siswa-nilai'          // Nilai Saya
-  | 'siswa-kehadiran'      // Kehadiran Saya
-  | 'siswa-pandai-ai'      // PANDAI AI
-  | 'siswa-nilai-akhir'   // Nilai Akhir Semester
-  | 'siswa-rapor'        // Rapor Saya
+  | 'siswa-materi'
+  | 'siswa-tugas'
+  | 'siswa-riwayat'
+  | 'siswa-nilai'
+  | 'siswa-kehadiran'
+  | 'siswa-pandai-ai'
+  | 'siswa-nilai-akhir'
+  | 'siswa-rapor'
 
   // ── ORANG_TUA ──
-  | 'ortu-karakter'        // Isi Laporan Harian (7 Kebiasaan)
-  | 'ortu-rekap-karakter'  // Rekap & Analisis (7 Kebiasaan)
-  | 'ortu-nilai'           // Nilai & Progres
-  | 'ortu-materi'          // Materi Pelajaran
-  | 'ortu-kehadiran'       // Kehadiran
-  | 'ortu-kuis'            // Riwayat Pengerjaan
-  | 'ortu-laporan'         // Laporan Cetak
-  | 'ortu-kotak-masukan'   // Kotak Masukan
-  | 'ortu-profil-lulusan' // Profil Lulusan Anak
-  | 'ortu-nilai-akhir'   // Nilai Akhir Anak
-  | 'ortu-rapor'         // Rapor Anak
+  | 'ortu-karakter'
+  | 'ortu-rekap-karakter'
+  | 'ortu-nilai'
+  | 'ortu-materi'
+  | 'ortu-kehadiran'
+  | 'ortu-kuis'
+  | 'ortu-laporan'
+  | 'ortu-kotak-masukan'
+  | 'ortu-profil-lulusan'
+  | 'ortu-nilai-akhir'
+  | 'ortu-rapor'
 
   // ── KEPALA_SEKOLAH ──
-  | 'dashboard-kepsek'           // Dashboard Kepala Sekolah
-  | 'kepsek-rekap-kelas'         // Rekap Per Kelas
-  | 'kepsek-rekap-guru'          // Rekap Per Guru
-  | 'kepsek-rekap-karakter'      // Rekap 7 Kebiasaan
-  | 'kepsek-kotak-masukan'      // Kotak Masukan
-  | 'kepsek-profil-lulusan'    // Profil Lulusan 8 Dimensi
-  | 'kepsek-rapor'            // Laporan & Rapor
+  | 'dashboard-kepsek'
+  | 'kepsek-peta-kelas' // Peta Kelas (P1-2)
+  | 'kepsek-rekap-kelas'
+  | 'kepsek-rekap-guru'
+  | 'kepsek-rekap-karakter'
+  | 'kepsek-kotak-masukan'
+  | 'kepsek-profil-lulusan'
+  | 'kepsek-rapor'
 
   // ── Shared ──
   | 'profile'
@@ -112,22 +113,15 @@ export interface User {
 }
 
 interface AppState {
-  // Auth
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-
-  // Navigation
   currentView: ViewType;
   selectedSchoolId: string | null;
   selectedExamId: string | null;
   selectedAttemptId: string | null;
   selectedQuestionId: string | null;
-
-  // UI
   sidebarOpen: boolean;
-
-  // Actions
   setUser: (user: User | null) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
@@ -142,25 +136,17 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  // Auth
   user: null,
   isAuthenticated: false,
   isLoading: false,
-
-  // Navigation
   currentView: 'landing',
   selectedSchoolId: null,
   selectedExamId: null,
   selectedAttemptId: null,
   selectedQuestionId: null,
-
-  // UI
   sidebarOpen: true,
-
-  // Actions
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   logout: () => {
-    // Clear server-side session cookie
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
     set({ user: null, isAuthenticated: false, currentView: 'landing' });
   },
@@ -174,4 +160,3 @@ export const useAppStore = create<AppState>((set) => ({
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   navigateTo: (view) => set({ currentView: view }),
 }));
-
