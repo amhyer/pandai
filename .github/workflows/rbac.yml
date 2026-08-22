@@ -1,0 +1,140 @@
+name: RBAC CI
+
+on:
+  pull_request:
+    paths:
+      - 'src/app/api/**'
+      - 'src/lib/auth.ts'
+      - 'src/lib/scope.ts'
+      - 'src/lib/rate-limit.ts'
+      - 'tests/rbac/**'
+      - '.github/workflows/rbac.yml'
+      - 'package.json'
+      - 'prisma/**'
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/app/api/**'
+      - 'src/lib/auth.ts'
+      - 'src/lib/scope.ts'
+      - 'tests/rbac/**'
+      - '.github/workflows/rbac.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: rbac-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rbac-unit:
+    name: RBAC Unit (auth + scope)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup test env
+        run: |
+          mkdir -p db
+          cat > .env << 'EOF'
+          DATABASE_URL="file:./db/rbac-unit.db"
+          JWT_SECRET="ci_rbac_jwt_secret_min_32_chars_long!!"
+          PASSWORD_SALT="ci_rbac_salt"
+          NODE_ENV="test"
+          EOF
+
+      - name: Prisma generate + push
+        run: |
+          bunx prisma generate
+          bunx prisma db push --accept-data-loss --skip-generate
+
+      - name: Seed RBAC fixtures
+        run: bun run tests/rbac/seed.ts
+
+      - name: Run unit tests
+        run: bun test tests/rbac/unit
+
+  rbac-api:
+    name: RBAC API (P0 IDOR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: rbac-unit
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Setup test env
+        run: |
+          mkdir -p db
+          cat > .env << 'EOF'
+          DATABASE_URL="file:./db/rbac-api.db"
+          JWT_SECRET="ci_rbac_jwt_secret_min_32_chars_long!!"
+          PASSWORD_SALT="ci_rbac_salt"
+          NODE_ENV="test"
+          EOF
+
+      - name: Prisma generate + push
+        run: |
+          bunx prisma generate
+          bunx prisma db push --accept-data-loss --skip-generate
+
+      - name: Seed RBAC fixtures
+        run: bun run tests/rbac/seed.ts
+
+      - name: Build Next.js (standalone not required)
+        run: bun run build
+        env:
+          DATABASE_URL: file:./db/rbac-api.db
+          JWT_SECRET: ci_rbac_jwt_secret_min_32_chars_long!!
+          NODE_ENV: production
+
+      - name: Start server
+        run: |
+          bun run start &
+          echo $! > /tmp/pandai-server.pid
+          for i in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:3000/api/health >/dev/null 2>&1; then
+              echo "Server ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start"
+          exit 1
+        env:
+          DATABASE_URL: file:./db/rbac-api.db
+          JWT_SECRET: ci_rbac_jwt_secret_min_32_chars_long!!
+          NODE_ENV: production
+
+      - name: Run API RBAC tests
+        run: bun test tests/rbac/api
+        env:
+          BASE_URL: http://127.0.0.1:3000
+          DATABASE_URL: file:./db/rbac-api.db
+          JWT_SECRET: ci_rbac_jwt_secret_min_32_chars_long!!
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f /tmp/pandai-server.pid ]; then
+            kill $(cat /tmp/pandai-server.pid) 2>/dev/null || true
+          fi
