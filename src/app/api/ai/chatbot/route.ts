@@ -4,10 +4,12 @@ import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } fr
 import { logError } from '@/lib/error-log';
 import { requireAuth, AuthError } from '@/lib/auth';
 import { requireSchoolScope } from '@/lib/scope';
+import { logAccess } from '@/lib/audit-log';
 
 export async function GET(request: Request) {
   try {
     const auth = await requireAuth(request);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'ai-chatbot' }); } catch {}
     const { searchParams } = new URL(request.url);
     // IDOR fix: reject if userId param differs from session
     const queryUserId = searchParams.get('userId');
@@ -60,6 +62,7 @@ export async function POST(request: Request) {
     // IDOR fix: force userId from auth, ignore body param
     const effectiveUserId = auth.userId;
     const { action, schoolId, sessionId, subjectId, content } = data;
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'ai-chatbot', detail: action }); } catch {}
     const effectiveSchoolId = schoolId || auth.schoolId;
 
     if (!action || !effectiveSchoolId) {
@@ -219,6 +222,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Tidak diizinkan menghapus sesi orang lain' }, { status: 403 });
     }
     if (session.schoolId) requireSchoolScope(auth, session.schoolId);
+    try { await logAccess(auth, { action: 'DELETE', resourceType: 'ai-chatbot', resourceId: sessionId }); } catch {}
 
     await db.chatMessage.deleteMany({ where: { sessionId } });
     await db.chatbotSession.delete({ where: { id: sessionId } });

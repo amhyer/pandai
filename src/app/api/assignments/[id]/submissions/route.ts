@@ -4,12 +4,14 @@ import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { requireStudentScope } from '@/lib/scope';
+import { logAccess } from '@/lib/audit-log';
 
 // GET /api/assignments/[id]/submissions — guru sees all submissions, student sees their own
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { id } = await params;
+    try { await logAccess(auth, { action: 'READ', resourceType: 'submissions' }); } catch {}
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get('studentId');
 
@@ -110,6 +112,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { id } = await params;
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'submissions' }); } catch {}
     const body = await req.json();
     let { studentId, schoolId, classId, action, answers, remedialSubmissionId } = body;
 

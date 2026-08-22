@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { logAccess } from '@/lib/audit-log';
 
 // Roles allowed to send feedback
 const SENDER_ROLES = ['ORANG_TUA', 'GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL', 'SUPER_ADMIN'];
@@ -50,6 +51,7 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireAuth(req);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'feedback' }); } catch {}
 
     const { searchParams } = new URL(req.url);
     const statusFilter = searchParams.get('status');

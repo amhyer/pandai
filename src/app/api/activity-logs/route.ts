@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { getSchoolFilter } from '@/lib/scope';
+import { logAccess } from '@/lib/audit-log';
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'activity-logs' }); } catch {}
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId');
     const userId = searchParams.get('userId');

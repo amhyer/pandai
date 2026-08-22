@@ -3,10 +3,12 @@ import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { requireStudentScope, getSchoolFilter } from '@/lib/scope';
+import { logAccess } from '@/lib/audit-log';
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'SISWA']);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'external-quiz-scores' }); } catch {}
 
     if (auth.role === 'KEPALA_SEKOLAH') {
       return NextResponse.json({ error: 'Kepala Sekolah hanya dapat mengakses data agregat.' }, { status: 403 });
@@ -61,6 +63,7 @@ export async function POST(req: NextRequest) {
     const auth = await requireAuth(req);
     const body = await req.json();
     const { materialId, studentId, schoolId, classId, score, note, entryMode } = body;
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'external-quiz-scores', targetUserId: studentId }); } catch {}
 
     if (!materialId || !studentId || score === undefined) {
       return NextResponse.json({ error: 'Data wajib belum lengkap (materialId, studentId, score)' }, { status: 400 });
@@ -94,6 +97,7 @@ export async function PATCH(req: NextRequest) {
     const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL']);
     const body = await req.json();
     const { id, score, note } = body;
+    try { await logAccess(auth, { action: 'UPDATE', resourceType: 'external-quiz-scores' }); } catch {}
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
     if (score !== undefined && (score < 0 || score > 100)) { return NextResponse.json({ error: 'Score harus antara 0-100' }, { status: 400 }); }
 
@@ -121,6 +125,7 @@ export async function DELETE(req: NextRequest) {
     const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
+    try { await logAccess(auth, { action: 'DELETE', resourceType: 'external-quiz-scores' }); } catch {}
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
 
     // IDOR fix: verify the score record belongs to the same school

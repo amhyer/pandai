@@ -1,15 +1,18 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
-import { requireAuth, AuthError } from '@/lib/auth';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 export async function PATCH(request: Request) {
   try {
-    await requireAuth(request);
+    // IDOR fix: only GURU, ADMIN_SCHOOL, KEPALA_SEKOLAH, SUPER_ADMIN can review questions
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH']);
     const data = await request.json();
-    const { questionId, action, reviewerId, schoolId } = data;
+    const { questionId, action, schoolId } = data;
+    const reviewerId = auth.userId; // Force from session, not body
 
-    if (!questionId || !action || !reviewerId) {
+    if (!questionId || !action || !schoolId) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
@@ -17,7 +20,9 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Aksi tidak valid (approve/reject)' }, { status: 400 });
     }
 
-    // Verify question belongs to school
+    // IDOR fix: verify question belongs to user's school
+    requireSchoolScope(auth, schoolId);
+
     const existing = await db.question.findFirst({
       where: { id: questionId, schoolId },
     });

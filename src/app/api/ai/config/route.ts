@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth';
 import { requireSchoolScope } from '@/lib/scope';
+import { logAccess } from '@/lib/audit-log';
 
 export async function GET(request: Request) {
   try {
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
     requireSchoolScope(auth, schoolId);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'ai-config' }); } catch {}
 
     let config = await db.aiConfig.findUnique({ where: { schoolId } });
     if (!config) {
@@ -47,6 +49,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
     requireSchoolScope(auth, schoolId);
+    try { await logAccess(auth, { action: 'UPDATE', resourceType: 'ai-config' }); } catch {}
 
     // Clean updateData - only allow known fields
     const allowedFields = [

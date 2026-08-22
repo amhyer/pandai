@@ -4,6 +4,7 @@ import { hashPassword } from '@/lib/constants';
 import { generateTempPassword } from '@/lib/temp-password';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { logAccess } from '@/lib/audit-log';
 
 // Helper: extract first name from full name
 function getFirstName(fullName: string): string {
@@ -78,6 +79,7 @@ async function autoCreateOrtuForSiswa(siswaData: {
 export async function GET(request: Request) {
   try {
     const auth = await requireAuth(request);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'users' }); } catch {}
     const { searchParams } = new URL(request.url);
     const parentId = searchParams.get('parentId');
 
@@ -143,9 +145,17 @@ export async function POST(request: Request) {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const data = await request.json();
     const { name, role, schoolId, classId, phone, nisn, nip, nik, namaOrtu, jk } = data;
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'users', detail: 'create_user' }); } catch {}
 
     if (!name) {
       return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
+    }
+
+    // IDOR fix: ADMIN_SCHOOL can only create users in their own school
+    if (auth.role !== 'SUPER_ADMIN') {
+      if (schoolId && schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
+      }
     }
 
     const userRole = (role || 'SISWA').toUpperCase();
@@ -281,6 +291,7 @@ export async function PATCH(request: Request) {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { id, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+    try { await logAccess(auth, { action: 'UPDATE', resourceType: 'users' }); } catch {}
 
     // IDOR fix: ADMIN_SCHOOL can only modify users in their own school
     if (auth.role !== 'SUPER_ADMIN') {
@@ -347,6 +358,7 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+    try { await logAccess(auth, { action: 'DELETE', resourceType: 'users' }); } catch {}
 
     // IDOR fix: ADMIN_SCHOOL can only delete users in their own school
     if (auth.role !== 'SUPER_ADMIN') {
