@@ -3,16 +3,24 @@ import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion } from '@/lib/ai-helper';
 import { logError } from '@/lib/error-log';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { requireStudentScope, requireSchoolScope } from '@/lib/scope';
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const data = await request.json();
-    const { schoolId, userId, studentId } = data;
+    // IDOR fix: force userId from auth, ignore body param
+    const userId = auth.userId;
+    const schoolId = data.schoolId || auth.schoolId;
+    const { studentId } = data;
 
-    if (!schoolId || !userId || !studentId) {
+    if (!schoolId || !studentId) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
+
+    // IDOR fix: verify student access
+    await requireStudentScope(auth, studentId);
+    requireSchoolScope(auth, schoolId);
 
     // Rate limit
     const rateCheck = await checkRateLimit(userId, schoolId, 'generate_report');

@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
+import { logAccess } from '@/lib/audit-log';
 import { validateDimension, validateRating } from '@/lib/competency-dimensions';
+import { requireStudentScope } from '@/lib/scope';
 
 // ─── POST: Create or upsert a competency assessment (GURU only) ───
 export async function POST(request: Request) {
   try {
     const auth = await requireRole(request, ['GURU', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH', 'SUPER_ADMIN']);
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'competency-assessments' }); } catch {}
 
     const body = await request.json();
     const { studentId, classId, subjectId, dimension, rating, term, note, date } = body;
@@ -34,7 +37,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Cek siswa ada dan di sekolah yang sama
+    // IDOR fix: verify student is in the same school
+    await requireStudentScope(auth, studentId);
+
     const student = await db.user.findUnique({ where: { id: studentId } });
     if (!student) {
       return NextResponse.json({ error: 'Siswa tidak ditemukan' }, { status: 404 });
@@ -43,11 +48,6 @@ export async function POST(request: Request) {
     const targetSchoolId = auth.role === 'SUPER_ADMIN' ? (student.schoolId || body.schoolId) : auth.schoolId;
     if (!targetSchoolId) {
       return NextResponse.json({ error: 'Sekolah tidak diketahui' }, { status: 400 });
-    }
-
-    // School isolation: siswa harus di sekolah yang sama (kecuali SUPER_ADMIN)
-    if (auth.role !== 'SUPER_ADMIN' && student.schoolId && student.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Tidak bisa menilai siswa dari sekolah lain' }, { status: 403 });
     }
 
     // Upsert: satu guru, satu dimensi, satu siswa, satu periode
@@ -98,6 +98,7 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     const auth = await requireAuth(request);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'competency-assessments', targetUserId: new URL(request.url).searchParams.get('studentId') || undefined }); } catch {}
     const { searchParams } = new URL(request.url);
 
     const studentId = searchParams.get('studentId');
@@ -109,11 +110,11 @@ export async function GET(request: Request) {
     const where: Record<string, unknown> = {};
 
     if (auth.role === 'SISWA') {
-      // Siswa hanya bisa lihat data diri sendiri
+      if (studentId) await requireStudentScope(auth, studentId);
       where.studentId = auth.userId;
       where.schoolId = auth.schoolId;
     } else if (auth.role === 'ORANG_TUA') {
-      // Ortu hanya bisa lihat data anak-anaknya
+      if (studentId) await requireStudentScope(auth, studentId);
       const children = await db.user.findMany({
         where: { parentId: auth.userId, schoolId: auth.schoolId },
         select: { id: true },

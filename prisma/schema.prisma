@@ -780,3 +780,23 @@ model CompetencyAssessment {
   @@index([term])
   @@index([dimension])
 }
+
+// ===== AUDIT LOG =====
+model AuditLog {
+  id            String    @id @default(cuid())
+  userId        String
+  role          String
+  action        String    // e.g. 'READ', 'CREATE', 'UPDATE', 'DELETE'
+  resourceType  String    // e.g. 'scores', 'attendance', 'character-reports'
+  resourceId    String?   // ID of the resource accessed
+  targetUserId  String?   // ID of the student whose data was accessed
+  ip            String?
+  logStatus        String    @default("success") // 'success' or 'denied'
+  detail        String?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([targetUserId])
+  @@index([createdAt])
+}

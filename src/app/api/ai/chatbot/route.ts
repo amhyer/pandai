@@ -3,17 +3,24 @@ import { db } from '@/lib/db';
 import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } from '@/lib/ai-helper';
 import { logError } from '@/lib/error-log';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const schoolId = searchParams.get('schoolId');
-
-    if (!userId || !schoolId) {
-      return NextResponse.json({ error: 'userId dan schoolId diperlukan' }, { status: 400 });
+    // IDOR fix: reject if userId param differs from session
+    const queryUserId = searchParams.get('userId');
+    if (queryUserId && queryUserId !== auth.userId) {
+      return NextResponse.json({ error: 'Tidak diizinkan mengakses data pengguna lain' }, { status: 403 });
     }
+    const userId = auth.userId;
+    const schoolId = searchParams.get('schoolId') || auth.schoolId;
+
+    if (!schoolId) {
+      return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 });
+    }
+    requireSchoolScope(auth, schoolId);
 
     const sessions = await db.chatbotSession.findMany({
       where: { userId, schoolId },
@@ -48,18 +55,22 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const data = await request.json();
-    const { action, userId, schoolId, sessionId, subjectId, content } = data;
+    // IDOR fix: force userId from auth, ignore body param
+    const effectiveUserId = auth.userId;
+    const { action, schoolId, sessionId, subjectId, content } = data;
+    const effectiveSchoolId = schoolId || auth.schoolId;
 
-    if (!action || !userId || !schoolId) {
+    if (!action || !effectiveSchoolId) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
+    requireSchoolScope(auth, effectiveSchoolId);
 
     // CREATE SESSION
     if (action === 'create_session') {
       const session = await db.chatbotSession.create({
-        data: { userId, schoolId, subjectId: subjectId || null },
+        data: { userId: effectiveUserId, schoolId: effectiveSchoolId, subjectId: subjectId || null },
       });
       return NextResponse.json({ success: true, session });
     }
@@ -71,7 +82,7 @@ export async function POST(request: Request) {
       }
 
       // Rate limit
-      const rateCheck = await checkRateLimit(userId, schoolId, 'chatbot');
+      const rateCheck = await checkRateLimit(effectiveUserId, effectiveSchoolId, 'chatbot');
       if (!rateCheck.allowed) {
         return NextResponse.json({ error: rateCheck.message }, { status: 429 });
       }
@@ -99,7 +110,7 @@ export async function POST(request: Request) {
         const subject = await db.subject.findUnique({ where: { id: subjectId } });
         const subjectName = subject?.name || 'Mata Pelajaran';
         const materials = await db.material.findMany({
-          where: { subjectId, schoolId, status: 'published' },
+          where: { subjectId, schoolId: effectiveSchoolId, status: 'published' },
           orderBy: { createdAt: 'desc' },
           take: 5,
           select: { title: true, content: true },
@@ -175,7 +186,7 @@ Aturan:
       });
 
       // Log usage
-      await logAiUsage(userId, schoolId, 'chatbot', 300);
+      await logAiUsage(effectiveUserId, effectiveSchoolId, 'chatbot', 300);
 
       return NextResponse.json({ success: true, message: aiMessage });
     }
@@ -194,12 +205,20 @@ Aturan:
 
 export async function DELETE(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const sessionId = searchParams.get('sessionId');
     if (!sessionId) {
       return NextResponse.json({ error: 'sessionId diperlukan' }, { status: 400 });
     }
+
+    // IDOR fix: verify the session belongs to the current user
+    const session = await db.chatbotSession.findUnique({ where: { id: sessionId }, select: { userId: true, schoolId: true } });
+    if (!session) return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 });
+    if (session.userId !== auth.userId) {
+      return NextResponse.json({ error: 'Tidak diizinkan menghapus sesi orang lain' }, { status: 403 });
+    }
+    if (session.schoolId) requireSchoolScope(auth, session.schoolId);
 
     await db.chatMessage.deleteMany({ where: { sessionId } });
     await db.chatbotSession.delete({ where: { id: sessionId } });

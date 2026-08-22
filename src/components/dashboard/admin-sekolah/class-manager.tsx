@@ -209,8 +209,6 @@ export function ClassManager() {
     fetchData();
   }, [fetchData]);
 
-  const [submitting, setSubmitting] = useState(false);
-
   const handleSubmit = async (form: ClassFormData) => {
     if (!user?.schoolId) {
       toast.error('Data sekolah tidak ditemukan');

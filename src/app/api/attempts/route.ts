@@ -2,12 +2,15 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
+import { logAccess } from '@/lib/audit-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireStudentScope, getSchoolFilter } from '@/lib/scope';
 
 // GET attempts
 export async function GET(request: Request) {
   try {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'attempts', targetUserId: new URL(request.url).searchParams.get('userId') || undefined }); } catch {}
 
     // RBAC: Kepala Sekolah cannot access individual attempt data
     if (auth.role === 'KEPALA_SEKOLAH') {
@@ -27,9 +30,26 @@ export async function GET(request: Request) {
     const skip = (page - 1) * limit;
 
     const where: any = {};
-    if (userId) where.userId = userId;
-    if (schoolId) where.schoolId = schoolId;
-    if (classId) where.classId = classId;
+
+    // IDOR fix: SISWA can only see own attempts, force userId
+    if (auth.role === 'SISWA') {
+      if (userId && userId !== auth.userId) {
+        throw new AuthError('Tidak diizinkan mengakses data siswa lain', 403);
+      }
+      where.userId = auth.userId;
+      if (auth.schoolId) where.schoolId = auth.schoolId;
+    } else {
+      // GURU, ADMIN_SCHOOL, SUPER_ADMIN
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF) where.schoolId = schoolF;
+      else if (schoolId) where.schoolId = schoolId;
+      if (userId) {
+        await requireStudentScope(auth, userId);
+        where.userId = userId;
+      }
+      if (classId) where.classId = classId;
+    }
+
     if (examSessionId) where.examSessionId = examSessionId;
 
     const attempts = await db.studentAttempt.findMany({
@@ -189,6 +209,16 @@ export async function PATCH(request: Request) {
     const body = await request.json();
     const { id, learningObjective } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // IDOR fix: verify the attempt belongs to the same school
+    const existing = await db.studentAttempt.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Attempt tidak ditemukan' }, { status: 404 });
+    if (existing.schoolId) {
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF && existing.schoolId !== schoolF) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
 
     const updateData: Record<string, unknown> = {};
     if (learningObjective !== undefined) {

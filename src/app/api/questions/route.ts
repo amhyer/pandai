@@ -5,7 +5,7 @@ import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const subjectId = searchParams.get('subjectId');
@@ -42,6 +42,13 @@ export async function GET(request: Request) {
       take: limit,
       skip,
     });
+
+    // Security: strip answer key from SISWA responses
+    // GURU/ADMIN/KEPALA_SEKOLAH can see answers for review purposes
+    if (auth.role === 'SISWA') {
+      const sanitized = questions.map(({ answer, explanation, ...rest }) => rest);
+      return NextResponse.json(sanitized);
+    }
 
     return NextResponse.json(questions);
   } catch (error) {

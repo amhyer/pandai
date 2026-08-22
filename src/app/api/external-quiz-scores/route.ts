@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireStudentScope, getSchoolFilter } from '@/lib/scope';
 
 export async function GET(req: NextRequest) {
   try {
@@ -18,10 +19,26 @@ export async function GET(req: NextRequest) {
     const classId = searchParams.get('classId');
 
     const where: Record<string, unknown> = {};
+
+    // IDOR fix: SISWA can only see own scores
+    if (auth.role === 'SISWA') {
+      if (studentId && studentId !== auth.userId) {
+        throw new AuthError('Tidak diizinkan mengakses data siswa lain', 403);
+      }
+      where.studentId = auth.userId;
+      if (auth.schoolId) where.schoolId = auth.schoolId;
+    } else {
+      // GURU, ADMIN_SCHOOL, SUPER_ADMIN
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF) where.schoolId = schoolF;
+      else if (schoolId) where.schoolId = schoolId;
+      if (studentId) {
+        await requireStudentScope(auth, studentId);
+        where.studentId = studentId;
+      }
+      if (classId) where.classId = classId;
+    }
     if (materialId) where.materialId = materialId;
-    if (studentId) where.studentId = studentId;
-    if (schoolId) where.schoolId = schoolId;
-    if (classId) where.classId = classId;
 
     const scores = await db.externalQuizScore.findMany({ where, orderBy: [{ createdAt: 'desc' }], take: 200 });
     const enriched = await Promise.all(scores.map(async (s) => {
@@ -80,6 +97,16 @@ export async function PATCH(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
     if (score !== undefined && (score < 0 || score > 100)) { return NextResponse.json({ error: 'Score harus antara 0-100' }, { status: 400 }); }
 
+    // IDOR fix: verify the score record belongs to the same school
+    const existing = await db.externalQuizScore.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Nilai tidak ditemukan' }, { status: 404 });
+    if (existing.schoolId) {
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF && existing.schoolId !== schoolF) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
+
     const result = await db.externalQuizScore.update({ where: { id }, data: { ...(score !== undefined && { score }), ...(note !== undefined && { note }) } });
     return NextResponse.json(result);
   } catch (error) {
@@ -91,10 +118,21 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // IDOR fix: verify the score record belongs to the same school
+    const existing = await db.externalQuizScore.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Nilai tidak ditemukan' }, { status: 404 });
+    if (existing.schoolId) {
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF && existing.schoolId !== schoolF) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
+
     await db.externalQuizScore.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

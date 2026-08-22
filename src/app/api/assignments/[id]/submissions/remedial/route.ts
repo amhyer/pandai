@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 // POST /api/assignments/[id]/submissions/remedial — guru activates remedial
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
 
     const { id } = await params;
     const body = await req.json();
@@ -15,6 +16,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const assignment = await db.assignment.findUnique({ where: { id } });
     if (!assignment) return NextResponse.json({ error: 'Tugas tidak ditemukan' }, { status: 404 });
+
+    // IDOR fix: verify the assignment belongs to the same school
+    if (assignment.schoolId) requireSchoolScope(auth, assignment.schoolId);
 
     const original = await db.assignmentSubmission.findFirst({
       where: { assignmentId: id, studentId, isRemedial: false },

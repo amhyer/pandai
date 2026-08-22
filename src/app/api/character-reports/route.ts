@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
+import { logAccess } from '@/lib/audit-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireStudentScope, getSchoolFilter } from '@/lib/scope';
 
 export const SEVEN_HABITS = ['bangun_pagi', 'beribadah', 'berolahraga', 'makan_sehat', 'gemar_belajar', 'bermasyarakat', 'tidur_cepat'] as const;
 
@@ -21,6 +23,7 @@ export const RATING_LABELS: Record<number, string> = { 1: 'Belum', 2: 'Kadang', 
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'ORANG_TUA', 'SISWA']);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'character-reports', targetUserId: new URL(req.url).searchParams.get('studentId') || undefined }); } catch {}
 
     // RBAC: Kepala Sekolah cannot access individual character reports
     if (auth.role === 'KEPALA_SEKOLAH') {
@@ -41,8 +44,15 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    // ORANG_TUA: only see character reports for own children
-    if (auth.role === 'ORANG_TUA') {
+    // SISWA: only see own character reports
+    if (auth.role === 'SISWA') {
+      if (studentId && studentId !== auth.userId) {
+        return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+      }
+      where.studentId = auth.userId;
+      if (auth.schoolId) where.schoolId = auth.schoolId;
+    } else if (auth.role === 'ORANG_TUA') {
+      // ORANG_TUA: only see character reports for own children
       const children = await db.user.findMany({
         where: { parentId: auth.userId, schoolId: auth.schoolId },
         select: { id: true },
@@ -58,9 +68,15 @@ export async function GET(req: NextRequest) {
         where.studentId = { in: childIds };
       }
     } else {
-      if (schoolId) where.schoolId = schoolId;
+      // GURU, ADMIN_SCHOOL, SUPER_ADMIN
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF) where.schoolId = schoolF;
+      else if (schoolId) where.schoolId = schoolId;
       if (classId) where.classId = classId;
-      if (studentId) where.studentId = studentId;
+      if (studentId) {
+        await requireStudentScope(auth, studentId);
+        where.studentId = studentId;
+      }
     }
 
     if (reporterId) where.reporterId = reporterId;
@@ -93,6 +109,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['ORANG_TUA']);
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'character-reports' }); } catch {}
     const body = await req.json();
     const items = Array.isArray(body) ? body : [body];
 
@@ -103,6 +120,9 @@ export async function POST(req: NextRequest) {
       if (!studentId || !reporterId || !date || !habit) {
         return NextResponse.json({ error: 'Data wajib belum lengkap' }, { status: 400 });
       }
+
+      // IDOR fix: ORANG_TUA can only create reports for own children
+      await requireStudentScope(auth, studentId);
       if (!SEVEN_HABITS.includes(habit as typeof SEVEN_HABITS[number])) {
         return NextResponse.json({ error: 'Kebiasaan tidak valid' }, { status: 400 });
       }
@@ -133,12 +153,18 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['ORANG_TUA']);
+    try { await logAccess(auth, { action: 'UPDATE', resourceType: 'character-reports' }); } catch {}
     const body = await req.json();
     const { id, rating, note } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
     if (rating !== undefined && (rating < 1 || rating > 4)) {
       return NextResponse.json({ error: 'Rating harus antara 1-4' }, { status: 400 });
     }
+
+    // IDOR fix: ORANG_TUA can only update reports for own children
+    const existing = await db.characterReport.findUnique({ where: { id }, select: { studentId: true } });
+    if (!existing) return NextResponse.json({ error: 'Laporan tidak ditemukan' }, { status: 404 });
+    await requireStudentScope(auth, existing.studentId);
 
     const report = await db.characterReport.update({
       where: { id }, data: { ...(rating !== undefined && { rating }), ...(note !== undefined && { note }) },
@@ -157,9 +183,15 @@ export async function PATCH(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['ORANG_TUA']);
+    try { await logAccess(auth, { action: 'DELETE', resourceType: 'character-reports' }); } catch {}
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // IDOR fix: ORANG_TUA can only delete reports for own children
+    const existing = await db.characterReport.findUnique({ where: { id }, select: { studentId: true } });
+    if (!existing) return NextResponse.json({ error: 'Laporan tidak ditemukan' }, { status: 404 });
+    await requireStudentScope(auth, existing.studentId);
 
     await db.characterReport.delete({ where: { id } });
     return NextResponse.json({ success: true });

@@ -2,11 +2,14 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
+import { logAccess } from '@/lib/audit-log';
+import { requireStudentScope, getSchoolFilter } from '@/lib/scope';
 
 // ─── GET: List student grades ───
 export async function GET(request: Request) {
   try {
     const auth = await requireAuth(request);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'student-grades', targetUserId: new URL(request.url).searchParams.get('studentId') || undefined }); } catch {}
     const { searchParams } = new URL(request.url);
     const studentId = searchParams.get('studentId');
     const componentId = searchParams.get('componentId');
@@ -18,9 +21,11 @@ export async function GET(request: Request) {
 
     // Role-based filtering
     if (auth.role === 'SISWA') {
+      if (studentId) await requireStudentScope(auth, studentId);
       where.studentId = auth.userId;
       where.schoolId = auth.schoolId;
     } else if (auth.role === 'ORANG_TUA') {
+      if (studentId) await requireStudentScope(auth, studentId);
       const children = await db.user.findMany({
         where: { parentId: auth.userId, schoolId: auth.schoolId },
         select: { id: true },
@@ -29,8 +34,13 @@ export async function GET(request: Request) {
       where.studentId = { in: children.map(c => c.id) };
       where.schoolId = auth.schoolId;
     } else {
-      if (auth.role !== 'SUPER_ADMIN' && auth.schoolId) where.schoolId = auth.schoolId;
-      if (studentId) where.studentId = studentId;
+      // GURU, ADMIN_SCHOOL, KEPALA_SEKOLAH, SUPER_ADMIN
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF) where.schoolId = schoolF;
+      if (studentId) {
+        await requireStudentScope(auth, studentId);
+        where.studentId = studentId;
+      }
     }
 
     if (componentId) where.componentId = componentId;
@@ -62,6 +72,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const auth = await requireRole(request, ['GURU', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH', 'SUPER_ADMIN']);
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'student-grades' }); } catch {}
     const body = await request.json();
     const { studentId, componentId, score, maxScore, source, sourceId, date, note, classId, subjectId, term } = body;
 
@@ -72,6 +83,9 @@ export async function POST(request: Request) {
     if (score < 0 || score > (maxScore || 100)) {
       return NextResponse.json({ error: `Score harus 0-${maxScore || 100}` }, { status: 400 });
     }
+
+    // IDOR fix: verify the student belongs to the same school
+    await requireStudentScope(auth, studentId);
 
     // Verify component exists and in same school
     const component = await db.gradeComponent.findUnique({ where: { id: componentId } });

@@ -1,15 +1,22 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     if (!schoolId) {
       return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 });
     }
+
+    // IDOR fix: only ADMIN_SCHOOL, KEPALA_SEKOLAH, SUPER_ADMIN can read AI config
+    if (auth.role === 'SISWA' || auth.role === 'ORANG_TUA') {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+    requireSchoolScope(auth, schoolId);
 
     let config = await db.aiConfig.findUnique({ where: { schoolId } });
     if (!config) {
@@ -28,12 +35,18 @@ export async function GET(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const data = await request.json();
     const { schoolId, ...updateData } = data;
     if (!schoolId) {
       return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 });
     }
+
+    // IDOR fix: only ADMIN_SCHOOL, KEPALA_SEKOLAH, SUPER_ADMIN can modify AI config
+    if (auth.role === 'SISWA' || auth.role === 'ORANG_TUA' || auth.role === 'GURU') {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+    requireSchoolScope(auth, schoolId);
 
     // Clean updateData - only allow known fields
     const allowedFields = [

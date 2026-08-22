@@ -57,6 +57,11 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
+    // IDOR fix: SISWA should not access feedback
+    if (auth.role === 'SISWA') {
+      return NextResponse.json({ data: [] });
+    }
+
     if (auth.role === 'ORANG_TUA') {
       where.fromUserId = auth.userId;
     }

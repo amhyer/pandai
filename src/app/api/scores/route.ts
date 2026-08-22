@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { logAccess } from '@/lib/audit-log';
 
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'SISWA', 'ORANG_TUA']);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'scores', targetUserId: new URL(req.url).searchParams.get('studentId') || undefined }); } catch {}
 
     // RBAC: Kepala Sekolah cannot access individual student data
     if (auth.role === 'KEPALA_SEKOLAH') {

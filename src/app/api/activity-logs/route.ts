@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter } from '@/lib/scope';
 
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId');
     const userId = searchParams.get('userId');
@@ -14,7 +15,10 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     const where: Record<string, unknown> = {};
-    if (schoolId) where.schoolId = schoolId;
+    // IDOR fix: ADMIN_SCHOOL can only see their own school's logs
+    const schoolF = getSchoolFilter(auth);
+    if (schoolF) where.schoolId = schoolF;
+    else if (schoolId) where.schoolId = schoolId;
     if (userId) where.userId = userId;
     if (module_) where.module = module_;
     if (category) where.module = category;

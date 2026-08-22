@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { logAccess } from '@/lib/audit-log';
+import { requireStudentScope, requireSchoolScope, getSchoolFilter } from '@/lib/scope';
 
 // GET /api/attendance
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA', 'ORANG_TUA']);
+    try { await logAccess(auth, { action: 'READ', resourceType: 'attendance', targetUserId: new URL(req.url).searchParams.get('studentId') || undefined }); } catch {}
 
     // RBAC: Kepala Sekolah cannot access individual attendance data
     if (auth.role === 'KEPALA_SEKOLAH') {
@@ -24,8 +27,15 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    // ORANG_TUA: only see attendance for own children
-    if (auth.role === 'ORANG_TUA') {
+    // SISWA: only see own attendance
+    if (auth.role === 'SISWA') {
+      if (studentId && studentId !== auth.userId) {
+        return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+      }
+      where.studentId = auth.userId;
+      if (auth.schoolId) where.schoolId = auth.schoolId;
+    } else if (auth.role === 'ORANG_TUA') {
+      // ORANG_TUA: only see attendance for own children
       const children = await db.user.findMany({
         where: { parentId: auth.userId, schoolId: auth.schoolId },
         select: { id: true },
@@ -40,9 +50,15 @@ export async function GET(req: NextRequest) {
         where.studentId = studentId;
       }
     } else {
-      if (schoolId) where.schoolId = schoolId;
+      // GURU, ADMIN_SCHOOL, SUPER_ADMIN
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF) where.schoolId = schoolF;
+      else if (schoolId) where.schoolId = schoolId;
       if (classId) where.classId = classId;
-      if (studentId) where.studentId = studentId;
+      if (studentId) {
+        await requireStudentScope(auth, studentId);
+        where.studentId = studentId;
+      }
     }
 
     if (date) where.date = date;
@@ -77,6 +93,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['GURU']);
+    try { await logAccess(auth, { action: 'CREATE', resourceType: 'attendance' }); } catch {}
     const body = await req.json();
     const { records } = body;
     const { classId, schoolId, date } = body;
@@ -85,6 +102,9 @@ export async function POST(req: NextRequest) {
     if (!date || !schoolId || !records?.length) {
       return NextResponse.json({ error: 'Data wajib belum lengkap' }, { status: 400 });
     }
+
+    // IDOR fix: GURU can only create attendance for their own school
+    requireSchoolScope(auth, schoolId);
 
     if (classId) {
       await db.attendance.deleteMany({ where: { classId, date, recordedBy } });
@@ -110,10 +130,16 @@ export async function POST(req: NextRequest) {
 // PATCH /api/attendance — Update single record
 export async function PATCH(req: NextRequest) {
   try {
-    await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    try { await logAccess(auth, { action: 'UPDATE', resourceType: 'attendance' }); } catch {}
     const body = await req.json();
     const { id, status, note } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // IDOR fix: verify the attendance record belongs to the same school
+    const existing = await db.attendance.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Record tidak ditemukan' }, { status: 404 });
+    if (existing.schoolId) requireSchoolScope(auth, existing.schoolId);
 
     const record = await db.attendance.update({
       where: { id },

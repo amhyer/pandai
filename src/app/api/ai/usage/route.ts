@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
-    const schoolId = searchParams.get('schoolId');
+    // IDOR fix: force userId from auth, ignore query param
+    const userId = auth.userId;
+    const schoolId = searchParams.get('schoolId') || auth.schoolId;
 
-    if (!userId || !schoolId) {
-      return NextResponse.json({ error: 'userId dan schoolId diperlukan' }, { status: 400 });
+    if (!schoolId) {
+      return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 });
     }
+    requireSchoolScope(auth, schoolId);
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);

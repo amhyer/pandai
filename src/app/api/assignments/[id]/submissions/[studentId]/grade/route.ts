@@ -2,14 +2,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 // PATCH /api/assignments/[id]/submissions/[studentId]/grade — guru input skor esai + feedback
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string; studentId: string }> }) {
   try {
-    await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     const { id, studentId } = await params;
     const body = await req.json();
     const { score, feedback, essayScores, isRemedial } = body;
+
+    // IDOR fix: verify the assignment belongs to the same school
+    const assignment = await db.assignment.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!assignment) return NextResponse.json({ error: 'Tugas tidak ditemukan' }, { status: 404 });
+    if (assignment.schoolId) requireSchoolScope(auth, assignment.schoolId);
 
     const submission = await db.assignmentSubmission.findFirst({
       where: { assignmentId: id, studentId, ...(isRemedial ? { isRemedial: true } : { isRemedial: false }) },

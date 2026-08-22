@@ -109,6 +109,10 @@ export async function GET(request: Request) {
     const where: any = { isActive: true };
     // Non-super-admin can only see their own school
     if (auth.role !== 'SUPER_ADMIN') {
+      // If a different schoolId is requested, reject explicitly
+      if (schoolId && schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
+      }
       where.schoolId = auth.schoolId;
     } else if (schoolId) {
       where.schoolId = schoolId;
@@ -274,9 +278,18 @@ export async function POST(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { id, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // IDOR fix: ADMIN_SCHOOL can only modify users in their own school
+    if (auth.role !== 'SUPER_ADMIN') {
+      const targetUser = await db.user.findUnique({ where: { id }, select: { schoolId: true } });
+      if (!targetUser || targetUser.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
+
     if (data.password) data.password = await hashPassword(data.password);
     if (data.nisn) data.username = data.nisn.trim();
     if (data.nip) data.username = data.nip.trim();
@@ -330,10 +343,19 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // IDOR fix: ADMIN_SCHOOL can only delete users in their own school
+    if (auth.role !== 'SUPER_ADMIN') {
+      const targetUser = await db.user.findUnique({ where: { id }, select: { schoolId: true } });
+      if (!targetUser || targetUser.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
+
     await db.user.update({ where: { id }, data: { isActive: false } });
     return NextResponse.json({ success: true });
   } catch (error) {

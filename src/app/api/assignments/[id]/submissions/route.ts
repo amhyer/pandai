@@ -3,16 +3,54 @@ import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireStudentScope } from '@/lib/scope';
 
 // GET /api/assignments/[id]/submissions — guru sees all submissions, student sees their own
 export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const studentId = searchParams.get('studentId');
 
+    // IDOR fix: SISWA can only see their own submissions
+    if (auth.role === 'SISWA') {
+      if (studentId && studentId !== auth.userId) {
+        return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+      }
+      // When no studentId, only show own submission
+      const sub = await db.assignmentSubmission.findFirst({
+        where: { assignmentId: id, studentId: auth.userId, isRemedial: false },
+        include: {
+          answers: { include: { question: { include: { question: { select: { id: true, content: true, type: true, options: true } } } } } },
+          remedialSubmissions: { select: { id: true, status: true, score: true, submittedAt: true, isRemedial: true } },
+        },
+      });
+      if (!sub) return NextResponse.json(null);
+
+      const extra: Record<string, unknown> = {};
+      if (sub.remedialSubmissions.length > 0) {
+        const remedial = sub.remedialSubmissions[0];
+        extra.hasRemedial = true;
+        extra.remedialId = remedial.id;
+        extra.remedialStatus = remedial.status;
+        extra.remedialScore = remedial.score;
+        if (remedial.status === 'submitted' || remedial.status === 'dinilai') {
+          extra.activeScore = remedial.score;
+          extra.originalScore = sub.score;
+        } else {
+          extra.activeScore = sub.score;
+          extra.originalScore = sub.score;
+        }
+      } else {
+        extra.hasRemedial = false;
+        extra.activeScore = sub.score;
+      }
+      return NextResponse.json({ ...sub, ...extra });
+    }
+
     if (studentId) {
+      await requireStudentScope(auth, studentId);
       const sub = await db.assignmentSubmission.findFirst({
         where: { assignmentId: id, studentId, isRemedial: false },
         include: {
