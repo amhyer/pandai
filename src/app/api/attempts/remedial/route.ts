@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter } from '@/lib/scope';
 
 // POST /api/attempts/remedial — guru activates remedial for a student's attempt
 export async function POST(req: NextRequest) {
   try {
-    await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
 
     const body = await req.json();
     const { attemptId } = body;
@@ -19,6 +20,14 @@ export async function POST(req: NextRequest) {
 
     if (!original) return NextResponse.json({ error: 'Attempt tidak ditemukan' }, { status: 404 });
     if (original.isRemedial) return NextResponse.json({ error: 'Tidak bisa mengaktifkan remedial untuk attempt yang sudah remedial' }, { status: 400 });
+
+    // IDOR fix: verify the attempt belongs to the same school
+    if (original.schoolId) {
+      const schoolF = getSchoolFilter(auth);
+      if (schoolF && original.schoolId !== schoolF) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
 
     const existingRemedial = await db.studentAttempt.findFirst({ where: { remedialOfId: attemptId } });
     if (existingRemedial) {

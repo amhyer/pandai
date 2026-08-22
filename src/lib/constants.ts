@@ -94,7 +94,7 @@ function getSalt(): string {
   const salt = process.env.PASSWORD_SALT;
   if (!salt || salt === 'CHANGE_ME_IN_PRODUCTION') {
     if (process.env.NODE_ENV === 'production') {
-      console.error('[SECURITY] PASSWORD_SALT env var is not set!');
+      throw new Error('[SECURITY] PASSWORD_SALT env var is not set in production!');
     }
     return 'pandai_dev_salt_2024';
   }

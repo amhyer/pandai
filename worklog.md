@@ -1154,3 +1154,108 @@ Stage Summary:
 - Sequential test membuktikan server stabil
 - VERDICT: SPESIFIK SANDBOX, bukan potensi masalah production
 - Mitigasi production: PostgreSQL + proper hosting + load testing
+
+---
+Task ID: 9.0
+Agent: main
+Task: Klarifikasi repo sama atau berbeda dengan production
+
+Work Log:
+- Checked git remote: origin = github.com/amhyer/pandai.git
+- Checked .env tracking: git ls-files .env = empty (untracked)
+- Checked 7cfda65 DATABASE_URL: file:./db/custom.db (SQLite local path, NOT production credential)
+- Checked all git history for postgresql:// URLs: only template values (${POSTGRES_PASSWORD}, user:password@host)
+
+Stage Summary:
+- Repo SAMA PERSIS yang akan di-deploy
+- 7.4 status: SELESAI — tidak ada real production credential di git history
+- DATABASE_URL in history = SQLite file path, PostgreSQL URLs = template only
+
+---
+Task ID: 9.1
+Agent: main
+Task: Seed H3/H16, verifikasi runtime scope check
+
+Work Log:
+- Read attendance POST validation: requires records[], date, schoolId
+- Read competency-assessments POST validation: requires studentId, dimension, rating, term, date
+- Created second school (SD-TEST-B) + GURU_B in DB
+- Tested H3 same-school: 201 (created: 1)
+- Tested H3 cross-school: 403 (Akses ditolak — bukan sekolah Anda)
+- Tested H16 same-school: 201 (got valid ID)
+- Tested H16 cross-school: 403 (Tidak diizinkan mengakses data siswa dari sekolah lain)
+
+Stage Summary:
+- H3: FIXED (scope check reaches auth layer, not blocked by validation)
+- H16: FIXED (requireStudentScope correctly checks school isolation)
+
+---
+Task ID: 9.2
+Agent: main
+Task: Seed H33/H34/H37/H38, verifikasi cross-school
+
+Work Log:
+- Created StudentAttempt for SISWA in School A
+- Created Material + ExternalQuizScore for SISWA in School A
+- Fixed H34 (attempts/remedial): added school isolation check (was missing!)
+- Tested H33 same-school: 200 (learningObjective updated)
+- Tested H33 cross-school: 403 (Akses ditolak)
+- Tested H34 same-school: 201 (isRemedial: true)
+- Tested H34 cross-school: 403 (Akses ditolak)
+- Tested H37 same-school: 200 (score updated)
+- Tested H37 cross-school: 403 (Akses ditolak)
+- Tested H38 cross-school: 403 (Akses ditolak)
+- Tested H38 same-school: 200 (deleted)
+
+Stage Summary:
+- NEW FIX: H34 remedial route was missing school isolation — added getSchoolFilter check
+- All 4 items now verified with real curl + cross-school data
+
+---
+Task ID: 9.3
+Agent: main
+Task: Setup staging PostgreSQL
+
+Work Log:
+- Checked Docker: NOT AVAILABLE
+- Checked apt install: no root/sudo access
+- Verified migration file: 1032 lines, SQLite syntax (TEXT PK, TIMESTAMP(3))
+- Checked schema for SQLite-specific: none (Prisma abstracts DB differences)
+- Confirmed: Prisma can generate new PostgreSQL migration from same schema.prisma
+
+Stage Summary:
+- PostgreSQL CANNOT be provisioned in sandbox (no Docker, no root)
+- Documented manual steps for staging server
+- Migration compatibility: Schema uses CUID (TEXT) for PKs, Prisma handles Postgres differences
+
+---
+Task ID: 9.5
+Agent: main
+Task: Load testing script
+
+Work Log:
+- artillery not available in sandbox
+- Created scripts/staging/load-test.js (Artillery config)
+- Scenarios: 50 concurrent users, mix SISWA/GURU/ORTU/ADMIN
+- Measures: response time, error rate, throughput
+
+Stage Summary:
+- Script documented for execution on staging server
+- Cannot execute in sandbox
+
+---
+Task ID: 9.6
+Agent: main
+Task: Environment variables + dangerous defaults
+
+Work Log:
+- Found all process.env usages: NODE_ENV, JWT_SECRET, PASSWORD_SALT, DATABASE_URL
+- Found DANGEROUS DEFAULT in auth.ts: PASSWORD_SALT fallback to known value (line 34) — but only for legacy verification (acceptable risk)
+- Found DANGEROUS DEFAULT in constants.ts: getSalt() returns known salt even in production (line 99)
+- FIXED: register-school/route.ts: changed import from constants.hashPassword to auth.hashPassword (bcrypt)
+- FIXED: constants.ts getSalt(): changed console.error to throw new Error in production
+- Generated proper JWT_SECRET: 32-byte base64 random
+
+Stage Summary:
+- 2 dangerous defaults fixed (register-school import + getSalt production throw)
+- Production env var checklist: DATABASE_URL, JWT_SECRET, NODE_ENV, PASSWORD_SALT

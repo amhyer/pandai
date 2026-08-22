@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { hashPassword } from '@/lib/constants';
+import { hashPassword } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
 
 export async function POST(request: Request) {
