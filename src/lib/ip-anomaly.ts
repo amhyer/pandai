@@ -1,8 +1,9 @@
 /**
- * Session IP anomaly detection (Edge-compatible).
+ * Session IP anomaly detection.
  *
- * Storage is an in-memory Map: fine for single-node / long-lived process.
- * On multi-instance serverless, replace with Redis/KV for shared state.
+ * Storage:
+ *   1. Redis (Upstash) when configured — shared across instances / Edge
+ *   2. In-memory Map fallback — single node / local dev
  *
  * Modes (env IP_ANOMALY_MODE):
  *   observe — log + response header only (default)
@@ -11,6 +12,7 @@
  */
 
 import { sameIpv4Prefix } from '@/lib/client-ip';
+import { getRedis, redisKey } from '@/lib/redis';
 
 export type IpAnomalyMode = 'observe' | 'stepup' | 'block';
 
@@ -22,38 +24,43 @@ export type IpAnomalyVerdict = {
   lastIp?: string;
   currentIp: string;
   changeCount24h: number;
+  /** where state was read/written */
+  backend?: 'redis' | 'memory';
 };
 
 type SessionIpRecord = {
   userId: string;
   loginIp: string;
   lastIp: string;
-  /** distinct IPs seen in the rolling window */
   ips: string[];
   windowStartedAt: number;
   updatedAt: number;
 };
 
 const WINDOW_MS = 24 * 60 * 60 * 1000;
+const WINDOW_SEC = 24 * 60 * 60;
 const MAX_ENTRIES = 20_000;
 
-/** Global store — one per server isolate */
-const store = new Map<string, SessionIpRecord>();
+/** In-memory fallback — one per server isolate */
+const memoryStore = new Map<string, SessionIpRecord>();
 
-function pruneIfNeeded() {
-  if (store.size <= MAX_ENTRIES) return;
+function pruneMemory() {
+  if (memoryStore.size <= MAX_ENTRIES) return;
   const now = Date.now();
-  for (const [k, v] of store) {
-    if (now - v.updatedAt > WINDOW_MS) store.delete(k);
+  for (const [k, v] of memoryStore) {
+    if (now - v.updatedAt > WINDOW_MS) memoryStore.delete(k);
   }
-  // still too big: drop oldest half
-  if (store.size > MAX_ENTRIES) {
-    const keys = [...store.entries()]
+  if (memoryStore.size > MAX_ENTRIES) {
+    const keys = [...memoryStore.entries()]
       .sort((a, b) => a[1].updatedAt - b[1].updatedAt)
-      .slice(0, Math.floor(store.size / 2))
+      .slice(0, Math.floor(memoryStore.size / 2))
       .map(([k]) => k);
-    for (const k of keys) store.delete(k);
+    for (const k of keys) memoryStore.delete(k);
   }
+}
+
+function sessionRedisKey(sessionKey: string): string {
+  return redisKey(['ip-sess', sessionKey]);
 }
 
 export function getIpAnomalyMode(): IpAnomalyMode {
@@ -62,7 +69,6 @@ export function getIpAnomalyMode(): IpAnomalyMode {
   return 'observe';
 }
 
-/** Comma-separated allowlist, e.g. school public IPs */
 export function getIpAllowlist(): Set<string> {
   const raw = process.env.IP_ANOMALY_ALLOWLIST || '';
   return new Set(
@@ -78,87 +84,14 @@ export function maxIpChanges24h(): number {
   return Number.isFinite(n) && n > 0 ? n : 8;
 }
 
-/**
- * Track IP for this session key and return anomaly verdict.
- * @param sessionKey stable id for this login (e.g. userId + token iat, or hash)
- */
-export function trackSessionIp(
-  sessionKey: string,
-  userId: string,
+function verdictFromRecord(
+  rec: SessionIpRecord,
   currentIp: string,
+  prevLast: string,
+  backend: 'redis' | 'memory',
 ): IpAnomalyVerdict {
-  const now = Date.now();
-  const allow = getIpAllowlist();
-
-  if (currentIp === 'unknown') {
-    return {
-      anomaly: false,
-      hard: false,
-      currentIp,
-      changeCount24h: 0,
-      reason: 'ip_unknown',
-    };
-  }
-
-  if (allow.has(currentIp)) {
-    // still update last seen
-    const existing = store.get(sessionKey);
-    if (existing) {
-      existing.lastIp = currentIp;
-      existing.updatedAt = now;
-    }
-    return {
-      anomaly: false,
-      hard: false,
-      currentIp,
-      loginIp: existing?.loginIp,
-      lastIp: existing?.lastIp,
-      changeCount24h: existing?.ips.length ?? 0,
-      reason: 'allowlist',
-    };
-  }
-
-  pruneIfNeeded();
-
-  let rec = store.get(sessionKey);
-  if (!rec) {
-    rec = {
-      userId,
-      loginIp: currentIp,
-      lastIp: currentIp,
-      ips: [currentIp],
-      windowStartedAt: now,
-      updatedAt: now,
-    };
-    store.set(sessionKey, rec);
-    return {
-      anomaly: false,
-      hard: false,
-      currentIp,
-      loginIp: currentIp,
-      lastIp: currentIp,
-      changeCount24h: 1,
-    };
-  }
-
-  // reset window if expired
-  if (now - rec.windowStartedAt > WINDOW_MS) {
-    rec.windowStartedAt = now;
-    rec.ips = [currentIp];
-    rec.loginIp = currentIp;
-  } else if (!rec.ips.includes(currentIp)) {
-    rec.ips.push(currentIp);
-  }
-
-  const prevLast = rec.lastIp;
-  rec.lastIp = currentIp;
-  rec.updatedAt = now;
-  store.set(sessionKey, rec);
-
   const changeCount24h = rec.ips.length;
   const maxChanges = maxIpChanges24h();
-
-  // Soft: different IP but same /16 — treat as mild (mobile/NAT)
   const softNetwork = sameIpv4Prefix(rec.loginIp, currentIp, 2);
 
   if (currentIp === rec.loginIp || currentIp === prevLast) {
@@ -169,10 +102,10 @@ export function trackSessionIp(
       loginIp: rec.loginIp,
       lastIp: prevLast,
       changeCount24h,
+      backend,
     };
   }
 
-  // Hard: many distinct IPs in 24h
   if (changeCount24h > maxChanges) {
     return {
       anomaly: true,
@@ -182,10 +115,10 @@ export function trackSessionIp(
       loginIp: rec.loginIp,
       lastIp: prevLast,
       changeCount24h,
+      backend,
     };
   }
 
-  // Hard: login IP and current differ and not same /16
   if (!softNetwork && currentIp !== rec.loginIp) {
     return {
       anomaly: true,
@@ -195,10 +128,10 @@ export function trackSessionIp(
       loginIp: rec.loginIp,
       lastIp: prevLast,
       changeCount24h,
+      backend,
     };
   }
 
-  // Mild anomaly (same /16 but not identical)
   if (currentIp !== rec.loginIp) {
     return {
       anomaly: true,
@@ -208,6 +141,7 @@ export function trackSessionIp(
       loginIp: rec.loginIp,
       lastIp: prevLast,
       changeCount24h,
+      backend,
     };
   }
 
@@ -218,12 +152,161 @@ export function trackSessionIp(
     loginIp: rec.loginIp,
     lastIp: prevLast,
     changeCount24h,
+    backend,
   };
 }
 
-/** Clear tracking (e.g. after logout) */
-export function clearSessionIp(sessionKey: string) {
-  store.delete(sessionKey);
+function applyIpToRecord(
+  rec: SessionIpRecord,
+  userId: string,
+  currentIp: string,
+  now: number,
+): { rec: SessionIpRecord; prevLast: string } {
+  const prevLast = rec.lastIp;
+
+  if (now - rec.windowStartedAt > WINDOW_MS) {
+    rec = {
+      userId,
+      loginIp: currentIp,
+      lastIp: currentIp,
+      ips: [currentIp],
+      windowStartedAt: now,
+      updatedAt: now,
+    };
+    return { rec, prevLast: currentIp };
+  }
+
+  if (!rec.ips.includes(currentIp)) {
+    rec.ips = [...rec.ips, currentIp];
+  }
+  rec.lastIp = currentIp;
+  rec.updatedAt = now;
+  return { rec, prevLast };
+}
+
+async function loadRecord(sessionKey: string): Promise<{
+  rec: SessionIpRecord | null;
+  backend: 'redis' | 'memory';
+}> {
+  const redis = getRedis();
+  if (redis) {
+    try {
+      const data = await redis.get<SessionIpRecord>(sessionRedisKey(sessionKey));
+      if (data && typeof data === 'object' && data.loginIp) {
+        return { rec: data, backend: 'redis' };
+      }
+      return { rec: null, backend: 'redis' };
+    } catch (e) {
+      console.warn('[ip-anomaly] redis get failed, using memory', e);
+    }
+  }
+  return { rec: memoryStore.get(sessionKey) ?? null, backend: 'memory' };
+}
+
+async function saveRecord(
+  sessionKey: string,
+  rec: SessionIpRecord,
+  prefer: 'redis' | 'memory',
+): Promise<'redis' | 'memory'> {
+  if (prefer === 'redis' || getRedis()) {
+    const redis = getRedis();
+    if (redis) {
+      try {
+        await redis.set(sessionRedisKey(sessionKey), rec, { ex: WINDOW_SEC });
+        return 'redis';
+      } catch (e) {
+        console.warn('[ip-anomaly] redis set failed, using memory', e);
+      }
+    }
+  }
+  pruneMemory();
+  memoryStore.set(sessionKey, rec);
+  return 'memory';
+}
+
+/**
+ * Track IP for this session key and return anomaly verdict.
+ * Prefer await this in middleware (Redis path is async).
+ */
+export async function trackSessionIp(
+  sessionKey: string,
+  userId: string,
+  currentIp: string,
+): Promise<IpAnomalyVerdict> {
+  const now = Date.now();
+  const allow = getIpAllowlist();
+
+  if (currentIp === 'unknown') {
+    return {
+      anomaly: false,
+      hard: false,
+      currentIp,
+      changeCount24h: 0,
+      reason: 'ip_unknown',
+      backend: getRedis() ? 'redis' : 'memory',
+    };
+  }
+
+  if (allow.has(currentIp)) {
+    const { rec, backend } = await loadRecord(sessionKey);
+    if (rec) {
+      rec.lastIp = currentIp;
+      rec.updatedAt = now;
+      await saveRecord(sessionKey, rec, backend);
+    }
+    return {
+      anomaly: false,
+      hard: false,
+      currentIp,
+      loginIp: rec?.loginIp,
+      lastIp: rec?.lastIp,
+      changeCount24h: rec?.ips.length ?? 0,
+      reason: 'allowlist',
+      backend,
+    };
+  }
+
+  const loaded = await loadRecord(sessionKey);
+  let rec = loaded.rec;
+  let backend = loaded.backend;
+
+  if (!rec) {
+    rec = {
+      userId,
+      loginIp: currentIp,
+      lastIp: currentIp,
+      ips: [currentIp],
+      windowStartedAt: now,
+      updatedAt: now,
+    };
+    backend = await saveRecord(sessionKey, rec, backend);
+    return {
+      anomaly: false,
+      hard: false,
+      currentIp,
+      loginIp: currentIp,
+      lastIp: currentIp,
+      changeCount24h: 1,
+      backend,
+    };
+  }
+
+  const applied = applyIpToRecord(rec, userId, currentIp, now);
+  backend = await saveRecord(sessionKey, applied.rec, backend);
+  return verdictFromRecord(applied.rec, currentIp, applied.prevLast, backend);
+}
+
+/** Clear tracking (call on logout if sessionKey known) */
+export async function clearSessionIp(sessionKey: string): Promise<void> {
+  memoryStore.delete(sessionKey);
+  const redis = getRedis();
+  if (redis) {
+    try {
+      await redis.del(sessionRedisKey(sessionKey));
+    } catch (e) {
+      console.warn('[ip-anomaly] redis del failed', e);
+    }
+  }
 }
 
 export function shouldBlockRequest(
@@ -234,7 +317,6 @@ export function shouldBlockRequest(
   if (!verdict.hard) return false;
   if (mode === 'observe') return false;
   if (mode === 'block') return true;
-  // stepup: only mutating methods
   if (mode === 'stepup') {
     return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method.toUpperCase());
   }

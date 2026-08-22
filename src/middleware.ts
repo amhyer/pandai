@@ -10,7 +10,6 @@ import {
   type IpAnomalyVerdict,
 } from '@/lib/ip-anomaly';
 
-// Security headers applied to all API responses
 const SECURITY_HEADERS: Record<string, string> = {
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
@@ -67,10 +66,12 @@ function applySecurityHeaders(response: NextResponse) {
 
 function anomalyHeaders(verdict: IpAnomalyVerdict): Record<string, string> {
   if (!verdict.anomaly) return {};
-  return {
+  const h: Record<string, string> = {
     'X-IP-Anomaly': verdict.hard ? 'hard' : 'soft',
     'X-IP-Anomaly-Reason': verdict.reason || 'unknown',
   };
+  if (verdict.backend) h['X-IP-Anomaly-Backend'] = verdict.backend;
+  return h;
 }
 
 export async function middleware(request: NextRequest) {
@@ -98,7 +99,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ─── 2. AI endpoints (per IP only — never trust x-user-id) ───
+  // ─── 2. AI endpoints (per IP only) ───
   if (pathname.startsWith('/api/ai/')) {
     const result = checkRateLimit(`ai:${ip}`, RATE_AI.max, RATE_AI.windowMs);
     if (!result.allowed) {
@@ -145,7 +146,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ─── 4. IP anomaly detection (authenticated API only) ───
+  // ─── 4. IP anomaly (Redis if configured, else memory) ───
   let verdict: IpAnomalyVerdict | null = null;
   const isApi = pathname.startsWith('/api/');
   const skipAnomaly =
@@ -156,12 +157,10 @@ export async function middleware(request: NextRequest) {
   if (isApi && !skipAnomaly) {
     const session = await readSession(request);
     if (session) {
-      // Bind tracker to this login instance (userId + iat)
       const sessionKey = `${session.userId}:${session.iat ?? '0'}`;
-      verdict = trackSessionIp(sessionKey, session.userId, ip);
+      verdict = await trackSessionIp(sessionKey, session.userId, ip);
 
       if (verdict.anomaly) {
-        // Structured log for observe / SIEM shipper
         console.warn(
           JSON.stringify({
             type: 'IP_ANOMALY',
@@ -175,6 +174,7 @@ export async function middleware(request: NextRequest) {
             loginIp: verdict.loginIp,
             lastIp: verdict.lastIp,
             changeCount24h: verdict.changeCount24h,
+            backend: verdict.backend,
             mode: getIpAnomalyMode(),
           }),
         );

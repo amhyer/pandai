@@ -1,32 +1,70 @@
-# Deteksi anomali IP (middleware)
+# Deteksi anomali IP (middleware + Redis)
+
+## Storage state
+
+| Backend | Kapan |
+|---------|--------|
+| **Redis (Upstash REST)** | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` di-set |
+| **Memory** | Redis tidak dikonfigurasi, atau request Redis gagal |
+
+Key Redis:
+
+```text
+{REDIS_KEY_PREFIX:pandai}:ip-sess:{userId}:{iat}
+TTL: 24 jam
+```
+
+Nilai: JSON `{ userId, loginIp, lastIp, ips[], windowStartedAt, updatedAt }`.
+
+> Middleware Next.js berjalan di **Edge Runtime**. Karena itu dipakai **Upstash REST** (`@upstash/redis`), bukan koneksi TCP `redis://` (ioredis).
 
 ## Mode
 
-Set env `IP_ANOMALY_MODE`:
+`IP_ANOMALY_MODE`:
 
 | Nilai | Perilaku |
 |-------|----------|
-| `observe` (default) | Log JSON + header `X-IP-Anomaly`; **tidak** memblokir |
-| `stepup` | Blokir POST/PUT/PATCH/DELETE saat anomali **hard**; GET tetap jalan |
-| `block` | 401 semua request terautentikasi saat anomali hard |
+| `observe` (default) | Log JSON + header `X-IP-Anomaly`; tidak memblokir |
+| `stepup` | Blokir POST/PUT/PATCH/DELETE saat hard anomaly |
+| `block` | 401 semua request auth saat hard anomaly |
 
-## Env lain
+## Env lengkap
 
 ```bash
+# Wajib untuk shared state multi-instance
+UPSTASH_REDIS_REST_URL=https://xxxx.upstash.io
+UPSTASH_REDIS_REST_TOKEN=AXxx...
+
+# Alias opsional (sama artinya, URL harus https)
+# REDIS_URL=https://xxxx.upstash.io
+# REDIS_TOKEN=AXxx...
+
+REDIS_KEY_PREFIX=pandai
+
 IP_ANOMALY_MODE=observe
-IP_ANOMALY_ALLOWLIST=103.x.x.x,125.y.y.y   # IP publik sekolah (opsional)
-IP_ANOMALY_MAX_CHANGES=8                    # max IP berbeda / 24 jam sebelum hard
-JWT_SECRET=...                              # wajib sama dengan auth
+IP_ANOMALY_ALLOWLIST=103.x.x.x,125.y.y.y
+IP_ANOMALY_MAX_CHANGES=8
+
+JWT_SECRET=...
 ```
 
-## Kapan “hard” anomaly
+## Setup Upstash (ringkas)
 
-1. **ip_jump** — IP saat ini beda dari IP login dan bukan satu prefix /16
-2. **ip_churn** — lebih dari `IP_ANOMALY_MAX_CHANGES` IP berbeda dalam 24 jam
+1. Buat database di [Upstash Console](https://console.upstash.com/)
+2. Copy **REST URL** + **REST TOKEN**
+3. Tempel ke `.env` / secrets CI / host
+4. `bun add @upstash/redis` (sudah di package.json branch ini)
+5. Restart app — log anomaly akan berisi `"backend":"redis"`
 
-Soft (`ip_soft`): ganti IP dalam /16 yang sama (NAT/mobile) → tidak memblokir.
+Tanpa env Redis, sistem tetap jalan dengan `"backend":"memory"` (cocok dev lokal).
 
-## Response saat diblokir
+## Hard vs soft
+
+- **ip_jump** — IP beda dari login dan bukan satu prefix /16
+- **ip_churn** — lebih dari `IP_ANOMALY_MAX_CHANGES` IP berbeda / 24 jam
+- **ip_soft** — ganti IP dalam /16 (tidak memblokir)
+
+## Response blokir
 
 ```json
 {
@@ -36,16 +74,26 @@ Soft (`ip_soft`): ganti IP dalam /16 yang sama (NAT/mobile) → tidak memblokir.
 }
 ```
 
-Status: `401`. Client sebaiknya clear state + redirect login.
+Headers: `X-IP-Anomaly`, `X-IP-Anomaly-Reason`, `X-IP-Anomaly-Backend`.
+
+## Logout (opsional)
+
+Jika route logout mengetahui `userId` + `iat` JWT, panggil:
+
+```ts
+import { clearSessionIp } from '@/lib/ip-anomaly';
+await clearSessionIp(`${userId}:${iat}`);
+```
 
 ## Batasan
 
-- State di **memory** per instance Node/Edge. Multi-replica butuh Redis/KV.
-- Tidak mendeteksi pencurian token dari **IP yang sama**.
-- Lab sekolah dengan satu IP publik: andalkan allowlist + RBAC, bukan IP saja.
+- Tanpa Redis, state tidak konsisten antar replica.
+- Tidak mendeteksi pencurian token dari IP yang sama.
+- Allowlist IP sekolah tetap disarankan untuk lab NAT.
 
 ## File
 
-- `src/lib/client-ip.ts` — ekstraksi IP
-- `src/lib/ip-anomaly.ts` — tracker + verdict
-- `src/middleware.ts` — integrasi rate limit + anomaly
+- `src/lib/redis.ts`
+- `src/lib/client-ip.ts`
+- `src/lib/ip-anomaly.ts`
+- `src/middleware.ts`
