@@ -8,6 +8,8 @@ import { requireRole, AuthError } from '@/lib/auth';
 
 const execAsync = promisify(exec);
 
+const IS_POSTGRESQL = (process.env.DATABASE_URL || '').startsWith('postgresql://');
+
 // GET /api/backup
 export async function GET(req: NextRequest) {
   try {
@@ -16,6 +18,12 @@ export async function GET(req: NextRequest) {
     const action = searchParams.get('action');
 
     if (action === 'download') {
+      if (IS_POSTGRESQL) {
+        return NextResponse.json(
+          { error: 'File backup tidak tersedia untuk PostgreSQL. Gunakan pg_dump.' },
+          { status: 400 }
+        );
+      }
       const dbPath = path.join(process.cwd(), 'db', 'custom.db');
       const dbBuffer = await fs.readFile(dbPath);
       const filename = `pandai-backup-${new Date().toISOString().split('T')[0]}.db`;
@@ -40,7 +48,7 @@ export async function GET(req: NextRequest) {
       tables.map(async (table) => {
         try {
           const result = await db.$queryRawUnsafe(`SELECT COUNT(*) as count FROM "${table}"`);
-          return { table, count: (result as any[])[0].count };
+          return { table, count: Number((result as any[])[0].count) };
         } catch {
           return { table, count: 0 };
         }
@@ -49,9 +57,25 @@ export async function GET(req: NextRequest) {
 
     const totalRecords = tableStats.reduce((sum, t) => sum + t.count, 0);
 
+    if (IS_POSTGRESQL) {
+      // PostgreSQL: use pg_database_size instead of file stat
+      const dbSizeResult = await db.$queryRawUnsafe(`SELECT pg_database_size(current_database()) as size`);
+      const dbSize = Number((dbSizeResult as any[])[0].size);
+
+      return NextResponse.json({
+        tables: tableStats,
+        totalRecords,
+        dbSize,
+        dbType: 'postgresql',
+        lastBackup: new Date().toISOString(),
+      });
+    }
+
     return NextResponse.json({
-      tables: tableStats, totalRecords,
+      tables: tableStats,
+      totalRecords,
       dbSize: (await fs.stat(path.join(process.cwd(), 'db', 'custom.db'))).size,
+      dbType: 'sqlite',
       lastBackup: new Date().toISOString(),
     });
   } catch (error) {
@@ -67,6 +91,41 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     await requireRole(req, ['SUPER_ADMIN']);
+
+    if (IS_POSTGRESQL) {
+      // PostgreSQL: use pg_dump
+      const { DATABASE_URL } = process.env;
+      if (!DATABASE_URL) {
+        return NextResponse.json({ error: 'DATABASE_URL tidak dikonfigurasi' }, { status: 500 });
+      }
+
+      const backupDir = path.join(process.cwd(), 'db', 'backups');
+      await fs.mkdir(backupDir, { recursive: true });
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+      const backupPath = path.join(backupDir, `pandai-${timestamp}.sql`);
+
+      try {
+        await execAsync(`pg_dump "${DATABASE_URL}" > "${backupPath}"`);
+        const stats = await fs.stat(backupPath);
+
+        return NextResponse.json({
+          success: true,
+          message: 'Backup PostgreSQL berhasil dibuat',
+          file: `pandai-${timestamp}.sql`,
+          size: stats.size,
+          dbType: 'postgresql',
+          createdAt: new Date().toISOString(),
+        });
+      } catch (execError: any) {
+        return NextResponse.json({
+          success: false,
+          error: `pg_dump gagal: ${execError.message}. Pastikan pg_dump terinstall.`
+        }, { status: 500 });
+      }
+    }
+
+    // SQLite: file copy
     const dbPath = path.join(process.cwd(), 'db', 'custom.db');
     const backupDir = path.join(process.cwd(), 'db', 'backups');
 
@@ -79,8 +138,12 @@ export async function POST(req: NextRequest) {
     const stats = await fs.stat(backupPath);
 
     return NextResponse.json({
-      success: true, message: 'Backup berhasil dibuat',
-      file: `pandai-${timestamp}.db`, size: stats.size, createdAt: new Date().toISOString(),
+      success: true,
+      message: 'Backup berhasil dibuat',
+      file: `pandai-${timestamp}.db`,
+      size: stats.size,
+      dbType: 'sqlite',
+      createdAt: new Date().toISOString(),
     });
   } catch (error) {
     if (error instanceof AuthError) {

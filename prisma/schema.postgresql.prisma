@@ -1,0 +1,802 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ===== TENANT / SEKOLAH =====
+model School {
+  id             String   @id @default(cuid())
+  name           String
+  code           String   @unique
+  address        String?
+  logo           String?
+  phone          String?
+  email          String?
+  status         String   @default("active") // active, suspended, deleted
+  plan           String   @default("free")  // free, starter, pro
+  maxStudents    Int      @default(50)
+  expiresAt      DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Dapodik fields
+  npsn            String?   @unique   // Nomor Pokok Sekolah Nasional
+  province        String?              // Provinsi
+  city            String?              // Kota/Kabupaten
+  district        String?              // Kecamatan
+  principalName   String?              // Nama Kepala Sekolah
+  accreditation   String?              // Akreditasi (A, B, C)
+  schoolType      String?              // Jenis: SMA, SMK, MA
+  established     String?              // Tahun Berdiri
+  curriculum      String?              // Kurikulum
+
+  users          User[]
+  classes        Class[]
+  examAssignments ExamAssignment[]
+  examPackages    ExamPackage[]
+  questions       Question[]
+  subscriptions  Subscription[]
+  feedbacks       Feedback[]
+  competencyAssessments CompetencyAssessment[]
+  gradeComponents     GradeComponent[]
+  studentGrades       StudentGrade[]
+}
+
+// ===== SUBSCRIPTION =====
+model Subscription {
+  id        String   @id @default(cuid())
+  schoolId  String
+  plan      String   @default("free")
+  status    String   @default("active")
+  startDate DateTime @default(now())
+  endDate   DateTime?
+  amount    Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id])
+}
+
+// ===== USER (5 LEVEL RBAC) =====
+model User {
+  id          String   @id @default(cuid())
+  username    String?  @unique       // Login: NIP/NIK untuk guru, NISN untuk siswa, nama_depan untuk ortu
+  email       String?  @unique       // Untuk admin/superadmin (opsional untuk guru/siswa/ortu)
+  password    String
+  name        String
+  role        String   // SUPER_ADMIN, ADMIN_SCHOOL, GURU, SISWA, ORANG_TUA, KEPALA_SEKOLAH
+  avatar      String?
+  phone       String?
+  isActive    Boolean  @default(true)
+  schoolId    String?
+  classId     String?
+
+  // Data fields per role
+  nisn        String?  @unique       // NISN siswa ( Nomor Induk Siswa Nasional)
+  nip         String?  @unique       // NIP guru PNS
+  nik         String?                // NIK (KTP) guru non-PNS
+  namaOrtu    String?                // Nama orang tua/wali (untuk siswa)
+  jk          String?                // Jenis kelamin: L, P
+
+  // Relasi orang tua ↔ anak
+  parentId    String?                // Untuk SISWA: link ke akun ORANG_TUA
+  parent      User?    @relation("ParentChild", fields: [parentId], references: [id])
+  children    User[]   @relation("ParentChild")
+
+  lastLogin   DateTime?
+  mustChangePassword Boolean @default(false) // Force password change on first login
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  school          School?           @relation(fields: [schoolId], references: [id])
+  class           Class?            @relation(fields: [classId], references: [id])
+  createdQuestions Question[]        @relation("QuestionCreator")
+  studentAttempts StudentAttempt[]
+  waliKelasOf     Class[]           @relation("WaliKelasClass")
+  timetableAsTeacher Timetable[]    @relation("TimetableTeacher")
+  sentFeedback    Feedback[]        @relation("FeedbackSender")
+  respondedFeedback Feedback[]      @relation("FeedbackResponder")
+  assessedStudents   CompetencyAssessment[] @relation("AssessorTeacher")
+  competencyAssessments CompetencyAssessment[] @relation("AssessedStudent")
+  createdGradeComponents GradeComponent[] @relation("GradeComponentCreator")
+  studentGrades      StudentGrade[] @relation("GradedStudent")
+
+  @@index([schoolId])
+  @@index([role])
+  @@index([parentId])
+}
+
+// ===== CLASS / ROMBEL =====
+model Class {
+  id           String   @id @default(cuid())
+  name         String
+  grade        Int      // 10, 11, 12
+  academicYear String   // 2024/2025
+  schoolId     String
+  waliKelasId  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  school    School         @relation(fields: [schoolId], references: [id])
+  users     User[]
+  examAssignments ExamAssignment[]
+  WaliKelas User?          @relation("WaliKelasClass", fields: [waliKelasId], references: [id])
+  timetables Timetable[]
+  competencyAssessments CompetencyAssessment[]
+  gradeComponents     GradeComponent[] @relation("GradeComponentClass")
+}
+
+// ===== SUBJECT (MATA UJI) =====
+model Subject {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  type      String   @default("wajib") // wajib: BIndo, BIng, Mat; pilihan: Fis, Kim, Bio, Eko, Sos, Sej, Geo
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  topics    Topic[]
+  questions Question[]
+  timetables Timetable[]
+  gradeComponents GradeComponent[]
+}
+
+// ===== TOPIC / SUBTOPIK =====
+model Topic {
+  id         String   @id @default(cuid())
+  name       String
+  subjectId  String
+  parentId   String?
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  subject   Subject  @relation(fields: [subjectId], references: [id])
+  parent    Topic?   @relation("TopicHierarchy", fields: [parentId], references: [id])
+  children  Topic[]  @relation("TopicHierarchy")
+  questions Question[]
+}
+
+// ===== QUESTION (BANK SOAL) =====
+model Question {
+  id            String   @id @default(cuid())
+  subjectId     String
+  topicId       String?
+  schoolId      String?  // null = global (NALAR), non-null = privat sekolah
+  type          String   @default("pg") // pg, pg_kompleks, isian, esai
+  content       String   @db.Text       // isi soal (text/markdown)
+  options       String?  @db.Text       // JSON: pilihan jawaban [{label, text, isCorrect}]
+  answer        String?  @db.Text       // jawaban benar
+  explanation   String?  @db.Text       // pembahasan
+  cognitiveLevel String @default("C3") // C1-C6
+  difficulty    String   @default("sedang") // mudah, sedang, sulit
+  status        String   @default("draft") // draft, published, archived
+  source        String   @default("manual") // manual, ai
+  reviewedBy    String?
+  reviewedAt    DateTime?
+  createdBy     String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  subject   Subject @relation(fields: [subjectId], references: [id])
+  topic     Topic?  @relation(fields: [topicId], references: [id])
+  school    School? @relation(fields: [schoolId], references: [id])
+  creator   User    @relation("QuestionCreator", fields: [createdBy], references: [id])
+  examItems ExamItem[]
+  studentAnswers StudentAnswer[]
+  assignmentQuestions AssignmentQuestion[] @relation("AssignmentQuestions")
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([status])
+}
+
+// ===== EXAM PACKAGE (PAKET TRYOUT) =====
+model ExamPackage {
+  id          String   @id @default(cuid())
+  title       String
+  description String?  @db.Text
+  schoolId    String?  // null = global
+  duration    Int      @default(120) // menit
+  totalQuestions Int   @default(0)
+  status      String   @default("draft")
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  gradeComponentId String? // nullable — jika diisi, nilai otomatis masuk ke komponen ini
+
+  school School?  @relation(fields: [schoolId], references: [id])
+  gradeComponent  GradeComponent? @relation("ExamGradeComponent", fields: [gradeComponentId], references: [id])
+  examItems  ExamItem[]
+  examSessions ExamSession[]
+}
+
+// ===== EXAM ITEM (SOAL DALAM PAKET) =====
+model ExamItem {
+  id           String   @id @default(cuid())
+  examPackageId String
+  questionId   String
+  orderNum     Int      @default(0)
+  points       Float    @default(1)
+
+  examPackage ExamPackage @relation(fields: [examPackageId], references: [id], onDelete: Cascade)
+  question    Question    @relation(fields: [questionId], references: [id])
+}
+
+// ===== EXAM SESSION (JADWAL TRYOUT) =====
+model ExamSession {
+  id          String   @id @default(cuid())
+  examPackageId String
+  title       String
+  schoolId    String?
+  classId     String?
+  startDate   DateTime
+  endDate     DateTime
+  duration    Int      @default(120)
+  shuffleQuestions Boolean @default(false)
+  status      String   @default("scheduled") // scheduled, active, ended
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  examPackage  ExamPackage    @relation(fields: [examPackageId], references: [id])
+  assignments  ExamAssignment[]
+}
+
+// ===== EXAM ASSIGNMENT (KE KELAS) =====
+model ExamAssignment {
+  id           String   @id @default(cuid())
+  examSessionId String
+  schoolId     String
+  classId      String
+  createdAt    DateTime @default(now())
+
+  examSession ExamSession @relation(fields: [examSessionId], references: [id], onDelete: Cascade)
+  school      School     @relation(fields: [schoolId], references: [id])
+  class       Class      @relation(fields: [classId], references: [id])
+}
+
+// ===== STUDENT ATTEMPT (SISWA MENGERJAKAN) =====
+model StudentAttempt {
+  id            String   @id @default(cuid())
+  userId        String
+  examSessionId String?
+  examPackageId String
+  schoolId      String
+  classId       String?
+  score         Float    @default(0)
+  totalCorrect  Int      @default(0)
+  totalWrong    Int      @default(0)
+  totalUnanswered Int    @default(0)
+  percentage    Float    @default(0)
+  tkaPrediction Float?
+  duration      Int      @default(0) // detik yang dipakai
+  status        String   @default("in_progress") // in_progress, submitted, graded
+  learningObjective String? @db.Text // Tujuan Pembelajaran (opsional, ditulis guru saat input)
+  isRemedial    Boolean  @default(false) // true = ini adalah attempt remedial
+  remedialOfId  String?              // self-relation: menunjuk ke attempt asli yang di-remedial
+  startedAt     DateTime @default(now())
+  submittedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user       User             @relation(fields: [userId], references: [id])
+  answers    StudentAnswer[]
+  originalAttempt  StudentAttempt?  @relation("RemedialChain", fields: [remedialOfId], references: [id])
+  remedialAttempts StudentAttempt[] @relation("RemedialChain")
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([remedialOfId])
+  @@index([schoolId, status])
+}
+
+// ===== STUDENT ANSWER (JAWABAN PER SOAL) =====
+model StudentAnswer {
+  id               String   @id @default(cuid())
+  studentAttemptId String
+  questionId       String
+  answer           String?  // jawaban siswa
+  isCorrect        Boolean?
+  pointsEarned     Float    @default(0)
+  timeSpent        Int      @default(0) // detik
+  createdAt        DateTime @default(now())
+
+  studentAttempt StudentAttempt @relation(fields: [studentAttemptId], references: [id], onDelete: Cascade)
+  question        Question        @relation(fields: [questionId], references: [id])
+
+  @@index([questionId])
+}
+
+// ===== DIAGNOSTIC RESULT =====
+model DiagnosticResult {
+  id         String   @id @default(cuid())
+  userId     String
+  schoolId   String
+  subjectId  String
+  topicId    String?
+  score      Float
+  level      String   @default("lemah") // kuat, cukup, lemah
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@index([schoolId])
+}
+
+// ===== ATTENDANCE (KEHADIRAN SISWA) =====
+model Attendance {
+  id         String   @id @default(cuid())
+  studentId  String
+  classId    String?
+  schoolId   String?
+  date       String               // YYYY-MM-DD
+  status     String   @default("hadir") // hadir, izin, sakit, alpa
+  note       String?
+  recordedBy String               // teacherId
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([date])
+  @@index([classId, date])
+}
+
+// ===== TEACHER ASSIGNMENT (PENUGASAN GURU) =====
+model TeacherAssignment {
+  id           String   @id @default(cuid())
+  teacherId    String
+  subjectId    String?
+  classId      String?
+  schoolId     String?
+  academicYear String?
+  semester     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([schoolId])
+}
+
+// ===== TEACHING JOURNAL (JURNAL MENGAJAR) =====
+model TeachingJournal {
+  id         String   @id @default(cuid())
+  teacherId  String
+  classId    String?
+  subjectId  String?
+  schoolId   String?
+  date       String
+  topic      String
+  activities String?  @db.Text
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([teacherId])
+  @@index([schoolId])
+  @@index([date])
+  @@index([teacherId, date])
+}
+
+// ===== CHARACTER REPORT (7 KEBIASAAN ANAK INDONESIA HEBAT) =====
+model CharacterReport {
+  id         String   @id @default(cuid())
+  studentId  String
+  classId    String?
+  schoolId   String?
+  reporterId String               // guru or orang tua
+  filledBy   String   @default("ORANG_TUA") // ORANG_TUA | GURU
+  date       String               // YYYY-MM-DD
+  habit      String               // one of 7 kebiasaan: bangun_pagi, beribadah, berolahraga, makan_sehat, gemar_belajar, bermasyarakat, tidur_cepat
+  rating     Int      @default(3) // 1-4 scale: 1=Belum, 2=Kadang, 3=Sering, 4=Selalu
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([date])
+  @@index([filledBy])
+  @@index([studentId, date])
+}
+
+// ===== ACTIVITY LOG =====
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  schoolId  String?
+  action    String
+  detail    String?  @db.Text
+  module    String?               // users, classes, exams, etc
+  createdAt DateTime @default(now())
+
+  @@index([schoolId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ===== MATERIAL / LESSON CONTENT =====
+model Material {
+  id               String   @id @default(cuid())
+  title            String
+  description      String?  @db.Text
+  content          String?  @db.Text              // markdown/text
+  subjectId        String?
+  topicId          String?
+  classId          String?
+  schoolId         String?
+  teacherId        String?
+  type             String   @default("materi") // materi, tugas, quiz
+  status           String   @default("published") // published, draft
+  dueDate          String?              // for tugas/quiz type
+  externalUrl      String?              // URL for external quiz (Google Form, Quizizz, etc)
+  externalProvider String?              // auto-detected: Google Form, Quizizz, Kahoot, Wordwall, Tautan Lain
+  scoreEntryMode   String?              // SELF_REPORTED | TEACHER_ENTERED (for external quiz)
+  learningObjective String?  @db.Text  // Tujuan Pembelajaran (opsional, ditulis guru saat buat tugas)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([subjectId])
+  @@index([type])
+}
+
+// ===== EXTERNAL QUIZ SCORE (nilai kuis eksternal) =====
+model ExternalQuizScore {
+  id         String   @id @default(cuid())
+  materialId String
+  studentId  String
+  schoolId   String?
+  classId    String?
+  score      Int                    // 0-100
+  note       String?
+  enteredBy  String                 // userId (siswa self-report OR guru)
+  entryMode  String                 // SELF_REPORTED | TEACHER_ENTERED
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([materialId])
+  @@index([studentId])
+  @@index([schoolId])
+}
+
+// ===== AI CONFIG =====
+model AiConfig {
+  id                      String   @id @default(cuid())
+  schoolId                String   @unique
+  generateQuestionsPerDay Int      @default(10)
+  generateReportPerDay    Int      @default(5)
+  chatbotPerDay           Int      @default(20)
+  analyzeDifficultyPerDay Int      @default(10)
+  summarizeMaterialPerDay Int      @default(10)
+  recommendQuestionsPerDay Int     @default(10)
+  schoolDailyLimit        Int      @default(500)
+  enabled                 Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([schoolId])
+}
+
+// ===== AI USAGE LOG =====
+model AiUsageLog {
+  id         String   @id @default(cuid())
+  userId     String
+  schoolId   String
+  actionType String   // generate_questions, generate_report, chatbot, analyze_difficulty, summarize_material, recommend_questions
+  tokensUsed Int      @default(0)
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([actionType])
+  @@index([createdAt])
+}
+
+// ===== CHATBOT SESSION =====
+model ChatbotSession {
+  id        String        @id @default(cuid())
+  userId    String
+  schoolId  String
+  subjectId String?
+  title     String        @default("Sesi Baru")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  messages  ChatMessage[]
+
+  @@index([userId])
+  @@index([schoolId])
+}
+
+// ===== CHAT MESSAGE =====
+model ChatMessage {
+  id         String   @id @default(cuid())
+  sessionId  String
+  role       String   // user, assistant
+  content    String   @db.Text
+  createdAt  DateTime @default(now())
+
+  session    ChatbotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+}
+
+// ===== ERROR LOG =====
+model ErrorLog {
+  id        String   @id @default(cuid())
+  level     String   @default("error") // error, warn, fatal
+  message   String   @db.Text
+  stack     String?  @db.Text          // error stack trace
+  route     String?                     // API route that caused the error
+  method    String?                     // HTTP method
+  userId    String?                     // authenticated user (if any)
+  schoolId  String?                     // school context (if any)
+  statusCode Int?                       // HTTP status code returned
+  body      String?  @db.Text          // truncated request body (first 500 chars)
+  createdAt DateTime @default(now())
+
+  @@index([route])
+  @@index([level])
+  @@index([schoolId])
+  @@index([createdAt])
+}
+
+// ===== TIMETABLE (JADWAL PELAJARAN) =====
+model Timetable {
+  id         String   @id @default(cuid())
+  day        String   // SENIN, SELASA, RABU, KAMIS, JUMAT
+  slotNumber Int      // 1-10
+  subjectId  String
+  teacherId  String
+  classId    String
+  schoolId   String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  subject Subject @relation(fields: [subjectId], references: [id])
+  teacher User    @relation("TimetableTeacher", fields: [teacherId], references: [id])
+  class   Class   @relation(fields: [classId], references: [id])
+
+  @@unique([day, slotNumber, classId, schoolId])
+  @@index([schoolId])
+  @@index([classId])
+  @@index([teacherId])
+}
+
+// ===== ASSIGNMENT (TUGAS TERSTRUKTUR — GANTI SISTEM MATERIAL TYPE=TUGAS) =====
+model Assignment {
+  id                 String   @id @default(cuid())
+  title              String
+  description        String?  @db.Text
+  instructions       String?  @db.Text              // instruksi kerja tugas
+  subjectId          String?
+  classId            String?
+  teacherId          String?
+  schoolId           String?
+  deadline           String               // YYYY-MM-DDTHH:mm
+  learningObjective String?  @db.Text  // Tujuan Pembelajaran (opsional, konsisten dengan StudentAttempt)
+  submissionType     String   @default("essay_only") // pg_only, essay_only, mixed
+  maxScore           Int      @default(100)
+  status             String   @default("draft") // draft, published, closed
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  questions    AssignmentQuestion[]
+  gradeComponentId String? // nullable — jika diisi, nilai otomatis masuk ke komponen ini
+
+  submissions  AssignmentSubmission[]
+
+  gradeComponent  GradeComponent? @relation("AssignmentGradeComponent", fields: [gradeComponentId], references: [id])
+
+  @@index([schoolId])
+  @@index([teacherId])
+  @@index([classId])
+  @@index([status])
+}
+
+// ===== ASSIGNMENT QUESTION (SOAL DALAM TUGAS — REUSE BANK SOAL) =====
+model AssignmentQuestion {
+  id           String   @id @default(cuid())
+  assignmentId String
+  questionId   String   // FK ke Question (bank soal)
+  orderNum     Int      @default(0)
+  points       Float    @default(1)
+
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  question     Question   @relation("AssignmentQuestions", fields: [questionId], references: [id])
+  answers      AssignmentAnswer[]
+
+  @@unique([assignmentId, questionId])
+  @@index([assignmentId])
+}
+
+// ===== ASSIGNMENT SUBMISSION (SISWA MENGERJAKAN TUGAS) =====
+model AssignmentSubmission {
+  id           String    @id @default(cuid())
+  assignmentId String
+  studentId    String
+  schoolId     String?
+  classId      String?
+  status       String    @default("belum_dikerjakan") // belum_dikerjakan, dikerjakan, submitted, dinilai
+  score        Float?    // total skor setelah dinilai
+  feedback     String?   @db.Text // feedback guru
+  isRemedial   Boolean   @default(false) // true = ini adalah submission remedial
+  remedialOfId String?              // self-relation: menunjuk ke submission asli yang di-remedial
+  startedAt    DateTime  @default(now())
+  submittedAt  DateTime?
+  gradedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  assignment Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  answers    AssignmentAnswer[]
+  originalSubmission    AssignmentSubmission?  @relation("RemedialAssignment", fields: [remedialOfId], references: [id])
+  remedialSubmissions    AssignmentSubmission[] @relation("RemedialAssignment")
+
+  @@index([assignmentId])
+  @@index([studentId])
+  @@index([schoolId])
+  @@index([remedialOfId])
+}
+
+// ===== ASSIGNMENT ANSWER (JAWABAN PER SOAL DALAM TUGAS) =====
+model AssignmentAnswer {
+  id           String   @id @default(cuid())
+  submissionId String
+  questionId   String
+  answer       String?   // jawaban PG (option label: A/B/C/D)
+  essayAnswer  String?  @db.Text // jawaban esai (text panjang)
+  isCorrect    Boolean?  // auto-score untuk PG
+  pointsEarned Float    @default(0)
+
+  submission AssignmentSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  question   AssignmentQuestion    @relation(fields: [questionId], references: [id])
+
+  @@unique([submissionId, questionId])
+  @@index([submissionId])
+}
+
+// ===== GRADE COMPONENT (Komponen Nilai + Bobot) =====
+model GradeComponent {
+  id         String   @id @default(cuid())
+  schoolId   String
+  subjectId  String?  // nullable = berlaku semua mapel
+  classId    String?  // nullable = berlaku semua kelas
+  name       String   // Tugas, Ulangan Harian, Praktik, PTS, PAS
+  weight     Int      // persen (0-100)
+  sortOrder  Int      @default(0)
+  term       String   // periode, e.g. 2024/2025-Ganjil
+  createdBy  String   // ADMIN_SCHOOL userId
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  school      School          @relation(fields: [schoolId], references: [id])
+  subject     Subject?        @relation(fields: [subjectId], references: [id])
+  class_      Class?          @relation("GradeComponentClass", fields: [classId], references: [id])
+  creator     User            @relation("GradeComponentCreator", fields: [createdBy], references: [id])
+  studentGrades     StudentGrade[]
+  examPackages      ExamPackage[]   @relation("ExamGradeComponent")
+  assignments       Assignment[]    @relation("AssignmentGradeComponent")
+
+  @@index([schoolId])
+  @@index([subjectId])
+  @@index([classId])
+  @@index([term])
+}
+
+// ===== STUDENT GRADE (Nilai Siswa per Komponen) =====
+model StudentGrade {
+  id              String   @id @default(cuid())
+  studentId       String
+  schoolId        String
+  classId         String?
+  componentId     String
+  subjectId       String?  // denormalized dari komponen untuk query cepat
+  score           Float    // 0-100
+  maxScore        Float    @default(100)
+  source          String   @default("MANUAL") // MANUAL, TRYOUT, TUGAS
+  sourceId        String?  // StudentAttempt.id atau AssignmentSubmission.id
+  gradedBy        String?  // guru yang mengisi
+  term            String   // denormalized dari komponen
+  date            String?  // YYYY-MM-DD
+  note            String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  student         User             @relation("GradedStudent", fields: [studentId], references: [id])
+  component       GradeComponent  @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  school          School           @relation(fields: [schoolId], references: [id])
+
+  @@unique([studentId, componentId, source, sourceId]) // satu siswa, satu komponen, satu source
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([componentId])
+  @@index([term])
+  @@index([subjectId])
+  @@index([studentId, term])
+}
+
+// ===== FEEDBACK / KOTAK MASUKAN (Saran/Kritik/Apresiasi antar Role) =====
+model Feedback {
+  id           String    @id @default(cuid())
+  schoolId     String
+  fromUserId   String
+  fromRole     String    // ORANG_TUA, GURU, KEPALA_SEKOLAH
+  category     String    // saran, kritik, apresiasi
+  subject      String    // judul singkat
+  message      String    @db.Text // isi pesan
+  status       String    @default("baru") // baru, dibaca, ditindaklanjuti
+  response     String?   @db.Text // balasan dari pihak sekolah
+  respondedBy  String?   // FK User yang membalas
+  respondedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  fromUser     User      @relation("FeedbackSender", fields: [fromUserId], references: [id])
+  responder    User?     @relation("FeedbackResponder", fields: [respondedBy], references: [id])
+  school       School    @relation(fields: [schoolId], references: [id])
+
+  @@index([schoolId])
+  @@index([fromUserId])
+  @@index([status])
+  @@index([category])
+}
+
+// ===== COMPETENCY ASSESSMENT (Profil Lulusan 8 Dimensi) =====
+model CompetencyAssessment {
+  id         String    @id @default(cuid())
+  studentId  String
+  schoolId   String
+  classId    String?
+  subjectId  String?   // nullable — observasi bisa lintas mapel
+  dimension  String    // KEIMANAN_KETAKWAAN, KEWARGAAN, PENALARAN KRITIS, KREATIVITAS, KOLABORASI, KEMANDIRIAN, KESEHATAN, KOMUNIKASI
+  rating     Int       // 1-4: 1=Mulai Berkembang, 2=Berkembang, 3=Berkembang Sesuai Harapan, 4=Sangat Berkembang
+  assessedBy String    // guru userId
+  term       String    // periode, e.g. "2024/2025-Ganjil"
+  note       String?
+  date       String    // YYYY-MM-DD
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  student    User      @relation("AssessedStudent", fields: [studentId], references: [id])
+  assessor   User      @relation("AssessorTeacher", fields: [assessedBy], references: [id])
+  school     School    @relation(fields: [schoolId], references: [id])
+  class      Class?    @relation(fields: [classId], references: [id])
+
+  @@unique([studentId, dimension, term, assessedBy])  // satu guru, satu dimensi, satu siswa, satu periode
+  @@index([schoolId])
+  @@index([studentId])
+  @@index([classId])
+  @@index([assessedBy])
+  @@index([term])
+  @@index([dimension])
+}
+
+// ===== AUDIT LOG =====
+model AuditLog {
+  id            String    @id @default(cuid())
+  userId        String
+  role          String
+  action        String    // e.g. 'READ', 'CREATE', 'UPDATE', 'DELETE'
+  resourceType  String    // e.g. 'scores', 'attendance', 'character-reports'
+  resourceId    String?   // ID of the resource accessed
+  targetUserId  String?   // ID of the student whose data was accessed
+  ip            String?
+  logStatus        String    @default("success") // 'success' or 'denied'
+  detail        String?   @db.Text
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([resourceType, resourceId])
+  @@index([targetUserId])
+  @@index([createdAt])
+}

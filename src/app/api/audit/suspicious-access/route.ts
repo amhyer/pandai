@@ -13,6 +13,8 @@ import { requireRole, AuthError } from '@/lib/auth';
  *   windowMinutes (default: 10)
  *   threshold (default: 5)
  *   schoolId (optional, SUPER_ADMIN only)
+ * 
+ * NOTE: Raw SQL uses PostgreSQL-compatible syntax (STRING_AGG, quoted identifiers)
  */
 export async function GET(request: Request) {
   try {
@@ -30,57 +32,56 @@ export async function GET(request: Request) {
     const since = new Date(Date.now() - windowMinutes * 60 * 1000);
 
     // Query 1: Users accessing many different targetUserIds in the window
-    // Build query dynamically based on whether schoolFilter is present
     let suspiciousUsers: any[];
     if (schoolFilter) {
       suspiciousUsers = await db.$queryRawUnsafe(`
-        SELECT 
-          a.userId,
+        SELECT
+          a."userId",
           a.role,
-          COUNT(DISTINCT a.targetUserId) as unique_targets,
-          GROUP_CONCAT(DISTINCT a.resourceType) as resource_types,
-          MIN(a.createdAt) as first_access,
-          MAX(a.createdAt) as last_access
-        FROM AuditLog a
-        WHERE a.targetUserId IS NOT NULL
-          AND a.targetUserId != ''
-          AND a.createdAt >= ?
-          AND a.userId IN (SELECT id FROM User WHERE schoolId = ?)
-        GROUP BY a.userId, a.role
-        HAVING unique_targets >= ?
+          COUNT(DISTINCT a."targetUserId") as unique_targets,
+          STRING_AGG(DISTINCT a."resourceType", ', ') as resource_types,
+          MIN(a."createdAt") as first_access,
+          MAX(a."createdAt") as last_access
+        FROM "AuditLog" a
+        WHERE a."targetUserId" IS NOT NULL
+          AND a."targetUserId" != ''
+          AND a."createdAt" >= $1
+          AND a."userId" IN (SELECT id FROM "User" WHERE "schoolId" = $2)
+        GROUP BY a."userId", a.role
+        HAVING COUNT(DISTINCT a."targetUserId") >= $3
         ORDER BY unique_targets DESC
       `, since.toISOString(), schoolFilter, threshold) as any[];
     } else {
       suspiciousUsers = await db.$queryRawUnsafe(`
-        SELECT 
-          a.userId,
+        SELECT
+          a."userId",
           a.role,
-          COUNT(DISTINCT a.targetUserId) as unique_targets,
-          GROUP_CONCAT(DISTINCT a.resourceType) as resource_types,
-          MIN(a.createdAt) as first_access,
-          MAX(a.createdAt) as last_access
-        FROM AuditLog a
-        WHERE a.targetUserId IS NOT NULL
-          AND a.targetUserId != ''
-          AND a.createdAt >= ?
-        GROUP BY a.userId, a.role
-        HAVING unique_targets >= ?
+          COUNT(DISTINCT a."targetUserId") as unique_targets,
+          STRING_AGG(DISTINCT a."resourceType", ', ') as resource_types,
+          MIN(a."createdAt") as first_access,
+          MAX(a."createdAt") as last_access
+        FROM "AuditLog" a
+        WHERE a."targetUserId" IS NOT NULL
+          AND a."targetUserId" != ''
+          AND a."createdAt" >= $1
+        GROUP BY a."userId", a.role
+        HAVING COUNT(DISTINCT a."targetUserId") >= $2
         ORDER BY unique_targets DESC
       `, since.toISOString(), threshold) as any[];
     }
 
     // Enrich with user names
     const enriched = await Promise.all(suspiciousUsers.map(async (row: any) => {
-      const user = await db.user.findUnique({ 
-        where: { id: row.userId }, 
-        select: { name: true, school: { select: { name: true } } } 
+      const user = await db.user.findUnique({
+        where: { id: row.userId },
+        select: { name: true, school: { select: { name: true } } }
       });
       return {
         userId: row.userId,
         userName: user?.name || 'Unknown',
         schoolName: (user as any)?.school?.name || 'Unknown',
         role: row.role,
-        uniqueTargetsAccessed: row.unique_targets,
+        uniqueTargetsAccessed: Number(row.unique_targets),
         resourceTypes: row.resource_types,
         firstAccess: row.first_access,
         lastAccess: row.last_access,
@@ -99,10 +100,10 @@ export async function GET(request: Request) {
 
     // Query 3: Top denied access by userId
     const topDenied = await db.$queryRawUnsafe(`
-      SELECT userId, role, COUNT(*) as deny_count
-      FROM AuditLog
-      WHERE logStatus = 'denied' AND createdAt >= ?
-      GROUP BY userId, role
+      SELECT "userId", role, COUNT(*) as deny_count
+      FROM "AuditLog"
+      WHERE "logStatus" = 'denied' AND "createdAt" >= $1
+      GROUP BY "userId", role
       ORDER BY deny_count DESC
       LIMIT 10
     `, since.toISOString()) as any[];
@@ -125,7 +126,7 @@ export async function GET(request: Request) {
       topDeniedAccess: topDenied.map((r: any) => ({
         userId: r.userId,
         role: r.role,
-        denyCount: r.deny_count,
+        denyCount: Number(r.deny_count),
       })),
     });
   } catch (error) {

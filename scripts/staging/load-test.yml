@@ -1,0 +1,232 @@
+## PANDAI Load Test — Artillery Configuration
+## Simulasi jam tryout: ~50 pengguna paralel
+##
+## Usage:
+##   npm install -g artillery (one-time)
+##   artillery run scripts/staging/load-test.yml --target https://YOUR_STAGING_URL
+##   artillery run scripts/staging/load-test.yml --target http://localhost:3000
+
+config:
+  target: ""
+  phases:
+    # Phase 1: Ramp-up 10 users dalam 30 detik (warmup)
+    - name: "Warmup"
+      duration: 30
+      arrivalRate: 0.33  # ~10 users over 30s
+
+    # Phase 2: Peak load — 40 users paralel selama 120 detik (simulasi jam tryout)
+    - name: "Peak — Jam Tryout"
+      duration: 120
+      arrivalRate: 40
+
+    # Phase 3: Cooldown — turun ke 5 users
+    - name: "Cooldown"
+      duration: 30
+      arrivalRate: 5
+
+  # ============================================
+  # THRESHOLD — Go/No-Go Criteria
+  # ============================================
+  # p95 < 2000ms dan error rate < 1% WAJIB terpenuhi
+  # ============================================
+  ensure:
+    p95: < 2000
+    maxErrorRate: 1
+
+  # Timeout per request
+  defaults:
+    timeout: 10
+
+  # Variable defaults
+  variables:
+    loginSiswa: "0051234567"
+    loginGuru: "198504152010011001"
+    password: "password123"
+
+# ============================================
+# SCENARIOS
+# ============================================
+scenarios:
+
+  # ── Scenario 1: Siswa Login + Browse Tryout ──
+  # Simulasi siswa masuk dan melihat daftar ujian
+  - name: "Siswa — Login & Browse Exams"
+    weight: 40  # 40% dari total traffic (paling banyak)
+    flow:
+      - log: "=== SISWA: Login ==="
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "{{ loginSiswa }}"
+            password: "{{ password }}"
+          capture:
+            json: "$"
+            as: "loginResponse"
+      - think: 1
+
+      # Browse exam list
+      - log: "=== SISWA: GET /api/exams ==="
+      - get:
+          url: "/api/exams"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # Get scores/progress
+      - log: "=== SISWA: GET /api/scores ==="
+      - get:
+          url: "/api/scores"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # Get attendance
+      - log: "=== SISWA: GET /api/attendance ==="
+      - get:
+          url: "/api/attendance"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 3
+
+  # ── Scenario 2: Guru Login + Cek Kehadiran ──
+  # Simulasi guru input absensi
+  - name: "Guru — Login & Input Attendance"
+    weight: 25  # 25% traffic
+    flow:
+      - log: "=== GURU: Login ==="
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "{{ loginGuru }}"
+            password: "{{ password }}"
+          capture:
+            json: "$"
+            as: "loginResponse"
+      - think: 1
+
+      # Get classes
+      - log: "=== GURU: GET /api/classes ==="
+      - get:
+          url: "/api/classes"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # Get attendance list
+      - log: "=== GURU: GET /api/attendance ==="
+      - get:
+          url: "/api/attendance"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # Get students
+      - log: "=== GURU: GET /api/users?role=SISWA ==="
+      - get:
+          url: "/api/users?role=SISWA"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 3
+
+  # ── Scenario 3: Orang Tua Login + Monitor Anak ──
+  - name: "Orang Tua — Login & Monitor"
+    weight: 20  # 20% traffic
+    flow:
+      - log: "=== ORTU: Login ==="
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "rahman"
+            password: "123"
+          capture:
+            json: "$"
+            as: "loginResponse"
+      - think: 1
+
+      # View children's scores
+      - log: "=== ORTU: GET /api/scores ==="
+      - get:
+          url: "/api/scores"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # View attendance
+      - log: "=== ORTU: GET /api/attendance ==="
+      - get:
+          url: "/api/attendance"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # View character reports
+      - log: "=== ORTU: GET /api/character-reports ==="
+      - get:
+          url: "/api/character-reports"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 3
+
+  # ── Scenario 4: Admin Login + Dashboard ──
+  # Simulasi admin sekolah melihat dashboard
+  - name: "Admin — Login & Dashboard"
+    weight: 15  # 15% traffic
+    flow:
+      - log: "=== ADMIN: Login ==="
+      - post:
+          url: "/api/auth/login"
+          json:
+            username: "admin.sdn1@pandai.id"
+            password: "{{ password }}"
+          capture:
+            json: "$"
+            as: "loginResponse"
+      - think: 1
+
+      # Get dashboard stats
+      - log: "=== ADMIN: GET /api/dashboard ==="
+      - get:
+          url: "/api/dashboard"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # Get users list
+      - log: "=== ADMIN: GET /api/users ==="
+      - get:
+          url: "/api/users"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 2
+
+      # Get activity logs
+      - log: "=== ADMIN: GET /api/activity-logs ==="
+      - get:
+          url: "/api/activity-logs"
+          headers:
+            Cookie: "pandai_session={{ loginResponse.token }}"
+          expect:
+            - statusCode: 200
+      - think: 3
