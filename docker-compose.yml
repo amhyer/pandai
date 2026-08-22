@@ -1,0 +1,52 @@
+services:
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    volumes:
+      - pandai-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: pandai
+      POSTGRES_USER: pandai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pandai -d pandai"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env.production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health | grep -q '\"db\":\"connected\"' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # One-off seed service. Run: docker compose --profile seed run --rm seed
+  # Uses builder image (has tsx, bcryptjs, prisma client, all deps)
+  seed:
+    build:
+      context: .
+      target: builder
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env.production
+    volumes:
+      - ./.smoke-data:/output
+    profiles:
+      - seed
+    entrypoint: ["sh", "-c", "npx tsx scripts/smoke-seed.ts && cp /tmp/smoke-seed-data.json /output/smoke-seed-data.json"]
+
+volumes:
+  pandai-db:

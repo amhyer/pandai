@@ -16,6 +16,9 @@ export async function GET(request: Request) {
     const createdBy = searchParams.get('createdBy');
     const search = searchParams.get('search');
     const difficulty = searchParams.get('difficulty');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '100');
+    const skip = (page - 1) * limit;
 
     const where: any = {};
     if (global) {
@@ -36,6 +39,8 @@ export async function GET(request: Request) {
       where,
       include: { subject: true, topic: true, creator: { select: { id: true, name: true } } },
       orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
 
     return NextResponse.json(questions);

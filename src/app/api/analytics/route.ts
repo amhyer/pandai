@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     }
 
     if (type === 'student' && userId) {
-      const attempts = await db.studentAttempt.findMany({ where: { userId, status: 'submitted' }, include: { answers: true }, orderBy: { createdAt: 'desc' } });
+      const attempts = await db.studentAttempt.findMany({ where: { userId, status: 'submitted' }, include: { answers: true }, orderBy: { createdAt: 'desc' }, take: 1000 });
       const scoreTrend = attempts.map((a, i) => ({ attempt: i + 1, score: a.percentage, tka: a.tkaPrediction, date: a.startedAt.toISOString().split('T')[0] }));
       const subjectBreakdown: { subject: string; percentage: number; correct: number; total: number }[] = [
         { subject: 'Matematika', percentage: 70, correct: 7, total: 10 },

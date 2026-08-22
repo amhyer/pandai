@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
@@ -92,24 +93,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       if (!submission) return NextResponse.json({ error: 'Submission remedial tidak ditemukan' }, { status: 404 });
       if (!submission.isRemedial) return NextResponse.json({ error: 'Bukan submission remedial' }, { status: 400 });
     } else {
-      const existingSub = await db.assignmentSubmission.findFirst({
-        where: { assignmentId: id, studentId, isRemedial: false },
-      });
-      if (existingSub && (existingSub.status === 'submitted' || existingSub.status === 'dinilai')) {
-        return NextResponse.json({ error: 'Tugas sudah disubmit dan tidak bisa diubah lagi' }, { status: 403 });
-      }
-      if (existingSub) {
-        submission = existingSub;
-      } else {
-        const created = await db.assignmentSubmission.create({
+      submission = await db.$transaction(async (tx) => {
+        const existingSub = await tx.assignmentSubmission.findFirst({
+          where: { assignmentId: id, studentId, isRemedial: false },
+        });
+        if (existingSub && (existingSub.status === 'submitted' || existingSub.status === 'dinilai')) {
+          throw new Error('ALREADY_SUBMITTED');
+        }
+        if (existingSub) {
+          return existingSub;
+        }
+        return tx.assignmentSubmission.create({
           data: {
             assignmentId: id, studentId, schoolId: schoolId || null, classId: classId || null,
             status: action === 'submit' ? 'submitted' : 'dikerjakan',
             submittedAt: action === 'submit' ? new Date() : null,
           },
         });
-        submission = created;
-      }
+      });
     }
 
     await db.assignmentSubmission.update({
@@ -158,6 +159,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof Error && error.message === 'ALREADY_SUBMITTED') {
+      return NextResponse.json({ error: 'Tugas sudah disubmit dan tidak bisa diubah lagi' }, { status: 403 });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json({ error: 'Submission sudah ada' }, { status: 409 });
     }
     await logError({ error, route: '/api/assignments/[id]/submissions', method: 'POST' });
     return NextResponse.json({ error: 'Gagal menyimpan jawaban' }, { status: 500 });

@@ -9,14 +9,18 @@ import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck, Users, ArrowLeft, BookOpen, Sparkles, ChevronRight, Crown } from 'lucide-react';
 
-const DEMO_ACCOUNTS = [
-  { label: 'Super Admin', username: 'superadmin@pandai.id', password: 'password123', icon: Shield, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100', text: 'text-violet-700', iconColor: 'text-violet-500' },
-  { label: 'Admin Sekolah', username: 'admin.sdn1@pandai.id', password: 'password123', icon: UserCheck, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverBg: 'hover:bg-emerald-100', text: 'text-emerald-700', iconColor: 'text-emerald-500' },
-  { label: 'Kepala Sekolah', username: 'kepsek.sdn1', password: 'password123', icon: Crown, color: 'from-[#1F3864] to-[#2a4a7a]', bg: 'bg-slate-100', border: 'border-slate-200', hoverBg: 'hover:bg-slate-200', text: 'text-[#1F3864]', iconColor: 'text-[#1F3864]' },
-  { label: 'Guru SD', username: '198504152010011001', password: 'password123', icon: BookOpen, color: 'from-sky-500 to-blue-600', bg: 'bg-sky-50', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100', text: 'text-sky-700', iconColor: 'text-sky-500' },
-  { label: 'Siswa SD', username: '0051234567', password: 'password123', icon: GraduationCap, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100', text: 'text-amber-700', iconColor: 'text-amber-500' },
-  { label: 'Orang Tua', username: 'rahman', password: '123', icon: Users, color: 'from-rose-400 to-pink-500', bg: 'bg-rose-50', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100', text: 'text-rose-700', iconColor: 'text-rose-500' },
-];
+const isDev = process.env.NODE_ENV !== 'production';
+
+const DEMO_ACCOUNTS = isDev
+  ? [
+      { label: 'Super Admin', username: 'superadmin@pandai.id', password: 'password123', icon: Shield, color: 'from-violet-500 to-purple-600', bg: 'bg-violet-50', border: 'border-violet-200', hoverBg: 'hover:bg-violet-100', text: 'text-violet-700', iconColor: 'text-violet-500' },
+      { label: 'Admin Sekolah', username: 'admin.sdn1@pandai.id', password: 'password123', icon: UserCheck, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-50', border: 'border-emerald-200', hoverBg: 'hover:bg-emerald-100', text: 'text-emerald-700', iconColor: 'text-emerald-500' },
+      { label: 'Kepala Sekolah', username: 'kepsek.sdn1', password: 'password123', icon: Crown, color: 'from-[#1F3864] to-[#2a4a7a]', bg: 'bg-slate-100', border: 'border-slate-200', hoverBg: 'hover:bg-slate-200', text: 'text-[#1F3864]', iconColor: 'text-[#1F3864]' },
+      { label: 'Guru SD', username: '198504152010011001', password: 'password123', icon: BookOpen, color: 'from-sky-500 to-blue-600', bg: 'bg-sky-50', border: 'border-sky-200', hoverBg: 'hover:bg-sky-100', text: 'text-sky-700', iconColor: 'text-sky-500' },
+      { label: 'Siswa SD', username: '0051234567', password: 'password123', icon: GraduationCap, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50', border: 'border-amber-200', hoverBg: 'hover:bg-amber-100', text: 'text-amber-700', iconColor: 'text-amber-500' },
+      { label: 'Orang Tua', username: 'rahman', password: '123', icon: Users, color: 'from-rose-400 to-pink-500', bg: 'bg-rose-50', border: 'border-rose-200', hoverBg: 'hover:bg-rose-100', text: 'text-rose-700', iconColor: 'text-rose-500' },
+    ]
+  : [];
 
 export function LoginForm() {
   const { setUser, navigateTo } = useAppStore();
@@ -269,7 +273,8 @@ export function LoginForm() {
               </Button>
             </form>
 
-            {/* Demo Accounts */}
+            {/* Demo Accounts — only in development */}
+            {isDev && (
             <div className="space-y-3 pt-2">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">
@@ -310,6 +315,7 @@ export function LoginForm() {
                 Orang Tua login: nama depan, password: <span className="font-mono text-slate-500">123</span>
               </p>
             </div>
+            )}
 
             {/* Links */}
             <div className="flex flex-col items-center gap-3 pt-1">

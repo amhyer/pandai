@@ -12,6 +12,7 @@ export async function GET(request: Request) {
         subscriptions: { where: { status: 'active' }, orderBy: { startDate: 'desc' }, take: 1 },
       },
       orderBy: { createdAt: 'desc' },
+      take: 100,
     });
     return NextResponse.json(schools);
   } catch (error) {

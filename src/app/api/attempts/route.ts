@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
@@ -21,6 +22,9 @@ export async function GET(request: Request) {
     const schoolId = searchParams.get('schoolId');
     const classId = searchParams.get('classId');
     const examSessionId = searchParams.get('examSessionId');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '50');
+    const skip = (page - 1) * limit;
 
     const where: any = {};
     if (userId) where.userId = userId;
@@ -36,6 +40,8 @@ export async function GET(request: Request) {
         remedialAttempts: { select: { id: true, status: true, score: true, submittedAt: true, isRemedial: true } },
       },
       orderBy: { startedAt: 'desc' },
+      take: limit,
+      skip,
     });
 
     // Enrich: for each original attempt, add remedial status
@@ -76,13 +82,29 @@ export async function POST(request: Request) {
   try {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const data = await request.json();
-    const { userId, examSessionId, examPackageId, schoolId, classId, answers, duration, learningObjective } = data;
+    const { examSessionId, examPackageId, schoolId, classId, answers, duration, learningObjective } = data;
+
+    // IDOR fix: force userId from authenticated session, never trust client
+    const userId = auth.userId;
+    if (auth.role === 'SISWA' && data.userId && data.userId !== auth.userId) {
+      return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+    }
 
     let totalCorrect = 0;
     let totalWrong = 0;
     let totalUnanswered = 0;
     let totalPoints = 0;
     const answerRecords: any[] = [];
+
+    // N+1 fix: batch fetch all questions in one query
+    const questionIds = answers.map((a: any) => a.questionId).filter(Boolean);
+    const questionsMap = new Map<string, any>();
+    if (questionIds.length > 0) {
+      const questions = await db.question.findMany({
+        where: { id: { in: questionIds } },
+      });
+      for (const q of questions) questionsMap.set(q.id, q);
+    }
 
     for (const a of answers) {
       if (!a.answer || a.answer === '') {
@@ -91,7 +113,7 @@ export async function POST(request: Request) {
           questionId: a.questionId, answer: null, isCorrect: false, pointsEarned: 0, timeSpent: a.timeSpent || 0,
         });
       } else {
-        const question = await db.question.findUnique({ where: { id: a.questionId } });
+        const question = questionsMap.get(a.questionId);
         let isCorrect = false;
         let points = 0;
 
@@ -122,21 +144,36 @@ export async function POST(request: Request) {
     const percentage = totalQuestions > 0 ? (totalCorrect / totalQuestions) * 100 : 0;
     const tkaPrediction = Math.round(percentage * 8 + 200);
 
-    const attempt = await db.studentAttempt.create({
-      data: {
-        userId, examSessionId, examPackageId, schoolId, classId,
-        score: totalPoints, totalCorrect, totalWrong, totalUnanswered,
-        percentage: Math.round(percentage * 100) / 100, tkaPrediction,
-        duration: duration || 0, status: 'submitted',
-        learningObjective: learningObjective || null, submittedAt: new Date(),
-        answers: { create: answerRecords },
-      },
+    const attempt = await db.$transaction(async (tx) => {
+      // Check for existing in-progress attempt for this exam session to prevent duplicates
+      const existingAttempt = await tx.studentAttempt.findFirst({
+        where: { userId, examSessionId, status: 'in_progress' },
+      });
+      if (existingAttempt) {
+        throw new Error('ATTEMPT_EXISTS');
+      }
+      return tx.studentAttempt.create({
+        data: {
+          userId, examSessionId, examPackageId, schoolId, classId,
+          score: totalPoints, totalCorrect, totalWrong, totalUnanswered,
+          percentage: Math.round(percentage * 100) / 100, tkaPrediction,
+          duration: duration || 0, status: 'submitted',
+          learningObjective: learningObjective || null, submittedAt: new Date(),
+          answers: { create: answerRecords },
+        },
+      });
     });
 
     return NextResponse.json(attempt);
   } catch (error: any) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof Error && error.message === 'ATTEMPT_EXISTS') {
+      return NextResponse.json({ error: 'Attempt sudah ada' }, { status: 409 });
+    }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && (error.code === 'P2002' || error.code === 'P2025')) {
+      return NextResponse.json({ error: 'Attempt sudah ada' }, { status: 409 });
     }
     logError({ error, route: '/api/attempts', method: 'POST' });
     console.error('Submit attempt error:', error);

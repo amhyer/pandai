@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       phone: user.phone,
       nisn: user.nisn,
       nip: user.nip,
-      nik: user.nik,
+      // NIK intentionally excluded — KTP number must never reach client-side JS
       namaOrtu: user.namaOrtu,
       jk: user.jk,
       parentId: user.parentId,
@@ -80,6 +80,7 @@ export async function POST(request: Request) {
       classId: user.classId,
       className: user.class?.name,
       isActive: user.isActive,
+      mustChangePassword: !!user.mustChangePassword,
     });
 
     // Set httpOnly cookie with JWT

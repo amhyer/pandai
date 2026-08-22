@@ -6,8 +6,12 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  serverExternalPackages: ["better-sqlite3", "pdfkit"],
+  serverExternalPackages: ["pdfkit", "jspdf", "mammoth"],
   allowedDevOrigins: ["*"],
-  // Disable source maps in production to reduce build size & memory
   productionBrowserSourceMaps: false,
+  experimental: {
+    optimizePackageImports: ["recharts", "framer-motion", "date-fns", "lucide-react", "@radix-ui/react-icons"],
+  },
 };
+
+export default nextConfig;

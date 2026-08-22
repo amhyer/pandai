@@ -216,7 +216,7 @@ function GuruInputTab({
   const [notes, setNotes] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
   const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(true);
 
   // Fetch classes
   useEffect(() => {
@@ -478,7 +478,7 @@ function RekapPerSiswa({
   const [recapData, setRecapData] = useState<StudentRecapResponse | null>(null);
   const loading = !recapData && !!selectedStudentId && !!term;
   const [loadingClasses, setLoadingClasses] = useState(true);
-  const [loadingStudents, setLoadingStudents] = useState(false);
+  const [loadingStudents, setLoadingStudents] = useState(true);
 
   useEffect(() => {
     if (!schoolId) return;
@@ -496,7 +496,6 @@ function RekapPerSiswa({
   useEffect(() => {
     if (!selectedClassId || !schoolId) return;
     let cancelled = false;
-    setLoadingStudents(true);
     fetch(`/api/users?role=SISWA&schoolId=${schoolId}&classId=${selectedClassId}`)
       .then((r) => r.json())
       .then((data: StudentItem[]) => {

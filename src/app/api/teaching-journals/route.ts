@@ -21,13 +21,26 @@ export async function GET(req: NextRequest) {
 
     const journals = await db.teachingJournal.findMany({ where, orderBy: [{ date: 'desc' }, { id: 'desc' }], take: 200 });
 
-    const enriched = await Promise.all(journals.map(async (j) => {
-      const [teacher, cls, subject] = await Promise.all([
-        j.teacherId ? db.user.findUnique({ where: { id: j.teacherId }, select: { name: true } }) : null,
-        j.classId ? db.class.findUnique({ where: { id: j.classId }, select: { name: true } }) : null,
-        j.subjectId ? db.subject.findUnique({ where: { id: j.subjectId }, select: { name: true } }) : null,
-      ]);
-      return { ...j, teacher, class: cls, subject };
+    // Batch-fetch related entities to avoid N+1 queries
+    const teacherIds = [...new Set(journals.map((j) => j.teacherId).filter((id): id is string => !!id))];
+    const classIds = [...new Set(journals.map((j) => j.classId).filter((id): id is string => !!id))];
+    const subjectIds = [...new Set(journals.map((j) => j.subjectId).filter((id): id is string => !!id))];
+
+    const [teachers, classes, subjects] = await Promise.all([
+      teacherIds.length > 0 ? db.user.findMany({ where: { id: { in: teacherIds } }, select: { id: true, name: true } }) : [],
+      classIds.length > 0 ? db.class.findMany({ where: { id: { in: classIds } }, select: { id: true, name: true } }) : [],
+      subjectIds.length > 0 ? db.subject.findMany({ where: { id: { in: subjectIds } }, select: { id: true, name: true } }) : [],
+    ]);
+
+    const teacherMap = new Map(teachers.map((t) => [t.id, t]));
+    const classMap = new Map(classes.map((c) => [c.id, c]));
+    const subjectMap = new Map(subjects.map((s) => [s.id, s]));
+
+    const enriched = journals.map((j) => ({
+      ...j,
+      teacher: j.teacherId ? teacherMap.get(j.teacherId) ?? null : null,
+      class: j.classId ? classMap.get(j.classId) ?? null : null,
+      subject: j.subjectId ? subjectMap.get(j.subjectId) ?? null : null,
     }));
 
     return NextResponse.json(enriched);

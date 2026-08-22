@@ -20,6 +20,7 @@ export async function GET(request: Request) {
           assignments: { include: { class: true } },
         },
         orderBy: { createdAt: 'desc' },
+        take: 50,
       });
       return NextResponse.json(sessions);
     }
@@ -34,6 +35,7 @@ export async function GET(request: Request) {
         _count: { select: { examItems: true, examSessions: true } },
       },
       orderBy: { createdAt: 'desc' },
+      take: 50,
     });
 
     return NextResponse.json(packages);

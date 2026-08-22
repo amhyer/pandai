@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
@@ -60,6 +61,9 @@ export async function POST(request: Request) {
     });
   } catch (error: any) {
     if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      return NextResponse.json({ error: 'Slot sudah terisi' }, { status: 409 });
+    }
     return NextResponse.json({ error: error.message || 'Gagal menambahkan jadwal' }, { status: 500 });
   }
 }

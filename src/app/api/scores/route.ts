@@ -21,6 +21,18 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'studentId is required' }, { status: 400 });
     }
 
+    // IDOR fix: students can only view their own scores; ortu can view children
+    if (auth.role === 'SISWA' && studentId !== auth.userId) {
+      return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+    }
+    if (auth.role === 'ORANG_TUA') {
+      // Verify the student is a child of this ortu
+      const student = await db.user.findUnique({ where: { id: studentId }, select: { parentId: true, schoolId: true } });
+      if (!student || (student.parentId !== auth.userId && student.schoolId !== auth.schoolId)) {
+        return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+      }
+    }
+
     const allAttempts = await db.studentAttempt.findMany({
       where: { userId: studentId },
       orderBy: { startedAt: 'desc' },
@@ -80,7 +92,7 @@ export async function GET(req: NextRequest) {
     let classRank = 0;
     let totalClassmates = 0;
     if (classId) {
-      const classmates = await db.user.findMany({ where: { classId, role: 'SISWA', isActive: true } });
+      const classmates = await db.user.findMany({ where: { classId, role: 'SISWA', isActive: true }, take: 100 });
       totalClassmates = classmates.length;
       classRank = Math.min(avgScore > 75 ? 3 : Math.ceil(avgScore / 20), totalClassmates);
     }

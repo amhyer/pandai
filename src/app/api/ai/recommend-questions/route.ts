@@ -20,10 +20,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: rateCheck.message }, { status: 429 });
     }
 
-    // Fetch student info
-    const student = await db.user.findUnique({ where: { id: studentId } });
-    const subject = await db.subject.findUnique({ where: { id: subjectId } });
-
     // Find weak topics via wrong answers
     const wrongAnswers = await db.studentAnswer.findMany({
       where: {
@@ -55,15 +51,16 @@ export async function POST(request: Request) {
       });
     }
 
+    const subject = await db.subject.findUnique({ where: { id: subjectId } });
+
     const langInstruction = buildLanguageInstruction(subject?.name || 'Bahasa Indonesia');
 
     const systemPrompt = `Kamu adalah tutor AI ahli untuk platform PANDAI. ${langInstruction}
 
 Buat rekomendasi soal latihan yang dipersonalisasi berdasarkan analisis kelemahan siswa. Berikan rekomendasi dalam Bahasa Indonesia yang mudah dipahami.`;
 
-    const userPrompt = `Buat rekomendasi soal latihan untuk siswa berikut:
+    const userPrompt = `Buat rekomendasi soal latihan untuk siswa:
 
-Nama: ${student?.name || 'Siswa'}
 Mata Pelajaran: ${subject?.name || '-'}
 
 Topik yang perlu diperkuat (berdasarkan analisis jawaban salah):
@@ -72,7 +69,9 @@ ${weakTopics.map((t) => `- ${t.name}: ${t.count} kali salah`).join('\n')}
 Buat rekomendasi yang mencakup:
 1. 3-5 soal latihan untuk setiap topik lemah (bisa berupa deskripsi soal singkat)
 2. Strategi belajar yang disarankan
-3. Sumber belajar atau cara memahami topik tersebut`;
+3. Sumber belajar atau cara memahami topik tersebut
+
+PENTING: Jangan menyebutkan nama siswa. Gunakan "siswa" sebagai pengganti.`;
 
     const recommendations = await aiCompletion(systemPrompt, userPrompt);
     await logAiUsage(userId, schoolId, 'recommend_questions', 500);

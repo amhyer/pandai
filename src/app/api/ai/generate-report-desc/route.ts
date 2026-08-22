@@ -108,9 +108,7 @@ export async function POST(request: Request) {
 
     const userPrompt = `Buat deskripsi rapor untuk siswa berikut:
 
-Nama: ${student.name}
 Kelas: ${student.class?.name || '-'}
-Jenis Kelamin: ${student.jk === 'L' ? 'Laki-laki' : student.jk === 'P' ? 'Perempuan' : '-'}
 
 Data Akademik:
 - Total pengerjaan: ${totalAttempts}
@@ -129,7 +127,9 @@ Buat deskripsi rapor yang mencakup:
 3. Kehadiran
 4. Saran untuk peningkatan
 
-Tulis dalam bentuk paragraf yang mengalir, 3-4 paragraf. Gunakan bahasa yang positif dan membangun.`;
+Tulis dalam bentuk paragraf yang mengalir, 3-4 paragraf. Gunakan bahasa yang positif dan membangun.
+
+PENTING: Jangan menyebutkan nama siswa atau jenis kelamin dalam deskripsi. Gunakan "siswa" sebagai pengganti nama.`;
 
     const description = await aiCompletion(systemPrompt, userPrompt);
     await logAiUsage(userId, schoolId, 'generate_report', 500);

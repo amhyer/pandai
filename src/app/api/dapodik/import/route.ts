@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
+import { generateTempPassword } from '@/lib/temp-password';
 import { requireRole, AuthError } from '@/lib/auth';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -65,7 +66,7 @@ export async function POST(request: Request) {
     if (!school) { return NextResponse.json({ error: 'Sekolah tidak ditemukan.' }, { status: 401 }); }
     if (!data || !data.data) { return NextResponse.json({ error: 'Data impor tidak ditemukan.' }, { status: 400 }); }
 
-    const defaultPassword = await hashPassword('pandai123');
+    const importedUsers: { username: string; tempPassword: string; role: string }[] = [];
 
     const results = await db.$transaction(async (tx) => {
       const importData = data.data;
@@ -79,7 +80,9 @@ export async function POST(request: Request) {
             const existing = await tx.user.findUnique({ where: { nisn } });
             if (existing) { pesertaDidikResult.skipped++; continue; }
             const name = resolveName(row, `Siswa-${nisn}`); const jk = resolveGender(row); const phone = resolvePhone(row);
-            await tx.user.create({ data: { username: nisn, password: defaultPassword, name, role: 'SISWA', nisn, jk, phone, schoolId, isActive: true } });
+            const tempPwd = generateTempPassword();
+            await tx.user.create({ data: { username: nisn, password: await hashPassword(tempPwd), name, role: 'SISWA', nisn, jk, phone, schoolId, isActive: true, mustChangePassword: true } });
+            importedUsers.push({ username: nisn, tempPassword: tempPwd, role: 'SISWA' });
             pesertaDidikResult.created++;
           } catch (err: unknown) { const msg = err instanceof Error ? err.message : 'Kesalahan tidak diketahui'; pesertaDidikResult.errors.push(`${resolveName(row, '?')}: ${msg}`); }
         }
@@ -94,7 +97,9 @@ export async function POST(request: Request) {
             const existing = await tx.user.findUnique({ where: { nip } });
             if (existing) { guruResult.skipped++; continue; }
             const name = resolveName(row, `Guru-${nip}`); const jk = resolveGender(row); const phone = resolvePhone(row); const nik = (row.nik as string) || undefined;
-            await tx.user.create({ data: { username: nip, password: defaultPassword, name, role: 'GURU', nip, nik, jk, phone, schoolId, isActive: true } });
+            const tempPwd = generateTempPassword();
+            await tx.user.create({ data: { username: nip, password: await hashPassword(tempPwd), name, role: 'GURU', nip, nik, jk, phone, schoolId, isActive: true, mustChangePassword: true } });
+            importedUsers.push({ username: nip, tempPassword: tempPwd, role: 'GURU' });
             guruResult.created++;
           } catch (err: unknown) { const msg = err instanceof Error ? err.message : 'Kesalahan tidak diketahui'; guruResult.errors.push(`${resolveName(row, '?')}: ${msg}`); }
         }
@@ -137,7 +142,7 @@ export async function POST(request: Request) {
     });
 
     const totalCreated = (results.pesertaDidik?.created ?? 0) + (results.guru?.created ?? 0) + (results.rombel?.created ?? 0) + (results.mataPelajaran?.created ?? 0);
-    return NextResponse.json({ success: true, message: `Impor berhasil! ${totalCreated} data baru ditambahkan.`, results, note: 'Password default: pandai123' });
+    return NextResponse.json({ success: true, message: `Impor berhasil! ${totalCreated} data baru ditambahkan.`, results, importedUsers, note: 'Semua password bersifat sementara dan wajib diganti saat login pertama.' });
   } catch (error: unknown) {
     if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
     console.error('[Dapodik Import Error]', error);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
+import { generateTempPassword } from '@/lib/temp-password';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 
@@ -27,7 +28,7 @@ async function autoCreateOrtuForSiswa(siswaData: {
   schoolId: string;
   siswaId: string;
   siswaName: string;
-}): Promise<{ ortuId: string; ortuUsername: string; isNew: boolean } | null> {
+}): Promise<{ ortuId: string; ortuUsername: string; ortuTempPassword?: string; isNew: boolean } | null> {
   if (!siswaData.namaOrtu || !siswaData.namaOrtu.trim()) return null;
 
   const baseName = getFirstName(siswaData.namaOrtu);
@@ -51,22 +52,25 @@ async function autoCreateOrtuForSiswa(siswaData: {
     };
   }
 
-  // Create new ORANG_TUA account
+  // Create new ORANG_TUA account with random temporary password
   const ortuUsername = await generateUniqueOrtuUsername(baseName, siswaData.schoolId);
+  const ortuTempPassword = generateTempPassword();
   const ortu = await db.user.create({
     data: {
       username: ortuUsername,
-      password: await hashPassword('123'),
+      password: await hashPassword(ortuTempPassword),
       name: siswaData.namaOrtu.trim(),
       role: 'ORANG_TUA',
       schoolId: siswaData.schoolId,
       isActive: true,
+      mustChangePassword: true,
     },
   });
 
   return {
     ortuId: ortu.id,
     ortuUsername: ortuUsername,
+    ortuTempPassword,
     isNew: true,
   };
 }
@@ -88,6 +92,9 @@ export async function GET(request: Request) {
     const userRole = searchParams.get('role');
     const classId = searchParams.get('classId');
     const parentId = searchParams.get('parentId');
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '100');
+    const skip = (page - 1) * limit;
 
     const where: any = { isActive: true };
     // Non-super-admin can only see their own school
@@ -104,6 +111,8 @@ export async function GET(request: Request) {
       where,
       include: { school: true, class: true },
       orderBy: { createdAt: 'desc' },
+      take: limit,
+      skip,
     });
     return NextResponse.json(users);
   } catch (error) {
@@ -133,6 +142,9 @@ export async function POST(request: Request) {
       if (!loginId) {
         return NextResponse.json({ error: 'NIP atau NIK wajib diisi untuk guru' }, { status: 400 });
       }
+      if (!data.password) {
+        return NextResponse.json({ error: 'Password wajib diisi untuk guru' }, { status: 400 });
+      }
 
       if (nip) {
         const existingNip = await db.user.findUnique({ where: { nip } });
@@ -149,7 +161,7 @@ export async function POST(request: Request) {
       const user = await db.user.create({
         data: {
           username: loginId,
-          password: await hashPassword(data.password || 'password123'),
+          password: await hashPassword(data.password),
           name,
           role: 'GURU',
           schoolId,
@@ -168,6 +180,9 @@ export async function POST(request: Request) {
       if (!nisn || !nisn.trim()) {
         return NextResponse.json({ error: 'NISN wajib diisi untuk siswa' }, { status: 400 });
       }
+      if (!data.password) {
+        return NextResponse.json({ error: 'Password wajib diisi untuk siswa' }, { status: 400 });
+      }
 
       const existingNisn = await db.user.findUnique({ where: { nisn: nisn.trim() } });
       if (existingNisn) return NextResponse.json({ error: 'NISN sudah terdaftar' }, { status: 409 });
@@ -184,7 +199,7 @@ export async function POST(request: Request) {
         if (ortuResult) {
           parentId = ortuResult.ortuId;
           ortuMessage = ortuResult.isNew
-            ? ` | Akun orang tua dibuat otomatis (username: ${ortuResult.ortuUsername}, password: 123)`
+            ? ` | Akun orang tua dibuat otomatis (username: ${ortuResult.ortuUsername}, password: ${ortuResult.ortuTempPassword}). Wajib ganti password saat login pertama.`
             : ` | Terhubung ke akun orang tua yang sudah ada`;
         }
       }
@@ -192,7 +207,7 @@ export async function POST(request: Request) {
       const user = await db.user.create({
         data: {
           username: nisn.trim(),
-          password: await hashPassword(data.password || nisn.trim()),
+          password: await hashPassword(data.password),
           name,
           role: 'SISWA',
           schoolId,
@@ -217,6 +232,9 @@ export async function POST(request: Request) {
     if (!email) {
       return NextResponse.json({ error: 'Email wajib diisi' }, { status: 400 });
     }
+    if (!data.password) {
+      return NextResponse.json({ error: 'Password wajib diisi' }, { status: 400 });
+    }
 
     const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } });
     if (existing) return NextResponse.json({ error: 'Email sudah terdaftar' }, { status: 409 });
@@ -224,7 +242,7 @@ export async function POST(request: Request) {
     const user = await db.user.create({
       data: {
         email: email.toLowerCase(),
-        password: await hashPassword(data.password || 'password123'),
+        password: await hashPassword(data.password),
         name,
         role: userRole,
         schoolId,
@@ -235,13 +253,12 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ user, message: `Pengguna ${name} berhasil ditambahkan` });
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     logError({ error, route: '/api/users', method: 'POST' });
-    console.error('Create user error:', error);
-    return NextResponse.json({ error: error.message || 'Gagal membuat pengguna' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal membuat pengguna' }, { status: 500 });
   }
 }
 
@@ -264,12 +281,26 @@ export async function PATCH(request: Request) {
   }
 }
 
-// PUT /api/users — Profile update (uses id from body, accepts name/email/phone)
+// PUT /api/users — Profile update (own profile only, or admin/kepsek with same school)
 export async function PUT(request: Request) {
   try {
     const auth = await requireAuth(request);
     const { id, name, email, phone } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // IDOR fix: only allow editing own profile unless admin with same school
+    if (id !== auth.userId) {
+      if (auth.role !== 'SUPER_ADMIN' && auth.role !== 'ADMIN_SCHOOL' && auth.role !== 'KEPALA_SEKOLAH') {
+        return NextResponse.json({ error: 'Tidak diizinkan mengedit profil lain' }, { status: 403 });
+      }
+      // Admin/kepsek can only edit users in same school
+      if (auth.role !== 'SUPER_ADMIN') {
+        const targetUser = await db.user.findUnique({ where: { id }, select: { schoolId: true } });
+        if (!targetUser || targetUser.schoolId !== auth.schoolId) {
+          return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+        }
+      }
+    }
 
     const data: Record<string, string> = {};
     if (name !== undefined) data.name = name;
