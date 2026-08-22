@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { checkRateLimit, logAiUsage, aiCompletion, buildLanguageInstruction } from '@/lib/ai-helper';
+import { checkRateLimit, logAiUsage, buildLanguageInstruction } from '@/lib/ai-helper';
 import { logError } from '@/lib/error-log';
 import { requireAuth, AuthError } from '@/lib/auth';
 import { requireSchoolScope } from '@/lib/scope';
@@ -11,7 +11,6 @@ export async function GET(request: Request) {
     const auth = await requireAuth(request);
     try { await logAccess(auth, { action: 'READ', resourceType: 'ai-chatbot' }); } catch {}
     const { searchParams } = new URL(request.url);
-    // IDOR fix: reject if userId param differs from session
     const queryUserId = searchParams.get('userId');
     if (queryUserId && queryUserId !== auth.userId) {
       return NextResponse.json({ error: 'Tidak diizinkan mengakses data pengguna lain' }, { status: 403 });
@@ -50,7 +49,6 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     logError({ error, route: '/api/ai/chatbot', method: 'GET' });
-    console.error('Get chatbot sessions error:', error);
     return NextResponse.json({ error: 'Gagal mengambil sesi chatbot' }, { status: 500 });
   }
 }
@@ -59,7 +57,6 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAuth(request);
     const data = await request.json();
-    // IDOR fix: force userId from auth, ignore body param
     const effectiveUserId = auth.userId;
     const { action, schoolId, sessionId, subjectId, content } = data;
     try { await logAccess(auth, { action: 'CREATE', resourceType: 'ai-chatbot', detail: action }); } catch {}
@@ -70,7 +67,6 @@ export async function POST(request: Request) {
     }
     requireSchoolScope(auth, effectiveSchoolId);
 
-    // CREATE SESSION
     if (action === 'create_session') {
       const session = await db.chatbotSession.create({
         data: { userId: effectiveUserId, schoolId: effectiveSchoolId, subjectId: subjectId || null },
@@ -78,24 +74,33 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, session });
     }
 
-    // SEND MESSAGE
     if (action === 'send_message') {
       if (!sessionId || !content) {
         return NextResponse.json({ error: 'sessionId dan content diperlukan' }, { status: 400 });
       }
 
-      // Rate limit
+      // IDOR: session must belong to current user
+      const session = await db.chatbotSession.findUnique({
+        where: { id: sessionId },
+        select: { userId: true, schoolId: true },
+      });
+      if (!session) {
+        return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 });
+      }
+      if (session.userId !== auth.userId) {
+        return NextResponse.json({ error: 'Tidak diizinkan memakai sesi orang lain' }, { status: 403 });
+      }
+      if (session.schoolId) requireSchoolScope(auth, session.schoolId);
+
       const rateCheck = await checkRateLimit(effectiveUserId, effectiveSchoolId, 'chatbot');
       if (!rateCheck.allowed) {
         return NextResponse.json({ error: rateCheck.message }, { status: 429 });
       }
 
-      // Save user message
       await db.chatMessage.create({
         data: { sessionId, role: 'user', content },
       });
 
-      // Update session title from first message
       const existingMessages = await db.chatMessage.count({ where: { sessionId } });
       if (existingMessages <= 1) {
         await db.chatbotSession.update({
@@ -107,7 +112,6 @@ export async function POST(request: Request) {
         });
       }
 
-      // Build RAG context: fetch last 5 materials for the subject
       let ragContext = '';
       if (subjectId) {
         const subject = await db.subject.findUnique({ where: { id: subjectId } });
@@ -127,7 +131,6 @@ export async function POST(request: Request) {
         }
       }
 
-      // Build conversation history: last 20 messages
       const history = await db.chatMessage.findMany({
         where: { sessionId },
         orderBy: { createdAt: 'asc' },
@@ -135,13 +138,7 @@ export async function POST(request: Request) {
         select: { role: true, content: true },
       });
 
-      const langInstruction = subjectId
-        ? (() => {
-            const subject = subjectId;
-            // We'll use a simple check here
-            return buildLanguageInstruction('bahasa indonesia');
-          })()
-        : 'Gunakan Bahasa Indonesia yang baik dan benar.';
+      const langInstruction = 'Gunakan Bahasa Indonesia yang baik dan benar.';
 
       const systemPrompt = `Kamu adalah PANDAI AI, asisten belajar cerdas untuk platform PANDAI. ${langInstruction}
 
@@ -175,20 +172,18 @@ Aturan:
         max_tokens: 2048,
       });
 
-      const aiContent = result.choices?.[0]?.message?.content || 'Maaf, saya tidak dapat menjawab pertanyaan tersebut.';
+      const aiContent =
+        result.choices?.[0]?.message?.content || 'Maaf, saya tidak dapat menjawab pertanyaan tersebut.';
 
-      // Save AI response
       const aiMessage = await db.chatMessage.create({
         data: { sessionId, role: 'assistant', content: aiContent },
       });
 
-      // Update session timestamp
       await db.chatbotSession.update({
         where: { id: sessionId },
         data: { updatedAt: new Date() },
       });
 
-      // Log usage
       await logAiUsage(effectiveUserId, effectiveSchoolId, 'chatbot', 300);
 
       return NextResponse.json({ success: true, message: aiMessage });
@@ -200,7 +195,6 @@ Aturan:
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     logError({ error, route: '/api/ai/chatbot', method: 'POST' });
-    console.error('Chatbot error:', error);
     const msg = error instanceof Error ? error.message : 'Gagal memproses chatbot';
     return NextResponse.json({ error: msg }, { status: 500 });
   }
@@ -215,14 +209,18 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'sessionId diperlukan' }, { status: 400 });
     }
 
-    // IDOR fix: verify the session belongs to the current user
-    const session = await db.chatbotSession.findUnique({ where: { id: sessionId }, select: { userId: true, schoolId: true } });
+    const session = await db.chatbotSession.findUnique({
+      where: { id: sessionId },
+      select: { userId: true, schoolId: true },
+    });
     if (!session) return NextResponse.json({ error: 'Sesi tidak ditemukan' }, { status: 404 });
     if (session.userId !== auth.userId) {
       return NextResponse.json({ error: 'Tidak diizinkan menghapus sesi orang lain' }, { status: 403 });
     }
     if (session.schoolId) requireSchoolScope(auth, session.schoolId);
-    try { await logAccess(auth, { action: 'DELETE', resourceType: 'ai-chatbot', resourceId: sessionId }); } catch {}
+    try {
+      await logAccess(auth, { action: 'DELETE', resourceType: 'ai-chatbot', resourceId: sessionId });
+    } catch {}
 
     await db.chatMessage.deleteMany({ where: { sessionId } });
     await db.chatbotSession.delete({ where: { id: sessionId } });
@@ -233,7 +231,6 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     logError({ error, route: '/api/ai/chatbot', method: 'DELETE' });
-    console.error('Delete chatbot session error:', error);
     return NextResponse.json({ error: 'Gagal menghapus sesi' }, { status: 500 });
   }
 }
