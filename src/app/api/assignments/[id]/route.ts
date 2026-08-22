@@ -43,13 +43,18 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
     }
 
-    // SISWA: only published/closed and own class if set
     if (auth.role === 'SISWA') {
       if (!['published', 'closed'].includes(assignment.status)) {
         return NextResponse.json({ error: 'Tugas tidak tersedia' }, { status: 403 });
       }
-      if (assignment.classId && auth.classId && assignment.classId !== auth.classId) {
-        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      if (assignment.classId) {
+        const me = await db.user.findUnique({
+          where: { id: auth.userId },
+          select: { classId: true },
+        });
+        if (me?.classId && assignment.classId !== me.classId) {
+          return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+        }
       }
     }
 

@@ -43,8 +43,12 @@ export async function GET(req: NextRequest) {
 
     if (auth.role === 'SISWA') {
       where.status = 'published';
-      if (auth.classId) {
-        where.OR = [{ classId: auth.classId }, { classId: null }];
+      const me = await db.user.findUnique({
+        where: { id: auth.userId },
+        select: { classId: true },
+      });
+      if (me?.classId) {
+        where.OR = [{ classId: me.classId }, { classId: null }];
       }
     }
 
@@ -70,7 +74,6 @@ export async function GET(req: NextRequest) {
 
         const enriched_m: Record<string, unknown> = { ...m, teacher, subject, class: cls };
 
-        // Scores only for staff — not SISWA bulk dump
         if (m.externalUrl && auth.role !== 'SISWA') {
           const scores = await db.externalQuizScore.findMany({
             where: { materialId: m.id },
