@@ -22,7 +22,6 @@ export async function GET(req: NextRequest) {
 
     const where: Record<string, unknown> = {};
 
-    // School isolation
     const schoolF = getSchoolFilter(auth);
     if (schoolF) {
       where.schoolId = schoolF;
@@ -34,10 +33,13 @@ export async function GET(req: NextRequest) {
     if (classId) where.classId = classId;
     if (status) where.status = status;
 
-    // SISWA: only published/closed in own class; strip later if needed
     if (auth.role === 'SISWA') {
       where.status = { in: ['published', 'closed'] };
-      if (auth.classId) where.classId = auth.classId;
+      const me = await db.user.findUnique({
+        where: { id: auth.userId },
+        select: { classId: true },
+      });
+      if (me?.classId) where.classId = me.classId;
     }
 
     if (studentId) {
