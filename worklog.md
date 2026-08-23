@@ -1098,3 +1098,28 @@ Stage Summary:
 - Critical fix: include: { answers: true } in POST /api/attempts
 - E2E verified via Agent Browser
 - Verification script: 8/8 pass
+---
+Task ID: kepsek-sidebar-fix
+Agent: main
+Task: Akses akun kepala sekolah dan identifikasi masalah yang belum berjalan
+
+Work Log:
+- Logged in as Kepala Sekolah (kepsek.sdn1 / password123) via agent-browser
+- Tested all 7 sidebar menu items:
+  1. Beranda (dashboard) - WORKS: shows summary cards + rekap table with tabs
+  2. Rekap Per Kelas - BROKEN: showed dashboard content, not rekap kelas view
+  3. Rekap Per Guru - BROKEN: showed dashboard content, not rekap guru view
+  4. Rekap 7 Kebiasaan - BROKEN: showed dashboard content, not rekap karakter view
+  5. Kotak Masukan - WORKS
+  6. Profil Lulusan - WORKS
+  7. Laporan & Rapor - WORKS
+- Root cause: authenticated-app.tsx lines 121-123 mapped all 3 kepsek-rekap-* views to same KepalaSekolahDashboard component without tab sync
+- Fix: Modified KepalaSekolahDashboard to subscribe to currentView from zustand store and derive activeTab from it
+- Also made header dynamic (shows contextual title/description) and summary cards only show on main dashboard
+- Verified fix via browser: all 3 rekap views now show correct content with proper headings
+
+Stage Summary:
+- Fixed file: src/components/dashboard/kepala-sekolah/kepala-sekolah-dashboard.tsx
+- Key change: Added useEffect to sync activeTab with currentView from store
+- Key change: isDashboardView flag to conditionally render summary cards and contextual header
+- All 7 sidebar menu items for Kepala Sekolah now work correctly

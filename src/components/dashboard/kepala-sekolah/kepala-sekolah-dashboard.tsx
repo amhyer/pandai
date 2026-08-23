@@ -85,10 +85,28 @@ const HABIT_COLORS = [
 
 export function KepalaSekolahDashboard() {
   const user = useAppStore((s) => s.user);
+  const currentView = useAppStore((s) => s.currentView);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Derive active tab from currentView so sidebar navigation works
+  const viewToTab: Partial<Record<string, TabKey>> = {
+    'dashboard': 'rekap-kelas',
+    'dashboard-kepsek': 'rekap-kelas',
+    'kepsek-rekap-kelas': 'rekap-kelas',
+    'kepsek-rekap-guru': 'rekap-guru',
+    'kepsek-rekap-karakter': 'rekap-karakter',
+  };
   const [activeTab, setActiveTab] = useState<TabKey>('rekap-kelas');
+
+  // Sync tab with currentView changes (e.g. sidebar click)
+  useEffect(() => {
+    const tabFromView = viewToTab[currentView];
+    if (tabFromView) {
+      setActiveTab(tabFromView);
+    }
+  }, [currentView]);
 
   useEffect(() => {
     const schoolId = user?.schoolId;
@@ -180,35 +198,57 @@ export function KepalaSekolahDashboard() {
     },
   ];
 
+  const isDashboardView = currentView === 'dashboard' || currentView === 'dashboard-kepsek';
+
+  const tabTitles: Record<TabKey, string> = {
+    'rekap-kelas': 'Rekap Per Kelas',
+    'rekap-guru': 'Rekap Per Guru',
+    'rekap-karakter': 'Rekap 7 Kebiasaan',
+    'rekap-karakter-kelas': 'Kebiasaan Per Kelas',
+  };
+
+  const tabDescriptions: Record<TabKey, string> = {
+    'rekap-kelas': 'Ringkasan kehadiran, nilai, dan kebiasaan per kelas',
+    'rekap-guru': 'Aktivitas mengajar dan kontribusi materi per guru',
+    'rekap-karakter': 'Rekap 7 Kebiasaan Anak Indonesia Hebat',
+    'rekap-karakter-kelas': 'Rincian kebiasaan per kelas',
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Header ── */}
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Dashboard Kepala Sekolah</h1>
-        <p className="text-sm text-muted-foreground mt-1">{schoolInfo.schoolName}</p>
+        <h1 className="text-2xl font-bold text-slate-800">
+          {isDashboardView ? 'Dashboard Kepala Sekolah' : tabTitles[activeTab]}
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          {isDashboardView ? schoolInfo.schoolName : tabDescriptions[activeTab]}
+        </p>
       </div>
 
-      {/* ── Summary Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {summaryCards.map((card) => {
-          const Icon = card.icon;
-          return (
-            <Card key={card.label} className="overflow-hidden border-0 shadow-sm">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center shrink-0 shadow-sm`}>
-                    <Icon className="h-5 w-5 text-white" />
+      {/* ── Summary Cards (only on main dashboard) ── */}
+      {isDashboardView && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {summaryCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <Card key={card.label} className="overflow-hidden border-0 shadow-sm">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3">
+                    <div className={`h-10 w-10 rounded-xl bg-gradient-to-br ${card.color} flex items-center justify-center shrink-0 shadow-sm`}>
+                      <Icon className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-xs text-muted-foreground font-medium truncate">{card.label}</p>
+                      <p className={`text-xl font-bold ${card.textColor} mt-0.5`}>{card.value}</p>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground font-medium truncate">{card.label}</p>
-                    <p className={`text-xl font-bold ${card.textColor} mt-0.5`}>{card.value}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          );
-        })}
-      </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      )}
 
       {/* ── Tabs ── */}
       <div className="border-b border-slate-200">
