@@ -104,7 +104,6 @@ export async function GET(request: Request) {
     const schoolId = searchParams.get('schoolId');
     const userRole = searchParams.get('role');
     const classId = searchParams.get('classId');
-    const parentId = searchParams.get('parentId');
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '100');
     const skip = (page - 1) * limit;
