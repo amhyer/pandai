@@ -39,6 +39,29 @@ export async function GET(
       if (!student || student.classId !== assignment.classId) {
         return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
       }
+
+      // P0-01: Time window enforcement — SISWA cannot access questions outside exam window
+      if (!review) {
+        const now = new Date();
+        if (session.status !== 'active') {
+          return NextResponse.json(
+            { error: 'Ujian belum dimulai atau sudah berakhir' },
+            { status: 422 }
+          );
+        }
+        if (now < session.startDate) {
+          return NextResponse.json(
+            { error: 'Ujian belum dimulai' },
+            { status: 422 }
+          );
+        }
+        if (now > session.endDate) {
+          return NextResponse.json(
+            { error: 'Waktu ujian sudah berakhir' },
+            { status: 422 }
+          );
+        }
+      }
     }
 
     // Fetch exam items with questions, ordered

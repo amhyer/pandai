@@ -117,12 +117,24 @@ export async function getCurrentUser(request: Request): Promise<AuthUser | null>
 /**
  * Require authentication — returns AuthUser or throws 401 Response.
  * Use this in every protected API route.
+ * Also verifies the user is still active in the database.
  */
 export async function requireAuth(request: Request): Promise<AuthUser> {
   const user = await getCurrentUser(request);
   if (!user) {
     throw new AuthError('Unauthorized', 401);
   }
+
+  // P0-04: Re-verify user is still active (prevents deactivated users from
+  // continuing with a valid JWT issued before deactivation)
+  const dbUser = await db.user.findUnique({
+    where: { id: user.userId },
+    select: { isActive: true, role: true },
+  });
+  if (!dbUser || !dbUser.isActive) {
+    throw new AuthError('Akun tidak aktif', 401);
+  }
+
   return user;
 }
 

@@ -913,6 +913,69 @@ Several routes properly use `Promise.all()` for independent queries:
 6. **[ERR-HIGH-01]** Add 401/403 detection in the shared fetchAPI utility.
 7. **[PERF-HIGH-01]** Add `take:` limits to unbounded queries in `/api/timetable`, `/api/grades/final`, `/api/teacher-assignments`.
 ---
+Task ID: P0-06
+Agent: regression-audit
+Task: P0-06 Regression audit of previously fixed authorization
+
+## P0-06 Regression Audit — Authorization Fixes
+**Date:** 2025-01-XX
+**Scope:** 9 API route files, 22 individual security checks
+**Verdict: ALL 22 CHECKS PASS**
+
+### Results Table
+
+| # | File | Method | Check | Result | Notes |
+|---|------|--------|-------|--------|-------|
+| 1 | assignments/route.ts | GET | getSchoolFilter for non-SUPER_ADMIN | **PASS** | L35: `getSchoolFilter(auth)` used; client schoolId only used as fallback for SUPER_ADMIN (returns undefined) |
+| 2 | assignments/route.ts | POST | schoolId verified against auth.schoolId | **PASS** | L114-117: Inline check `effectiveSchoolId !== auth.schoolId` → 403. Functionally equivalent to requireSchoolScope |
+| 3 | assignments/route.ts | PATCH | DB status used for draft guard | **PASS** | L165: fetches `status` from DB; L170: `existing.status !== 'draft'` uses DB value, not client `status` |
+| 4 | assignments/route.ts | PATCH | school scope verified | **PASS** | L164-168: Fetches DB schoolId, compares to auth.schoolId → 403 |
+| 5 | assignments/route.ts | DELETE | school scope verified | **PASS** | L218-222: Fetches DB schoolId, compares to auth.schoolId → 403 |
+| 6 | assignments/[id]/route.ts | GET | requireSchoolScope for non-SUPER_ADMIN | **PASS** | L28-30: `requireSchoolScope(auth, assignment.schoolId)` after DB fetch |
+| 7 | assignments/[id]/route.ts | GET | strip answer/explanation for SISWA | **PASS** | L33-42: Destructures `{ answer, explanation, ...rest }` from question, returns rest only |
+| 8 | questions/route.ts | GET | getSchoolFilter for non-SUPER_ADMIN | **PASS** | L29: `getSchoolFilter(auth)`; L30-34: same safe fallback pattern |
+| 9 | questions/route.ts | GET | strip answer/explanation for SISWA | **PASS** | L54-56: `questions.map(({ answer, explanation, ...rest }) => rest)` |
+| 10 | questions/route.ts | POST | school scope verified | **PASS** | L77-79: `requireSchoolScope(auth, effectiveSchoolId)` |
+| 11 | questions/route.ts | PATCH | school scope verified | **PASS** | L113-116: Fetches DB schoolId, calls `requireSchoolScope(auth, existing.schoolId)` |
+| 12 | questions/route.ts | DELETE | school scope verified | **PASS** | L138-141: Same pattern as PATCH |
+| 13 | materials/route.ts | GET | getSchoolFilter for non-SUPER_ADMIN | **PASS** | L23: `getSchoolFilter(auth)`; L24-28: safe fallback pattern |
+| 14 | materials/route.ts | POST | school scope verified | **PASS** | L89-91: `requireSchoolScope(auth, effectiveSchoolId)` |
+| 15 | materials/route.ts | PATCH | school scope verified | **PASS** | L127-130: Fetches DB schoolId, calls `requireSchoolScope` |
+| 16 | materials/route.ts | DELETE | school scope verified | **PASS** | L170-173: Same pattern as PATCH |
+| 17 | teaching-journals/route.ts | GET | getSchoolFilter for non-SUPER_ADMIN | **PASS** | L18: `getSchoolFilter(auth)`; L19-23: safe fallback pattern |
+| 18 | teaching-journals/route.ts | POST | school scope verified | **PASS** | L68-70: `requireSchoolScope(auth, effectiveSchoolId)` |
+| 19 | teaching-journals/route.ts | PATCH | school scope verified | **PASS** | L90-93: Fetches DB schoolId, calls `requireSchoolScope` |
+| 20 | teaching-journals/route.ts | DELETE | school scope verified | **PASS** | L114-117: Same pattern as PATCH |
+| 21 | timetable/route.ts | GET | getSchoolFilter for non-SUPER_ADMIN | **PASS** | L16: `getSchoolFilter(auth)`; L17-21: safe fallback pattern |
+| 22 | timetable/route.ts | POST | school scope verified | **PASS** | L57-59: `requireSchoolScope(auth, schoolId)` |
+| 23 | timetable/route.ts | PUT | school scope verified | **PASS** | L89-92: Fetches DB schoolId, calls `requireSchoolScope` |
+| 24 | timetable/route.ts | DELETE | school scope verified | **PASS** | L113-116: Same pattern as PUT |
+| 25 | classes/route.ts | GET | getSchoolFilter for non-SUPER_ADMIN | **PASS** | L16: `getSchoolFilter(auth)`; L17-21: safe fallback pattern |
+| 26 | classes/route.ts | POST | school scope verified | **PASS** | L58-60: `requireSchoolScope(auth, effectiveSchoolId)` |
+| 27 | classes/route.ts | PUT | school scope verified | **PASS** | L102-107: Fetches DB schoolId, inline comparison → 403 |
+| 28 | analytics/route.ts | GET type=global | restricted to SUPER_ADMIN | **PASS** | L84-88: `if (auth.role !== 'SUPER_ADMIN') return 403` |
+| 29 | analytics/route.ts | GET type=dashboard | school scope checked | **PASS** | L13-17: `requireSchoolScope(auth, schoolId)` for non-SUPER_ADMIN |
+| 30 | scores/route.ts | GET ORANG_TUA | only checks parentId (NOT schoolId) | **PASS** | L30-36: Fetches `parentId` from DB, checks `student.parentId !== auth.userId` → 403. No schoolId check present (correct per spec) |
+
+### Summary
+- **22 checks across 9 files: ALL PASS**
+- No regressions detected
+- All school-scope isolation fixes are intact
+- SISWA answer/explanation stripping is correct in both assignment list and detail endpoints
+- ORANG_TUA access to scores correctly uses parentId-only check (no schoolId gate that would block legitimate cross-school parents)
+- Analytics global endpoint correctly restricted to SUPER_ADMIN only
+- Draft guard on PATCH assignments correctly reads DB status (line 170 of assignments/route.ts)
+
+### Minor Observations (non-blocking)
+- `assignments/route.ts` POST and PATCH use inline `schoolId !== auth.schoolId` comparison instead of `requireSchoolScope()` utility, but the logic is functionally identical
+- `classes/route.ts` PUT also uses inline comparison — same situation, functionally correct
+- These inline checks could be unified to `requireSchoolScope()` for consistency in a future cleanup, but pose no security risk
+
+Stage Summary:
+- All P0-06 authorization fixes verified intact — no regressions
+- Ready for next priority fixes
+
+---
 Task ID: audit-fixes
 Agent: main
 Task: Comprehensive audit + fix 10 critical security bugs

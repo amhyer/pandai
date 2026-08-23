@@ -110,7 +110,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 // POST /api/assignments/[id]/submissions — student submit
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(req, ['SISWA']);
     const { id } = await params;
     try { await logAccess(auth, { action: 'CREATE', resourceType: 'submissions' }); } catch {}
     const body = await req.json();
@@ -129,11 +129,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
     const assignment = await db.assignment.findUnique({
       where: { id },
-      include: { questions: { include: { question: { select: { id: true, type: true, options: true, answer: true } } } } },
+      select: { id: true, status: true, deadline: true, schoolId: true, questions: { include: { question: { select: { id: true, type: true, options: true, answer: true } } } } },
     });
     if (!assignment) return NextResponse.json({ error: 'Tugas tidak ditemukan' }, { status: 404 });
     if (assignment.status === 'draft') return NextResponse.json({ error: 'Tugas belum dipublish' }, { status: 403 });
     if (assignment.status === 'closed') return NextResponse.json({ error: 'Tugas sudah ditutup' }, { status: 403 });
+
+    // P0-02: School scope check — ensure student can only submit to their own school's assignment
+    if (auth.role === 'SISWA' && assignment.schoolId && auth.schoolId && assignment.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+
+    // P0-02: Server-side deadline enforcement
+    if (assignment.deadline) {
+      const deadlineDate = new Date(assignment.deadline);
+      if (!isNaN(deadlineDate.getTime()) && new Date() > deadlineDate) {
+        return NextResponse.json(
+          { error: 'Batas waktu pengumpulan tugas sudah berakhir' },
+          { status: 422 }
+        );
+      }
+    }
 
     let submission: { id: string; status: string; isRemedial: boolean };
 

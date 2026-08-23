@@ -39,25 +39,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ data: enriched, total });
   } catch (error) {
     if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
-    console.error('GET /api/activity-logs error:', error);
     return NextResponse.json({ error: 'Gagal mengambil log aktivitas' }, { status: 500 });
   }
 }
 
-export async function POST(req: NextRequest) {
-  try {
-    await requireAuth(req);
-    const body = await req.json();
-    const { userId, schoolId, action, detail, module: mod } = body;
-    if (!action) { return NextResponse.json({ error: 'Action wajib diisi' }, { status: 400 }); }
-
-    const log = await db.activityLog.create({
-      data: { userId: userId || null, schoolId: schoolId || null, action, detail: detail || null, module: mod || null },
-    });
-    return NextResponse.json(log, { status: 201 });
-  } catch (error) {
-    if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
-    console.error('POST /api/activity-logs error:', error);
-    return NextResponse.json({ error: 'Gagal menyimpan log' }, { status: 500 });
-  }
+// POST /api/activity-logs — REMOVED (P0-05)
+// Activity logs must be server-generated only via logAccess() helper.
+// Client-supplied log entries pose audit trail poisoning risk.
+export async function POST() {
+  return NextResponse.json(
+    { error: 'Endpoint ini tidak tersedia. Log aktivitas dibuat otomatis oleh server.' },
+    { status: 405 }
+  );
 }

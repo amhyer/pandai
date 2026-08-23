@@ -100,7 +100,7 @@ export async function GET(request: Request) {
 // POST submit attempt
 export async function POST(request: Request) {
   try {
-    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(request, ['SISWA']);
     const data = await request.json();
     const { examSessionId, examPackageId, schoolId, classId, answers, duration, learningObjective } = data;
 
@@ -108,6 +108,40 @@ export async function POST(request: Request) {
     const userId = auth.userId;
     if (auth.role === 'SISWA' && data.userId && data.userId !== auth.userId) {
       return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+    }
+
+    // P0-01: Server-side exam time window enforcement
+    if (examSessionId) {
+      const examSession = await db.examSession.findUnique({
+        where: { id: examSessionId },
+        select: { id: true, status: true, startDate: true, endDate: true, schoolId: true },
+      });
+      if (!examSession) {
+        return NextResponse.json({ error: 'Sesi ujian tidak ditemukan' }, { status: 404 });
+      }
+      // School scope: ensure student belongs to the same school as the exam
+      if (examSession.schoolId && auth.schoolId && examSession.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+      const now = new Date();
+      if (examSession.status !== 'active') {
+        return NextResponse.json(
+          { error: 'Ujian belum dimulai atau sudah berakhir' },
+          { status: 422 }
+        );
+      }
+      if (now < examSession.startDate) {
+        return NextResponse.json(
+          { error: 'Ujian belum dimulai' },
+          { status: 422 }
+        );
+      }
+      if (now > examSession.endDate) {
+        return NextResponse.json(
+          { error: 'Waktu ujian sudah berakhir' },
+          { status: 422 }
+        );
+      }
     }
 
     let totalCorrect = 0;
