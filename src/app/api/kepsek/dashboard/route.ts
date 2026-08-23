@@ -29,6 +29,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Sekolah tidak ditemukan' }, { status: 404 });
     }
 
+    // Phase 1: All independent queries (no dependency on classIds/guruIds)
     const [totalSiswa, totalGuru, totalKelas, classes, gurus] = await Promise.all([
       db.user.count({ where: { schoolId, role: 'SISWA', isActive: true } }),
       db.user.count({ where: { schoolId, role: 'GURU', isActive: true } }),
@@ -40,6 +41,7 @@ export async function GET(req: NextRequest) {
     const classIds = classes.map((c) => c.id);
     const guruIds = gurus.map((g) => g.id);
 
+    // Phase 2: Batched queries using classIds/guruIds
     const [
       studentCountsByClass,
       attendanceRecords,
@@ -77,7 +79,9 @@ export async function GET(req: NextRequest) {
       }),
     ]);
 
-    const studentCountMap = new Map(studentCountsByClass.map((r) => [r.classId, r._count._all]));
+    // Build lookup maps from batched results
+    // FIX: Prisma 6 groupBy._count returns number directly, not { _all: number }
+    const studentCountMap = new Map(studentCountsByClass.map((r) => [r.classId, r._count as number]));
 
     const attendanceByClass = new Map<string, { hadir: number; total: number }>();
     for (const a of attendanceRecords) {
@@ -88,6 +92,7 @@ export async function GET(req: NextRequest) {
       attendanceByClass.set(a.classId, entry);
     }
 
+    // Overall attendance derived from the same batch
     let overallAvgKehadiran: number | null = null;
     if (attendanceRecords.length > 0) {
       overallAvgKehadiran = Math.round(
@@ -95,6 +100,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Character reports grouped by class
     const characterByClass = new Map<string, Array<{ habit: string; rating: number }>>();
     for (const r of characterRecords) {
       if (!r.classId) continue;
@@ -111,14 +117,15 @@ export async function GET(req: NextRequest) {
       extScoresByClass.set(s.classId, arr);
     }
 
-    const journalCountMap = new Map(journalCounts.map((r) => [r.teacherId, r._count._all]));
+    const journalCountMap = new Map(journalCounts.map((r) => [r.teacherId, r._count as number]));
 
     const materialCountMap = new Map<string, Map<string, number>>();
     for (const r of materialCounts) {
       if (!materialCountMap.has(r.teacherId)) materialCountMap.set(r.teacherId, new Map());
-      materialCountMap.get(r.teacherId)!.set(r.type, r._count._all);
+      materialCountMap.get(r.teacherId)!.set(r.type, r._count as number);
     }
 
+    // Assemble rekapKelas from maps
     const rekapKelas = classes.map((cls) => {
       const studentCount = studentCountMap.get(cls.id) || 0;
       const att = attendanceByClass.get(cls.id);
@@ -140,6 +147,7 @@ export async function GET(req: NextRequest) {
       return { className: cls.name, classId: cls.id, studentCount, avgKehadiran, avgNilai, avgKebiasaan };
     });
 
+    // Assemble rekapGuru from maps
     const rekapGuru = gurus.map((guru) => {
       const types = materialCountMap.get(guru.id) || new Map();
       return {
@@ -153,6 +161,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // School-wide habit summary
     const habitMap = new Map<string, { totalRating: number; count: number }>();
     for (const report of characterRecords) {
       const existing = habitMap.get(report.habit) || { totalRating: 0, count: 0 };
@@ -170,6 +179,7 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // Per-class habit breakdown
     const rekapKebiasaanPerKelas = classes.map((cls) => {
       const classReports = characterByClass.get(cls.id) || [];
       const classHabitMap = new Map<string, { totalRating: number; count: number }>();

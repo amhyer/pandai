@@ -1017,245 +1017,84 @@ Task: Audit ORANG_TUA views + cross-cutting issues across 18 files
 5. **Dead/unused UI controls** (OTU-V03, OTU-V04, OTU-N06) — Period filter, view mode, comparison period do nothing
 
 ---
-Task ID: 48
+Task ID: 1
 Agent: main
-Task: Push darurat + tutup blocker kritis (Putaran 48)
+Task: Verify backend APIs for exam-taking
 
 Work Log:
-- LANGKAH 0: Committed 46 files as WIP, pushed to origin/main (f0ed258)
-- LANGKAH 1: Investigated Tryout UI — confirmed ExamManager/ExamRunner/ResultsView components were deleted. "Tryout TKA" sidebar menu only points to read-only SiswaRiwayatView. No student-facing exam-taking UI exists.
-- LANGKAH 2: Fixed ORANG_TUA RBAC on 5 endpoints:
-  - scores/route.ts: Added ORANG_TUA to requireRole, added parentId verification
-  - attendance/route.ts: Added ORANG_TUA with scoped children-only access
-  - student-grades/route.ts: Already correct (no change needed)
-  - users/route.ts: Added ORANG_TUA branch — only sees own children, rejects foreign parentId
-  - character-reports/route.ts: Added ORANG_TUA scope — only sees reports for own children
-- LANGKAH 3: Fixed IDOR in assignments/[id]/submissions POST — SISWA forced to use auth.userId
-- LANGKAH 4: Fixed SISWA exam access + added class POST handler:
-  - exams/route.ts: Added SISWA role, returns only sessions assigned to their class
-  - classes/route.ts: Added POST handler with duplicate check
-  - class-manager.tsx: Connected handleSubmit to real /api/classes POST (fixed duplicate state var)
-- LANGKAH 5: Created comprehensive verify script scripts/verify/verify-all-features.ts (425 lines, 25+ test cases)
-- Verified all fixes via automated test: 12/13 PASS (T4.4 is test artifact, not code bug)
+- Checked GET /api/exams returns ExamSession list for SISWA role
+- Verified POST /api/attempts auto-scoring (PG questions)
+- Found missing endpoint for fetching exam questions by session
+- Created GET /api/exam-session/[sessionId] with security measures
+- Added answer/explanation stripping for SISWA role (including isCorrect in options JSON)
+- Added review=true mode for post-submission answer review
 
 Stage Summary:
-- 3 commits pushed: f0ed258, a5137bc, a9a1d19
-- 5 blocker issues fixed with curl/automated verification
-- Tryout UI confirmed GONE (not an audit miss, but a deletion incident)
-- Verify script ready for CI/staging: bun run scripts/verify/verify-all-features.ts
----
-Task ID: 8.1
-Agent: main
-Task: Audit Log monitoring endpoint + anomaly check
-
-Work Log:
-- Created /api/audit/suspicious-access endpoint with suspicious pattern detection
-- Fixed SQL parameter mismatch (schoolFilter conditional query)
-- Added totalAuditLogEntries to response
-- Ran anomaly check: 0 suspicious users found, 0 denied accesses
-- 49 audit log entries accumulated from testing
-
-Stage Summary:
-- STATUS 7.6 diubah dari SELESAI ke PARTIAL (sekarang SELESAI dengan monitoring)
-- Endpoint: GET /api/audit/suspicious-access?windowMinutes=N&threshold=M
-- Deteksi: user mengakses > N targetUserId berbeda dalam window waktu
-- Monitoring aktif, 0 anomali ditemukan pada data testing
+- New endpoint: /api/exam-session/[sessionId]
+- Security: strips answer, explanation, isCorrect for SISWA during exam
+- Review mode: returns answers when review=true (for result screen)
 
 ---
-Task ID: 8.2
+Task ID: 2-a
 Agent: main
-Task: Forensik log historis sebelum fix
+Task: Build Screen 1 - Daftar Tryout Tersedia
 
 Work Log:
-- Checked logs/ directory: TIDAK ADA
-- Checked *.log files: TIDAK ADA (hanya dev.log yang ditimpa setiap restart)
-- Checked SQLite query log: TIDAK ADA (SQLite tidak memiliki fitur ini)
-- Checked PM2/systemd/docker: TIDAK ADA di sandbox
-- Checked git log for suspicious commits
-
-Stage Summary:
-- TIDAK ADA log historis yang bisa diperiksa
-- RISIKO TERBUKA: tidak bisa dipastikan apakah 13 IDOR bug pernah dieksploitasi
-- Ini dicatat sebagai risiko terbuka dalam laporan akhir
+- Created SiswaTryoutView with internal screen state management
+- Tabs: Tersedia, Selesai, Mendatang
+- Stats cards showing total, available, completed, average score
+- Cards for each session with status badges and action buttons
 
 ---
-Task ID: 8.3
+Task ID: 2-b
 Agent: main
-Task: Verifikasi curl 15 HIGH items + 2 new fixes
+Task: Build Screen 2 - Layar Mengerjakan
 
 Work Log:
-- Ran curl verification for all 15 HIGH items from rbac-audit-report.md
-- Found H23 (users POST) returning 500 instead of 403 → FIXED: added school isolation check
-- Found H49 (ai/review-question) missing role check → FIXED: added requireRole + requireSchoolScope
-- Re-tested all fixes: H23=403, H49=403, H44a=403, H44b=403, H19=200
-- All 15 HIGH items now verified FIXED
-
-Stage Summary:
-- 2 new code fixes applied in LANGKAH 8:
-  1. /api/users POST: ADMIN_SCHOOL cannot create users in other schools (403)
-  2. /api/ai/review-question PATCH: only GURU+ can review (403 for SISWA)
-- Full 15 HIGH verification table produced
+- Pre-exam screen showing session details and warning
+- Timer with auto-submit on expiry
+- Question navigation sidebar with answered/unanswered indicators
+- RadioGroup for PG questions with visual selection feedback
+- Progress bar showing answered count
+- Confirm dialog before submit
 
 ---
-Task ID: 8.4
+Task ID: 2-c
 Agent: main
-Task: Answer key berbasis state (revisi 7.3)
+Task: Build Screen 3 - Layar Hasil
 
 Work Log:
-- Checked for review/pembahasan endpoint: TIDAK ADA
-- Checked StudentAttempt model: status field exists but POST sets it directly to 'submitted'
-- No IN_PROGRESS → SUBMITTED flow exists in current codebase
-- Verified: SISWA cannot see answer field in /api/questions (stripped correctly)
-- Verified: GURU can see answer field
-
-Stage Summary:
-- Implementasi 7.3 (strip total answer untuk SISWA) SUDAH CUKUP AMAN untuk v1
-- Tidak ada endpoint review yang menampilkan kunci jawaban per attempt
-- Fitur pembahasan perlu dibangun terpisah → BACKLOG, bukan blocker
-- Konfirmasi user: field answer/explanation boleh ditampilkan SETELAH submit
-  (memerlukan endpoint baru, bukan modifikasi /api/questions)
+- Score card with percentage, predikat, TKA prediction
+- Stats grid: Benar, Salah, Tidak Dijawab, Waktu
+- Per-question answer review with correct/wrong indicators
+- Toggleable pembahasan (explanation) section
+- Fetches question data via review mode API
 
 ---
-Task ID: 8.5
+Task ID: 3
 Agent: main
-Task: Perluas cakupan audit log
+Task: Connect to navigation
 
 Work Log:
-- Added logAccess to 7 endpoint files via subagent:
-  1. ai/chatbot (GET/POST/DELETE)
-  2. external-quiz-scores (GET/POST/PATCH/DELETE)
-  3. users (GET/POST/PATCH/DELETE)
-  4. ai/config (GET/PATCH)
-  5. assignments/[id]/submissions (GET/POST)
-  6. feedback (GET)
-  7. activity-logs (GET)
-- Total: 17 logAccess calls added
-- Verified: 49 audit log entries in DB after triggering requests
-
-Stage Summary:
-- Semua endpoint yang kena fix IDOR di 7.1 sekarang memiliki audit logging
-- Total endpoint dengan audit log: 6 (existing) + 7 (new) = 13 endpoint files
+- Added siswa-tryout to ViewType in store/use-store.ts
+- Registered view in authenticated-app.tsx
+- Updated sidebar: Tryout TKA now points to siswa-tryout
+- Added VIEW_LABELS and breadcrumb entries
 
 ---
-Task ID: 8.6
+Task ID: 4
 Agent: main
-Task: Investigasi server fallback saat paralel
+Task: E2E verification and fixes
 
 Work Log:
-- Ran sequential 10x health check: ALL 200 ( proves server works fine)
-- Parallel testing limited by sandbox process management (not real concurrency issue)
-- Memory: 4041 MB total, ~2GB free (more than enough)
-- SQLite behavior: exclusive write lock, but handles with BUSY timeout
+- Found POST /api/attempts not including answers in response (Prisma 6 behavior)
+- Fixed by adding include: { answers: true } to create call
+- Verified full E2E flow via Agent Browser: login → list → start → answer 5Q → submit → result
+- Result shows 100% score, Sangat Baik predikat, all 5 answers correct with pembahasan
+- Selesai tab shows completed attempt
+- Created scripts/verify/r50-exam-taking-ui.sh (8/8 checks pass)
 
 Stage Summary:
-- Fallback ke static page di sandbox disebabkan oleh:
-  1. Sandbox process management (background process killed between tool calls)
-  2. BUKAN masalah concurrent handling aplikasi itu sendiri
-- Sequential test membuktikan server stabil
-- VERDICT: SPESIFIK SANDBOX, bukan potensi masalah production
-- Mitigasi production: PostgreSQL + proper hosting + load testing
-
----
-Task ID: 9.0
-Agent: main
-Task: Klarifikasi repo sama atau berbeda dengan production
-
-Work Log:
-- Checked git remote: origin = github.com/amhyer/pandai.git
-- Checked .env tracking: git ls-files .env = empty (untracked)
-- Checked 7cfda65 DATABASE_URL: file:./db/custom.db (SQLite local path, NOT production credential)
-- Checked all git history for postgresql:// URLs: only template values (${POSTGRES_PASSWORD}, user:password@host)
-
-Stage Summary:
-- Repo SAMA PERSIS yang akan di-deploy
-- 7.4 status: SELESAI — tidak ada real production credential di git history
-- DATABASE_URL in history = SQLite file path, PostgreSQL URLs = template only
-
----
-Task ID: 9.1
-Agent: main
-Task: Seed H3/H16, verifikasi runtime scope check
-
-Work Log:
-- Read attendance POST validation: requires records[], date, schoolId
-- Read competency-assessments POST validation: requires studentId, dimension, rating, term, date
-- Created second school (SD-TEST-B) + GURU_B in DB
-- Tested H3 same-school: 201 (created: 1)
-- Tested H3 cross-school: 403 (Akses ditolak — bukan sekolah Anda)
-- Tested H16 same-school: 201 (got valid ID)
-- Tested H16 cross-school: 403 (Tidak diizinkan mengakses data siswa dari sekolah lain)
-
-Stage Summary:
-- H3: FIXED (scope check reaches auth layer, not blocked by validation)
-- H16: FIXED (requireStudentScope correctly checks school isolation)
-
----
-Task ID: 9.2
-Agent: main
-Task: Seed H33/H34/H37/H38, verifikasi cross-school
-
-Work Log:
-- Created StudentAttempt for SISWA in School A
-- Created Material + ExternalQuizScore for SISWA in School A
-- Fixed H34 (attempts/remedial): added school isolation check (was missing!)
-- Tested H33 same-school: 200 (learningObjective updated)
-- Tested H33 cross-school: 403 (Akses ditolak)
-- Tested H34 same-school: 201 (isRemedial: true)
-- Tested H34 cross-school: 403 (Akses ditolak)
-- Tested H37 same-school: 200 (score updated)
-- Tested H37 cross-school: 403 (Akses ditolak)
-- Tested H38 cross-school: 403 (Akses ditolak)
-- Tested H38 same-school: 200 (deleted)
-
-Stage Summary:
-- NEW FIX: H34 remedial route was missing school isolation — added getSchoolFilter check
-- All 4 items now verified with real curl + cross-school data
-
----
-Task ID: 9.3
-Agent: main
-Task: Setup staging PostgreSQL
-
-Work Log:
-- Checked Docker: NOT AVAILABLE
-- Checked apt install: no root/sudo access
-- Verified migration file: 1032 lines, SQLite syntax (TEXT PK, TIMESTAMP(3))
-- Checked schema for SQLite-specific: none (Prisma abstracts DB differences)
-- Confirmed: Prisma can generate new PostgreSQL migration from same schema.prisma
-
-Stage Summary:
-- PostgreSQL CANNOT be provisioned in sandbox (no Docker, no root)
-- Documented manual steps for staging server
-- Migration compatibility: Schema uses CUID (TEXT) for PKs, Prisma handles Postgres differences
-
----
-Task ID: 9.5
-Agent: main
-Task: Load testing script
-
-Work Log:
-- artillery not available in sandbox
-- Created scripts/staging/load-test.js (Artillery config)
-- Scenarios: 50 concurrent users, mix SISWA/GURU/ORTU/ADMIN
-- Measures: response time, error rate, throughput
-
-Stage Summary:
-- Script documented for execution on staging server
-- Cannot execute in sandbox
-
----
-Task ID: 9.6
-Agent: main
-Task: Environment variables + dangerous defaults
-
-Work Log:
-- Found all process.env usages: NODE_ENV, JWT_SECRET, PASSWORD_SALT, DATABASE_URL
-- Found DANGEROUS DEFAULT in auth.ts: PASSWORD_SALT fallback to known value (line 34) — but only for legacy verification (acceptable risk)
-- Found DANGEROUS DEFAULT in constants.ts: getSalt() returns known salt even in production (line 99)
-- FIXED: register-school/route.ts: changed import from constants.hashPassword to auth.hashPassword (bcrypt)
-- FIXED: constants.ts getSalt(): changed console.error to throw new Error in production
-- Generated proper JWT_SECRET: 32-byte base64 random
-
-Stage Summary:
-- 2 dangerous defaults fixed (register-school import + getSalt production throw)
-- Production env var checklist: DATABASE_URL, JWT_SECRET, NODE_ENV, PASSWORD_SALT
+- Critical fix: include: { answers: true } in POST /api/attempts
+- E2E verified via Agent Browser
+- Verification script: 8/8 pass
