@@ -334,7 +334,7 @@ export function OrtuKarakterView() {
       }
       toast.success('Laporan berhasil disimpan! Terima kasih atas perhatian Anda.');
     } catch {
-      toast.success('Laporan berhasil disimpan!');
+      toast.error('Gagal menyimpan laporan. Silakan coba lagi.');
     } finally {
       setSaving(false);
     }

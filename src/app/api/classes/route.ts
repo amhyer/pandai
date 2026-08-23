@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
@@ -11,7 +12,13 @@ export async function GET(request: Request) {
     const grade = searchParams.get('grade');
 
     const where: any = {};
-    if (schoolId) where.schoolId = schoolId;
+    // Enforce school scope
+    const effectiveSchoolId = getSchoolFilter(auth);
+    if (effectiveSchoolId) {
+      where.schoolId = effectiveSchoolId;
+    } else if (schoolId) {
+      where.schoolId = schoolId;
+    }
     if (grade) where.grade = parseInt(grade);
 
     const classes = await db.class.findMany({
@@ -45,6 +52,11 @@ export async function POST(request: Request) {
     const effectiveSchoolId = schoolId || auth.schoolId;
     if (!effectiveSchoolId) {
       return NextResponse.json({ error: 'School ID diperlukan' }, { status: 400 });
+    }
+
+    // Enforce school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, effectiveSchoolId);
     }
 
     // Check for duplicate class name in same school
@@ -82,9 +94,17 @@ export async function POST(request: Request) {
 // PUT /api/classes — Update class (e.g. assign wali kelas)
 export async function PUT(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { id, waliKelasId, name, grade, academicYear } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // Verify school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.class.findUnique({ where: { id }, select: { schoolId: true } });
+      if (!existing || existing.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
+      }
+    }
 
     const data: any = {};
     if (waliKelasId !== undefined) data.waliKelasId = waliKelasId || null;

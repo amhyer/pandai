@@ -2,16 +2,23 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH']);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const classId = searchParams.get('classId');
 
     const where: any = {};
-    if (schoolId) where.schoolId = schoolId;
+    // Enforce school scope
+    const effectiveSchoolId = getSchoolFilter(auth);
+    if (effectiveSchoolId) {
+      where.schoolId = effectiveSchoolId;
+    } else if (schoolId) {
+      where.schoolId = schoolId;
+    }
     if (classId) where.classId = classId;
 
     const entries = await db.timetable.findMany({
@@ -40,11 +47,15 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const data = await request.json();
     const { day, slotNumber, subjectId, teacherId, classId, schoolId } = data;
     if (!day || !slotNumber || !subjectId || !teacherId || !classId || !schoolId) {
       return NextResponse.json({ error: 'Semua field wajib diisi' }, { status: 400 });
+    }
+    // Enforce school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, schoolId);
     }
     const existing = await db.timetable.findFirst({ where: { day, slotNumber: Number(slotNumber), classId, schoolId } });
     if (existing) { return NextResponse.json({ error: 'Slot pada hari dan kelas ini sudah terisi' }, { status: 409 }); }
@@ -64,15 +75,22 @@ export async function POST(request: Request) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return NextResponse.json({ error: 'Slot sudah terisi' }, { status: 409 });
     }
-    return NextResponse.json({ error: error.message || 'Gagal menambahkan jadwal' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal menambahkan jadwal' }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { id, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // Verify school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.timetable.findUnique({ where: { id }, select: { schoolId: true } });
+      if (existing?.schoolId) requireSchoolScope(auth, existing.schoolId);
+    }
+
     const entry = await db.timetable.update({
       where: { id },
       data: { ...(data.day && { day: data.day }), ...(data.slotNumber && { slotNumber: Number(data.slotNumber) }), ...(data.subjectId && { subjectId: data.subjectId }), ...(data.teacherId && { teacherId: data.teacherId }) },
@@ -80,16 +98,23 @@ export async function PUT(request: Request) {
     return NextResponse.json(entry);
   } catch (error: any) {
     if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
-    return NextResponse.json({ error: error.message || 'Gagal memperbarui jadwal' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal memperbarui jadwal' }, { status: 500 });
   }
 }
 
 export async function DELETE(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // Verify school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.timetable.findUnique({ where: { id }, select: { schoolId: true } });
+      if (existing?.schoolId) requireSchoolScope(auth, existing.schoolId);
+    }
+
     await db.timetable.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

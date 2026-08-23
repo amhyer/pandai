@@ -3,11 +3,12 @@ import { db } from '@/lib/db';
 import { detectExternalProvider, isValidUrl } from '@/lib/external-quiz';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 // GET /api/materials
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId');
     const teacherId = searchParams.get('teacherId');
@@ -18,7 +19,13 @@ export async function GET(req: NextRequest) {
     const isExternal = searchParams.get('isExternal');
 
     const where: Record<string, unknown> = {};
-    if (schoolId) where.schoolId = schoolId;
+    // Enforce school scope
+    const effectiveSchoolId = getSchoolFilter(auth);
+    if (effectiveSchoolId) {
+      where.schoolId = effectiveSchoolId;
+    } else if (schoolId) {
+      where.schoolId = schoolId;
+    }
     if (teacherId) where.teacherId = teacherId;
     if (classId) where.classId = classId;
     if (subjectId) where.subjectId = subjectId;
@@ -78,13 +85,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'URL tidak valid' }, { status: 400 });
     }
 
+    const effectiveSchoolId = schoolId || auth.schoolId || null;
+    if (effectiveSchoolId && auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, effectiveSchoolId);
+    }
+
     const externalProvider = externalUrl ? detectExternalProvider(externalUrl) : null;
 
     const material = await db.material.create({
       data: {
         title, description: description || null, content: content || null,
         subjectId: subjectId || null, topicId: topicId || null,
-        classId: classId || null, schoolId: schoolId || null,
+        classId: classId || null, schoolId: effectiveSchoolId,
         teacherId: teacherId || auth.userId || null,
         type: type || 'materi', status: status || 'published',
         dueDate: dueDate || null, externalUrl: externalUrl || null,
@@ -106,10 +118,16 @@ export async function POST(req: NextRequest) {
 // PATCH /api/materials
 export async function PATCH(req: NextRequest) {
   try {
-    await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     const body = await req.json();
     const { id, title, description, content, type, status, dueDate, externalUrl, scoreEntryMode, learningObjective } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // Verify school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.material.findUnique({ where: { id }, select: { schoolId: true } });
+      if (existing?.schoolId) requireSchoolScope(auth, existing.schoolId);
+    }
 
     if (externalUrl !== undefined && externalUrl && !isValidUrl(externalUrl)) {
       return NextResponse.json({ error: 'URL tidak valid' }, { status: 400 });
@@ -143,10 +161,16 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/materials
 export async function DELETE(req: NextRequest) {
   try {
-    await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
+    const auth = await requireRole(req, ['GURU', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // Verify school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.material.findUnique({ where: { id }, select: { schoolId: true } });
+      if (existing?.schoolId) requireSchoolScope(auth, existing.schoolId);
+    }
 
     await db.externalQuizScore.deleteMany({ where: { materialId: id } });
     await db.material.delete({ where: { id } });

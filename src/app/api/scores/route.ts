@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
     }
     if (auth.role === 'ORANG_TUA') {
       // Verify the student is a child of this ortu
-      const student = await db.user.findUnique({ where: { id: studentId }, select: { parentId: true, schoolId: true } });
-      if (!student || (student.parentId !== auth.userId && student.schoolId !== auth.schoolId)) {
+      const student = await db.user.findUnique({ where: { id: studentId }, select: { parentId: true } });
+      if (!student || student.parentId !== auth.userId) {
         return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
       }
     }
@@ -94,9 +94,42 @@ export async function GET(req: NextRequest) {
     let classRank = 0;
     let totalClassmates = 0;
     if (classId) {
-      const classmates = await db.user.findMany({ where: { classId, role: 'SISWA', isActive: true }, take: 100 });
+      // Get all students in the class and their avg scores for real ranking
+      const classmates = await db.user.findMany({ where: { classId, role: 'SISWA', isActive: true }, select: { id: true } });
       totalClassmates = classmates.length;
-      classRank = Math.min(avgScore > 75 ? 3 : Math.ceil(avgScore / 20), totalClassmates);
+
+      // Calculate avg score for each classmate who has attempts
+      const classmateIds = classmates.map(c => c.id);
+      const allClassAttempts = await db.studentAttempt.findMany({
+        where: { userId: { in: classmateIds }, isRemedial: false },
+        include: { remedialAttempts: { select: { id: true, status: true, percentage: true } } },
+      });
+
+      const classmateScores = new Map<string, number>();
+      for (const ca of allClassAttempts) {
+        let score = Math.round(ca.percentage || 0);
+        if (ca.remedialAttempts.length > 0) {
+          const r = ca.remedialAttempts[0];
+          if (r.status === 'submitted' || r.status === 'graded') score = Math.round(r.percentage || 0);
+        }
+        const prev = classmateScores.get(ca.userId) ?? 0;
+        // Use average of all their attempts
+        const count = (classmateScores.get(ca.userId + '_count') as number || 0) + 1;
+        classmateScores.set(ca.userId, prev + score);
+        classmateScores.set(ca.userId + '_count', count);
+      }
+
+      // Compute final averages
+      const finalScores: number[] = [];
+      for (const classmateId of classmateIds) {
+        const total = classmateScores.get(classmateId) ?? 0;
+        const count = classmateScores.get(classmateId + '_count') as number || 0;
+        finalScores.push(count > 0 ? total / count : 0);
+      }
+      // Sort descending; rank = position of this student's avg score
+      finalScores.sort((a, b) => b - a);
+      classRank = finalScores.findIndex(s => s === avgScore) + 1;
+      if (classRank === 0) classRank = totalClassmates;
     }
 
     return NextResponse.json({ avgScore, highScore, classRank, totalClassmates, totalTryout, subjects: [], scoreTrend, recentScores: recentScores.slice(0, 10) });

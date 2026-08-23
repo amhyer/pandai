@@ -2,20 +2,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
+
+// Helper: strip answer fields for student role
+function stripAnswersForStudent(data: any, isStudent: boolean) {
+  if (!isStudent) return data;
+  const strip = (item: any) => {
+    if (item?.question) {
+      const { answer, explanation, ...rest } = item.question;
+      return { ...item, question: rest };
+    }
+    return item;
+  };
+  if (Array.isArray(data)) return data.map(strip);
+  return strip(data);
+}
 
 // GET /api/assignments — list assignments
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId');
     const teacherId = searchParams.get('teacherId');
     const classId = searchParams.get('classId');
     const status = searchParams.get('status');
     const studentId = searchParams.get('studentId');
+    const isStudent = auth.role === 'SISWA';
 
     const where: Record<string, unknown> = {};
-    if (schoolId) where.schoolId = schoolId;
+    // Enforce school scope — non-SUPER_ADMIN can only see their own school
+    const effectiveSchoolId = getSchoolFilter(auth);
+    if (effectiveSchoolId) {
+      where.schoolId = effectiveSchoolId;
+    } else if (schoolId) {
+      where.schoolId = schoolId;
+    }
     if (teacherId) where.teacherId = teacherId;
     if (classId) where.classId = classId;
     if (status) where.status = status;
@@ -25,7 +47,7 @@ export async function GET(req: NextRequest) {
       orderBy: [{ createdAt: 'desc' }],
       take: 200,
       include: {
-        questions: { include: { question: { select: { id: true, content: true, type: true, options: true, answer: true } } }, orderBy: { orderNum: 'asc' } },
+        questions: { include: { question: { select: { id: true, content: true, type: true, options: true, answer: true, explanation: true } } }, orderBy: { orderNum: 'asc' } },
         _count: { select: { submissions: true } },
       },
     });
@@ -36,7 +58,7 @@ export async function GET(req: NextRequest) {
         const sub = await db.assignmentSubmission.findFirst({
           where: { assignmentId: a.id, studentId, isRemedial: false },
         });
-        if (!sub) return { ...a, mySubmission: null };
+        if (!sub) return stripAnswersForStudent({ ...a, mySubmission: null }, isStudent);
 
         const remedial = await db.assignmentSubmission.findFirst({
           where: { assignmentId: a.id, studentId, isRemedial: true },
@@ -54,7 +76,7 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        return { ...a, mySubmission: { ...sub, ...extra } };
+        return stripAnswersForStudent({ ...a, mySubmission: { ...sub, ...extra } }, isStudent);
       }));
       return NextResponse.json(enriched);
     }
@@ -66,7 +88,7 @@ export async function GET(req: NextRequest) {
         a.subjectId ? db.subject.findUnique({ where: { id: a.subjectId }, select: { name: true } }) : null,
         a.classId ? db.class.findUnique({ where: { id: a.classId }, select: { name: true } }) : null,
       ]);
-      return { ...a, teacher, subject, class: cls };
+      return stripAnswersForStudent({ ...a, teacher, subject, class: cls }, isStudent);
     }));
     return NextResponse.json(enriched);
   } catch (error) {
@@ -87,13 +109,19 @@ export async function POST(req: NextRequest) {
 
     if (!title) return NextResponse.json({ error: 'Judul wajib diisi' }, { status: 400 });
     if (!deadline) return NextResponse.json({ error: 'Deadline wajib diisi' }, { status: 400 });
-    if (!schoolId) return NextResponse.json({ error: 'SchoolId wajib' }, { status: 400 });
+
+    // Enforce school scope: non-SUPER_ADMIN must use their own schoolId
+    const effectiveSchoolId = schoolId || auth.schoolId;
+    if (auth.role !== 'SUPER_ADMIN' && effectiveSchoolId && effectiveSchoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
+    }
+    if (!effectiveSchoolId) return NextResponse.json({ error: 'SchoolId wajib' }, { status: 400 });
 
     const assignment = await db.assignment.create({
       data: {
         title, description: description || null, instructions: instructions || null,
         subjectId: subjectId || null, classId: classId || null,
-        teacherId: teacherId || auth.userId || null, schoolId, deadline,
+        teacherId: teacherId || auth.userId || null, schoolId: effectiveSchoolId, deadline,
         learningObjective: learningObjective || null,
         submissionType: submissionType || 'essay_only', maxScore: maxScore || 100,
         status: status || 'draft',
@@ -111,7 +139,7 @@ export async function POST(req: NextRequest) {
 
     const withQuestions = await db.assignment.findUnique({
       where: { id: assignment.id },
-      include: { questions: { include: { question: { select: { id: true, content: true, type: true, options: true, answer: true } } }, orderBy: { orderNum: 'asc' } } },
+      include: { questions: { include: { question: { select: { id: true, content: true, type: true, options: true, answer: true, explanation: true } } }, orderBy: { orderNum: 'asc' } } },
     });
 
     return NextResponse.json(withQuestions, { status: 201 });
@@ -127,12 +155,27 @@ export async function POST(req: NextRequest) {
 // PATCH /api/assignments — update assignment
 export async function PATCH(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const body = await req.json();
     const { id, title, description, instructions, subjectId, classId, deadline, learningObjective, submissionType, maxScore, status } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
 
-    if (status !== 'draft') {
+    // Verify ownership: non-SUPER_ADMIN must own the assignment's school
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.assignment.findUnique({ where: { id }, select: { schoolId: true, status: true } });
+      if (!existing || existing.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+      // Use DB status for guard check, not client-provided status
+      if (existing.status !== 'draft') {
+        const subCount = await db.assignmentSubmission.count({ where: { assignmentId: id } });
+        if (subCount > 0) {
+          if (title || description !== undefined || instructions !== undefined || submissionType || maxScore || deadline) {
+            return NextResponse.json({ error: 'Tidak bisa mengubah tugas yang sudah memiliki submission aktif' }, { status: 403 });
+          }
+        }
+      }
+    } else if (status !== 'draft') {
       const subCount = await db.assignmentSubmission.count({ where: { assignmentId: id } });
       if (subCount > 0) {
         if (title || description !== undefined || instructions !== undefined || submissionType || maxScore || deadline) {
@@ -166,10 +209,18 @@ export async function PATCH(req: NextRequest) {
 // DELETE /api/assignments — delete assignment
 export async function DELETE(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // Verify ownership: non-SUPER_ADMIN must own the assignment's school
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.assignment.findUnique({ where: { id }, select: { schoolId: true } });
+      if (!existing || existing.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+    }
 
     await db.assignment.delete({ where: { id } });
     return NextResponse.json({ success: true });

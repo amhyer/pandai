@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
@@ -23,8 +24,14 @@ export async function GET(request: Request) {
     const where: any = {};
     if (global) {
       where.schoolId = null;
-    } else if (schoolId) {
-      where.OR = [{ schoolId }, { schoolId: null }];
+    } else {
+      // Enforce school scope
+      const effectiveSchoolId = getSchoolFilter(auth);
+      if (effectiveSchoolId) {
+        where.OR = [{ schoolId: effectiveSchoolId }, { schoolId: null }];
+      } else if (schoolId) {
+        where.OR = [{ schoolId }, { schoolId: null }];
+      }
     }
     if (subjectId) where.subjectId = subjectId;
     if (type) where.type = type;
@@ -44,7 +51,6 @@ export async function GET(request: Request) {
     });
 
     // Security: strip answer key from SISWA responses
-    // GURU/ADMIN/KEPALA_SEKOLAH can see answers for review purposes
     if (auth.role === 'SISWA') {
       const sanitized = questions.map(({ answer, explanation, ...rest }) => rest);
       return NextResponse.json(sanitized);
@@ -66,10 +72,16 @@ export async function POST(request: Request) {
     const data = await request.json();
     const { subjectId, topicId, schoolId, type, content, options, answer, explanation, cognitiveLevel, difficulty, createdBy } = data;
 
+    // Enforce school scope for school-specific questions
+    const effectiveSchoolId = schoolId || null;
+    if (effectiveSchoolId && auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, effectiveSchoolId);
+    }
+
     const question = await db.question.create({
       data: {
         subjectId, topicId: topicId || null,
-        schoolId: schoolId || null,
+        schoolId: effectiveSchoolId,
         type: type || 'pg', content,
         options: options ? JSON.stringify(options) : null,
         answer: answer || null,
@@ -87,16 +99,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     logError({ error, route: '/api/questions', method: 'POST' });
-    console.error('Create question error:', error);
     return NextResponse.json({ error: 'Gagal membuat soal' }, { status: 500 });
   }
 }
 
 export async function PATCH(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { id, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // Verify school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.question.findUnique({ where: { id }, select: { schoolId: true } });
+      if (existing?.schoolId) requireSchoolScope(auth, existing.schoolId);
+    }
+
     if (data.options) data.options = JSON.stringify(data.options);
     const question = await db.question.update({ where: { id }, data });
     return NextResponse.json(question);
@@ -111,10 +129,17 @@ export async function PATCH(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    // Verify school scope
+    if (auth.role !== 'SUPER_ADMIN') {
+      const existing = await db.question.findUnique({ where: { id }, select: { schoolId: true } });
+      if (existing?.schoolId) requireSchoolScope(auth, existing.schoolId);
+    }
+
     await db.question.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
