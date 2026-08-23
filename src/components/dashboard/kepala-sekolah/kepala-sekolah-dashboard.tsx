@@ -12,7 +12,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Users, GraduationCap, School, Clock, Loader2 } from 'lucide-react';
+import { Users, GraduationCap, School, Clock, Loader2, ShieldAlert, LogIn } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type TabKey = 'rekap-kelas' | 'rekap-guru' | 'rekap-karakter' | 'rekap-karakter-kelas';
 
@@ -118,15 +119,13 @@ export function KepalaSekolahDashboard() {
 
     async function fetchData() {
       try {
-        const res = await fetch(`/api/kepsek/dashboard?schoolId=${schoolId}`, {
-          headers: {
-            
-            
-            
-          },
-        });
+        const res = await fetch(`/api/kepsek/dashboard?schoolId=${schoolId}`);
+        if (res.status === 401) {
+          setError('UNAUTHORIZED');
+          return;
+        }
         if (!res.ok) {
-          const err = await res.json();
+          const err = await res.json().catch(() => ({}));
           throw new Error(err.error || 'Gagal memuat data');
         }
         const json = await res.json();
@@ -146,6 +145,29 @@ export function KepalaSekolahDashboard() {
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" />
         <span className="ml-3 text-sm text-muted-foreground">Memuat data dashboard...</span>
+      </div>
+    );
+  }
+
+  if (error === 'UNAUTHORIZED') {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50 text-amber-500">
+          <ShieldAlert className="h-8 w-8" />
+        </div>
+        <div className="text-center space-y-2">
+          <p className="text-base font-semibold text-foreground">Sesi Anda telah berakhir</p>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            Silakan masuk kembali untuk melihat dashboard kepala sekolah.
+          </p>
+        </div>
+        <Button
+          onClick={() => useAppStore.getState().logout()}
+          className="mt-2 gap-2 bg-[#1F3864] hover:bg-[#152850]"
+        >
+          <LogIn className="h-4 w-4" />
+          Masuk Ulang
+        </Button>
       </div>
     );
   }

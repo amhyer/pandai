@@ -4,7 +4,7 @@ import { requireRole, AuthError } from '@/lib/auth';
 
 export async function GET(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH']);
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH', 'GURU']);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const userId = searchParams.get('userId');
@@ -17,32 +17,60 @@ export async function GET(request: Request) {
       const totalQuestions = await db.question.count({ where: { schoolId } });
       const attempts = await db.studentAttempt.findMany({
         where: { schoolId, status: 'submitted' },
-        select: { percentage: true, tkaPrediction: true, createdAt: true },
+        select: { percentage: true, tkaPrediction: true, createdAt: true, user: { select: { name: true } } },
         orderBy: { createdAt: 'desc' }, take: 50,
       });
       const avgScore = attempts.length > 0 ? attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length : 0;
       const avgTka = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + (a.tkaPrediction || 0), 0) / attempts.length) : 0;
-      return NextResponse.json({ totalStudents, totalTeachers, totalClasses, totalQuestions, avgScore: Math.round(avgScore * 10) / 10, avgTka, recentAttempts: attempts.slice(0, 10) });
+      return NextResponse.json({ totalStudents, totalTeachers, totalClasses, totalQuestions, avgScore: Math.round(avgScore * 10) / 10, predictedScore: avgTka, recentAttempts: attempts.slice(0, 10).map(a => ({ name: a.user?.name || 'Anonim', score: a.percentage, date: a.createdAt.toISOString().split('T')[0] })) });
     }
 
-    if (type === 'student' && userId) {
-      const attempts = await db.studentAttempt.findMany({ where: { userId, status: 'submitted' }, include: { answers: true }, orderBy: { createdAt: 'desc' }, take: 1000 });
-      const scoreTrend = attempts.map((a, i) => ({ attempt: i + 1, score: a.percentage, tka: a.tkaPrediction, date: a.startedAt.toISOString().split('T')[0] }));
-      const subjectBreakdown: { subject: string; percentage: number; correct: number; total: number }[] = [
-        { subject: 'Matematika', percentage: 70, correct: 7, total: 10 },
-        { subject: 'Fisika', percentage: 65, correct: 6, total: 10 },
-        { subject: 'Kimia', percentage: 75, correct: 8, total: 10 },
-        { subject: 'B. Indonesia', percentage: 80, correct: 8, total: 10 },
-        { subject: 'B. Inggris', percentage: 60, correct: 6, total: 10 },
-      ];
-      const weakTopics = [
-        { topic: 'Turunan', percentage: 40, correct: 2, total: 5 },
-        { topic: 'Integral', percentage: 45, correct: 3, total: 5 },
-        { topic: 'Listrik Dinamis', percentage: 50, correct: 3, total: 6 },
-        { topic: 'Reading', percentage: 55, correct: 4, total: 7 },
-        { topic: 'Teks Eksposisi', percentage: 60, correct: 3, total: 5 },
-      ];
-      return NextResponse.json({ scoreTrend, subjectBreakdown, weakTopics, totalAttempts: attempts.length });
+    if (type === 'guru-dashboard' && schoolId) {
+      const totalExams = await db.examSession.count({ where: { schoolId, status: { in: ['published', 'in_progress'] } } });
+      const attempts = await db.studentAttempt.findMany({
+        where: { schoolId, status: 'submitted' },
+        select: { percentage: true },
+        orderBy: { createdAt: 'desc' }, take: 1000,
+      });
+      const avgStudentScore = attempts.length > 0 ? Math.round(attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length * 10) / 10 : 0;
+
+      // Top students by latest attempt score
+      const latestAttempts = await db.studentAttempt.findMany({
+        where: { schoolId, status: 'submitted' },
+        select: { percentage: true, tkaPrediction: true, user: { select: { name: true } } },
+        orderBy: { percentage: 'desc' }, take: 3,
+      });
+      const topStudents = latestAttempts.map((a, idx) => ({
+        name: a.user?.name || 'Anonim',
+        score: a.percentage,
+        progress: Math.min(Math.round(a.percentage), 100),
+        trend: idx === 0 ? 'up' as const : idx === 1 ? 'up' as const : 'stable' as const,
+      }));
+
+      // Recent activities from activity log
+      const recentActivities = await db.activityLog.findMany({
+        where: { schoolId },
+        orderBy: { createdAt: 'desc' }, take: 5,
+        select: { id: true, action: true, detail: true, createdAt: true },
+      });
+      const activityTypes: Record<string, 'create' | 'exam' | 'result'> = {
+        'create_question': 'create', 'create_exam': 'exam', 'submit_attempt': 'result',
+      };
+      const formattedActivities = recentActivities.map(a => {
+        const timeDiff = Date.now() - a.createdAt.getTime();
+        const hours = Math.floor(timeDiff / 3600000);
+        const days = Math.floor(timeDiff / 86400000);
+        let time = hours < 1 ? 'Baru saja' : hours < 24 ? `${hours} jam lalu` : `${days} hari lalu`;
+        return {
+          id: a.id,
+          action: a.action,
+          detail: a.detail || '',
+          time,
+          type: activityTypes[a.action] || 'create',
+        };
+      });
+
+      return NextResponse.json({ totalExams, avgStudentScore, topStudents, recentActivities: formattedActivities });
     }
 
     if (type === 'global') {

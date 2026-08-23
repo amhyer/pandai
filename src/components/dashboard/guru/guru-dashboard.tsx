@@ -52,6 +52,14 @@ interface TopStudent {
   trend: 'up' | 'down' | 'stable';
 }
 
+interface GuruDashboardData {
+  totalQuestions: number;
+  totalExams: number;
+  avgStudentScore: number;
+  recentActivities: RecentActivity[];
+  topStudents: TopStudent[];
+}
+
 // ─── Stat Card ──────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -169,9 +177,7 @@ function QuickActionCard({ icon, label, description, onClick, color }: {
 export function GuruDashboard() {
   const user = useAppStore((s) => s.user);
   const navigateTo = useAppStore((s) => s.navigateTo);
-  const [questionCount, setQuestionCount] = useState(0);
-  const [examCount, setExamCount] = useState(0);
-  const [avgStudentScore, setAvgStudentScore] = useState(0);
+  const [dashData, setDashData] = useState<GuruDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [quickSubject, setQuickSubject] = useState('');
   const [creating, setCreating] = useState(false);
@@ -179,22 +185,6 @@ export function GuruDashboard() {
   // Current date helper
   const today = new Date();
   const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-  // Mock activities for demonstration
-  const activities: RecentActivity[] = [
-    { id: '1', action: 'Membuat soal baru', detail: 'Matematika - Aljabar Linear', time: '2 jam lalu', type: 'create' },
-    { id: '2', action: 'Tryout selesai', detail: '12 siswa menyelesaikan TKA Senin', time: '5 jam lalu', type: 'exam' },
-    { id: '3', action: 'Hasil dianalisis', detail: 'Rata-rata skor: 72.5', time: '1 hari lalu', type: 'result' },
-    { id: '4', action: 'Soal ditambahkan', detail: 'Fisika - Mekanika (10 soal)', time: '2 hari lalu', type: 'create' },
-    { id: '5', action: 'Tryout dibuat', detail: 'TKA Prediksi Akhir Tahun', time: '3 hari lalu', type: 'exam' },
-  ];
-
-  // Mock top students
-  const topStudents: TopStudent[] = [
-    { name: 'Ahmad Rizki', score: 92, progress: 85, trend: 'up' },
-    { name: 'Siti Nurhaliza', score: 88, progress: 72, trend: 'up' },
-    { name: 'Budi Santoso', score: 85, progress: 60, trend: 'stable' },
-  ];
 
   const subjects = [
     { value: 'matematika', label: 'Matematika', icon: Calculator },
@@ -213,15 +203,29 @@ export function GuruDashboard() {
     if (!user?.schoolId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/questions?schoolId=${user.schoolId}`);
-      if (res.ok) {
-        const data = await res.json();
-        const questions = Array.isArray(data) ? data : data.questions ?? [];
-        setQuestionCount(questions.length);
+      const [qRes, eRes] = await Promise.all([
+        fetch(`/api/questions?schoolId=${user.schoolId}`),
+        fetch(`/api/analytics?type=guru-dashboard&schoolId=${user.schoolId}`),
+      ]);
+
+      let totalQuestions = 0;
+      if (qRes.ok) {
+        const data = await qRes.json();
+        totalQuestions = Array.isArray(data) ? data.length : data.questions?.length ?? 0;
       }
-      // Mock exam count and avg score (no dedicated endpoint yet)
-      setExamCount(3);
-      setAvgStudentScore(72.5);
+
+      let analytics: any = {};
+      if (eRes.ok) {
+        analytics = await eRes.json();
+      }
+
+      setDashData({
+        totalQuestions,
+        totalExams: analytics.totalExams ?? 0,
+        avgStudentScore: analytics.avgStudentScore ?? 0,
+        recentActivities: analytics.recentActivities ?? [],
+        topStudents: analytics.topStudents ?? [],
+      });
     } catch {
       toast.error('Gagal memuat data');
     } finally {
@@ -271,7 +275,7 @@ export function GuruDashboard() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard
           title="Total Soal Dibuat"
-          value={loading ? '' : questionCount}
+          value={loading ? '' : (dashData?.totalQuestions ?? 0)}
           icon={<BookOpen className="h-5 w-5" />}
           subtext="soal di bank soal"
           isLoading={loading}
@@ -281,7 +285,7 @@ export function GuruDashboard() {
         />
         <StatCard
           title="Total Tryout"
-          value={loading ? '' : examCount}
+          value={loading ? '' : (dashData?.totalExams ?? 0)}
           icon={<ClipboardList className="h-5 w-5" />}
           subtext="tryout aktif"
           isLoading={loading}
@@ -291,7 +295,7 @@ export function GuruDashboard() {
         />
         <StatCard
           title="Rata-rata Skor Siswa"
-          value={loading ? '' : avgStudentScore}
+          value={loading ? '' : (dashData?.avgStudentScore ?? 0)}
           icon={<BarChart3 className="h-5 w-5" />}
           subtext="dari semua tryout"
           isLoading={loading}
@@ -371,7 +375,7 @@ export function GuruDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              {topStudents.map((student, idx) => (
+              {(dashData?.topStudents && dashData.topStudents.length > 0) ? dashData.topStudents.map((student, idx) => (
                 <div
                   key={idx}
                   className="flex items-center gap-4 rounded-xl border border-border/60 bg-white p-4 cursor-pointer hover:bg-muted/50 hover:shadow-sm transition-all duration-200"
@@ -401,7 +405,13 @@ export function GuruDashboard() {
                     <p className="text-[10px] text-muted-foreground mt-1">{student.progress}% progres target</p>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Trophy className="h-8 w-8 text-muted-foreground/40" />
+                  <p className="mt-2 text-sm">Belum ada data performa siswa</p>
+                  <p className="text-xs mt-1">Data akan muncul setelah siswa mengerjakan tryout</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -464,13 +474,19 @@ export function GuruDashboard() {
           </CardHeader>
           <CardContent>
             <div className="pl-1">
-              {activities.map((activity, idx) => (
+              {(dashData?.recentActivities && dashData.recentActivities.length > 0) ? dashData.recentActivities.map((activity, idx) => (
                 <TimelineActivity
                   key={activity.id}
                   activity={activity}
-                  isLast={idx === activities.length - 1}
+                  isLast={idx === dashData.recentActivities.length - 1}
                 />
-              ))}
+              )) : (
+                <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                  <Clock className="h-8 w-8 text-muted-foreground/40" />
+                  <p className="mt-2 text-sm">Belum ada aktivitas</p>
+                  <p className="text-xs mt-1">Aktivitas Anda akan tampil di sini</p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

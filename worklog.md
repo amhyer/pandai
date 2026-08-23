@@ -1123,3 +1123,34 @@ Stage Summary:
 - Key change: Added useEffect to sync activeTab with currentView from store
 - Key change: isDashboardView flag to conditionally render summary cards and contextual header
 - All 7 sidebar menu items for Kepala Sekolah now work correctly
+---
+Task ID: dashboard-sync-fix
+Agent: main
+Task: Perbaiki dashboard Kepala Sekolah, Guru, dan Admin Sekolah agar render baik dan sinkron
+
+Work Log:
+- Analyzed screenshot showing 'Unauthorized' error on Kepala Sekolah dashboard via VLM
+- Logged in as all 3 roles (Kepala Sekolah, Admin Sekolah, Guru) to compare dashboards
+- Found 3 critical issues:
+  1. Kepala Sekolah shows raw 'Unauthorized' on 401 (bad error handling)
+  2. Guru dashboard has HARDCODED mock data: avgStudentScore=72.5, examCount=3, fake activities/students
+  3. Admin dashboard has HARDCODED mock data: 4 fake exams with 120/85/72/200 participants
+- Data NOT synced: Admin showed 'Rata-rata Skor: 100' while Guru showed '72.5' (hardcoded!)
+
+Fixes applied:
+1. Kepala Sekolah: Detect 401 status → show friendly 'Sesi Anda telah berakhir' message with 'Masuk Ulang' button
+2. Guru dashboard: Removed ALL mock data. Now fetches real data from /api/analytics?type=guru-dashboard
+3. Admin dashboard: Replaced hardcoded upcomingExams with real data from /api/exams
+4. Analytics API: Added 'guru-dashboard' type endpoint, added GURU role access, fixed predictedScore field name
+5. Analytics API: Fixed recentAttempts to include student names for chart
+
+Verification (agent-browser):
+- Kepala Sekolah: 5 siswa, 1 guru, 2 kelas ✅
+- Admin Sekolah: 5 siswa, 1 guru, 2 kelas, skor 100 ✅ (was fake data before)
+- Guru: 5 soal, 0 tryout aktif, skor 100 ✅ (was 72.5 hardcoded before)
+- All 3 dashboards now show CONSISTENT data from the same database
+
+Stage Summary:
+- Fixed 5 files total
+- Key insight: Dashboard Kepala Sekolah was the most honest (showed '-' for no data), while Guru/Admin showed fake data
+- All dashboards now use real DB data and are properly synchronized

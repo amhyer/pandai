@@ -174,17 +174,32 @@ export function AdminSekolahDashboard() {
   const today = new Date();
   const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Mock upcoming exams
-  const upcomingExams: UpcomingExam[] = [
-    { id: 'e1', name: 'TKA Prediksi Akhir Tahun', date: '2025-06-15T08:00:00', status: 'scheduled', participants: 120, subject: 'TKA Umum' },
-    { id: 'e2', name: 'Tryout Matematika', date: '2025-06-10T09:00:00', status: 'scheduled', participants: 85, subject: 'Matematika' },
-    { id: 'e3', name: 'Tryout Fisika & Kimia', date: '2025-06-08T10:00:00', status: 'in_progress', participants: 72, subject: 'IPA' },
-    { id: 'e4', name: 'UTS Genap 2025', date: '2025-06-05T07:30:00', status: 'grading', participants: 200, subject: 'Semua Mapel' },
-  ];
+  // Fetch upcoming exams from database
+  const [upcomingExams, setUpcomingExams] = useState<UpcomingExam[]>([]);
 
   useEffect(() => {
     fetchAnalytics();
+    fetchUpcomingExams();
   }, []);
+
+  async function fetchUpcomingExams() {
+    if (!user?.schoolId) return;
+    try {
+      const res = await fetch(`/api/exams?schoolId=${user.schoolId}`);
+      if (res.ok) {
+        const exams = await res.json();
+        const mapped = (Array.isArray(exams) ? exams : []).map((e: any) => ({
+          id: e.id,
+          name: e.title || e.name || 'Tryout',
+          date: e.startDate || e.createdAt,
+          status: e.status === 'published' ? 'in_progress' as const : 'scheduled' as const,
+          participants: e._count?.assignments || 0,
+          subject: e.subject || 'Tryout',
+        }));
+        setUpcomingExams(mapped.slice(0, 5));
+      }
+    } catch { /* silent */ }
+  }
 
   async function fetchAnalytics() {
     if (!user?.schoolId) return;
@@ -416,6 +431,13 @@ export function AdminSekolahDashboard() {
           </div>
         </CardHeader>
         <CardContent>
+          {upcomingExams.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Calendar className="h-8 w-8 text-muted-foreground/40" />
+              <p className="mt-2 text-sm">Belum ada tryout terjadwal</p>
+              <p className="text-xs mt-1">Tryout yang dibuat guru akan tampil di sini</p>
+            </div>
+          ) : (
           <div className="space-y-3">
             {upcomingExams.map((exam) => (
               <div
@@ -452,6 +474,7 @@ export function AdminSekolahDashboard() {
               </div>
             ))}
           </div>
+          )}
         </CardContent>
       </Card>
     </div>
