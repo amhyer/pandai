@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { apiClient } from '@/lib/api-client';
 import type { ViewType } from '@/store/use-store';
 import {
   Card,
@@ -185,7 +186,7 @@ export function AdminSekolahDashboard() {
   async function fetchUpcomingExams() {
     if (!user?.schoolId) return;
     try {
-      const res = await fetch(`/api/exams?schoolId=${user.schoolId}`);
+      const res = await apiClient(`/api/exams?schoolId=${user.schoolId}`);
       if (res.ok) {
         const exams = await res.json();
         const mapped = (Array.isArray(exams) ? exams : []).map((e: any) => ({
@@ -205,7 +206,7 @@ export function AdminSekolahDashboard() {
     if (!user?.schoolId) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/analytics?type=dashboard&schoolId=${user.schoolId}`);
+      const res = await apiClient(`/api/analytics?type=dashboard&schoolId=${user.schoolId}`);
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);

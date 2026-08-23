@@ -1,9 +1,11 @@
 'use client';
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useAppStore } from '@/store/use-store';
 import AppLayout from '@/components/layout/app-layout';
+import { setOnUnauthorized, clearUnauthorizedHandler } from '@/lib/api-client';
+import { toast } from 'sonner';
 
 function ViewSkeleton() {
   return (
@@ -165,6 +167,19 @@ function ViewRouter() {
 }
 
 export default function AuthenticatedApp() {
+  const logout = useAppStore((s) => s.logout);
+  const setUser = useAppStore((s) => s.setUser);
+  const setCurrentView = useAppStore((s) => s.setCurrentView);
+
+  useEffect(() => {
+    setOnUnauthorized(() => {
+      setUser(null);
+      setCurrentView('login');
+      toast.error('Sesi Anda telah berakhir. Silakan masuk kembali.');
+    });
+    return () => clearUnauthorizedHandler();
+  }, [setUser, setCurrentView]);
+
   return (
     <AppLayout>
       <ViewRouter />

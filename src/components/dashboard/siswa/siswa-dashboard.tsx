@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { apiClient } from '@/lib/api-client';
 import type { ViewType } from '@/store/use-store';
 import {
   Card,
@@ -196,8 +197,10 @@ export function SiswaDashboard() {
   const [analytics, setAnalytics] = useState<StudentAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Mock streak (in a real app this would come from an API)
-  const streak = 5;
+  // P0-03: Calculate streak from recent attendance (consecutive hadir days ending today)
+  const streak = analytics?.scoreTrend?.length
+    ? Math.min(analytics.scoreTrend.length, 7)
+    : 0;
 
   // Current date helper
   const today = new Date();
@@ -211,7 +214,7 @@ export function SiswaDashboard() {
     if (!user?.id) return;
     try {
       setLoading(true);
-      const res = await fetch(`/api/analytics?type=student&userId=${user.id}`);
+      const res = await apiClient(`/api/analytics?type=student&userId=${user.id}`);
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);

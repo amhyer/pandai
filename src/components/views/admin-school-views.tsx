@@ -107,67 +107,6 @@ interface ReportRecord {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// PLACEHOLDER DATA
-// ═══════════════════════════════════════════════════════════════════════
-
-const PLACEHOLDER_CLASSES: ClassRow[] = [
-  { id: '1', name: 'X IPA 1', grade: '10', academicYear: '2024/2025', studentCount: 36 },
-  { id: '2', name: 'X IPA 2', grade: '10', academicYear: '2024/2025', studentCount: 34 },
-  { id: '3', name: 'X IPS 1', grade: '10', academicYear: '2024/2025', studentCount: 32 },
-  { id: '4', name: 'XI IPA 1', grade: '11', academicYear: '2024/2025', studentCount: 35 },
-  { id: '5', name: 'XI IPA 2', grade: '11', academicYear: '2024/2025', studentCount: 33 },
-  { id: '6', name: 'XI IPS 1', grade: '11', academicYear: '2024/2025', studentCount: 31 },
-  { id: '7', name: 'XII IPA 1', grade: '12', academicYear: '2024/2025', studentCount: 30 },
-  { id: '8', name: 'XII IPA 2', grade: '12', academicYear: '2024/2025', studentCount: 28 },
-  { id: '9', name: 'XII IPS 1', grade: '12', academicYear: '2024/2025', studentCount: 29 },
-];
-
-const PLACEHOLDER_EXAM_PACKAGES = [
-  { id: 'ep1', title: 'Tryout TKA UTBK 2025 - Paket A' },
-  { id: 'ep2', title: 'Tryout TKA UTBK 2025 - Paket B' },
-  { id: 'ep3', title: 'Tryout Penjurusan SMA' },
-  { id: 'ep4', title: 'Prediksi UTBK Saintek 2025' },
-];
-
-const PLACEHOLDER_CLASS_OPTIONS = [
-  { id: 'c1', name: 'XII IPA 1' },
-  { id: 'c2', name: 'XII IPA 2' },
-  { id: 'c3', name: 'XII IPS 1' },
-  { id: 'c4', name: 'XI IPA 1' },
-  { id: 'c5', name: 'XI IPA 2' },
-];
-
-const PLACEHOLDER_ASSIGNMENTS: ExamAssignment[] = [
-  { id: 'a1', examName: 'Tryout TKA UTBK 2025 - Paket A', className: 'XII IPA 1', startDate: '2025-02-10 08:00', duration: 150, status: 'Ended' },
-  { id: 'a2', examName: 'Tryout TKA UTBK 2025 - Paket A', className: 'XII IPA 2', startDate: '2025-02-10 08:00', duration: 150, status: 'Ended' },
-  { id: 'a3', examName: 'Tryout TKA UTBK 2025 - Paket B', className: 'XII IPA 1', startDate: '2025-03-15 09:00', duration: 120, status: 'Active' },
-  { id: 'a4', examName: 'Tryout Penjurusan SMA', className: 'XI IPA 1', startDate: '2025-04-01 08:00', duration: 90, status: 'Scheduled' },
-  { id: 'a5', examName: 'Tryout Penjurusan SMA', className: 'XI IPA 2', startDate: '2025-04-01 08:00', duration: 90, status: 'Scheduled' },
-  { id: 'a6', examName: 'Prediksi UTBK Saintek 2025', className: 'XII IPA 1', startDate: '2025-04-20 08:00', duration: 180, status: 'Scheduled' },
-];
-
-const PLACEHOLDER_ANALYSIS: QuestionAnalysis[] = [
-  { id: 'q1', no: 1, subject: 'Matematika', topic: 'Limit Fungsi', difficulty: 'Sedang', discrimination: 'Tinggi', avgScore: 62.5 },
-  { id: 'q2', no: 2, subject: 'Matematika', topic: 'Turunan', difficulty: 'Sukar', discrimination: 'Tinggi', avgScore: 35.2 },
-  { id: 'q3', no: 3, subject: 'Fisika', topic: 'Kinematika GLB', difficulty: 'Mudah', discrimination: 'Rendah', avgScore: 85.0 },
-  { id: 'q4', no: 4, subject: 'Fisika', topic: 'Hukum Newton', difficulty: 'Sedang', discrimination: 'Sedang', avgScore: 55.8 },
-  { id: 'q5', no: 5, subject: 'Kimia', topic: 'Stoikiometri', difficulty: 'Sukar', discrimination: 'Sedang', avgScore: 40.1 },
-  { id: 'q6', no: 6, subject: 'Kimia', topic: 'Ikatan Kovalen', difficulty: 'Mudah', discrimination: 'Tinggi', avgScore: 78.3 },
-  { id: 'q7', no: 7, subject: 'Biologi', topic: 'Sel & Organel', difficulty: 'Mudah', discrimination: 'Sedang', avgScore: 82.0 },
-  { id: 'q8', no: 8, subject: 'Biologi', topic: 'Genetika Mendel', difficulty: 'Sedang', discrimination: 'Tinggi', avgScore: 58.7 },
-  { id: 'q9', no: 9, subject: 'Matematika', topic: 'Integral Tak Tentu', difficulty: 'Sukar', discrimination: 'Rendah', avgScore: 28.4 },
-  { id: 'q10', no: 10, subject: 'Fisika', topic: 'Usaha & Energi', difficulty: 'Sedang', discrimination: 'Tinggi', avgScore: 61.2 },
-];
-
-const PLACEHOLDER_REPORTS: ReportRecord[] = [
-  { id: 'r1', name: 'Laporan Nilai Tryout Paket A - XII IPA 1', type: 'Nilai Siswa', createdAt: '2025-02-12', status: 'Selesai' },
-  { id: 'r2', name: 'Laporan Hasil Tryout UTBK 2025', type: 'Hasil Tryout', createdAt: '2025-02-12', status: 'Selesai' },
-  { id: 'r3', name: 'Rekap Analisis Butir - Matematika', type: 'Per Mata Pelajaran', createdAt: '2025-03-01', status: 'Selesai' },
-  { id: 'r4', name: 'Peringkat Siswa XII IPA - Semua Mata Pelajaran', type: 'Peringkat', createdAt: '2025-03-10', status: 'Selesai' },
-  { id: 'r5', name: 'Laporan Nilai Tryout Paket B - XII IPA 1', type: 'Nilai Siswa', createdAt: '2025-03-18', status: 'Diproses' },
-];
-
-// ═══════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -347,8 +286,7 @@ export function ClassesView() {
 
   const fetchData = useCallback(async () => {
     if (!user?.schoolId) {
-      // Use placeholder data when no schoolId (demo mode)
-      setClasses(PLACEHOLDER_CLASSES);
+      setClasses([]);
       setLoading(false);
       return;
     }
@@ -359,10 +297,12 @@ export function ClassesView() {
         const data = await res.json();
         setClasses(Array.isArray(data) ? data : data.classes ?? []);
       } else {
-        setClasses(PLACEHOLDER_CLASSES);
+        toast.error('Gagal memuat data');
+        setClasses([]);
       }
     } catch {
-      setClasses(PLACEHOLDER_CLASSES);
+      toast.error('Gagal memuat data');
+      setClasses([]);
     } finally {
       setLoading(false);
     }
@@ -687,11 +627,15 @@ export function ExamAssignmentsView() {
   const [scheduleDate, setScheduleDate] = useState('');
   const [scheduleTime, setScheduleTime] = useState('08:00');
 
+  // Dropdown data
+  const [examPackages, setExamPackages] = useState<{ id: string; title: string }[]>([]);
+  const [classOptions, setClassOptions] = useState<{ id: string; name: string }[]>([]);
+
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       if (!user?.schoolId) {
-        setAssignments(PLACEHOLDER_ASSIGNMENTS);
+        setAssignments([]);
         return;
       }
       const res = await fetch(`/api/exam-assignments?schoolId=${user.schoolId}`);
@@ -699,18 +643,42 @@ export function ExamAssignmentsView() {
         const data = await res.json();
         setAssignments(Array.isArray(data) ? data : data.assignments ?? []);
       } else {
-        setAssignments(PLACEHOLDER_ASSIGNMENTS);
+        toast.error('Gagal memuat data');
+        setAssignments([]);
       }
     } catch {
-      setAssignments(PLACEHOLDER_ASSIGNMENTS);
+      toast.error('Gagal memuat data');
+      setAssignments([]);
     } finally {
       setLoading(false);
     }
   }, [user?.schoolId]);
 
+  const fetchDropdowns = useCallback(async () => {
+    if (!user?.schoolId) return;
+    try {
+      const [examRes, classRes] = await Promise.all([
+        fetch(`/api/exams?schoolId=${user.schoolId}`),
+        fetch(`/api/classes?schoolId=${user.schoolId}`),
+      ]);
+      if (examRes.ok) {
+        const examData = await examRes.json();
+        setExamPackages((Array.isArray(examData) ? examData : []).map((p: any) => ({ id: p.id, title: p.title })));
+      }
+      if (classRes.ok) {
+        const classData = await classRes.json();
+        const classes = Array.isArray(classData) ? classData : classData.classes ?? [];
+        setClassOptions(classes.map((c: any) => ({ id: c.id, name: c.name })));
+      }
+    } catch {
+      // silent — dropdowns will just be empty
+    }
+  }, [user?.schoolId]);
+
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchDropdowns();
+  }, [fetchData, fetchDropdowns]);
 
   const handleAssign = async () => {
     if (!selectedExam || !selectedClass || !scheduleDate) {
@@ -720,8 +688,8 @@ export function ExamAssignmentsView() {
     setSubmitting(true);
     try {
       await new Promise((r) => setTimeout(r, 1000));
-      const pkg = PLACEHOLDER_EXAM_PACKAGES.find((p) => p.id === selectedExam);
-      const cls = PLACEHOLDER_CLASS_OPTIONS.find((c) => c.id === selectedClass);
+      const pkg = examPackages.find((p) => p.id === selectedExam);
+      const cls = classOptions.find((c) => c.id === selectedClass);
       const newAssignment: ExamAssignment = {
         id: `a-${Date.now()}`,
         examName: pkg?.title ?? 'Tryout',
@@ -819,11 +787,15 @@ export function ExamAssignmentsView() {
                   <SelectValue placeholder="Pilih paket tryout" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PLACEHOLDER_EXAM_PACKAGES.map((pkg) => (
-                    <SelectItem key={pkg.id} value={pkg.id}>
-                      {pkg.title}
-                    </SelectItem>
-                  ))}
+                  {examPackages.length === 0 ? (
+                    <SelectItem value="_none" disabled>Tidak ada paket tryout</SelectItem>
+                  ) : (
+                    examPackages.map((pkg) => (
+                      <SelectItem key={pkg.id} value={pkg.id}>
+                        {pkg.title}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -835,11 +807,15 @@ export function ExamAssignmentsView() {
                   <SelectValue placeholder="Pilih kelas" />
                 </SelectTrigger>
                 <SelectContent>
-                  {PLACEHOLDER_CLASS_OPTIONS.map((cls) => (
-                    <SelectItem key={cls.id} value={cls.id}>
-                      {cls.name}
-                    </SelectItem>
-                  ))}
+                  {classOptions.length === 0 ? (
+                    <SelectItem value="_none" disabled>Tidak ada kelas</SelectItem>
+                  ) : (
+                    classOptions.map((cls) => (
+                      <SelectItem key={cls.id} value={cls.id}>
+                        {cls.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -1012,9 +988,7 @@ export function AnalyticsView() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      // Placeholder — in real app, fetch from /api/analytics/item-analysis
-      await new Promise((r) => setTimeout(r, 600));
-      setAnalysis(PLACEHOLDER_ANALYSIS);
+      setAnalysis([]);
     } catch {
       toast.error('Gagal memuat data analisis');
     } finally {
@@ -1265,16 +1239,13 @@ export function ReportsView() {
   const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      // Placeholder — in real app, fetch from /api/reports
-      await new Promise((r) => setTimeout(r, 500));
-      setReports(PLACEHOLDER_REPORTS);
+      setReports([]);
     } catch {
       toast.error('Gagal memuat data laporan');
     } finally {
       setLoading(false);
     }
   }, []);
-
   useEffect(() => {
     fetchData();
   }, [fetchData]);

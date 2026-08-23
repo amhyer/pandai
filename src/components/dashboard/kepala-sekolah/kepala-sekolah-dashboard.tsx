@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { apiClient } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -119,11 +120,7 @@ export function KepalaSekolahDashboard() {
 
     async function fetchData() {
       try {
-        const res = await fetch(`/api/kepsek/dashboard?schoolId=${schoolId}`);
-        if (res.status === 401) {
-          setError('UNAUTHORIZED');
-          return;
-        }
+        const res = await apiClient(`/api/kepsek/dashboard?schoolId=${schoolId}`);
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.error || 'Gagal memuat data');

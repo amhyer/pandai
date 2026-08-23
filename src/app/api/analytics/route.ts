@@ -5,7 +5,7 @@ import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
-    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH', 'GURU']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH', 'GURU', 'SISWA', 'ORANG_TUA']);
     const { searchParams } = new URL(request.url);
     const schoolId = searchParams.get('schoolId');
     const type = searchParams.get('type');
@@ -109,6 +109,119 @@ export async function GET(request: Request) {
       const activeSubs = await db.subscription.findMany({ where: { status: 'active' } });
       const mrr = activeSubs.reduce((s, sub) => s + sub.amount, 0);
       return NextResponse.json({ totalSchools, totalStudents, totalTeachers, totalQuestions, totalAttempts, mrr, topSchools: schools, monthlyGrowth });
+    }
+
+    // P0-03: Student analytics — real data from DB
+    if (type === 'student') {
+      const studentId = searchParams.get('userId');
+      // Only allow SISWA to access own data, or admin/guru with proper scope
+      if (auth.role === 'SISWA') {
+        if (studentId && studentId !== auth.userId) {
+          return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+        }
+      }
+      const effectiveUserId = auth.role === 'SISWA' ? auth.userId : studentId;
+      if (!effectiveUserId) {
+        return NextResponse.json({ error: 'userId diperlukan' }, { status: 400 });
+      }
+
+      // Get student's school for scope
+      const student = await db.user.findUnique({
+        where: { id: effectiveUserId },
+        select: { schoolId: true, classId: true },
+      });
+      if (!student) {
+        return NextResponse.json({ error: 'Siswa tidak ditemukan' }, { status: 404 });
+      }
+      // Non-super-admin: verify school scope
+      if (auth.role !== 'SUPER_ADMIN' && student.schoolId && auth.schoolId && student.schoolId !== auth.schoolId) {
+        return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+      }
+
+      // Fetch all submitted attempts with question/subject info
+      const attempts = await db.studentAttempt.findMany({
+        where: { userId: effectiveUserId, status: 'submitted' },
+        include: {
+          answers: { select: { questionId: true, isCorrect: true, question: { select: { subjectId: true, topicId: true } } } },
+        },
+        orderBy: { submittedAt: 'desc' },
+      });
+
+      const totalExams = attempts.length;
+      const lastScore = attempts.length > 0 ? Math.round(attempts[0].percentage * 10) / 10 : 0;
+      const avgCorrect = attempts.length > 0
+        ? Math.round(attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length * 10) / 10
+        : 0;
+
+      // Weak topics: topics with average score < 70%
+      const topicScores: Record<string, { topic: string; totalScore: number; count: number }> = {};
+      for (const att of attempts) {
+        for (const ans of att.answers) {
+          const tId = ans.question?.topicId;
+          if (!tId) continue;
+          if (!topicScores[tId]) {
+            const topic = await db.topic.findUnique({ where: { id: tId }, select: { name: true } });
+            topicScores[tId] = { topic: topic?.name || 'Tanpa Topik', totalScore: 0, count: 0 };
+          }
+          topicScores[tId].count++;
+          if (ans.isCorrect) topicScores[tId].totalScore++;
+        }
+      }
+      const weakTopics = Object.values(topicScores)
+        .map(t => ({ ...t, score: t.count > 0 ? Math.round(t.totalScore / t.count * 100) : 0 }))
+        .filter(t => t.score < 70)
+        .sort((a, b) => a.score - b.score);
+
+      // Score trend by date
+      const scoreTrend = attempts.slice(0, 20).reverse().map(a => ({
+        date: (a.submittedAt || a.createdAt).toISOString().split('T')[0],
+        score: a.percentage,
+      }));
+
+      // Subject breakdown
+      const subjectScores: Record<string, { subject: string; totalScore: number; totalMax: number }> = {};
+      for (const att of attempts) {
+        for (const ans of att.answers) {
+          const sId = ans.question?.subjectId;
+          if (!sId) continue;
+          if (!subjectScores[sId]) {
+            const subj = await db.subject.findUnique({ where: { id: sId }, select: { name: true } });
+            subjectScores[sId] = { subject: subj?.name || 'Unknown', totalScore: 0, totalMax: 0 };
+          }
+          subjectScores[sId].totalMax++;
+          if (ans.isCorrect) subjectScores[sId].totalScore++;
+        }
+      }
+      const subjectBreakdown = Object.values(subjectScores)
+        .map(s => ({ ...s, score: s.totalMax > 0 ? Math.round(s.totalScore / s.totalMax * 100) : 0, maxScore: 100 }))
+        .sort((a, b) => b.score - a.score);
+
+      // Rank among school students
+      let rank: number | undefined;
+      if (student.schoolId) {
+        const schoolStudents = await db.user.findMany({
+          where: { schoolId: student.schoolId, role: 'SISWA', isActive: true },
+          select: { id: true },
+        });
+        const studentIds = schoolStudents.map(s => s.id);
+        const schoolAvgScores: Record<string, number> = {};
+        const schoolAttempts = await db.studentAttempt.findMany({
+          where: { userId: { in: studentIds }, status: 'submitted' },
+          select: { userId: true, percentage: true },
+        });
+        for (const sa of schoolAttempts) {
+          if (!schoolAvgScores[sa.userId]) schoolAvgScores[sa.userId] = 0;
+          schoolAvgScores[sa.userId] += sa.percentage;
+        }
+        // Convert to averages and sort descending
+        const ranked = Object.entries(schoolAvgScores)
+          .map(([uid, total]) => ({ uid, avg: total / schoolAttempts.filter(a => a.userId === uid).length }))
+          .sort((a, b) => b.avg - a.avg);
+        const rankIdx = ranked.findIndex(r => r.uid === effectiveUserId);
+        if (rankIdx >= 0) rank = rankIdx + 1;
+      }
+
+      return NextResponse.json({ lastScore, totalExams, avgCorrect, rank, weakTopics, scoreTrend, subjectBreakdown });
     }
 
     return NextResponse.json({});

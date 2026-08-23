@@ -2833,3 +2833,24 @@ Character Reports (create for own children), Feedback (create/read). Primarily a
 8. **P2:** Replace all `catch (error: any)` with typed error handling
 9. **P2:** Implement real top schools average score in Super Admin dashboard
 10. **P2:** Implement real trend calculation for Guru top students
+
+## p05-08 — P0 Security Fixes
+
+### P0-05: GURU Soal View — Replace MOCK_SOAL
+- Removed MOCK_SOAL array, replaced GuruSoalView with API fetch to /api/questions
+- Maps API Question fields to Soal type, shows loading/empty states
+
+### P0-06: GURU Tryout View — Replace MOCK_TRYOUT
+- Removed MOCK_TRYOUT array, replaced GuruTryoutView with API fetch to /api/exams?type=session
+- Maps ExamSession fields, shows loading/empty states
+
+### P0-07: ADMIN SCHOOL — Remove PLACEHOLDER/MOCK fallbacks
+- Removed all 6 placeholder arrays from admin-school-views.tsx
+- ClassesView: error → empty state + toast
+- ExamAssignmentsView: fetches real dropdown data from /api/exams and /api/classes
+- AnalyticsView/ReportsView: return empty data (no fake fallback)
+
+### P0-08: Global 401 Session Expiry Handler
+- Created src/lib/api-client.ts with apiClient wrapper
+- Registered 401 handler in authenticated-app.tsx (clears user, redirects to login, shows toast)
+- Wired apiClient in all 6 dashboard components

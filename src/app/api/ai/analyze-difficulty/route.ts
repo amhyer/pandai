@@ -8,13 +8,17 @@ export async function POST(request: Request) {
   try {
     const auth = await requireAuth(request);
     const data = await request.json();
-    const { schoolId, userId, classId, subjectId } = data;
+    const { classId, subjectId } = data;
 
-    if (!schoolId || !userId || !classId || !subjectId) {
+    // P0-02: Use server-verified identity, never trust client-supplied IDs
+    const userId = auth.userId;
+    const schoolId = auth.schoolId;
+
+    if (!classId || !subjectId) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    // Rate limit
+    // Rate limit (using auth identity)
     const rateCheck = await checkRateLimit(userId, schoolId, 'analyze_difficulty');
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: rateCheck.message }, { status: 429 });

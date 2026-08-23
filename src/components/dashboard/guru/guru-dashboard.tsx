@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { apiClient } from '@/lib/api-client';
 import type { ViewType } from '@/store/use-store';
 import {
   Card,
@@ -204,8 +205,8 @@ export function GuruDashboard() {
     try {
       setLoading(true);
       const [qRes, eRes] = await Promise.all([
-        fetch(`/api/questions?schoolId=${user.schoolId}`),
-        fetch(`/api/analytics?type=guru-dashboard&schoolId=${user.schoolId}`),
+        apiClient(`/api/questions?schoolId=${user.schoolId}`),
+        apiClient(`/api/analytics?type=guru-dashboard&schoolId=${user.schoolId}`),
       ]);
 
       let totalQuestions = 0;

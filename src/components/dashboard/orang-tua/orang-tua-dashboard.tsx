@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { apiClient } from '@/lib/api-client';
 import type { ViewType } from '@/store/use-store';
 import {
   Card,
@@ -214,7 +215,7 @@ export function OrangTuaDashboard() {
     try {
       setLoading(true);
       // Fetch children data from API
-      const res = await fetch(`/api/users?parentId=${user.id}`);
+      const res = await apiClient(`/api/users?parentId=${user.id}`);
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {

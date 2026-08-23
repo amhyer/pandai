@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { apiClient } from '@/lib/api-client';
 import type { ViewType } from '@/store/use-store';
 import {
   Card,
@@ -221,7 +222,7 @@ export function SuperAdminDashboard() {
   async function fetchAnalytics() {
     try {
       setLoading(true);
-      const res = await fetch('/api/analytics?type=global');
+      const res = await apiClient('/api/analytics?type=global');
       if (res.ok) {
         const data = await res.json();
         setAnalytics(data);
@@ -236,7 +237,7 @@ export function SuperAdminDashboard() {
   async function handleSeedData() {
     try {
       setSeeding(true);
-      const res = await fetch('/api/seed', { method: 'POST' });
+      const res = await apiClient('/api/seed', { method: 'POST' });
       if (res.ok) {
         toast.success('Data demo berhasil ditambahkan!');
         fetchAnalytics();

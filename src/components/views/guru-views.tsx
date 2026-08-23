@@ -231,29 +231,7 @@ const MOCK_MATERI: MaterialData[] = [
   { id: 'm6', title: 'Reading Comprehension: Narrative Text', subject: undefined as unknown as any, subjectId: null, description: 'Teknik membaca pemahaman untuk teks naratif.', content: null, topicId: null, classId: null, schoolId: null, teacherId: null, type: 'materi', status: 'draft', dueDate: null, createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
 ];
 
-const MOCK_SOAL: Soal[] = [
-  { id: 's1', subject: 'Matematika', topic: 'Aljabar Linear', type: 'PG', difficulty: 'Sedang', status: 'Terpublikasi', hots: true },
-  { id: 's2', subject: 'Matematika', topic: 'Limit Fungsi', type: 'Isian', difficulty: 'Sulit', status: 'Terpublikasi', hots: true },
-  { id: 's3', subject: 'Fisika', topic: 'Kinematika Gerak Lurus', type: 'PG', difficulty: 'Mudah', status: 'Terpublikasi', hots: false },
-  { id: 's4', subject: 'Fisika', topic: 'Hukum Newton', type: 'PG', difficulty: 'Sedang', status: 'Terpublikasi', hots: true },
-  { id: 's5', subject: 'Kimia', topic: 'Stoikiometri', type: 'Isian', difficulty: 'Sedang', status: 'Terpublikasi', hots: false },
-  { id: 's6', subject: 'Kimia', topic: 'Ikatan Kimia', type: 'Esai', difficulty: 'Sulit', status: 'Draft', hots: true },
-  { id: 's7', subject: 'Biologi', topic: 'Sel & Jaringan', type: 'PG', difficulty: 'Mudah', status: 'Terpublikasi', hots: false },
-  { id: 's8', subject: 'Biologi', topic: 'Genetika', type: 'Esai', difficulty: 'Sulit', status: 'Draft', hots: true },
-  { id: 's9', subject: 'Bahasa Indonesia', topic: 'Teks Narasi', type: 'PG', difficulty: 'Mudah', status: 'Terpublikasi', hots: false },
-  { id: 's10', subject: 'Bahasa Indonesia', topic: 'Teks Eksposisi', type: 'Esai', difficulty: 'Sedang', status: 'Terpublikasi', hots: true },
-  { id: 's11', subject: 'Bahasa Inggris', topic: 'Grammar: Tenses', type: 'PG', difficulty: 'Mudah', status: 'Terpublikasi', hots: false },
-  { id: 's12', subject: 'Bahasa Inggris', topic: 'Reading Comprehension', type: 'PG', difficulty: 'Sedang', status: 'Draft', hots: false },
-];
 
-const MOCK_TRYOUT: Tryout[] = [
-  { id: 't1', title: 'TKA Prediksi Senin - Matematika', subject: 'Matematika', duration: '90 menit', questionCount: 30, participants: 28, status: 'Aktif' },
-  { id: 't2', title: 'TKA Prediksi Senin - Fisika', subject: 'Fisika', duration: '75 menit', questionCount: 25, participants: 28, status: 'Terjadwal' },
-  { id: 't3', title: 'TKA Prediksi Senin - Kimia', subject: 'Kimia', duration: '75 menit', questionCount: 25, participants: 0, status: 'Terjadwal' },
-  { id: 't4', title: 'Tryout Latihan 1 - Biologi', subject: 'Biologi', duration: '60 menit', questionCount: 20, participants: 32, status: 'Selesai' },
-  { id: 't5', title: 'Tryout Latihan 1 - B. Indonesia', subject: 'Bahasa Indonesia', duration: '60 menit', questionCount: 20, participants: 32, status: 'Selesai' },
-  { id: 't6', title: 'Tryout Latihan 2 - Matematika', subject: 'Matematika', duration: '90 menit', questionCount: 30, participants: 30, status: 'Selesai' },
-];
 
 const TRYOUT_STATUS_BADGE: Record<string, { className: string; icon: React.ElementType }> = {
   Aktif: { className: 'bg-emerald-100 text-emerald-700', icon: CircleDot },
@@ -996,12 +974,45 @@ export function GuruMateriView() {
 // ═══════════════════════════════════════════════════════════════════
 
 export function GuruSoalView() {
+  const user = useAppStore((s) => s.user);
+  const [soalList, setSoalList] = useState<Soal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [subjectFilter, setSubjectFilter] = useState('all');
   const [difficultyFilter, setDifficultyFilter] = useState('all');
   const [typeFilter, setTypeFilter] = useState('all');
 
-  const filtered = MOCK_SOAL.filter((s) => {
+  const fetchSoal = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (user?.schoolId) params.set('schoolId', user.schoolId);
+      params.set('limit', '50');
+      const res = await fetch(`/api/questions?${params.toString()}`);
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      const items: Soal[] = (Array.isArray(data) ? data : []).map((q: any) => ({
+        id: q.id,
+        subject: q.subject?.name ?? 'Tanpa Mapel',
+        topic: q.topic?.name ?? 'Tanpa Topik',
+        type: (q.type === 'pg' || q.type === 'pg_kompleks') ? 'PG' : q.type === 'isian' ? 'Isian' : 'Esai',
+        difficulty: q.difficulty === 'mudah' ? 'Mudah' : q.difficulty === 'sulit' ? 'Sulit' : 'Sedang',
+        status: q.status === 'published' ? 'Terpublikasi' : 'Draft',
+        hots: ['C4', 'C5', 'C6'].includes(q.cognitiveLevel),
+      }));
+      setSoalList(items);
+    } catch {
+      setSoalList([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.schoolId]);
+
+  useEffect(() => {
+    fetchSoal();
+  }, [fetchSoal]);
+
+  const filtered = soalList.filter((s) => {
     if (search && !s.topic.toLowerCase().includes(search.toLowerCase()) && !s.subject.toLowerCase().includes(search.toLowerCase())) return false;
     if (subjectFilter !== 'all' && s.subject !== subjectFilter) return false;
     if (difficultyFilter !== 'all' && s.difficulty !== difficultyFilter) return false;
@@ -1009,10 +1020,10 @@ export function GuruSoalView() {
     return true;
   });
 
-  const totalSoal = MOCK_SOAL.length;
-  const terpublikasi = MOCK_SOAL.filter((s) => s.status === 'Terpublikasi').length;
-  const draft = MOCK_SOAL.filter((s) => s.status === 'Draft').length;
-  const hots = MOCK_SOAL.filter((s) => s.hots).length;
+  const totalSoal = soalList.length;
+  const terpublikasi = soalList.filter((s) => s.status === 'Terpublikasi').length;
+  const draft = soalList.filter((s) => s.status === 'Draft').length;
+  const hots = soalList.filter((s) => s.hots).length;
 
   return (
     <div className="space-y-6">
@@ -1086,7 +1097,19 @@ export function GuruSoalView() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-40 text-center">
+                    <div className="flex items-center justify-center gap-2"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Memuat soal...</span></div>
+                  </TableCell>
+                </TableRow>
+              ) : soalList.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-40 text-center">
+                    <EmptyState icon={ClipboardList} title="Belum ada soal" description="Soal yang Anda buat akan tampil di sini." />
+                  </TableCell>
+                </TableRow>
+              ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-40 text-center">
                     <EmptyState icon={ClipboardList} title="Tidak ada soal ditemukan" description="Ubah filter atau buat soal baru untuk memulai." />
@@ -1135,8 +1158,49 @@ export function GuruSoalView() {
 // ═══════════════════════════════════════════════════════════════════
 
 export function GuruTryoutView() {
+  const user = useAppStore((s) => s.user);
+  const [tryoutList, setTryoutList] = useState<Tryout[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Aktif');
-  const filtered = MOCK_TRYOUT.filter((t) => t.status === activeTab);
+
+  const fetchTryout = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.set('type', 'session');
+      if (user?.schoolId) params.set('schoolId', user.schoolId);
+      const res = await fetch(`/api/exams?${params.toString()}`);
+      if (!res.ok) throw new Error('API Error');
+      const data = await res.json();
+      const items: Tryout[] = (Array.isArray(data) ? data : []).map((s: any) => {
+        const statusMap: Record<string, 'Aktif' | 'Terjadwal' | 'Selesai'> = {
+          active: 'Aktif',
+          scheduled: 'Terjadwal',
+          ended: 'Selesai',
+        };
+        return {
+          id: s.id,
+          title: s.title,
+          subject: s.examPackage?.title ?? 'Tanpa Paket',
+          duration: `${s.duration ?? 120} menit`,
+          questionCount: s.examPackage?.totalQuestions ?? s.examPackage?._count?.examItems ?? 0,
+          participants: s.assignments?.length ?? 0,
+          status: statusMap[s.status] ?? 'Terjadwal',
+        };
+      });
+      setTryoutList(items);
+    } catch {
+      setTryoutList([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.schoolId]);
+
+  useEffect(() => {
+    fetchTryout();
+  }, [fetchTryout]);
+
+  const filtered = tryoutList.filter((t) => t.status === activeTab);
 
   return (
     <div className="space-y-6">
@@ -1171,7 +1235,23 @@ export function GuruTryoutView() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filtered.length === 0 ? (
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-48 text-center">
+                          <div className="flex items-center justify-center gap-2"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /><span className="text-sm text-muted-foreground">Memuat tryout...</span></div>
+                        </TableCell>
+                      </TableRow>
+                    ) : tryoutList.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-48">
+                          <EmptyState
+                            icon={ClipboardList}
+                            title="Belum ada tryout"
+                            description="Tryout yang Anda buat akan tampil di sini."
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ) : filtered.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={7} className="h-48">
                           <EmptyState

@@ -347,12 +347,7 @@ export function OrtuNilaiView() {
         if (list.length > 0) setSelectedChild(list[0].id);
       }
     } catch {
-      const mockChildren: ChildOption[] = [
-        { id: 'c1', name: 'Ahmad Rizky', className: 'XII IPA 1' },
-        { id: 'c2', name: 'Siti Aisyah', className: 'XI IPA 2' },
-      ];
-      setChildren(mockChildren);
-      setSelectedChild(mockChildren[0].id);
+      toast.error('Gagal memuat data anak');
     } finally {
       setLoading(false);
     }
@@ -374,41 +369,8 @@ export function OrtuNilaiView() {
         return;
       }
     } catch {
-      // silent
+      toast.error('Gagal memuat data nilai');
     }
-    setAvgScore(72.5);
-    setHighScore(91.3);
-    setClassRank(5);
-    setTotalClassmates(32);
-    setTotalTryout(8);
-    setSubjects([
-      { subject: 'Matematika', avgScore: 68, highestScore: 85, totalExams: 8, trend: 'up' },
-      { subject: 'Fisika', avgScore: 74, highestScore: 91, totalExams: 8, trend: 'up' },
-      { subject: 'Kimia', avgScore: 70, highestScore: 88, totalExams: 8, trend: 'down' },
-      { subject: 'Biologi', avgScore: 78, highestScore: 92, totalExams: 8, trend: 'up' },
-      { subject: 'Bahasa Indonesia', avgScore: 82, highestScore: 95, totalExams: 6, trend: 'stable' },
-      { subject: 'Bahasa Inggris', avgScore: 65, highestScore: 80, totalExams: 6, trend: 'down' },
-      { subject: 'Sejarah', avgScore: 75, highestScore: 89, totalExams: 4, trend: 'up' },
-      { subject: 'Geografi', avgScore: 71, highestScore: 84, totalExams: 4, trend: 'stable' },
-    ]);
-    setScoreTrend([
-      { label: 'Tryout 1', value: 55 },
-      { label: 'Tryout 2', value: 60 },
-      { label: 'Tryout 3', value: 63 },
-      { label: 'Tryout 4', value: 68 },
-      { label: 'Tryout 5', value: 65 },
-      { label: 'Tryout 6', value: 72 },
-      { label: 'Tryout 7', value: 76 },
-      { label: 'Tryout 8', value: 78 },
-    ]);
-    setRecentScores([
-      { id: '1', examName: 'Tryout 8 - TKA', date: '2025-01-15', score: 78, status: 'Lulus' },
-      { id: '2', examName: 'Tryout 7 - TKA', date: '2025-01-08', score: 76, status: 'Lulus' },
-      { id: '3', examName: 'Latihan Fisika 3', date: '2025-01-05', score: 82, status: 'Lulus' },
-      { id: '4', examName: 'Tryout 6 - TKA', date: '2024-12-28', score: 72, status: 'Lulus' },
-      { id: '5', examName: 'Tryout 5 - TKA', date: '2024-12-20', score: 65, status: 'Belum Lulus' },
-      { id: '6', examName: 'Diagnostic Test', date: '2024-12-01', score: 55, status: 'Belum Lulus' },
-    ]);
   }
 
   const maxTrendValue = Math.max(...scoreTrend.map((s) => s.value), 100);
@@ -822,12 +784,7 @@ export function OrtuMateriView() {
         if (list.length > 0) setSelectedChild(list[0].id);
       }
     } catch {
-      const mockChildren: ChildOption[] = [
-        { id: 'c1', name: 'Ahmad Rizky', className: 'XII IPA 1' },
-        { id: 'c2', name: 'Siti Aisyah', className: 'XI IPA 2' },
-      ];
-      setChildren(mockChildren);
-      setSelectedChild(mockChildren[0].id);
+      toast.error('Gagal memuat data anak');
     } finally {
       setLoading(false);
     }
@@ -1168,12 +1125,7 @@ export function OrtuKehadiranView() {
         if (list.length > 0) setSelectedChild(list[0].id);
       }
     } catch {
-      const mockChildren: ChildOption[] = [
-        { id: 'c1', name: 'Ahmad Rizky', className: 'XII IPA 1' },
-        { id: 'c2', name: 'Siti Aisyah', className: 'XI IPA 2' },
-      ];
-      setChildren(mockChildren);
-      setSelectedChild(mockChildren[0].id);
+      toast.error('Gagal memuat data anak');
     } finally {
       setLoading(false);
     }
@@ -1575,12 +1527,7 @@ export function OrtuKuisView() {
         if (list.length > 0) setSelectedChild(list[0].id);
       }
     } catch {
-      const mockChildren: ChildOption[] = [
-        { id: 'c1', name: 'Ahmad Rizky', className: 'XII IPA 1' },
-        { id: 'c2', name: 'Siti Aisyah', className: 'XI IPA 2' },
-      ];
-      setChildren(mockChildren);
-      setSelectedChild(mockChildren[0].id);
+      toast.error('Gagal memuat data anak');
     } finally {
       setLoading(false);
     }
@@ -1977,12 +1924,7 @@ export function OrtuLaporanView() {
         if (list.length > 0) setSelectedChild(list[0].id);
       }
     } catch {
-      const mockChildren: ChildOption[] = [
-        { id: 'c1', name: 'Ahmad Rizky', className: 'XII IPA 1' },
-        { id: 'c2', name: 'Siti Aisyah', className: 'XI IPA 2' },
-      ];
-      setChildren(mockChildren);
-      setSelectedChild(mockChildren[0].id);
+      toast.error('Gagal memuat data anak');
     } finally {
       setLoading(false);
     }

@@ -6,15 +6,19 @@ import { requireAuth, AuthError } from '@/lib/auth';
 
 export async function POST(request: Request) {
   try {
-    await requireAuth(request);
+    const auth = await requireAuth(request);
     const data = await request.json();
-    const { schoolId, userId, subjectId, topicId, count, difficulty, cognitiveLevel, subjectName } = data;
+    const { subjectId, topicId, count, difficulty, cognitiveLevel, subjectName } = data;
 
-    if (!schoolId || !userId || !subjectId || !count || !subjectName) {
+    // P0-01: Use server-verified identity, never trust client-supplied IDs
+    const userId = auth.userId;
+    const schoolId = auth.schoolId;
+
+    if (!subjectId || !count || !subjectName) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
 
-    // Rate limit check
+    // Rate limit check (using auth identity)
     const rateCheck = await checkRateLimit(userId, schoolId, 'generate_questions');
     if (!rateCheck.allowed) {
       return NextResponse.json({ error: rateCheck.message }, { status: 429 });
