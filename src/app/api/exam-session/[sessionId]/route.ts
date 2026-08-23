@@ -11,6 +11,9 @@ export async function GET(
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
     const { sessionId } = await params;
 
+    const { searchParams } = new URL(request.url);
+    const review = searchParams.get('review') === 'true';
+
     // Fetch session with package
     const session = await db.examSession.findUnique({
       where: { id: sessionId },
@@ -61,9 +64,10 @@ export async function GET(
       });
     }
 
-    // For SISWA: strip answer, explanation, and isCorrect from options
-    function sanitizeQuestion(q: any, item: any, idx: number) {
-      const base = {
+    // For review mode or non-SISWA: include all question fields
+    // For SISWA taking exam: strip answer, explanation
+    function buildQuestion(q: any, item: any, idx: number, includeAnswers: boolean) {
+      const base: Record<string, any> = {
         id: q.id,
         subjectId: q.subjectId,
         type: q.type,
@@ -78,30 +82,30 @@ export async function GET(
         orderNum: item.orderNum || idx + 1,
         points: item.points,
       };
+      if (includeAnswers) {
+        base.answer = q.answer;
+        base.explanation = q.explanation;
+      }
       return base;
     }
 
     const questions = examItems.map((item, idx) => {
       const q = item.question;
-      if (auth.role === 'SISWA') {
-        // Strip isCorrect from options JSON
-        let sanitizedOptions = q.options;
-        if (sanitizedOptions) {
-          try {
-            const parsed = JSON.parse(sanitizedOptions);
-            const cleaned = parsed.map((o: any) => {
-              const { isCorrect, ...rest } = o;
-              return rest;
-            });
-            sanitizedOptions = JSON.stringify(cleaned);
-          } catch {}
-        }
-        return {
-          ...sanitizeQuestion(q, item, idx),
-          options: sanitizedOptions,
-        };
+      const includeAnswers = auth.role !== 'SISWA' || review;
+      let result = buildQuestion(q, item, idx, includeAnswers);
+
+      // For SISWA taking exam (not review): strip isCorrect from options
+      if (auth.role === 'SISWA' && !review && q.options) {
+        try {
+          const parsed = JSON.parse(q.options);
+          const cleaned = parsed.map((o: any) => {
+            const { isCorrect, ...rest } = o;
+            return rest;
+          });
+          result.options = JSON.stringify(cleaned);
+        } catch {}
       }
-      return sanitizeQuestion(q, item, idx);
+      return result;
     });
 
     return NextResponse.json({

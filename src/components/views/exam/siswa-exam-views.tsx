@@ -990,7 +990,6 @@ function ExamResultScreen({ attempt, onBack }: ExamResultScreenProps) {
     async function loadData() {
       if (!attempt.examSessionId) return;
       try {
-        // Fetch questions in review mode (includes answers & explanations)
         const res = await fetch(`/api/exam-session/${attempt.examSessionId}?review=true`);
         if (res.ok) {
           const data = await res.json();
@@ -999,7 +998,9 @@ function ExamResultScreen({ attempt, onBack }: ExamResultScreenProps) {
           data.questions.forEach((q: any) => map.set(q.id, q));
           setQuestionsMap(map);
         }
-      } catch {}
+      } catch (err) {
+        console.error('Failed to load review data:', err);
+      }
     }
     loadData();
   }, [attempt.examSessionId]);

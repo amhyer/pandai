@@ -181,6 +181,7 @@ export async function POST(request: Request) {
           learningObjective: learningObjective || null, submittedAt: new Date(),
           answers: { create: answerRecords },
         },
+        include: { answers: true },
       });
     });
 
