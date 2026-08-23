@@ -299,7 +299,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
     const belajar: NavItem[] = [
       { label: 'Materi Pelajaran', view: 'siswa-materi', icon: BookOpen },
       { label: 'Tugas Terstruktur', view: 'siswa-tugas', icon: ClipboardList },
-      { label: 'Tryout TKA', view: 'siswa-riwayat', icon: PenLine },
+      { label: 'Tryout TKA', view: 'siswa-tryout' as ViewType, icon: PenLine },
       { label: 'Riwayat Pengerjaan', view: 'siswa-riwayat', icon: History },
     ];
 
@@ -512,6 +512,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   // SISWA
   'siswa-materi': 'Materi Pelajaran',
   'siswa-tugas': 'Tugas Terstruktur',
+  'siswa-tryout': 'Tryout TKA',
   'siswa-riwayat': 'Riwayat Pengerjaan',
   'siswa-nilai': 'Nilai Saya',
   'siswa-kehadiran': 'Kehadiran Saya',
@@ -588,6 +589,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-rapor': [{ label: VIEW_LABELS['guru-rapor'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
+    'siswa-tryout': [{ label: VIEW_LABELS['siswa-tryout'] }],
     'siswa-riwayat': [{ label: VIEW_LABELS['siswa-riwayat'] }],
     'siswa-nilai': [{ label: VIEW_LABELS['siswa-nilai'] }],
     'siswa-kehadiran': [{ label: VIEW_LABELS['siswa-kehadiran'] }],

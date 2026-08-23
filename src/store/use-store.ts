@@ -55,6 +55,7 @@ export type ViewType =
   // ── SISWA ──
   | 'siswa-materi'
   | 'siswa-tugas'
+  | 'siswa-tryout'
   | 'siswa-riwayat'
   | 'siswa-nilai'
   | 'siswa-kehadiran'
