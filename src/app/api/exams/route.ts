@@ -36,7 +36,7 @@ export async function GET(request: Request) {
         },
         orderBy: { createdAt: 'desc' }, take: 50,
       });
-      return NextResponse.json(assignments.map(a => ({ ...a.examSession, _assignment: { classId: a.classId, className: a.class?.name } }));
+      return NextResponse.json(assignments.map(a => ({ ...a.examSession, _assignment: { classId: a.classId, className: a.class?.name } })));
     }
 
     // P1-01: Enforce school scope on GET
