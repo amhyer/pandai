@@ -2854,3 +2854,28 @@ Character Reports (create for own children), Feedback (create/read). Primarily a
 - Created src/lib/api-client.ts with apiClient wrapper
 - Registered 401 handler in authenticated-app.tsx (clears user, redirects to login, shows toast)
 - Wired apiClient in all 6 dashboard components
+
+---
+Task ID: FASE-3.1
+Agent: main
+Task: FASE 3.1 — P0 Remediation (9 findings) + Final Report
+
+Work Log:
+- Checked git status: 7 P0 fixes (P0-01,02,03,05,06,07,08) already committed in previous sessions
+- P0-01 (AI generate-questions identity forgery): VERIFIED — uses auth.userId/auth.schoolId (line 13-15)
+- P0-02 (AI analyze-difficulty identity forgery): VERIFIED — uses auth.userId/auth.schoolId (line 13-15)
+- P0-03 (Analytics type=student handler): VERIFIED — full handler at lines 114-225 of analytics/route.ts
+- P0-04 (ORANG_TUA hardcoded metrics): FIXED — replaced avgScore:72.5, totalExams:8, attendance:95 with real API calls to /api/analytics?type=student and /api/attendance per child, removed mock fallback
+- P0-05 (GURU MOCK_SOAL): VERIFIED — no MOCK_SOAL in guru-views.tsx
+- P0-06 (GURU MOCK_TRYOUT): VERIFIED — no MOCK_TRYOUT in guru-views.tsx
+- P0-07 (Admin-school PLACEHOLDER/MOCK fallbacks): VERIFIED — no PLACEHOLDER_CLASSES/EXAM_PACKAGES/MOCK_ACTIVITY_LOGS/MOCK_TEACHERS in admin-school-views.tsx
+- P0-08 (Global 401 session-expiry handler): VERIFIED — setOnUnauthorized in authenticated-app.tsx lines 174-181
+- P0-09 (Attendance % standardization): FIXED — added SCHOOL_DAY_STATUSES filter (hadir/izin/sakit/alpa only) to kepsek/class-map/route.ts and kepsek/dashboard/route.ts, matching Siswa/Ortu frontend calculation
+- Lint: PASS (0 errors, 0 warnings)
+- Regression: FASE 1 security fixes not affected (P0-04 is frontend-only, P0-09 only changes attendance denominator logic in non-security-critical routes)
+
+Stage Summary:
+- 7/9 P0 findings already fixed in prior sessions
+- 2/9 P0 findings fixed in this session (P0-04, P0-09)
+- Files modified: orang-tua-dashboard.tsx, kepsek/class-map/route.ts, kepsek/dashboard/route.ts
+- No FASE 1 security regressions introduced
