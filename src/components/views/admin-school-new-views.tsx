@@ -115,6 +115,11 @@ interface ActivityLog {
   module: 'Pengguna' | 'Kelas' | 'Ujian' | 'Soal' | 'Lainnya';
 }
 
+interface ClassData {
+  id: string;
+  name: string;
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // MOCK DATA
 // ═══════════════════════════════════════════════════════════════════════
@@ -782,6 +787,10 @@ export function TeacherAssignmentsView() {
   const [batchSemester, setBatchSemester] = useState('Ganjil');
   const [selectedClasses, setSelectedClasses] = useState<string[]>([]);
 
+  // API data for dropdowns
+  const [apiSubjects, setApiSubjects] = useState<Subject[]>([]);
+  const [apiClasses, setApiClasses] = useState<ClassData[]>([]);
+
   const fetchAssignments = useCallback(async () => {
     try {
       const schoolId = user?.schoolId ?? '';
@@ -802,12 +811,12 @@ export function TeacherAssignmentsView() {
           semester: a.semester ?? 'Ganjil',
           schoolId: a.schoolId,
         }));
-        setAssignments(mapped.length > 0 ? mapped : MOCK_ASSIGNMENTS);
+        setAssignments(mapped);
       } else {
-        setAssignments(MOCK_ASSIGNMENTS);
+        setAssignments([]);
       }
     } catch {
-      setAssignments(MOCK_ASSIGNMENTS);
+      setAssignments([]);
     } finally {
       setLoading(false);
     }
@@ -833,6 +842,37 @@ export function TeacherAssignmentsView() {
       }
     }
     loadTeachers();
+  }, [user?.schoolId]);
+
+  useEffect(() => {
+    async function loadSubjects() {
+      try {
+        const res = await apiClient('/api/subjects');
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : json.data ?? [];
+        setApiSubjects(list);
+      } catch {
+        // apiClient handles 401; silently keep empty list
+      }
+    }
+    loadSubjects();
+  }, []);
+
+  useEffect(() => {
+    async function loadClasses() {
+      try {
+        const res = await apiClient(`/api/classes?schoolId=${user?.schoolId ?? ''}`);
+        const json = await res.json();
+        const list: ClassData[] = (Array.isArray(json) ? json : json.data ?? []).map((c: Record<string, unknown>) => ({
+          id: c.id as string,
+          name: (c.name as string) ?? '-',
+        }));
+        setApiClasses(list);
+      } catch {
+        // apiClient handles 401; silently keep empty list
+      }
+    }
+    loadClasses();
   }, [user?.schoolId]);
 
   const uniqueTeachers = useMemo(() => {
@@ -907,8 +947,8 @@ export function TeacherAssignmentsView() {
     }
     setSaving(true);
     const teacher = teachers.find((t) => t.id === formTeacher);
-    const subject = MOCK_SUBJECTS.find((s) => s.id === formSubject);
-    const cls = MOCK_CLASS_OPTIONS.find((c) => c.id === formClass);
+    const subject = apiSubjects.find((s) => s.id === formSubject);
+    const cls = apiClasses.find((c) => c.id === formClass);
 
     try {
       const res = await fetch('/api/teacher-assignments', {
@@ -958,10 +998,10 @@ export function TeacherAssignmentsView() {
     }
     setSaving(true);
     const teacher = teachers.find((t) => t.id === batchTeacher);
-    const subject = MOCK_SUBJECTS.find((s) => s.id === batchSubject);
+    const subject = apiSubjects.find((s) => s.id === batchSubject);
 
     const newAssignments: TeacherAssignment[] = selectedClasses.map((classId) => {
-      const cls = MOCK_CLASS_OPTIONS.find((c) => c.id === classId);
+      const cls = apiClasses.find((c) => c.id === classId);
       return {
         id: `ta${Date.now()}_${classId}`,
         teacherId: batchTeacher,
@@ -1262,7 +1302,7 @@ export function TeacherAssignmentsView() {
                   <SelectValue placeholder="Pilih mata pelajaran..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {MOCK_SUBJECTS.map((s) => (
+                  {apiSubjects.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name} ({s.code})
                     </SelectItem>
@@ -1277,7 +1317,7 @@ export function TeacherAssignmentsView() {
                   <SelectValue placeholder="Pilih kelas..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {MOCK_CLASS_OPTIONS.map((c) => (
+                  {apiClasses.map((c) => (
                     <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
@@ -1359,7 +1399,7 @@ export function TeacherAssignmentsView() {
                   <SelectValue placeholder="Pilih mata pelajaran..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {MOCK_SUBJECTS.map((s) => (
+                  {apiSubjects.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name} ({s.code})
                     </SelectItem>
@@ -1382,7 +1422,7 @@ export function TeacherAssignmentsView() {
             <div className="space-y-2">
               <Label>Pilih Kelas ({selectedClasses.length} dipilih)</Label>
               <div className="flex flex-wrap gap-2">
-                {MOCK_CLASS_OPTIONS.map((c) => (
+                {apiClasses.map((c) => (
                   <button
                     key={c.id}
                     onClick={() => toggleBatchClass(c.id)}
@@ -1483,10 +1523,10 @@ export function BackupRestoreView() {
         if (data.totalRecords) setTotalRecords(data.totalRecords);
         if (data.lastBackup) setLastBackup(data.lastBackup);
       } else {
-        setBackups(MOCK_BACKUPS);
+        setBackups([]);
       }
     } catch {
-      setBackups(MOCK_BACKUPS);
+      setBackups([]);
     } finally {
       setLoading(false);
     }

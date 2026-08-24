@@ -18,6 +18,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email, password, dan nama wajib diisi' }, { status: 400 });
     }
 
+    // P2: Basic email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: 'Format email tidak valid' }, { status: 400 });
+    }
+
     if (password.length < 6) {
       return NextResponse.json({ error: 'Password minimal 6 karakter' }, { status: 400 });
     }

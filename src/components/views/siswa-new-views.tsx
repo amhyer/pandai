@@ -293,13 +293,13 @@ export function SiswaMateriView() {
             });
             setSubjects(mapped);
           } else {
-            setSubjects(MOCK_SUBJECTS);
+            setSubjects([]);
           }
         } else {
-          setSubjects(MOCK_SUBJECTS);
+          setSubjects([]);
         }
       } catch {
-        setSubjects(MOCK_SUBJECTS);
+        setSubjects([]);
       } finally {
         setIsLoading(false);
       }
@@ -740,13 +740,13 @@ export function SiswaTugasView() {
             }));
             setTasks(mapped);
           } else {
-            setTasks(MOCK_TASKS);
+            setTasks([]);
           }
         } else {
-          setTasks(MOCK_TASKS);
+          setTasks([]);
         }
       } catch {
-        setTasks(MOCK_TASKS);
+        setTasks([]);
       } finally {
         setIsLoading(false);
       }
@@ -1343,13 +1343,13 @@ export function SiswaKehadiranView() {
           if (Array.isArray(data) && data.length > 0) {
             setAttendance(data as AttendanceDay[]);
           } else {
-            setAttendance(generateMockAttendance(currentYear, currentMonth));
+            setAttendance([]);
           }
         } else {
-          setAttendance(generateMockAttendance(currentYear, currentMonth));
+          setAttendance([]);
         }
       } catch {
-        setAttendance(generateMockAttendance(currentYear, currentMonth));
+        setAttendance([]);
       } finally {
         setIsLoading(false);
       }

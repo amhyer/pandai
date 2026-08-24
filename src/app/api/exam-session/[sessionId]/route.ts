@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 export async function GET(
   request: Request,
@@ -21,6 +22,13 @@ export async function GET(
     });
     if (!session) {
       return NextResponse.json({ error: 'Sesi ujian tidak ditemukan' }, { status: 404 });
+    }
+
+    // P2: Non-SA non-SISWA roles must belong to the same school as the session
+    if (auth.role !== 'SUPER_ADMIN' && auth.role !== 'SISWA') {
+      if (session.schoolId) {
+        try { requireSchoolScope(auth, session.schoolId); } catch { throw new AuthError('Akses ditolak', 403); }
+      }
     }
 
     // SISWA: verify the session is assigned to their class

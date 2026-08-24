@@ -224,8 +224,7 @@ export function KepsekPetaKelasView() {
       setData(json);
       setUsingMock(false);
     } catch {
-      setData(MOCK);
-      setUsingMock(true);
+      setData(null);
     } finally {
       setLoading(false);
     }
@@ -297,11 +296,6 @@ export function KepsekPetaKelasView() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {usingMock && (
-            <Badge variant="secondary" className="text-[11px]">
-              Data contoh (API belum live)
-            </Badge>
-          )}
           <Button
             variant="outline"
             size="sm"

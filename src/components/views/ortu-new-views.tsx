@@ -753,17 +753,9 @@ export function OrtuRekapKarakterView() {
           return;
         }
       } catch {
-        // Mock data fallback
+        // fallback: empty state
       }
-      setSummaries([
-        { habitId: 'bangun_pagi', name: 'Bangun Pagi', emoji: '🌅', avgRating: 3.2, totalReports: 20, trend: 'up', prevRating: 2.8, breakdown: { 1: 1, 2: 3, 3: 10, 4: 6 } },
-        { habitId: 'beribadah', name: 'Beribadah', emoji: '🤲', avgRating: 3.6, totalReports: 18, trend: 'stable', prevRating: 3.5, breakdown: { 1: 1, 2: 2, 3: 6, 4: 9 } },
-        { habitId: 'berolahraga', name: 'Berolahraga', emoji: '🏃', avgRating: 2.8, totalReports: 22, trend: 'down', prevRating: 3.0, breakdown: { 1: 3, 2: 5, 3: 8, 4: 6 } },
-        { habitId: 'makan_sehat', name: 'Makan Sehat & Bergizi', emoji: '🥗', avgRating: 3.1, totalReports: 15, trend: 'up', prevRating: 2.8, breakdown: { 1: 1, 2: 4, 3: 6, 4: 4 } },
-        { habitId: 'gemar_belajar', name: 'Gemar Belajar', emoji: '📚', avgRating: 3.3, totalReports: 17, trend: 'stable', prevRating: 3.2, breakdown: { 1: 1, 2: 2, 3: 8, 4: 6 } },
-        { habitId: 'bermasyarakat', name: 'Bermasyarakat', emoji: '🤝', avgRating: 3.4, totalReports: 19, trend: 'up', prevRating: 3.0, breakdown: { 1: 1, 2: 3, 3: 7, 4: 8 } },
-        { habitId: 'tidur_cepat', name: 'Tidur Cepat', emoji: '😴', avgRating: 2.6, totalReports: 16, trend: 'down', prevRating: 2.9, breakdown: { 1: 3, 2: 5, 3: 5, 4: 3 } },
-      ]);
+      setSummaries([]);
     }
     loadSummary();
   }, [selectedChild, currentMonth]);

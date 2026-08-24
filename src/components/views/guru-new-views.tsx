@@ -284,7 +284,7 @@ function ViewSkeleton() {
 
 export function GuruTugasView() {
   const user = useAppStore((s) => s.user);
-  const [items, setItems] = useState<TugasItem[]>(MOCK_TUGAS);
+  const [items, setItems] = useState<TugasItem[]>([]);
   const [typeFilter, setTypeFilter] = useState('semua');
   const [statusFilter, setStatusFilter] = useState('semua');
   const [search, setSearch] = useState('');
@@ -566,11 +566,7 @@ export function GuruKehadiranView() {
           }
         }
       } catch { /* fallback */ }
-      setStudents(MOCK_STUDENTS);
-      const statuses: ('Hadir' | 'Izin' | 'Sakit' | 'Alpa')[] = ['Hadir', 'Hadir', 'Hadir', 'Izin', 'Hadir', 'Sakit', 'Hadir', 'Alpa', 'Hadir', 'Hadir'];
-      const recs: Record<string, AttendanceRecord> = {};
-      MOCK_STUDENTS.forEach((s, i) => { recs[s.id] = { studentId: s.id, status: statuses[i], note: '' }; });
-      setRecords(recs);
+      setStudents([]);
     })();
     return () => controller.abort();
   }, [classId, date, user?.schoolId]);
@@ -693,7 +689,7 @@ export function GuruRekapKehadiranView() {
   const user = useAppStore((s) => s.user);
   const [classId, setClassId] = useState('c1');
   const [month, setMonth] = useState(currentMonth());
-  const [data, setData] = useState<RekapKehadiran[]>(MOCK_REKAP);
+  const [data, setData] = useState<RekapKehadiran[]>([]);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [exporting, setExporting] = useState(false);
   const fetchedRef = useRef<string>('');
@@ -707,8 +703,8 @@ export function GuruRekapKehadiranView() {
       try {
         const res = await fetch(`/api/attendance?schoolId=${user?.schoolId ?? ''}&classId=${classId}&month=${month}`, { signal: controller.signal });
         if (res.ok) { const json = await res.json(); if (Array.isArray(json.rekap) && json.rekap.length > 0) { setData(json.rekap); return; } }
-      } catch { /* use mock */ }
-      setData(MOCK_REKAP);
+      } catch { /* fallback */ }
+      setData([]);
     })();
     return () => controller.abort();
   }, [classId, month, user?.schoolId]);
@@ -845,7 +841,7 @@ export function GuruKarakterView() {
         const res = await fetch(`/api/attendance?schoolId=${user?.schoolId ?? ''}&classId=${classId}&date=${todayStr()}`, { signal: controller.signal });
         if (res.ok) { const data = await res.json(); if (Array.isArray(data.students) && data.students.length > 0) { setStudents(data.students.map((s: Record<string, string>) => ({ id: s.id, name: s.name, nisn: s.nisn || '' }))); return; } }
       } catch { /* fallback */ }
-      setStudents(MOCK_STUDENTS);
+      setStudents([]);
     })();
     return () => controller.abort();
   }, [classId, user?.schoolId]);
@@ -868,7 +864,7 @@ export function GuruKarakterView() {
           }
         }
       } catch { /* fallback */ }
-      setRatings(MOCK_HABIT_RATINGS.map((r) => ({ ...r })));
+      setRatings([]);
     })();
     return () => controller.abort();
   }, [studentId, classId, user?.schoolId]);
@@ -984,7 +980,7 @@ export function GuruRekapKarakterView() {
   const user = useAppStore((s) => s.user);
   const [classId, setClassId] = useState('c1');
   const [month, setMonth] = useState(currentMonth());
-  const [data, setData] = useState(MOCK_REKAP_KARAKTER);
+  const [data, setData] = useState<typeof MOCK_REKAP_KARAKTER[number][]>([]);
   const [sortField, setSortField] = useState<'name' | 'score'>('score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [detailOpen, setDetailOpen] = useState(false);
@@ -1000,8 +996,8 @@ export function GuruRekapKarakterView() {
       try {
         const res = await fetch(`/api/character-reports?schoolId=${user?.schoolId ?? ''}&classId=${classId}&month=${month}`, { signal: controller.signal });
         if (res.ok) { const json = await res.json(); if (Array.isArray(json.rekap) && json.rekap.length > 0) { setData(json.rekap); return; } }
-      } catch { /* use mock */ }
-      setData(MOCK_REKAP_KARAKTER);
+      } catch { /* fallback */ }
+      setData([]);
     })();
     return () => controller.abort();
   }, [classId, month, user?.schoolId]);
@@ -1204,7 +1200,7 @@ export function GuruRekapKarakterView() {
 
 export function GuruJurnalView() {
   const user = useAppStore((s) => s.user);
-  const [journals, setJournals] = useState<JournalEntry[]>(MOCK_JOURNALS);
+  const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [classFilter, setClassFilter] = useState('');

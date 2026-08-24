@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
 import { generateTempPassword } from '@/lib/temp-password';
 import { requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -61,7 +62,11 @@ export async function POST(request: Request) {
     const body: ImportRequest = await request.json();
     const { schoolId, data } = body;
 
-    if (!schoolId) { return NextResponse.json({ error: 'schoolId wajib diisi.' }, { status: 401 }); }
+    if (!schoolId) { return NextResponse.json({ error: 'schoolId wajib diisi.' }, { status: 400 }); }
+
+    // P2: Enforce school scope — non-SA must import to their own school
+    requireSchoolScope(auth, schoolId);
+
     const school = await db.school.findUnique({ where: { id: schoolId } });
     if (!school) { return NextResponse.json({ error: 'Sekolah tidak ditemukan.' }, { status: 401 }); }
     if (!data || !data.data) { return NextResponse.json({ error: 'Data impor tidak ditemukan.' }, { status: 400 }); }

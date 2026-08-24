@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
 import { requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 function getFirstName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
@@ -29,8 +30,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const type = formData.get('type') as string | null;
-    const schoolId = formData.get('schoolId') as string | null;
+    let schoolId = formData.get('schoolId') as string | null;
     if (!file || !type || !schoolId) { return NextResponse.json({ success: false, message: 'File, tipe, dan schoolId diperlukan' }, { status: 400 }); }
+
+    // P2: Enforce school scope — non-SA must import to their own school
+    const effectiveSchoolId = getSchoolFilter(auth) || schoolId;
+    requireSchoolScope(auth, effectiveSchoolId);
+    schoolId = effectiveSchoolId;
     if (!['siswa', 'guru'].includes(type)) { return NextResponse.json({ success: false, message: 'Tipe harus \"siswa\" atau \"guru\"' }, { status: 400 }); }
 
     const text = await file.text(); const { headers, rows } = parseCsv(text);

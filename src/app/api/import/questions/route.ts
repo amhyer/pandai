@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 import mammoth from 'mammoth';
 
 // ─── FORMAT YANG DIDUKUT ────────────────────────────────────────
@@ -183,8 +184,13 @@ export async function POST(request: Request) {
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const subjectId = formData.get('subjectId') as string | null;
-    const schoolId = (formData.get('schoolId') as string | null) || null;
+    let schoolId = (formData.get('schoolId') as string | null) || null;
     const topicId = formData.get('topicId') as string | null;
+
+    // P2: Enforce school scope — non-SA must import to their own school
+    const effectiveSchoolId = getSchoolFilter(auth) || schoolId;
+    if (schoolId) requireSchoolScope(auth, schoolId);
+    schoolId = effectiveSchoolId || null;
 
     if (!file) {
       return NextResponse.json({ success: false, message: 'File wajib diupload' }, { status: 400 });

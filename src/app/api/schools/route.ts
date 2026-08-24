@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter } from '@/lib/scope';
 
 export async function GET(request: Request) {
   try {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const schoolF = getSchoolFilter(auth);
+    const where: Record<string, unknown> = { status: { not: 'deleted' } };
+    if (schoolF) where.id = schoolF;
     const schools = await db.school.findMany({
-      where: { status: { not: 'deleted' } },
+      where,
       include: {
         _count: { select: { users: true, classes: true, questions: true } },
         subscriptions: { where: { status: 'active' }, orderBy: { startDate: 'desc' }, take: 1 },
