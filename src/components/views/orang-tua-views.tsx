@@ -1931,22 +1931,8 @@ export function OrtuLaporanView() {
   }
 
   async function fetchRecentDownloads() {
-    try {
-      const res = await fetch(`/api/reports/downloads?studentId=${selectedChild}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRecentDownloads(data.downloads ?? []);
-        return;
-      }
-    } catch {
-      // silent
-    }
-    setRecentDownloads([
-      { id: 'd1', fileName: 'Laporan_Nilai_Bulanan_Januari_2025.pdf', type: 'Laporan Nilai Bulanan', downloadedAt: '2025-01-20 14:30' },
-      { id: 'd2', fileName: 'Laporan_Peringkat_Desember_2024.pdf', type: 'Laporan Peringkat', downloadedAt: '2025-01-15 09:15' },
-      { id: 'd3', fileName: 'Laporan_Kehadiran_Desember_2024.pdf', type: 'Laporan Kehadiran', downloadedAt: '2025-01-10 16:45' },
-      { id: 'd4', fileName: 'Laporan_Per_Mapel_Fisika.pdf', type: 'Laporan Per Mata Pelajaran', downloadedAt: '2025-01-08 11:00' },
-    ]);
+    // P1-11: No download history backend exists yet; show empty state
+    setRecentDownloads([]);
   }
 
   function handleDownloadPDF(reportId: string, reportTitle: string) {

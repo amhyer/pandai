@@ -114,11 +114,12 @@ export async function GET(
 
     const questions = examItems.map((item, idx) => {
       const q = item.question;
-      const includeAnswers = auth.role !== 'SISWA' || review;
+      // P1-12: KEPALA_SEKOLAH gets aggregate results only, not answer keys
+      const includeAnswers = (auth.role !== 'SISWA' && auth.role !== 'KEPALA_SEKOLAH') || review;
       let result = buildQuestion(q, item, idx, includeAnswers);
 
       // For SISWA taking exam (not review): strip isCorrect from options
-      if (auth.role === 'SISWA' && !review && q.options) {
+      if ((auth.role === 'SISWA' || auth.role === 'KEPALA_SEKOLAH') && !review && q.options) {
         try {
           const parsed = JSON.parse(q.options);
           const cleaned = parsed.map((o: any) => {

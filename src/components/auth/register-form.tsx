@@ -15,7 +15,7 @@ import {
   Upload, Database, FileSpreadsheet, AlertCircle, Download, ArrowLeft, ChevronRight, Check
 } from 'lucide-react';
 
-type RegisterRole = 'SISWA' | 'GURU' | 'ADMIN_SCHOOL';
+type RegisterRole = 'SISWA' | 'ORANG_TUA';
 
 interface DapodikSchool {
   npsn: string;
@@ -38,8 +38,7 @@ interface DapodikSchool {
 
 const ROLE_CARDS = [
   { value: 'SISWA' as RegisterRole, icon: GraduationCap, label: 'Siswa', desc: 'Pelajar sekolah', gradient: 'from-amber-400 to-orange-400', ring: 'ring-amber-200', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-800', subtext: 'text-amber-600' },
-  { value: 'GURU' as RegisterRole, icon: BookOpen, label: 'Guru', desc: 'Pengajar mata pelajaran', gradient: 'from-sky-400 to-blue-500', ring: 'ring-sky-200', bg: 'bg-sky-50', border: 'border-sky-300', text: 'text-sky-800', subtext: 'text-sky-600' },
-  { value: 'ADMIN_SCHOOL' as RegisterRole, icon: Building2, label: 'Admin Sekolah', desc: 'Kelola sekolah & data', gradient: 'from-emerald-400 to-teal-500', ring: 'ring-emerald-200', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800', subtext: 'text-emerald-600' },
+  { value: 'ORANG_TUA' as RegisterRole, icon: User, label: 'Orang Tua', desc: 'Orang tua/wali siswa', gradient: 'from-emerald-400 to-teal-500', ring: 'ring-emerald-200', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800', subtext: 'text-emerald-600' },
 ];
 
 export function RegisterForm() {

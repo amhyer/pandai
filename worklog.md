@@ -2879,3 +2879,7 @@ Stage Summary:
 - 2/9 P0 findings fixed in this session (P0-04, P0-09)
 - Files modified: orang-tua-dashboard.tsx, kepsek/class-map/route.ts, kepsek/dashboard/route.ts
 - No FASE 1 security regressions introduced
+__workspace_agent_exit_code=$?
+printf "\n<<workspace_agent_exit_code:1787545203358:%s>>\n" "$__workspace_agent_exit_code"
+__workspace_agent_exit_code=$?
+printf "\n<<workspace_agent_exit_code:1787545791410:%s>>\n" "$__workspace_agent_exit_code"

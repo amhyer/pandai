@@ -194,7 +194,7 @@ export function AdminSekolahDashboard() {
           name: e.title || e.name || 'Tryout',
           date: e.startDate || e.createdAt,
           status: e.status === 'published' ? 'in_progress' as const : 'scheduled' as const,
-          participants: e._count?.assignments || 0,
+          participants: e._count?.examSessions || 0,
           subject: e.subject || 'Tryout',
         }));
         setUpcomingExams(mapped.slice(0, 5));

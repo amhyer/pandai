@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { searchParams } = new URL(req.url);
     const schoolId = searchParams.get('schoolId');
     const teacherId = searchParams.get('teacherId');
     const classId = searchParams.get('classId');
 
+    // P1-02: Enforce school scope on GET
+    const schoolF = getSchoolFilter(auth);
+    const effectiveSchoolId = schoolF || (schoolId && auth.role === 'SUPER_ADMIN' ? schoolId : null);
+
     const where: Record<string, unknown> = {};
-    if (schoolId) where.schoolId = schoolId;
+    if (effectiveSchoolId) where.schoolId = effectiveSchoolId;
     if (teacherId) where.teacherId = teacherId;
     if (classId) where.classId = classId;
 
@@ -28,7 +33,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(enriched);
   } catch (error) {
-    if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
     console.error('GET /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal mengambil data penugasan' }, { status: 500 });
   }
@@ -36,17 +41,22 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const body = await req.json();
-    const { teacherId, subjectId, classId, schoolId, academicYear, semester } = body;
-    if (!teacherId || !schoolId) { return NextResponse.json({ error: 'Guru dan sekolah wajib diisi' }, { status: 400 }); }
+    const { teacherId, subjectId, classId, schoolId: bodySchoolId, academicYear, semester } = body;
+    if (!teacherId) { return NextResponse.json({ error: 'Guru wajib diisi' }, { status: 400 }); }
+
+    // P1-02: Use auth schoolId, verify scope if client provides one
+    const schoolId = getSchoolFilter(auth) || bodySchoolId;
+    if (!schoolId) { return NextResponse.json({ error: 'Sekolah wajib diisi' }, { status: 400 }); }
+    if (bodySchoolId) requireSchoolScope(auth, bodySchoolId);
 
     const assignment = await db.teacherAssignment.create({
       data: { teacherId, subjectId: subjectId || null, classId: classId || null, schoolId, academicYear: academicYear || '2024/2025', semester: semester || 'Ganjil' },
     });
     return NextResponse.json(assignment, { status: 201 });
   } catch (error) {
-    if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
     console.error('POST /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal membuat penugasan' }, { status: 500 });
   }
@@ -54,10 +64,15 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const body = await req.json();
     const { id, subjectId, classId, academicYear, semester } = body;
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // P1-02: Verify school scope before update
+    const existing = await db.teacherAssignment.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Tidak ditemukan' }, { status: 404 });
+    if (existing.schoolId) { try { requireSchoolScope(auth, existing.schoolId); } catch { throw new AuthError('Akses ditolak', 403); } }
 
     const assignment = await db.teacherAssignment.update({
       where: { id },
@@ -65,7 +80,7 @@ export async function PATCH(req: NextRequest) {
     });
     return NextResponse.json(assignment);
   } catch (error) {
-    if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
     console.error('PATCH /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal mengupdate penugasan' }, { status: 500 });
   }
@@ -73,14 +88,20 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
+
+    // P1-02: Verify school scope before delete
+    const existing = await db.teacherAssignment.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Tidak ditemukan' }, { status: 404 });
+    if (existing.schoolId) { try { requireSchoolScope(auth, existing.schoolId); } catch { throw new AuthError('Akses ditolak', 403); } }
+
     await db.teacherAssignment.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
     console.error('DELETE /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal menghapus penugasan' }, { status: 500 });
   }

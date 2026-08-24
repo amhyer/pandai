@@ -304,7 +304,7 @@ export function KepalaSekolahDashboard() {
                     <TableHead className="text-xs font-semibold">Kelas</TableHead>
                     <TableHead className="text-xs font-semibold text-center">Siswa</TableHead>
                     <TableHead className="text-xs font-semibold text-center">Kehadiran</TableHead>
-                    <TableHead className="text-xs font-semibold text-center">Nilai Rata-rata</TableHead>
+                    <TableHead className="text-xs font-semibold text-center">Nilai Eksternal</TableHead>
                     <TableHead className="text-xs font-semibold text-center">Kebiasaan (/4)</TableHead>
                     <TableHead className="text-xs font-semibold text-center">Status</TableHead>
                   </TableRow>

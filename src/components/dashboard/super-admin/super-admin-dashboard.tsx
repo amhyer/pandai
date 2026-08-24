@@ -57,11 +57,10 @@ import {
 
 interface GlobalAnalytics {
   totalSchools: number;
-  activeSchools: number;
   totalStudents: number;
   totalTeachers: number;
   totalQuestions: number;
-  totalExams: number;
+  totalAttempts: number;
   mrr: number;
   monthlyGrowth: { month: string; sekolah: number; siswa: number }[];
   topSchools: {
@@ -206,17 +205,11 @@ export function SuperAdminDashboard() {
   const today = new Date();
   const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Mock recent activity
-  const recentActivities: RecentActivity[] = [
-    { id: '1', action: 'Sekolah baru terdaftar', detail: 'SMA Negeri 3 Bandung bergabung', time: '15 menit lalu', icon: <UserPlus className="h-4 w-4 text-white" />, color: 'bg-emerald-500' },
-    { id: '2', action: 'Tryout baru dibuat', detail: 'TKA Prediksi Akhir Tahun oleh Guru Matematika', time: '1 jam lalu', icon: <FilePlus className="h-4 w-4 text-white" />, color: 'bg-[#1F3864]' },
-    { id: '3', action: '500 soal baru ditambahkan', detail: 'Bank soal NALAR diperbarui otomatis', time: '3 jam lalu', icon: <BookOpen className="h-4 w-4 text-white" />, color: 'bg-amber-500' },
-    { id: '4', action: 'Laporan bulanan dikirim', detail: 'Report Mei 2025 tersedia untuk unduh', time: '6 jam lalu', icon: <BarChart3 className="h-4 w-4 text-white" />, color: 'bg-purple-500' },
-    { id: '5', action: 'Pengaturan diperbarui', detail: 'Konfigurasi limit tryout diubah', time: '1 hari lalu', icon: <Settings className="h-4 w-4 text-white" />, color: 'bg-red-500' },
-  ];
+  const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
 
   useEffect(() => {
     fetchAnalytics();
+    fetchRecentActivities();
   }, []);
 
   async function fetchAnalytics() {
@@ -231,6 +224,56 @@ export function SuperAdminDashboard() {
       toast.error('Gagal memuat data analytics');
     } finally {
       setLoading(false);
+    }
+  }
+
+  function getRelativeTime(dateStr: string): string {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (minutes < 1) return 'Baru saja';
+    if (minutes < 60) return `${minutes} menit lalu`;
+    if (hours < 24) return `${hours} jam lalu`;
+    return `${days} hari lalu`;
+  }
+
+  function getActivityStyle(module: string | null | undefined): { icon: React.ReactNode; color: string } {
+    const m = (module || '').toLowerCase();
+    if (m.includes('user') || m.includes('school') || m.includes('auth'))
+      return { icon: <UserPlus className="h-4 w-4 text-white" />, color: 'bg-emerald-500' };
+    if (m.includes('exam') || m.includes('attempt') || m.includes('tryout'))
+      return { icon: <FilePlus className="h-4 w-4 text-white" />, color: 'bg-[#1F3864]' };
+    if (m.includes('question') || m.includes('soal') || m.includes('bank'))
+      return { icon: <BookOpen className="h-4 w-4 text-white" />, color: 'bg-amber-500' };
+    if (m.includes('report') || m.includes('analytics') || m.includes('rapor'))
+      return { icon: <BarChart3 className="h-4 w-4 text-white" />, color: 'bg-purple-500' };
+    return { icon: <Settings className="h-4 w-4 text-white" />, color: 'bg-sky-500' };
+  }
+
+  async function fetchRecentActivities() {
+    try {
+      const res = await apiClient('/api/activity-logs?limit=5');
+      if (res.ok) {
+        const json = await res.json();
+        const logs = Array.isArray(json.data) ? json.data : [];
+        const mapped: RecentActivity[] = logs.map((log: any) => {
+          const style = getActivityStyle(log.module);
+          return {
+            id: log.id,
+            action: log.action,
+            detail: log.detail || '',
+            time: getRelativeTime(log.createdAt),
+            icon: style.icon,
+            color: style.color,
+          };
+        });
+        setRecentActivities(mapped);
+      } else {
+        toast.error('Gagal memuat aktivitas terkini');
+      }
+    } catch {
+      toast.error('Gagal memuat aktivitas terkini');
     }
   }
 
@@ -294,7 +337,7 @@ export function SuperAdminDashboard() {
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-6">
         <StatCard
           title="Total Sekolah"
-          value={loading ? '' : formatNumber(analytics?.activeSchools ?? 0)}
+          value={loading ? '' : formatNumber(analytics?.totalSchools ?? 0)}
           icon={<School className="h-5 w-5" />}
           description="aktif berlangganan"
           isLoading={loading}
@@ -343,10 +386,10 @@ export function SuperAdminDashboard() {
           gradientTo="to-red-600"
         />
         <StatCard
-          title="Total Tryout"
-          value={loading ? '' : formatNumber(analytics?.totalExams ?? 0)}
+          title="Total Percobaan"
+          value={loading ? '' : formatNumber(analytics?.totalAttempts ?? 0)}
           icon={<ClipboardList className="h-5 w-5" />}
-          description="dibuat"
+          description="pengerjaan tryout"
           isLoading={loading}
           onClick={() => navigateTo('reports-global' as ViewType)}
           gradientFrom="from-sky-500"
@@ -583,6 +626,12 @@ export function SuperAdminDashboard() {
           </div>
         </CardHeader>
         <CardContent>
+          {recentActivities.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+              <Clock className="h-8 w-8 text-muted-foreground/40" />
+              <p className="mt-2 text-sm">Belum ada aktivitas terkini</p>
+            </div>
+          ) : (
           <div className="pl-1">
             {recentActivities.map((activity, idx) => (
               <TimelineItem
@@ -592,6 +641,7 @@ export function SuperAdminDashboard() {
               />
             ))}
           </div>
+          )}
         </CardContent>
       </Card>
     </div>

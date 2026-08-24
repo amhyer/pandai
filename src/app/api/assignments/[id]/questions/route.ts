@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 // POST /api/assignments/[id]/questions — add questions to assignment
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { id } = await params;
     const body = await req.json();
     const { questionIds, replaceAll } = body;
@@ -20,8 +21,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       return NextResponse.json({ error: 'Tidak bisa mengubah soal — sudah ada siswa yang mengerjakan' }, { status: 403 });
     }
 
-    const assignment = await db.assignment.findUnique({ where: { id }, select: { maxScore: true } });
+    // P1-03: Verify assignment belongs to auth school
+    const assignment = await db.assignment.findUnique({ where: { id }, select: { maxScore: true, schoolId: true } });
     if (!assignment) return NextResponse.json({ error: 'Tugas tidak ditemukan' }, { status: 404 });
+    if (assignment.schoolId) { try { requireSchoolScope(auth, assignment.schoolId); } catch { throw new AuthError('Akses ditolak', 403); } }
 
     if (replaceAll) {
       await db.assignmentQuestion.deleteMany({ where: { assignmentId: id } });
@@ -53,7 +56,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 // DELETE /api/assignments/[id]/questions — remove a question
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { id } = await params;
     const { searchParams } = new URL(req.url);
     const questionId = searchParams.get('questionId');
@@ -63,6 +66,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     if (subCount > 0) {
       return NextResponse.json({ error: 'Tidak bisa menghapus soal — sudah ada siswa yang mengerjakan' }, { status: 403 });
     }
+
+    // P1-03: Verify assignment belongs to auth school
+    const assignment = await db.assignment.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!assignment) return NextResponse.json({ error: 'Tugas tidak ditemukan' }, { status: 404 });
+    if (assignment.schoolId) { try { requireSchoolScope(auth, assignment.schoolId); } catch { throw new AuthError('Akses ditolak', 403); } }
 
     await db.assignmentQuestion.delete({ where: { assignmentId_questionId: { assignmentId: id, questionId } } });
     return NextResponse.json({ success: true });

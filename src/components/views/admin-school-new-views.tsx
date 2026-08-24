@@ -71,6 +71,7 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { apiClient } from '@/lib/api-client';
 
 // ═══════════════════════════════════════════════════════════════════════
 // TYPES
@@ -131,14 +132,6 @@ const MOCK_SUBJECTS: Subject[] = [
   { id: 's10', code: 'SOS', name: 'Sosiologi', type: 'pilihan', sortOrder: 10 },
 ];
 
-const MOCK_TEACHERS = [
-  { id: 't1', name: 'Budi Santoso, S.Pd.', nip: '198503152010011002' },
-  { id: 't2', name: 'Siti Rahayu, M.Pd.', nip: '198708222012012003' },
-  { id: 't3', name: 'Ahmad Hidayat, S.Si.', nip: '199001102013011001' },
-  { id: 't4', name: 'Dewi Lestari, S.Pd.', nip: '199205182014022001' },
-  { id: 't5', name: 'Rizky Pratama, M.Si.', nip: '198812032011011004' },
-  { id: 't6', name: 'Nurul Aini, S.Pd.', nip: '199107152015012002' },
-];
 
 const MOCK_CLASS_OPTIONS = [
   { id: 'c1', name: 'X IPA 1' },
@@ -169,26 +162,6 @@ const MOCK_BACKUPS: BackupRecord[] = [
   { id: 'b5', fileName: 'backup_2024-12-20_100000.db', fileSize: '2.0 MB', createdAt: '2024-12-20 10:00', records: 15 },
 ];
 
-const MOCK_ACTIVITY_LOGS: ActivityLog[] = [
-  { id: 'al1', timestamp: '2025-01-15 14:32:10', userName: 'Admin Sekolah', action: 'Menambah mata pelajaran', detail: 'Menambahkan mata pelajaran "Seni Budaya" ke sistem', module: 'Lainnya' },
-  { id: 'al2', timestamp: '2025-01-15 13:15:45', userName: 'Budi Santoso, S.Pd.', action: 'Mengedit soal', detail: 'Mengubah soal nomor 5 pada bank soal Matematika', module: 'Soal' },
-  { id: 'al3', timestamp: '2025-01-15 11:08:22', userName: 'Admin Sekolah', action: 'Membuat ujian', detail: 'Membuat ujian "UTS Matematika Ganjil" untuk kelas X IPA 1', module: 'Ujian' },
-  { id: 'al4', timestamp: '2025-01-15 10:45:00', userName: 'Admin Sekolah', action: 'Menambah pengguna', detail: 'Mendaftarkan siswa baru "Ahmad Rizky" ke kelas X IPA 1', module: 'Pengguna' },
-  { id: 'al5', timestamp: '2025-01-14 16:20:33', userName: 'Siti Rahayu, M.Pd.', action: 'Menginput nilai', detail: 'Menginput nilai ulangan harian Bahasa Indonesia kelas X IPA 1', module: 'Kelas' },
-  { id: 'al6', timestamp: '2025-01-14 14:10:18', userName: 'Admin Sekolah', action: 'Mengedit kelas', detail: 'Mengubah nama kelas "X IPA 3" menjadi "X IPA 2"', module: 'Kelas' },
-  { id: 'al7', timestamp: '2025-01-14 11:05:42', userName: 'Ahmad Hidayat, S.Si.', action: 'Menambah soal', detail: 'Menambahkan 10 soal baru ke bank soal Fisika', module: 'Soal' },
-  { id: 'al8', timestamp: '2025-01-14 09:30:00', userName: 'Admin Sekolah', action: 'Menghapus soal', detail: 'Menghapus 3 soal duplikat dari bank soal Kimia', module: 'Soal' },
-  { id: 'al9', timestamp: '2025-01-13 15:45:11', userName: 'Dewi Lestari, S.Pd.', action: 'Membuat ujian', detail: 'Membuat ujian "Kuis Bahasa Inggris Bab 3" untuk kelas XII IPA 1', module: 'Ujian' },
-  { id: 'al10', timestamp: '2025-01-13 13:22:05', userName: 'Admin Sekolah', action: 'Mengedit pengguna', detail: 'Mengubah data NIP guru "Rizky Pratama, M.Si."', module: 'Pengguna' },
-  { id: 'al11', timestamp: '2025-01-13 10:15:30', userName: 'Admin Sekolah', action: 'Menambah kelas', detail: 'Menambahkan kelas baru "XI IPS 2" untuk tahun ajaran 2024/2025', module: 'Kelas' },
-  { id: 'al12', timestamp: '2025-01-12 16:00:00', userName: 'Rizky Pratama, M.Si.', action: 'Mengedit soal', detail: 'Memperbarui 5 soal pada bank soal Kimia dengan pembahasan', module: 'Soal' },
-  { id: 'al13', timestamp: '2025-01-12 14:30:22', userName: 'Admin Sekolah', action: 'Membuat backup', detail: 'Membuat backup database otomatis (2.3 MB, 19 rekaman)', module: 'Lainnya' },
-  { id: 'al14', timestamp: '2025-01-12 11:20:45', userName: 'Nurul Aini, S.Pd.', action: 'Menginput nilai', detail: 'Menginput nilai tugas Biologi kelas XI IPA 1', module: 'Kelas' },
-  { id: 'al15', timestamp: '2025-01-11 09:45:10', userName: 'Admin Sekolah', action: 'Menghapus pengguna', detail: 'Menonaktifkan akun siswa "Dina Safitri" (pindah sekolah)', module: 'Pengguna' },
-  { id: 'al16', timestamp: '2025-01-11 08:30:00', userName: 'Admin Sekolah', action: 'Memulihkan data', detail: 'Memulihkan database dari backup tanggal 2025-01-05', module: 'Lainnya' },
-  { id: 'al17', timestamp: '2025-01-10 15:10:33', userName: 'Budi Santoso, S.Pd.', action: 'Membuat ujian', detail: 'Membuat ujian "UAS Matematika" untuk kelas X IPA 1 & 2', module: 'Ujian' },
-  { id: 'al18', timestamp: '2025-01-10 12:00:00', userName: 'Siti Rahayu, M.Pd.', action: 'Menambah soal', detail: 'Menambahkan 15 soal essay ke bank soal Bahasa Indonesia', module: 'Soal' },
-];
 
 // ═══════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -795,6 +768,7 @@ export function TeacherAssignmentsView() {
   const [filterSubject, setFilterSubject] = useState('semua');
   const [filterClass, setFilterClass] = useState('semua');
   const [teacherSearch, setTeacherSearch] = useState('');
+  const [teachers, setTeachers] = useState<Array<{id:string;name:string;nip?:string|null}>>([]);
 
   // Form state
   const [formTeacher, setFormTeacher] = useState('');
@@ -843,20 +817,33 @@ export function TeacherAssignmentsView() {
     fetchAssignments();
   }, [fetchAssignments]);
 
+  useEffect(() => {
+    async function loadTeachers() {
+      try {
+        const res = await apiClient(`/api/users?role=GURU&schoolId=${user?.schoolId ?? ''}`);
+        const json = await res.json();
+        const list = (Array.isArray(json) ? json : json.data ?? []).map((u: Record<string, unknown>) => ({
+          id: u.id as string,
+          name: (u.name as string) ?? '-',
+          nip: (u.nip as string) ?? null,
+        }));
+        setTeachers(list);
+      } catch {
+        // apiClient handles 401; silently keep empty list
+      }
+    }
+    loadTeachers();
+  }, [user?.schoolId]);
+
   const uniqueTeachers = useMemo(() => {
-    const seen = new Set<string>();
-    return MOCK_TEACHERS.filter((t) => {
-      if (seen.has(t.id)) return false;
-      seen.add(t.id);
-      return true;
-    });
-  }, []);
+    return teachers;
+  }, [teachers]);
 
   const filteredTeachers = useMemo(() => {
     if (!teacherSearch.trim()) return uniqueTeachers;
     const q = teacherSearch.toLowerCase();
     return uniqueTeachers.filter(
-      (t) => t.name.toLowerCase().includes(q) || t.nip.includes(q)
+      (t) => t.name.toLowerCase().includes(q) || (t.nip && t.nip.includes(q))
     );
   }, [uniqueTeachers, teacherSearch]);
 
@@ -919,7 +906,7 @@ export function TeacherAssignmentsView() {
       return;
     }
     setSaving(true);
-    const teacher = MOCK_TEACHERS.find((t) => t.id === formTeacher);
+    const teacher = teachers.find((t) => t.id === formTeacher);
     const subject = MOCK_SUBJECTS.find((s) => s.id === formSubject);
     const cls = MOCK_CLASS_OPTIONS.find((c) => c.id === formClass);
 
@@ -970,7 +957,7 @@ export function TeacherAssignmentsView() {
       return;
     }
     setSaving(true);
-    const teacher = MOCK_TEACHERS.find((t) => t.id === batchTeacher);
+    const teacher = teachers.find((t) => t.id === batchTeacher);
     const subject = MOCK_SUBJECTS.find((s) => s.id === batchSubject);
 
     const newAssignments: TeacherAssignment[] = selectedClasses.map((classId) => {
@@ -1933,12 +1920,14 @@ export function ActivityLogView() {
           detail: (l.detail as string) ?? '-',
           module: (l.module as ActivityLog['module']) ?? 'Lainnya',
         }));
-        setLogs(rawData.length > 0 ? rawData : MOCK_ACTIVITY_LOGS);
+        setLogs(rawData);
       } else {
-        setLogs(MOCK_ACTIVITY_LOGS);
+        setLogs([]);
+        toast.error('Gagal memuat log aktivitas');
       }
     } catch {
-      setLogs(MOCK_ACTIVITY_LOGS);
+      setLogs([]);
+      toast.error('Gagal memuat log aktivitas');
     } finally {
       setLoading(false);
     }
