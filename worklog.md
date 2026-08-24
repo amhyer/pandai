@@ -2929,3 +2929,47 @@ Stage Summary:
 - 1 pre-existing syntax bug fixed (exams/route.ts missing paren)
 - FASE 1 regression: 30/30 effective PASS
 - All P0 + P1 audit findings now resolved
+
+---
+Task ID: FASE-3.3
+Agent: main
+Task: FASE 3.3 — P2 Remediation (Security, Mock Data, Validation)
+
+Work Log:
+- Git checkpoint: main, HEAD 7d053b8
+- Full inventory of all P2 findings from FASE 2 audit (3 subagent audits)
+- Fixed 6 P2 security/scope routes
+- Fixed P2 email validation in register
+- Removed 11 mock data sources across 5 view files
+- All changes verified: lint PASS, build PASS, 30/30 regression, 3/3 P2 security
+
+P2 Security/Scope Fixes:
+- /api/import/questions: getSchoolFilter + requireSchoolScope
+- /api/import/csv: getSchoolFilter + requireSchoolScope
+- /api/dapodik/import: requireSchoolScope on schoolId
+- /api/schools GET: getSchoolFilter filters ADMIN_SCHOOL to own school
+- /api/exam-session/[sessionId]: requireSchoolScope for GURU/ADMIN/KEPALA
+- /api/dapodik/connector/download: requireRole restricted to SA/ADMIN_SCHOOL
+
+P2 Validation:
+- /api/auth/register: email format regex validation added
+
+P2 Mock Data Removed (5 files, 11 sources):
+- admin-school-new-views.tsx: MOCK_SUBJECTS/MOCK_CLASS_OPTIONS in forms → real API data; MOCK_ASSIGNMENTS/MOCK_BACKUPS fallbacks → empty states
+- guru-new-views.tsx: MOCK_REKAP, MOCK_REKAP_KARAKTER, MOCK_TUGAS, MOCK_STUDENTS, MOCK_HABIT_RATINGS, MOCK_JOURNALS → empty initial states/fallbacks
+- kepsek-peta-kelas-view.tsx: MOCK class-map fallback → error state
+- siswa-new-views.tsx: MOCK_SUBJECTS, MOCK_TASKS, generateMockAttendance fallbacks → empty states
+- ortu-new-views.tsx: inline habit summary mock → empty array
+
+P2 Findings NOT Fixed (deferred/low priority):
+- Error handling: non-audit silent catch blocks (32 instances, fire-and-forget logAccess — low risk)
+- catch (error: any): 12 instances across 10 files (P3)
+- Attendance utility: formula duplicated 5x but identical (P3, no drift)
+- Dead code: kepsek-peta-kelas unreachable, orphan APIs (P3)
+
+Stage Summary:
+- 6 security scope fixes (cross-school data leak prevention)
+- 1 validation fix (email format)
+- 11 mock data sources removed across 5 files
+- 0 security regressions
+- Git commit: 286b068
