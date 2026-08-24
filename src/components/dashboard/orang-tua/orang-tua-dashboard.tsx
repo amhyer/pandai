@@ -216,35 +216,65 @@ export function OrangTuaDashboard() {
       setLoading(true);
       // Fetch children data from API
       const res = await apiClient(`/api/users?parentId=${user.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setChildren(data.map((c: any) => ({
+      if (!res.ok) {
+        setChildren([]);
+        return;
+      }
+      const data = await res.json();
+      if (!Array.isArray(data) || data.length === 0) {
+        setChildren([]);
+        return;
+      }
+
+      // P0-04: Fetch real analytics + attendance per child
+      const enriched = await Promise.all(
+        data.map(async (c: any) => {
+          let avgScore = 0;
+          let totalExams = 0;
+          let attendance = 0;
+
+          // Fetch student analytics (avgScore, totalExams)
+          try {
+            const aRes = await apiClient(`/api/analytics?type=student&userId=${c.id}`);
+            if (aRes.ok) {
+              const aData = await aRes.json();
+              avgScore = aData.avgCorrect ?? 0;
+              totalExams = aData.totalExams ?? 0;
+            }
+          } catch {}
+
+          // Fetch attendance records and calculate %
+          try {
+            const attRes = await apiClient(`/api/attendance?studentId=${c.id}`);
+            if (attRes.ok) {
+              const attData = await attRes.json();
+              if (Array.isArray(attData)) {
+                const hadir = attData.filter((a: any) => a.status === 'hadir').length;
+                const totalSchoolDays = attData.filter(
+                  (a: any) => a.status === 'hadir' || a.status === 'izin' || a.status === 'sakit' || a.status === 'alpa'
+                ).length;
+                attendance = totalSchoolDays > 0 ? Math.round((hadir / totalSchoolDays) * 100) : 0;
+              }
+            }
+          } catch {}
+
+          return {
             id: c.id,
             name: c.name,
             className: c.class?.name || '-',
-            avgScore: 72.5,
-            totalExams: 8,
-            attendance: 95,
-            lastActive: '2 jam lalu',
-          })));
-        } else {
-          setChildren([]);
-        }
-      }
+            avgScore,
+            totalExams,
+            attendance,
+            lastActive: c.lastLogin
+              ? new Date(c.lastLogin).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+              : '-',
+          };
+        })
+      );
+
+      setChildren(enriched);
     } catch {
-      // Fallback to mock data
-      setChildren([
-        {
-          id: '1',
-          name: 'Ahmad Rizky Pratama',
-          className: 'XII IPA 1',
-          avgScore: 72.5,
-          totalExams: 8,
-          attendance: 95,
-          lastActive: '2 jam lalu',
-        },
-      ]);
+      setChildren([]);
     } finally {
       setLoading(false);
     }

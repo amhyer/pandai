@@ -111,9 +111,12 @@ export async function GET(req: NextRequest) {
       studentsByClass.set(s.classId, arr);
     }
 
+    // P0-09: Only count school-day statuses (exclude 'weekend'/'none') to match Siswa/Ortu calculation
+    const SCHOOL_DAY_STATUSES = new Set(['hadir', 'izin', 'sakit', 'alpa']);
     const attByClass = new Map<string, { hadir: number; total: number; maxUpdated: Date | null }>();
     for (const a of attendanceRecords) {
       if (!a.classId) continue;
+      if (!SCHOOL_DAY_STATUSES.has(a.status)) continue; // skip weekend/none
       const e = attByClass.get(a.classId) || { hadir: 0, total: 0, maxUpdated: null };
       e.total += 1;
       if (a.status === 'hadir') e.hadir += 1;

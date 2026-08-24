@@ -83,8 +83,12 @@ export async function GET(req: NextRequest) {
     // FIX: Prisma 6 groupBy._count returns number directly, not { _all: number }
     const studentCountMap = new Map(studentCountsByClass.map((r) => [r.classId, r._count as number]));
 
+    // P0-09: Only count school-day statuses (exclude 'weekend'/'none') to match Siswa/Ortu
+    const SCHOOL_DAY_STATUSES = new Set(['hadir', 'izin', 'sakit', 'alpa']);
+    const schoolDayRecords = attendanceRecords.filter((a) => SCHOOL_DAY_STATUSES.has(a.status));
+
     const attendanceByClass = new Map<string, { hadir: number; total: number }>();
-    for (const a of attendanceRecords) {
+    for (const a of schoolDayRecords) {
       if (!a.classId) continue;
       const entry = attendanceByClass.get(a.classId) || { hadir: 0, total: 0 };
       entry.total += 1;
@@ -94,9 +98,9 @@ export async function GET(req: NextRequest) {
 
     // Overall attendance derived from the same batch
     let overallAvgKehadiran: number | null = null;
-    if (attendanceRecords.length > 0) {
+    if (schoolDayRecords.length > 0) {
       overallAvgKehadiran = Math.round(
-        (attendanceRecords.filter((a) => a.status === 'hadir').length / attendanceRecords.length) * 100,
+        (schoolDayRecords.filter((a) => a.status === 'hadir').length / schoolDayRecords.length) * 100,
       );
     }
 
