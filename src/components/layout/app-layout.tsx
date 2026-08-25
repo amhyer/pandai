@@ -200,7 +200,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       { label: 'Materi Pelajaran', view: 'guru-materi', icon: FileText },
       { label: 'Bank Soal', view: 'guru-bank-soal' as ViewType, icon: Database },
       { label: 'Tugas Terstruktur', view: 'guru-tugas', icon: ClipboardList },
-      { label: 'Tryout TKA', view: 'guru-nilai', icon: PenLine }, // Tryout di semua jenjang
+      { label: 'Tryout TKA', view: 'guru-tryout' as ViewType, icon: PenLine }, // Tryout di semua jenjang
     ];
 
     // SMA: tambah Penjurusan
@@ -500,6 +500,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-karakter': 'Rekap Laporan 7 Kebiasaan',
   'guru-rekap-karakter': 'Analisis Kebiasaan Kelas',
   'guru-jurnal': 'Jurnal Mengajar',
+  'guru-tryout': 'Tryout TKA',
   'guru-nilai': 'Input Nilai',
   'guru-analisis': 'Analisis Hasil Belajar',
   'guru-laporan': 'Laporan Siswa',
@@ -580,6 +581,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-karakter': [{ label: VIEW_LABELS['guru-karakter'] }],
     'guru-rekap-karakter': [{ label: VIEW_LABELS['guru-rekap-karakter'] }],
     'guru-jurnal': [{ label: VIEW_LABELS['guru-jurnal'] }],
+    'guru-tryout': [{ label: VIEW_LABELS['guru-tryout'] }],
     'guru-nilai': [{ label: VIEW_LABELS['guru-nilai'] }],
     'guru-analisis': [{ label: VIEW_LABELS['guru-analisis'] }],
     'guru-laporan': [{ label: VIEW_LABELS['guru-laporan'] }],

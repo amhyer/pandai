@@ -43,6 +43,7 @@ export type ViewType =
   | 'guru-karakter'
   | 'guru-rekap-karakter'
   | 'guru-jurnal'
+  | 'guru-tryout'
   | 'guru-nilai'
   | 'guru-analisis'
   | 'guru-laporan'
