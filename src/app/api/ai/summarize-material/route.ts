@@ -61,7 +61,6 @@ Buat output dengan format:
     }
     logError({ error, route: '/api/ai/summarize-material', method: 'POST' });
     console.error('Summarize material error:', error);
-    const msg = error instanceof Error ? error.message : 'Gagal meringkas materi';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal meringkas materi' }, { status: 500 });
   }
 }

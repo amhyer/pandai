@@ -9,12 +9,11 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       db: 'connected',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     return NextResponse.json({
       status: 'degraded',
       timestamp: new Date().toISOString(),
       db: 'disconnected',
-      error: error.message || 'Database connection failed',
     }, { status: 503 });
   }
 }

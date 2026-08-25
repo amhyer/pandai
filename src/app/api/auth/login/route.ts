@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logError({ error, route: '/api/auth/login', method: 'POST' });
     console.error('Login error:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });

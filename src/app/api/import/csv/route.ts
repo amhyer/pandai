@@ -82,8 +82,8 @@ export async function POST(request: Request) {
       }
     }
     return NextResponse.json({ success: true, message: `Import ${type} selesai. ${imported} berhasil, ${failed} gagal.`, imported, failed, ...(errors.length > 0 && { errors }) });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) { return NextResponse.json({ success: false, message: error.message }, { status: error.status }); }
-    return NextResponse.json({ success: false, message: error.message || 'Gagal mengimpor data' }, { status: 500 });
+    return NextResponse.json({ success: false, message: 'Gagal mengimpor data' }, { status: 500 });
   }
 }

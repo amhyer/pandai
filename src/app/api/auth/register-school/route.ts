@@ -92,7 +92,7 @@ export async function POST(request: Request) {
       schoolName: user.school?.name,
       isActive: user.isActive,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logError({ error, route: '/api/auth/register-school', method: 'POST' });
     console.error('Register school error:', error);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });

@@ -70,7 +70,7 @@ export async function POST(request: Request) {
       teacherId: entry.teacherId, teacherName: entry.teacher.name, classId: entry.classId,
       className: entry.class.name, schoolId: entry.schoolId,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
       return NextResponse.json({ error: 'Slot sudah terisi' }, { status: 409 });
@@ -96,7 +96,7 @@ export async function PUT(request: Request) {
       data: { ...(data.day && { day: data.day }), ...(data.slotNumber && { slotNumber: Number(data.slotNumber) }), ...(data.subjectId && { subjectId: data.subjectId }), ...(data.teacherId && { teacherId: data.teacherId }) },
     });
     return NextResponse.json(entry);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) { return NextResponse.json({ error: error.message }, { status: error.status }); }
     return NextResponse.json({ error: 'Gagal memperbarui jadwal' }, { status: 500 });
   }

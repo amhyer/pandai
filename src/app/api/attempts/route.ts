@@ -220,7 +220,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json(attempt);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
@@ -266,7 +266,7 @@ export async function PATCH(request: Request) {
 
     const attempt = await db.studentAttempt.update({ where: { id }, data: updateData });
     return NextResponse.json(attempt);
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }

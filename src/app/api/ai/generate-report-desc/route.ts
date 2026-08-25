@@ -149,7 +149,6 @@ PENTING: Jangan menyebutkan nama siswa atau jenis kelamin dalam deskripsi. Gunak
     }
     logError({ error, route: '/api/ai/generate-report-desc', method: 'POST' });
     console.error('Generate report desc error:', error);
-    const msg = error instanceof Error ? error.message : 'Gagal menghasilkan deskripsi rapor';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal menghasilkan deskripsi rapor' }, { status: 500 });
   }
 }

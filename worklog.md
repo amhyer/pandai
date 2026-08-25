@@ -2973,3 +2973,356 @@ Stage Summary:
 - 11 mock data sources removed across 5 files
 - 0 security regressions
 - Git commit: 286b068
+
+---
+Task ID: 3.4-P2-fix-1
+Agent: general-purpose
+Task: Fix P2-RESIDUAL-1 — Replace MOCK_CLASSES with real API data in guru-new-views.tsx
+
+## Summary
+Replaced hardcoded `MOCK_CLASSES` constant (5 fake classes) with real data fetched from `/api/classes` endpoint across all 5 guru view components.
+
+## Changes Made
+**File:** `src/components/views/guru-new-views.tsx`
+
+1. **Added `useClasses()` hook** (lines 56-93): Module-level cache (1-min TTL) + `fetch('/api/classes?schoolId=...')`. Returns `{ classes: ClassItem[], loading: boolean }`. Auto-aborts on unmount.
+
+2. **Added `ClassPillSelector` component** (lines 95-108): Shared FilterPill wrapper. Shows 3 Skeleton pills while loading, "Belum ada kelas" if empty, or real class pills.
+
+3. **Added `ClassSelect` component** (lines 111-117): Shared Select wrapper for journal dialog. Disabled while loading or empty.
+
+4. **Updated 5 view components** to call `useClasses()` and use the shared components:
+   - `GuruKehadiranView` — class pill selector
+   - `GuruRekapKehadiranView` — class pill selector (initial state changed from `'c1'` to `''`)
+   - `GuruKarakterView` — class pill selector
+   - `GuruRekapKarakterView` — class pill selector (initial state changed from `'c1'` to `''`)
+   - `GuruJurnalView` — ClassSelect in create/edit dialog
+
+5. **Removed** `MOCK_CLASSES` constant declaration entirely.
+
+6. **Preserved** all other MOCK_ constants (MOCK_STUDENTS, MOCK_TUGAS, MOCK_REKAP, etc.) as instructed.
+
+## Verification
+- `npx tsc --noEmit` — zero TypeScript errors in the modified file
+- `rg MOCK_CLASSES guru-new-views.tsx` — zero matches (fully removed)
+- No security behavior changed (uses same `/api/classes` endpoint with GURU school scope enforced server-side)
+- Visual appearance preserved (FilterPill component unchanged)
+
+## Next Actions
+- Remaining MOCK_ constants (MOCK_STUDENTS, MOCK_TUGAS, MOCK_REKAP, etc.) to be handled in separate P2 tasks
+
+---
+Task ID: 3.4-P2-fix-2
+Agent: general-purpose
+Task: FASE 3.4 P2 — Replace MOCK_SUBJECTS fallback with empty state
+
+# P2-RESIDUAL-2 Fix: MOCK_SUBJECTS fallback replaced with empty array
+
+**File:** `src/components/views/admin-school-new-views.tsx`
+**Lines changed:** 318, 321
+
+## Changes
+- Line 318 (non-ok response): `setSubjects(MOCK_SUBJECTS)` → `setSubjects([])`
+- Line 321 (catch block): `setSubjects(MOCK_SUBJECTS)` → `setSubjects([])`
+
+## Rationale
+When `/api/subjects` fails (network error or non-2xx response), the UI previously displayed hardcoded fake subjects (MOCK_SUBJECTS). Now it correctly shows an empty state, which is the expected admin behavior — no phantom data shown to users.
+
+## What was NOT changed
+- MOCK_SUBJECTS constant definition left in place (separate cleanup task)
+- No other logic or rendering code modified
+
+## Verification
+- Both fallback paths now set `subjects` to `[]`, matching the existing empty-state UI rendering path.
+
+---
+Task ID: 3.4-P2-fix-3
+Agent: general-purpose
+Task: P2-RESIDUAL-3 - Replace MOCK_MATERI fallback with empty state in guru-views.tsx
+## Problem
+When /api/materials API call failed, the catch block fell back to setMaterials(MOCK_MATERI), displaying fake hardcoded materials to users.
+
+## Changes
+File: src/components/views/guru-views.tsx (line 453-454)
+- Removed console.warn for mock fallback
+- Changed setMaterials(MOCK_MATERI) to setMaterials([])
+
+## Impact
+- API failure now shows empty materials list instead of fake data.
+- MOCK_MATERI constant left in place for separate dead-code cleanup.
+
+## Verification
+- Catch block now contains only setMaterials([]) with no console.warn.
+
+---
+Task ID: 3.4-P2-fix-4
+Agent: general-purpose
+Task: Fix P2-RESIDUAL-4 — Remove MOCK_SUBJECTS structural template in siswa-new-views.tsx
+
+## Summary
+Removed MOCK_SUBJECTS constant (41 lines, 17 fake materials across 6 subjects) that was used as a structural template to organize API materials. Replaced with API-data-driven grouping logic.
+
+## Problem
+Lines 278-294 used `MOCK_SUBJECTS.map()` to iterate over a hardcoded list of 6 subjects, filtering API data to match. This caused:
+1. Materials for subjects NOT in MOCK_SUBJECTS (e.g. a new subject added in DB) were silently dropped
+2. Subjects with zero materials still appeared in the UI (empty sections)
+3. MOCK_SUBJECTS was the source of truth for which subjects exist, not the API
+
+## Changes
+
+### File: src/components/views/siswa-new-views.tsx
+
+**Deleted:** `MOCK_SUBJECTS` constant (originally lines 160-200, ~41 lines)
+- Contained 17 fake materials hardcoded across 6 subjects (Matematika, Fisika, Kimia, Biologi, B.Indonesia, B.Inggris)
+
+**Replaced:** Material mapping logic (originally lines 278-294)
+- **Before:** `MOCK_SUBJECTS.map(subj => ...)` — iterated hardcoded subjects, filtered API data, kept empty subjects
+- **After:** `Map<string, any[]>` grouping — groups API materials by `m.subject` (string or `m.subject.name`), then builds `SubjectData[]` only for subjects with actual materials
+
+**New logic:**
+1. Groups materials by subject name from API response
+2. For each group, calls `getSubjectConfig(subjectName)` to look up icon/color from `SUBJECT_CONFIGS` (fallback to first config for unknown subjects)
+3. Only subjects with ≥1 material are included in the result
+4. Result shape is unchanged: `SubjectData[]` with `{ id, name, icon, color, bgLight, borderColor, gradientFrom, gradientTo, materials }`
+
+**Preserved:** MOCK_TASKS and generateMockAttendance (separate cleanup scope)
+
+## Verification
+- `npx tsc --noEmit` — zero new errors in siswa-new-views.tsx (pre-existing errors in other files unchanged)
+- `rg MOCK_SUBJECTS src/` — only reference remains in admin-school-new-views.tsx (separate constant, unrelated)
+- `getSubjectConfig()` helper (line 205) reused for fallback display metadata
+
+## Impact
+- Subjects are now driven entirely by API data, not a hardcoded list
+- New subjects added to the database will automatically appear
+- Empty subject sections no longer clutter the UI
+- Unknown subjects fall back to Matematika's icon/color (acceptable degraded experience)
+
+---
+Task ID: 3.4-STEP3
+Agent: error-handling-p3-audit
+Task: P3 Error Handling Audit — catch (error: any), empty catch blocks, stack trace exposure
+
+## Scope
+- Audited all `src/app/api/` route files for: `catch (error: any)`, empty `catch {}`, and `error.message`/`error.stack` exposure to client.
+
+## Changes (16 files)
+
+### `catch (error: any)` → `catch (error: unknown)` (9 files, 12 catch blocks)
+1. **auth/login/route.ts** — outer catch: `any` → `unknown`
+2. **auth/register/route.ts** — outer catch: `any` → `unknown`
+3. **auth/register-school/route.ts** — outer catch: `any` → `unknown`
+4. **attempts/route.ts** — POST + PATCH catch: `any` → `unknown`
+5. **timetable/route.ts** — POST + PUT catch: `any` → `unknown`
+6. **seed/route.ts** — outer catch: `any` → `unknown`
+7. **health/route.ts** — outer catch: `any` → `unknown`
+8. **import/questions/route.ts** — outer + inner loop catch: `any` → `unknown`
+9. **import/csv/route.ts** — outer catch: `any` → `unknown`
+
+### `catch (execError: any)` → `catch (execError: unknown)` (1 file)
+10. **backup/route.ts** — pg_dump catch: `any` → `unknown`
+
+### error.message exposure to client fixed (7 files)
+11. **health/route.ts** — removed `error.message` from 503 response body
+12. **seed/route.ts** — replaced `error.message` concat with generic message
+13. **import/questions/route.ts** — outer: removed `error.message` fallback; inner loop: replaced raw DB error with generic per-question message
+14. **import/csv/route.ts** — removed `error.message ||` fallback
+15. **backup/route.ts** — removed `execError.message` from pg_dump failure response
+
+### error.message exposure in AI routes (5 files, already `unknown` typed)
+16. **ai/chatbot/route.ts** — POST catch: removed `error.message` fallback
+17. **ai/recommend-questions/route.ts** — removed `error.message` fallback
+18. **ai/generate-questions/route.ts** — removed `error.message` fallback
+19. **ai/generate-report-desc/route.ts** — removed `error.message` fallback
+20. **ai/summarize-material/route.ts** — removed `error.message` fallback
+21. **ai/analyze-difficulty/route.ts** — removed `error.message` fallback
+
+## Not Changed (intentionally left as-is)
+- **14 empty `catch {}` blocks** — all are fire-and-forget `logAccess()` calls that don't affect the response. Per rules, left untouched.
+- **`catch { throw new AuthError(...) }`** pattern in exams, assignments, teacher-assignments, exam-session — intentional re-throw for scope enforcement.
+- **`catch { return { table, count: 0 } }`** in backup — graceful degradation for table count query.
+- **`catch {}`** around `JSON.parse` in exam-session — graceful degradation for malformed stored data.
+- **`error instanceof AuthError` → `error.message`** pattern in ~80+ catch blocks — AuthError messages are intentionally user-facing; not internal leak.
+
+## Observations (not in scope)
+- `src/lib/error-log.ts` `handleApiError()` returns `error.message` to client. Would need a separate task to fix (affects non-API callers).
+
+## Lint
+- `bun run lint` passes cleanly.
+
+---
+Task ID: 3.4-STEP4
+Agent: general-purpose
+Task: FASE 3.4 STEP 4 — Orphan/Dead Code Cleanup
+
+## Scope
+- Audited 13 dead MOCK constants/generators across 4 view files
+- Audited 2 orphan API endpoints
+- Audited kepsek-peta-kelas view wiring
+
+## Audit Results
+
+### A. Dead MOCK Constants — ALL REMOVED
+
+**guru-new-views.tsx** (6 items removed, ~58 lines):
+1. MOCK_STUDENTS — 0 refs outside declaration → REMOVED
+2. MOCK_TUGAS — 0 refs outside declaration → REMOVED
+3. MOCK_REKAP — 0 refs outside declaration → REMOVED
+4. MOCK_HABIT_RATINGS — 0 refs outside declaration → REMOVED
+5. MOCK_JOURNALS — 0 refs outside declaration → REMOVED
+6. MOCK_REKAP_KARAKTER — used as `typeof MOCK_REKAP_KARAKTER[number]` at 3 locations (lines 1035, 1039, 1075). Created inline `RekapKarakterItem` interface (line 38), replaced all 3 typeof refs, then REMOVED constant.
+
+**guru-views.tsx** (1 item removed, ~16 lines):
+7. MOCK_MATERI — 0 refs outside declaration → REMOVED (including section comment)
+
+**siswa-new-views.tsx** (2 items removed, ~36 lines):
+8. MOCK_TASKS — 0 refs outside declaration → REMOVED
+9. generateMockAttendance — 0 refs outside declaration → REMOVED (including section comment)
+
+**admin-school-new-views.tsx** (4 items removed, ~47 lines):
+10. MOCK_SUBJECTS — 0 refs outside declaration → REMOVED
+11. MOCK_CLASS_OPTIONS — 0 refs outside declaration → REMOVED
+12. MOCK_ASSIGNMENTS — 0 refs outside declaration → REMOVED
+13. MOCK_BACKUPS — 0 refs outside declaration → REMOVED
+
+### B. Orphan API Endpoints — NOT REMOVED (per rules)
+1. `/api/ai/recommend-questions` — 0 frontend refs. Route file exists, may be called externally. NOT removed.
+2. `/api/ai/config` — 0 frontend refs (no `ai/config` string found anywhere in src/). Route file exists, may be called externally. NOT removed.
+
+### C. kepsek-peta-kelas — NOT ORPHAN (wired but not menu-accessible)
+- Dynamic import in authenticated-app.tsx line 122
+- Type union member in use-store.ts line 81
+- View component exists at src/components/views/kepsek/kepsek-peta-kelas-view.tsx
+- Backed by `/api/kepsek/class-map` API endpoint
+- NOT in KEPALA_SEKOLAH menu navigation (known since FASE 2 audit)
+- Conclusion: Reachable via programmatic navigation, NOT removed.
+
+## Files Modified
+- `src/components/views/guru-new-views.tsx` — removed 6 MOCK constants, added RekapKarakterItem interface, replaced 3 typeof refs
+- `src/components/views/guru-views.tsx` — removed MOCK_MATERI + section comment
+- `src/components/views/siswa-new-views.tsx` — removed MOCK_TASKS, generateMockAttendance + section comment
+- `src/components/views/admin-school-new-views.tsx` — removed MOCK_SUBJECTS, MOCK_CLASS_OPTIONS, MOCK_ASSIGNMENTS, MOCK_BACKUPS + section comment
+
+## Lines Removed
+~157 lines of dead mock data code
+
+## Verification
+- `rg` confirms zero remaining references to any removed constant in src/
+- `bun run lint` passes cleanly (0 errors, 0 warnings)
+- RekapKarakterItem interface verified at 4 locations (1 declaration + 3 usages)
+
+---
+Task ID: 3.4-STEP5
+Agent: nav-cleanup-audit
+Task: FASE 3.4 STEP 5 — Navigation & View Registry Cleanup Audit
+
+## Files Checked
+- `src/app/authenticated-app.tsx` — 69 view keys in lazy registry
+- `src/store/use-store.ts` — ViewType union (56 members)
+- `src/components/layout/app-layout.tsx` — NAV_CONFIG, VIEW_LABELS, breadcrumbs
+- `src/app/page.tsx` — landing page footer
+
+## Findings
+
+### 1. Duplicate View Keys in GURU Nav (CLASSIFIED — NOT a registry collision)
+**Location:** `app-layout.tsx` lines 203, 243
+**Issue:** Two GURU sidebar items point to the same view key `'guru-nilai'`:
+- Pembelajaran → 'Tryout TKA' → `guru-nilai` (GuruNilaiView)
+- Penilaian → 'Input Nilai' → `guru-nilai` (GuruNilaiView)
+**Impact:** Clicking 'Tryout TKA' shows the Input Nilai (grade entry) view. The 'Tryout TKA' menu item is effectively a wrong-target link.
+**Classification:** BUG — wrong component renders for 'Tryout TKA'. No `guru-tryout` view component exists. Needs a dedicated view to be built.
+**Action:** Documented only (no guru-tryout component to map to).
+
+### 2. Dead NAV_CONFIG Entries
+**All 56 NAV_CONFIG view values exist in the view registry.** Zero dead entries.
+Note: Some entries reuse other roles' views with `as ViewType` casts:
+- ADMIN_SCHOOL SMA 'Penjurusan' → `users` (semantic mismatch, but view exists)
+- ADMIN_SCHOOL SMK 'Program Keahlian' → `users` (semantic mismatch, but view exists)
+- GURU SMA 'Penjurusan' → `guru-analisis` and `guru-laporan` (placeholder reuse)
+- GURU SMK 'Kompetensi Keahlian' → `guru-analisis` and `guru-laporan` (placeholder reuse)
+- SISWA SMA 'Penjurusan' → `siswa-nilai` and `siswa-pandai-ai` (placeholder reuse)
+- SISWA SMK 'Kompetensi Keahlian' → `siswa-nilai` and `siswa-kehadiran` (placeholder reuse)
+
+### 3. Orphan Views (in registry but no navigation path)
+| View Key | In ViewType | In VIEW_LABELS | In Breadcrumbs | In Nav | Programmatic Nav | Status |
+|---|---|---|---|---|---|---|
+| `broadcasts` | ✅ | ✅ | ✅ | ❌ | ❌ | 🔴 DEAD — no UI path whatsoever |
+| `kepsek-peta-kelas` | ✅ | ✅ (FIXED) | ✅ (FIXED) | ❌ | ❌ | 🟡 ORPHAN — view + component exists, no menu entry |
+| `siswa-nilai-akhir` | ✅ | ✅ | ✅ | ❌ | ❌ | 🟡 ORPHAN — registered for SISWA but no menu |
+| `siswa-rapor` | ✅ | ✅ | ✅ | ❌ | ❌ | 🟡 ORPHAN — registered for SISWA but no menu |
+| `school-detail` | ✅ | ✅ | ✅ | ❌ | ✅ (super-admin dashboard) | ✅ INTENTIONAL — programmatic-only |
+| `dashboard-*` (5 keys) | N/A (internal) | ✅ | ✅ | N/A | ✅ (roleDashboards mapping) | ✅ BY DESIGN — internal routing |
+
+### 4. Dead Footer Links (Landing Page)
+**Location:** `src/app/page.tsx` lines 382-386
+**Issue:** 5 footer `<button>` elements have NO `onClick` handler:
+- 'Tentang', 'Fitur', 'Bantuan', 'Kebijakan Privasi', 'Syarat & Ketentuan'
+**Classification:** LOW — cosmetic, no navigation target defined yet.
+
+### 5. Unnecessary `as ViewType` Casts
+Several nav items use `as ViewType` even though the string IS already in the ViewType union:
+- `guru-bank-soal`, `guru-kotak-masukan`, `guru-profil-lulusan`, `guru-komponen-nilai`, `guru-rapor`
+- `siswa-tryout`, `siswa-nilai` (in SMA/SMK sections), `siswa-pandai-ai`, `siswa-kehadiran`
+- `ortu-kotak-masukan`, `ortu-profil-lulusan`, `ortu-nilai-akhir`, `ortu-rapor`
+- `kepsek-kotak-masukan`, `kepsek-profil-lulusan`, `kepsek-rapor`
+**Classification:** CODE SMELL — casts are harmless but unnecessary.
+
+## Code Changes (1 fix)
+1. **FIXED TS2741:** Added missing `'kepsek-peta-kelas': 'Peta Kelas'` to `VIEW_LABELS` and `buildBreadcrumbs` in `app-layout.tsx`. This was a compile error (`Record<ViewType, string>` required the key).
+
+## Verification
+- `bun run lint` — passes cleanly (0 errors, 0 warnings)
+- `npx tsc --noEmit` — no longer reports `kepsek-peta-kelas` error
+
+---
+Task ID: 3.4-STEP6
+Agent: general-purpose
+Task: FASE 3.4 STEP 6 — Type Safety Audit (API Boundary & Security-Sensitive Code)
+
+## Scope
+- Audited `src/lib/auth.ts`, `src/lib/scope.ts` — **clean**, no `any` types
+- Audited auth API routes: `auth/login`, `auth/register`, `auth/register-school` — **clean**
+- Searched all `src/app/api/` and `src/lib/` for remaining `catch (error: any)` — **none found** (STEP 3 completed)
+- Searched all `src/app/api/` for `where: any` in Prisma queries
+- Searched all `src/app/api/` for unvalidated `request.json()` spread into Prisma operations
+- Searched `src/lib/` for `: any` type annotations — **none found**
+
+## Findings
+
+### FIXED: /api/users PATCH — Unvalidated `data` spread into Prisma (SECURITY)
+**File:** `src/app/api/users/route.ts:289-328`
+**Issue:** `const { id, ...data } = await request.json()` spread directly into `db.user.update()`. An ADMIN_SCHOOL could send `role: 'SUPER_ADMIN'`, `schoolId`, `isActive: true`, `mustChangePassword: false`, or `parentId` in the PATCH body to escalate privileges, move users between schools, reactivate deactivated accounts, or bypass forced password changes.
+**Fix:** Replaced the rest-spread pattern with an explicit field whitelist. Only these fields are now accepted: `name`, `email`, `phone`, `nisn`, `nip`, `nik`, `classId`, `jk`, `namaOrtu`, `password`. Security-sensitive fields (`role`, `schoolId`, `isActive`, `parentId`, `mustChangePassword`, `username`) are silently dropped.
+**Type:** Changed `data` from implicit `any` (rest-spread) to `Record<string, unknown>`.
+
+### P3: `where: any` in 5 API route files (documented, NOT fixed)
+All 5 instances use user-controlled query params that flow into the `where` object, but only as string equality / `parseInt` values. Prisma parameterizes all of these — no operator injection is possible. Per rules, left as P3.
+
+| File | Line | User params flowing into `where` | Security check | Classification |
+|------|------|----------------------------------|----------------|----------------|
+| `attempts/route.ts` | 32 | schoolId, classId, userId, examSessionId | `getSchoolFilter()`, `requireStudentScope()` | P3 — Prisma parameterized |
+| `questions/route.ts` | 24 | subjectId, type, status, createdBy, difficulty, search | `getSchoolFilter()` | P3 — Prisma parameterized |
+| `timetable/route.ts` | 14 | schoolId, classId | `getSchoolFilter()` | P3 — Prisma parameterized |
+| `classes/route.ts` | 14 | schoolId, grade (parseInt) | `getSchoolFilter()` | P3 — Prisma parameterized |
+| `users/route.ts` | 111 | schoolId, role, classId, parentId | Explicit school check (reject if different) | P3 — Prisma parameterized |
+
+### P3: Other `...data` spreads in PATCH routes (documented, NOT fixed)
+4 additional routes use `const { id, ...data } = await request.json()` → Prisma `update({ data })`:
+- `exams/route.ts` PATCH — ExamPackage has no privilege-escalation fields; schoolId checked before update
+- `questions/route.ts` PATCH — Question model fields are low-risk; schoolId checked before update
+- `schools/route.ts` PATCH — SUPER_ADMIN only; School model has no RBAC-sensitive fields
+- `grade-components/route.ts` PATCH — schoolId checked before update; GradeComponent fields are low-risk
+
+### NOT an issue: `as any` casts
+- `{ startsWith: month } as any` in character-reports, teaching-journals, attendance — Prisma SQLite workaround for string prefix search. Not security-relevant.
+- `as any[]` for `$queryRaw` results in audit, backup — internal query result typing only.
+- `(user as any)?.school?.name` in audit — relation access typing.
+
+### NOT an issue: `handleApiError` in error-log.ts
+Returns `error.message` to client but is **not used anywhere** in the codebase (dead code).
+
+## Files Modified
+- `src/app/api/users/route.ts` — PATCH handler: replaced rest-spread with field whitelist
+
+## Verification
+- `bun run lint` — passes cleanly (0 errors, 0 warnings)

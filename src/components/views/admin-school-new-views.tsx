@@ -121,54 +121,6 @@ interface ClassData {
 }
 
 // ═══════════════════════════════════════════════════════════════════════
-// MOCK DATA
-// ═══════════════════════════════════════════════════════════════════════
-
-const MOCK_SUBJECTS: Subject[] = [
-  { id: 's1', code: 'MTK', name: 'Matematika', type: 'wajib', sortOrder: 1 },
-  { id: 's2', code: 'FIS', name: 'Fisika', type: 'pilihan', sortOrder: 2 },
-  { id: 's3', code: 'KIM', name: 'Kimia', type: 'pilihan', sortOrder: 3 },
-  { id: 's4', code: 'BIO', name: 'Biologi', type: 'pilihan', sortOrder: 4 },
-  { id: 's5', code: 'BIN', name: 'Bahasa Indonesia', type: 'wajib', sortOrder: 5 },
-  { id: 's6', code: 'BING', name: 'Bahasa Inggris', type: 'wajib', sortOrder: 6 },
-  { id: 's7', code: 'SEJ', name: 'Sejarah', type: 'pilihan', sortOrder: 7 },
-  { id: 's8', code: 'EKO', name: 'Ekonomi', type: 'pilihan', sortOrder: 8 },
-  { id: 's9', code: 'GEO', name: 'Geografi', type: 'pilihan', sortOrder: 9 },
-  { id: 's10', code: 'SOS', name: 'Sosiologi', type: 'pilihan', sortOrder: 10 },
-];
-
-
-const MOCK_CLASS_OPTIONS = [
-  { id: 'c1', name: 'X IPA 1' },
-  { id: 'c2', name: 'X IPA 2' },
-  { id: 'c3', name: 'XI IPA 1' },
-  { id: 'c4', name: 'XI IPA 2' },
-  { id: 'c5', name: 'XII IPA 1' },
-  { id: 'c6', name: 'XII IPA 2' },
-  { id: 'c7', name: 'X IPS 1' },
-  { id: 'c8', name: 'XI IPS 1' },
-  { id: 'c9', name: 'XII IPS 1' },
-];
-
-const MOCK_ASSIGNMENTS: TeacherAssignment[] = [
-  { id: 'ta1', teacherId: 't1', teacherName: 'Budi Santoso, S.Pd.', teacherNip: '198503152010011002', subjectId: 's1', subjectName: 'Matematika', classId: 'c1', className: 'X IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
-  { id: 'ta2', teacherId: 't1', teacherName: 'Budi Santoso, S.Pd.', teacherNip: '198503152010011002', subjectId: 's1', subjectName: 'Matematika', classId: 'c2', className: 'X IPA 2', academicYear: '2024/2025', semester: 'Ganjil' },
-  { id: 'ta3', teacherId: 't2', teacherName: 'Siti Rahayu, M.Pd.', teacherNip: '198708222012012003', subjectId: 's5', subjectName: 'Bahasa Indonesia', classId: 'c1', className: 'X IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
-  { id: 'ta4', teacherId: 't3', teacherName: 'Ahmad Hidayat, S.Si.', teacherNip: '199001102013011001', subjectId: 's2', subjectName: 'Fisika', classId: 'c3', className: 'XI IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
-  { id: 'ta5', teacherId: 't4', teacherName: 'Dewi Lestari, S.Pd.', teacherNip: '199205182014022001', subjectId: 's6', subjectName: 'Bahasa Inggris', classId: 'c5', className: 'XII IPA 1', academicYear: '2024/2025', semester: 'Ganjil' },
-  { id: 'ta6', teacherId: 't5', teacherName: 'Rizky Pratama, M.Si.', teacherNip: '198812032011011004', subjectId: 's3', subjectName: 'Kimia', classId: 'c4', className: 'XI IPA 2', academicYear: '2024/2025', semester: 'Ganjil' },
-];
-
-const MOCK_BACKUPS: BackupRecord[] = [
-  { id: 'b1', fileName: 'backup_2025-01-15_083000.db', fileSize: '2.4 MB', createdAt: '2025-01-15 08:30', records: 20 },
-  { id: 'b2', fileName: 'backup_2025-01-10_140000.db', fileSize: '2.3 MB', createdAt: '2025-01-10 14:00', records: 19 },
-  { id: 'b3', fileName: 'backup_2025-01-05_090000.db', fileSize: '2.2 MB', createdAt: '2025-01-05 09:00', records: 18 },
-  { id: 'b4', fileName: 'backup_2024-12-28_160000.db', fileSize: '2.1 MB', createdAt: '2024-12-28 16:00', records: 17 },
-  { id: 'b5', fileName: 'backup_2024-12-20_100000.db', fileSize: '2.0 MB', createdAt: '2024-12-20 10:00', records: 15 },
-];
-
-
-// ═══════════════════════════════════════════════════════════════════════
 // HELPERS
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -315,10 +267,10 @@ export function SubjectsView() {
         const data = await res.json();
         setSubjects(Array.isArray(data) ? data : data.data ?? []);
       } else {
-        setSubjects(MOCK_SUBJECTS);
+        setSubjects([]);
       }
     } catch {
-      setSubjects(MOCK_SUBJECTS);
+      setSubjects([]);
     } finally {
       setLoading(false);
     }

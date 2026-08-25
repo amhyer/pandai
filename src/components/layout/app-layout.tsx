@@ -535,6 +535,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // KEPALA_SEKOLAH
   'dashboard-kepsek': 'Dashboard Kepala Sekolah',
+  'kepsek-peta-kelas': 'Peta Kelas',
   'kepsek-rekap-kelas': 'Rekap Per Kelas',
   'kepsek-rekap-guru': 'Rekap Per Guru',
   'kepsek-rekap-karakter': 'Rekap 7 Kebiasaan',
@@ -608,6 +609,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'ortu-nilai-akhir': [{ label: VIEW_LABELS['ortu-nilai-akhir'] }],
     'ortu-rapor': [{ label: VIEW_LABELS['ortu-rapor'] }],
     'dashboard-kepsek': [{ label: VIEW_LABELS['dashboard-kepsek'] }],
+    'kepsek-peta-kelas': [{ label: VIEW_LABELS['kepsek-peta-kelas'] }],
     'kepsek-rekap-kelas': [{ label: VIEW_LABELS['kepsek-rekap-kelas'] }],
     'kepsek-rekap-guru': [{ label: VIEW_LABELS['kepsek-rekap-guru'] }],
     'kepsek-rekap-karakter': [{ label: VIEW_LABELS['kepsek-rekap-karakter'] }],

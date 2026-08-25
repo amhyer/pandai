@@ -104,7 +104,6 @@ Buat analisis yang mencakup:
     }
     logError({ error, route: '/api/ai/analyze-difficulty', method: 'POST' });
     console.error('Analyze difficulty error:', error);
-    const msg = error instanceof Error ? error.message : 'Gagal menganalisis kesulitan';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal menganalisis kesulitan' }, { status: 500 });
   }
 }

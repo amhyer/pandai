@@ -216,22 +216,8 @@ const DAYA_BEDA_COLORS: Record<string, string> = {
 };
 
 const BRAND = '#1F3864';
+
 const BRAND_LIGHT = '#2d5289';
-
-// ═══════════════════════════════════════════════════════════════════
-// MOCK DATA (FALLBACK)
-// ═══════════════════════════════════════════════════════════════════
-
-const MOCK_MATERI: MaterialData[] = [
-  { id: 'm1', title: 'Persamaan Kuadrat & Fungsi Kuadrat', subject: undefined as unknown as any, subjectId: null, description: 'Materi mencakup konsep persamaan kuadrat, rumus abc, hubungan akar-akar persamaan kuadrat, serta grafik fungsi kuadrat.', content: null, topicId: null, classId: null, schoolId: null, teacherId: null, type: 'materi', status: 'published', dueDate: null, createdAt: '2025-01-12T00:00:00.000Z', updatedAt: '2025-01-12T00:00:00.000Z' },
-  { id: 'm2', title: 'Hukum Newton tentang Gerak', subject: undefined as unknown as any, subjectId: null, description: 'Pembahasan tiga hukum Newton, penerapannya pada benda diam dan bergerak, serta contoh soal TKA.', content: null, topicId: null, classId: null, schoolId: null, teacherId: null, type: 'materi', status: 'published', dueDate: null, createdAt: '2025-01-10T00:00:00.000Z', updatedAt: '2025-01-10T00:00:00.000Z' },
-  { id: 'm3', title: 'Struktur Atom & Sistem Periodik', subject: undefined as unknown as any, subjectId: null, description: 'Teori atom, konfigurasi elektron, dan sifat-sifat unsur dalam tabel periodik.', content: null, topicId: null, classId: null, schoolId: null, teacherId: null, type: 'materi', status: 'published', dueDate: null, createdAt: '2025-01-08T00:00:00.000Z', updatedAt: '2025-01-08T00:00:00.000Z' },
-  { id: 'm4', title: 'Sel sebagai Unit Terkecil Kehidupan', subject: undefined as unknown as any, subjectId: null, description: 'Struktur dan fungsi sel prokariotik dan eukariotik, organel sel, serta proses transportasi membran.', content: null, topicId: null, classId: null, schoolId: null, teacherId: null, type: 'materi', status: 'draft', dueDate: null, createdAt: '2025-01-05T00:00:00.000Z', updatedAt: '2025-01-05T00:00:00.000Z' },
-  { id: 'm5', title: 'Teks Eksposisi & Argumentasi', subject: undefined as unknown as any, subjectId: null, description: 'Menganalisis struktur teks eksposisi dan argumentasi.', content: null, topicId: null, classId: null, schoolId: null, teacherId: null, type: 'materi', status: 'published', dueDate: null, createdAt: '2025-01-03T00:00:00.000Z', updatedAt: '2025-01-03T00:00:00.000Z' },
-  { id: 'm6', title: 'Reading Comprehension: Narrative Text', subject: undefined as unknown as any, subjectId: null, description: 'Teknik membaca pemahaman untuk teks naratif.', content: null, topicId: null, classId: null, schoolId: null, teacherId: null, type: 'materi', status: 'draft', dueDate: null, createdAt: '2025-01-01T00:00:00.000Z', updatedAt: '2025-01-01T00:00:00.000Z' },
-];
-
-
 
 const TRYOUT_STATUS_BADGE: Record<string, { className: string; icon: React.ElementType }> = {
   Aktif: { className: 'bg-emerald-100 text-emerald-700', icon: CircleDot },
@@ -451,8 +437,7 @@ export function GuruMateriView() {
       const data = await res.json();
       setMaterials(Array.isArray(data) ? data : []);
     } catch {
-      console.warn('Falling back to mock materi data');
-      setMaterials(MOCK_MATERI);
+      setMaterials([]);
     } finally {
       setLoading(false);
     }

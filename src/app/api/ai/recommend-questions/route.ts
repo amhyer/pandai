@@ -83,7 +83,6 @@ PENTING: Jangan menyebutkan nama siswa. Gunakan "siswa" sebagai pengganti.`;
     }
     logError({ error, route: '/api/ai/recommend-questions', method: 'POST' });
     console.error('Recommend questions error:', error);
-    const msg = error instanceof Error ? error.message : 'Gagal membuat rekomendasi';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal membuat rekomendasi' }, { status: 500 });
   }
 }

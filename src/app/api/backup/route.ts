@@ -117,10 +117,12 @@ export async function POST(req: NextRequest) {
           dbType: 'postgresql',
           createdAt: new Date().toISOString(),
         });
-      } catch (execError: any) {
+      } catch (execError: unknown) {
+        const msg = execError instanceof Error ? execError.message : 'Unknown error';
+        console.error('pg_dump failed:', msg);
         return NextResponse.json({
           success: false,
-          error: `pg_dump gagal: ${execError.message}. Pastikan pg_dump terinstall.`
+          error: 'pg_dump gagal. Pastikan pg_dump terinstall.'
         }, { status: 500 });
       }
     }

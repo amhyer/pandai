@@ -101,7 +101,6 @@ Pastikan hanya mengembalikan JSON array tanpa teks tambahan.`;
     }
     logError({ error, route: '/api/ai/generate-questions', method: 'POST' });
     console.error('Generate questions error:', error);
-    const msg = error instanceof Error ? error.message : 'Gagal menghasilkan soal';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal menghasilkan soal' }, { status: 500 });
   }
 }

@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireRole, AuthError } from '@/lib/auth';
 import { requireSchoolScope } from '@/lib/scope';
+import { SCHOOL_DAY_STATUSES, calcAttendancePct } from '@/lib/attendance';
 
 const SEVEN_HABIT_LABELS: Record<string, { name: string }> = {
   bangun_pagi: { name: 'Bangun Pagi' }, beribadah: { name: 'Beribadah' }, berolahraga: { name: 'Berolahraga' },
@@ -84,7 +85,6 @@ export async function GET(req: NextRequest) {
     const studentCountMap = new Map(studentCountsByClass.map((r) => [r.classId, r._count as number]));
 
     // P0-09: Only count school-day statuses (exclude 'weekend'/'none') to match Siswa/Ortu
-    const SCHOOL_DAY_STATUSES = new Set(['hadir', 'izin', 'sakit', 'alpa']);
     const schoolDayRecords = attendanceRecords.filter((a) => SCHOOL_DAY_STATUSES.has(a.status));
 
     const attendanceByClass = new Map<string, { hadir: number; total: number }>();
@@ -97,12 +97,8 @@ export async function GET(req: NextRequest) {
     }
 
     // Overall attendance derived from the same batch
-    let overallAvgKehadiran: number | null = null;
-    if (schoolDayRecords.length > 0) {
-      overallAvgKehadiran = Math.round(
-        (schoolDayRecords.filter((a) => a.status === 'hadir').length / schoolDayRecords.length) * 100,
-      );
-    }
+    const overallHadir = schoolDayRecords.filter((a) => a.status === 'hadir').length;
+    const overallAvgKehadiran = calcAttendancePct(overallHadir, schoolDayRecords.length);
 
     // Character reports grouped by class
     const characterByClass = new Map<string, Array<{ habit: string; rating: number }>>();
@@ -133,10 +129,7 @@ export async function GET(req: NextRequest) {
     const rekapKelas = classes.map((cls) => {
       const studentCount = studentCountMap.get(cls.id) || 0;
       const att = attendanceByClass.get(cls.id);
-      let avgKehadiran: number | null = null;
-      if (att && att.total > 0) {
-        avgKehadiran = Math.round((att.hadir / att.total) * 100);
-      }
+      const avgKehadiran = att ? calcAttendancePct(att.hadir, att.total) : null;
       const charReports = characterByClass.get(cls.id) || [];
       let avgKebiasaan: number | null = null;
       if (charReports.length > 0) {

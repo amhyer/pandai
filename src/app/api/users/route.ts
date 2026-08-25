@@ -289,7 +289,8 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
-    const { id, ...data } = await request.json();
+    const body = await request.json();
+    const { id } = body;
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     try { await logAccess(auth, { action: 'UPDATE', resourceType: 'users' }); } catch {}
 
@@ -301,9 +302,20 @@ export async function PATCH(request: Request) {
       }
     }
 
-    if (data.password) data.password = await hashPassword(data.password);
-    if (data.nisn) data.username = data.nisn.trim();
-    if (data.nip) data.username = data.nip.trim();
+    // Type-safety: whitelist allowed fields to prevent privilege escalation
+    // (e.g. client sending role, schoolId, isActive, mustChangePassword)
+    const data: Record<string, unknown> = {};
+    if (body.name !== undefined) data.name = body.name;
+    if (body.email !== undefined) data.email = body.email;
+    if (body.phone !== undefined) data.phone = body.phone;
+    if (body.nisn !== undefined) { data.nisn = body.nisn; data.username = body.nisn.trim(); }
+    if (body.nip !== undefined) { data.nip = body.nip; data.username = body.nip.trim(); }
+    if (body.nik !== undefined) data.nik = body.nik;
+    if (body.classId !== undefined) data.classId = body.classId;
+    if (body.jk !== undefined) data.jk = body.jk;
+    if (body.namaOrtu !== undefined) data.namaOrtu = body.namaOrtu;
+    if (body.password) data.password = await hashPassword(body.password);
+
     const user = await db.user.update({ where: { id }, data });
     return NextResponse.json(user);
   } catch (error) {

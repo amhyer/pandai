@@ -520,8 +520,8 @@ export async function POST(request: Request) {
         orangTua: { username: 'ahmad', password: '123' },
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Seed error:', error);
-    return NextResponse.json({ error: 'Gagal seed data: ' + error.message }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal seed data' }, { status: 500 });
   }
 }

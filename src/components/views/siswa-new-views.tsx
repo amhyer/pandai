@@ -32,6 +32,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { calcAttendancePct } from '@/lib/attendance';
 import { PROVIDER_ICONS } from '@/lib/external-quiz';
 import {
   BookOpen,
@@ -154,85 +155,6 @@ const SUBJECT_CONFIGS = [
 ];
 
 // ═══════════════════════════════════════════════════════════════════════
-//  MOCK DATA
-// ═══════════════════════════════════════════════════════════════════════
-
-const MOCK_SUBJECTS: SubjectData[] = SUBJECT_CONFIGS.map((cfg, idx) => ({
-  ...cfg,
-  materials: idx === 0
-    ? [
-        { id: 'm1', title: 'Persamaan Kuadrat', description: 'Memahami bentuk umum persamaan kuadrat dan cara menyelesaikannya. Termasuk rumus abc dan faktorisasi.', subject: 'Matematika', date: '2025-01-10', isRead: true, content: 'Persamaan kuadrat adalah persamaan polinomial berderajat dua. Bentuk umumnya adalah ax² + bx + c = 0, di mana a ≠ 0.' },
-        { id: 'm2', title: 'Fungsi Kuadrat', description: 'Grafik dan sifat-sifat fungsi kuadrat termasuk titik puncak dan sumbu simetri.', subject: 'Matematika', date: '2025-01-15', isRead: true, content: 'Fungsi kuadrat memiliki grafik berbentuk parabola. Titik puncak berada di x = -b/2a.' },
-        { id: 'm3', title: 'Sistem Persamaan Linear', description: 'Metode eliminasi dan substitusi untuk menyelesaikan SPLDV.', subject: 'Matematika', date: '2025-01-20', isRead: false, content: 'SPLDV dapat diselesaikan dengan eliminasi, substitusi, atau metode grafik.' },
-        { id: 'm4', title: 'Logaritma', description: 'Sifat-sifat logaritma dan penerapannya dalam perhitungan.', subject: 'Matematika', date: '2025-01-25', isRead: false, content: 'Logaritma adalah invers dari eksponen. Sifat utama: log(ab) = log a + log b.' },
-      ]
-    : idx === 1
-      ? [
-          { id: 'f1', title: 'Hukum Newton', description: 'Tiga hukum gerak Newton dan penerapannya.', subject: 'Fisika', date: '2025-01-08', isRead: true },
-          { id: 'f2', title: 'Usaha dan Energi', description: 'Konsep usaha, energi kinetik, dan energi potensial.', subject: 'Fisika', date: '2025-01-14', isRead: true },
-          { id: 'f3', title: 'Momentum dan Impuls', description: 'Hukum kekekalan momentum dan tumbukan.', subject: 'Fisika', date: '2025-01-22', isRead: false },
-        ]
-      : idx === 2
-        ? [
-            { id: 'k1', title: 'Struktur Atom', description: 'Model atom, partikel penyusun atom, dan konfigurasi elektron.', subject: 'Kimia', date: '2025-01-09', isRead: true },
-            { id: 'k2', title: 'Ikatan Kimia', description: 'Ikatan ion, ikatan kovalen, dan ikatan logam.', subject: 'Kimia', date: '2025-01-16', isRead: true },
-            { id: 'k3', title: 'Sistem Periodik Unsur', description: 'Tren sifat unsur dalam periode dan golongan.', subject: 'Kimia', date: '2025-01-23', isRead: false },
-            { id: 'k4', title: 'Reaksi Kimia', description: 'Jenis-jenis reaksi kimia dan persamaan reaksi.', subject: 'Kimia', date: '2025-01-28', isRead: false },
-          ]
-        : idx === 3
-          ? [
-              { id: 'b1', title: 'Sel dan Organel', description: 'Struktur sel prokariotik dan eukariotik beserta fungsinya.', subject: 'Biologi', date: '2025-01-07', isRead: true },
-              { id: 'b2', title: 'Jaringan Tumbuhan', description: 'Jenis-jenis jaringan pada tumbuhan dan fungsinya.', subject: 'Biologi', date: '2025-01-13', isRead: false },
-              { id: 'b3', title: 'Fotosintesis', description: 'Proses fotosintesis dan faktor-faktor yang mempengaruhinya.', subject: 'Biologi', date: '2025-01-19', isRead: false },
-            ]
-          : idx === 4
-            ? [
-                { id: 'bi1', title: 'Teks Eksplanasi', description: 'Struktur dan ciri-ciri teks eksplanasi.', subject: 'Bahasa Indonesia', date: '2025-01-11', isRead: true },
-                { id: 'bi2', title: 'Teks Persuasi', description: 'Teknik persuasi dalam teks dan iklan.', subject: 'Bahasa Indonesia', date: '2025-01-18', isRead: false },
-                { id: 'bi3', title: 'Cerpen dan Unsur Intrinsik', description: 'Menganalisis unsur intrinsik cerpen.', subject: 'Bahasa Indonesia', date: '2025-01-24', isRead: false },
-              ]
-            : [
-                { id: 'be1', title: 'Past Tense & Present Perfect', description: 'Perbedaan penggunaan past tense dan present perfect.', subject: 'Bahasa Inggris', date: '2025-01-12', isRead: true },
-                { id: 'be2', title: 'Passive Voice', description: 'Membuat kalimat pasif dalam berbagai tenses.', subject: 'Bahasa Inggris', date: '2025-01-17', isRead: true },
-                { id: 'be3', title: 'Conditional Sentences', description: 'Tipe 0, 1, 2, dan 3 kalimat bersyarat.', subject: 'Bahasa Inggris', date: '2025-01-26', isRead: false },
-                { id: 'be4', title: 'Analytical Exposition Text', description: 'Struktur dan bahasa teks eksposisi analitis.', subject: 'Bahasa Inggris', date: '2025-01-29', isRead: false },
-              ],
-}));
-
-const MOCK_TASKS: Task[] = [
-  { id: 't1', title: 'Latihan Soal Persamaan Kuadrat', type: 'tugas', subject: 'Matematika', dueDate: '2025-01-20', status: 'selesai', isUrgent: false, score: 85 },
-  { id: 't2', title: 'Kuis Hukum Newton', type: 'kuis', subject: 'Fisika', dueDate: '2025-01-22', status: 'selesai', isUrgent: false, score: 90 },
-  { id: 't3', title: 'Tugas Laporan Praktikum Ikatan Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-28', status: 'menunggu', isUrgent: true },
-  { id: 't4', title: 'Ujian Tengah Semester Biologi', type: 'ujian', subject: 'Biologi', dueDate: '2025-02-01', status: 'menunggu', isUrgent: false },
-  { id: 't5', title: 'Essay Teks Eksplanasi', type: 'tugas', subject: 'Bahasa Indonesia', dueDate: '2025-01-15', status: 'terlambat', isUrgent: false },
-  { id: 't6', title: 'Kuis Passive Voice', type: 'kuis', subject: 'Bahasa Inggris', dueDate: '2025-01-25', status: 'menunggu', isUrgent: true },
-  { id: 't7', title: 'Tugas Analisis Data Fotosintesis', type: 'tugas', subject: 'Biologi', dueDate: '2025-01-30', status: 'dikerjakan', isUrgent: false },
-  { id: 't8', title: 'Tryout UTBK Matematika', type: 'ujian', subject: 'Matematika', dueDate: '2025-02-05', status: 'menunggu', isUrgent: false },
-  { id: 't9', title: 'Kuis Teks Persuasi', type: 'kuis', subject: 'Bahasa Indonesia', dueDate: '2025-01-18', status: 'selesai', isUrgent: false, score: 78 },
-  { id: 't10', title: 'Tugas Reaksi Kimia', type: 'tugas', subject: 'Kimia', dueDate: '2025-01-12', status: 'selesai', isUrgent: false, score: 92 },
-];
-
-function generateMockAttendance(year: number, month: number): AttendanceDay[] {
-  const days: AttendanceDay[] = [];
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const statuses: Array<'hadir' | 'izin' | 'sakit' | 'alpa'> = ['hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'hadir', 'izin', 'sakit', 'alpa'];
-  const notes: Record<string, string> = { izin: 'Keperluan keluarga', sakit: 'Demam', alpa: 'Tanpa keterangan' };
-  let statusIdx = 0;
-  for (let d = 1; d <= daysInMonth; d++) {
-    const date = new Date(year, month, d);
-    const dow = date.getDay();
-    if (dow === 0 || dow === 6) {
-      days.push({ day: d, status: 'weekend', date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}` });
-    } else {
-      const s = statuses[statusIdx % statuses.length];
-      days.push({ day: d, status: s, date: `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, note: notes[s] || '' });
-      statusIdx++;
-    }
-  }
-  return days;
-}
-
-// ═══════════════════════════════════════════════════════════════════════
 //  SHARED HELPERS
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -275,21 +197,35 @@ export function SiswaMateriView() {
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data) && data.length > 0) {
-            const mapped = MOCK_SUBJECTS.map((subj) => {
-              const apiMaterials = (data as Material[]).filter(
-                (m: any) => m.subject === subj.name || m.subject?.name === subj.name
-              );
-              return apiMaterials.length > 0
-                ? { ...subj, materials: apiMaterials.map((m: any) => ({
-                    id: m.id,
-                    title: m.title,
-                    description: m.description || '',
-                    subject: typeof m.subject === 'string' ? m.subject : m.subject?.name || subj.name,
-                    date: m.createdAt || m.date || '2025-01-01',
-                    isRead: false,
-                    content: m.content || '',
-                  })) }
-                : subj;
+            // Group materials by subject name from API data
+            const grouped = new Map<string, any[]>();
+            (data as any[]).forEach((m: any) => {
+              const subjectName = typeof m.subject === 'string' ? m.subject : m.subject?.name || 'Lainnya';
+              if (!grouped.has(subjectName)) grouped.set(subjectName, []);
+              grouped.get(subjectName)!.push(m);
+            });
+            // Build SubjectData[] only for subjects with materials
+            const mapped: SubjectData[] = Array.from(grouped.entries()).map(([subjectName, apiMaterials]) => {
+              const cfg = getSubjectConfig(subjectName);
+              return {
+                id: cfg.id,
+                name: subjectName,
+                icon: cfg.icon,
+                color: cfg.color,
+                bgLight: cfg.bgLight,
+                borderColor: cfg.borderColor,
+                gradientFrom: cfg.gradientFrom,
+                gradientTo: cfg.gradientTo,
+                materials: apiMaterials.map((m: any) => ({
+                  id: m.id,
+                  title: m.title,
+                  description: m.description || '',
+                  subject: subjectName,
+                  date: m.createdAt || m.date || '2025-01-01',
+                  isRead: false,
+                  content: m.content || '',
+                })),
+              };
             });
             setSubjects(mapped);
           } else {
@@ -1363,7 +1299,7 @@ export function SiswaKehadiranView() {
     const sakit = attendance.filter((a) => a.status === 'sakit').length;
     const alpa = attendance.filter((a) => a.status === 'alpa').length;
     const totalSchoolDays = hadir + izin + sakit + alpa;
-    const pct = totalSchoolDays > 0 ? Math.round((hadir / totalSchoolDays) * 100) : 0;
+    const pct = calcAttendancePct(hadir, totalSchoolDays) ?? 0;
     return { hadir, izin, sakit, alpa, totalSchoolDays, pct };
   }, [attendance]);
 

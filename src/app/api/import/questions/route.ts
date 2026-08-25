@@ -274,8 +274,8 @@ export async function POST(request: Request) {
           },
         });
         created.push(question);
-      } catch (err: any) {
-        errors.push(`Soal ${i + 1}: ${err.message}`);
+      } catch (err: unknown) {
+        errors.push(`Soal ${i + 1}: Gagal menyimpan soal ke database`);
       }
     }
 
@@ -296,11 +296,11 @@ export async function POST(request: Request) {
       })),
       ...(errors.length > 0 && { errors }),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     if (error instanceof AuthError) { return NextResponse.json({ success: false, message: error.message }, { status: error.status }); }
     logError({ error, route: '/api/import/questions', method: 'POST' });
     return NextResponse.json(
-      { success: false, message: error.message || 'Gagal mengimpor soal' },
+      { success: false, message: 'Gagal mengimpor soal' },
       { status: 500 }
     );
   }

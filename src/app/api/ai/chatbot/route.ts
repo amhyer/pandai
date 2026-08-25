@@ -195,8 +195,7 @@ Aturan:
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     logError({ error, route: '/api/ai/chatbot', method: 'POST' });
-    const msg = error instanceof Error ? error.message : 'Gagal memproses chatbot';
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal memproses chatbot' }, { status: 500 });
   }
 }
 

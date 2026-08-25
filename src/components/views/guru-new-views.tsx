@@ -35,6 +35,7 @@ interface AttendanceRecord { studentId: string; status: 'Hadir' | 'Izin' | 'Saki
 interface RekapKehadiran { studentId: string; studentName: string; hadir: number; izin: number; sakit: number; alpa: number; persentase: number; }
 interface HabitRating { habit: string; rating: number; note: string; }
 interface JournalEntry { id: string; date: string; className: string; subject: string; topic: string; activities: string; notes: string; }
+interface RekapKarakterItem { studentId: string; studentName: string; ratings: number[]; }
 
 const HABITS = [
   { key: 'bangun_pagi',   name: 'Bangun Pagi',             emoji: '🌅', desc: 'Bangun pagi secara teratur', color: 'bg-amber-50 border-amber-200 text-amber-800', iconBg: 'bg-amber-100', barColor: 'bg-amber-400' },
@@ -53,70 +54,71 @@ const RATING_LABELS: Record<number, { label: string; shortLabel: string; color: 
   4: { label: 'Selalu', shortLabel: '4', color: 'bg-blue-100 border-blue-300 text-blue-700' },
 };
 
-const MOCK_CLASSES = [
-  { id: 'c1', name: 'X IPA 1' }, { id: 'c2', name: 'X IPA 2' },
-  { id: 'c3', name: 'XI IPA 1' }, { id: 'c4', name: 'XI IPA 2' },
-  { id: 'c5', name: 'XII IPA 1' },
-];
+// ═══════════════════════════════════════════════════════════════════
+// SHARED HOOKS
+// ═══════════════════════════════════════════════════════════════════
 
-const MOCK_STUDENTS: Student[] = [
-  { id: 's1', name: 'Ahmad Fauzi', nisn: '0051234001' }, { id: 's2', name: 'Siti Nurhaliza', nisn: '0051234002' },
-  { id: 's3', name: 'Budi Santoso', nisn: '0051234003' }, { id: 's4', name: 'Dewi Lestari', nisn: '0051234004' },
-  { id: 's5', name: 'Rizky Pratama', nisn: '0051234005' }, { id: 's6', name: 'Putri Wulandari', nisn: '0051234006' },
-  { id: 's7', name: 'Muhammad Iqbal', nisn: '0051234007' }, { id: 's8', name: 'Anisa Rahma', nisn: '0051234008' },
-  { id: 's9', name: 'Fajar Setiawan', nisn: '0051234009' }, { id: 's10', name: 'Rina Marlina', nisn: '0051234010' },
-];
+interface ClassItem { id: string; name: string; grade?: number }
+const classesCache = new Map<string, { data: ClassItem[]; ts: number }>();
+const CLASSES_TTL = 60_000; // 1 min cache
 
-const MOCK_TUGAS: TugasItem[] = [
-  { id: 't1', title: 'Essay Struktur Atom', description: 'Tulis essay tentang struktur atom', type: 'tugas', dueDate: '2025-07-20', status: 'published' },
-  { id: 't2', title: 'Kuis Bab 3 - Termodinamika', description: '20 soal PG termodinamika', type: 'quiz', dueDate: '2025-07-15', status: 'completed' },
-  { id: 't3', title: 'UAS Semester 1 - Fisika', description: 'Ujian Akhir Semester Fisika', type: 'ujian', dueDate: '2025-07-10', status: 'completed' },
-  { id: 't4', title: 'Laporan Praktikum Gaya Lorentz', description: 'Laporan hasil praktikum', type: 'tugas', dueDate: '2025-07-25', status: 'published' },
-  { id: 't5', title: 'Kuis Persamaan Kuadrat', description: 'Kuis pemfaktoran', type: 'quiz', dueDate: '2025-07-12', status: 'late' },
-  { id: 't6', title: 'UTS Matematika', description: 'Ujian Tengah Semester', type: 'ujian', dueDate: '2025-08-05', status: 'draft' },
-  { id: 't7', title: 'Tugas Rumah Vektor', description: '30 soal vektor hal 120-135', type: 'tugas', dueDate: '2025-07-30', status: 'published' },
-  { id: 't8', title: 'Kuis Akhir Kimia Organik', description: 'Senyawa hidrokarbon', type: 'quiz', dueDate: '2025-07-08', status: 'late' },
-];
+function useClasses() {
+  const user = useAppStore((s) => s.user);
+  const schoolId = user?.schoolId ?? '';
+  const [classes, setClasses] = useState<ClassItem[]>([]);
+  const [loading, setLoading] = useState(!!schoolId);
 
-const MOCK_REKAP: RekapKehadiran[] = [
-  { studentId: 's1', studentName: 'Ahmad Fauzi', hadir: 20, izin: 1, sakit: 1, alpa: 0, persentase: 90.9 },
-  { studentId: 's2', studentName: 'Siti Nurhaliza', hadir: 21, izin: 0, sakit: 1, alpa: 0, persentase: 95.5 },
-  { studentId: 's3', studentName: 'Budi Santoso', hadir: 18, izin: 2, sakit: 0, alpa: 2, persentase: 81.8 },
-  { studentId: 's4', studentName: 'Dewi Lestari', hadir: 22, izin: 0, sakit: 0, alpa: 0, persentase: 100 },
-  { studentId: 's5', studentName: 'Rizky Pratama', hadir: 17, izin: 1, sakit: 2, alpa: 2, persentase: 77.3 },
-  { studentId: 's6', studentName: 'Putri Wulandari', hadir: 21, izin: 1, sakit: 0, alpa: 0, persentase: 95.5 },
-  { studentId: 's7', studentName: 'Muhammad Iqbal', hadir: 19, izin: 0, sakit: 1, alpa: 2, persentase: 86.4 },
-  { studentId: 's8', studentName: 'Anisa Rahma', hadir: 22, izin: 0, sakit: 0, alpa: 0, persentase: 100 },
-  { studentId: 's9', studentName: 'Fajar Setiawan', hadir: 15, izin: 3, sakit: 1, alpa: 3, persentase: 68.2 },
-  { studentId: 's10', studentName: 'Rina Marlina', hadir: 20, izin: 1, sakit: 1, alpa: 0, persentase: 90.9 },
-];
+  useEffect(() => {
+    if (!schoolId) return;
+    const cached = classesCache.get(schoolId);
+    if (cached && Date.now() - cached.ts < CLASSES_TTL) {
+      // Use microtask to avoid synchronous setState-in-effect
+      queueMicrotask(() => { setClasses(cached.data); setLoading(false); });
+      return;
+    }
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const res = await fetch(`/api/classes?schoolId=${schoolId}`, { signal: controller.signal });
+        if (res.ok) {
+          const data = await res.json();
+          const list: ClassItem[] = (Array.isArray(data) ? data : []).map((c: Record<string, unknown>) => ({ id: String(c.id), name: String(c.name), grade: typeof c.grade === 'number' ? c.grade : undefined }));
+          classesCache.set(schoolId, { data: list, ts: Date.now() });
+          setClasses(list);
+        }
+      } catch { /* network error, keep empty */ }
+      setLoading(false);
+    })();
+    return () => controller.abort();
+  }, [schoolId]);
 
-const MOCK_HABIT_RATINGS: HabitRating[] = [
-  { habit: 'bangun_pagi', rating: 3, note: 'Bangun jam 5 pagi' }, { habit: 'beribadah', rating: 4, note: '' },
-  { habit: 'berolahraga', rating: 3, note: '' }, { habit: 'makan_sehat', rating: 4, note: 'Sudah mau makan sayur' },
-  { habit: 'gemar_belajar', rating: 3, note: 'Perlu lebih konsisten' }, { habit: 'bermasyarakat', rating: 3, note: '' },
-  { habit: 'tidur_cepat', rating: 4, note: '' },
-];
+  return { classes, loading };
+}
 
-const MOCK_REKAP_KARAKTER = [
-  { studentId: 's1', studentName: 'Ahmad Fauzi', ratings: [3, 4, 3, 4, 3, 3, 4] },
-  { studentId: 's2', studentName: 'Siti Nurhaliza', ratings: [4, 4, 3, 4, 4, 4, 4] },
-  { studentId: 's3', studentName: 'Budi Santoso', ratings: [2, 3, 2, 3, 3, 2, 2] },
-  { studentId: 's4', studentName: 'Dewi Lestari', ratings: [4, 4, 4, 4, 4, 4, 4] },
-  { studentId: 's5', studentName: 'Rizky Pratama', ratings: [2, 2, 2, 3, 2, 2, 1] },
-  { studentId: 's6', studentName: 'Putri Wulandari', ratings: [4, 4, 3, 4, 4, 4, 3] },
-  { studentId: 's7', studentName: 'Muhammad Iqbal', ratings: [2, 3, 2, 3, 3, 2, 2] },
-  { studentId: 's8', studentName: 'Anisa Rahma', ratings: [3, 4, 3, 4, 4, 3, 3] },
-];
+function ClassPillSelector({ classes, loading, classId, onSelect }: { classes: ClassItem[]; loading: boolean; classId: string; onSelect: (id: string) => void }) {
+  if (loading) {
+    return (<div className="flex flex-wrap gap-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8 w-24 rounded-full" />)}</div>);
+  }
+  if (classes.length === 0) {
+    return <p className="text-sm text-muted-foreground italic">Belum ada kelas</p>;
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {classes.map((c) => (
+        <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => onSelect(c.id)} />
+      ))}
+    </div>
+  );
+}
 
-const MOCK_JOURNALS: JournalEntry[] = [
-  { id: 'j1', date: '2025-07-14', className: 'XI IPA 1', subject: 'Fisika', topic: 'Hukum Newton tentang Gravitasi', activities: 'Membahas teori gravitasi universal Newton, contoh soal perhitungan gaya gravitasi, diskusi kelompok penerapan hukum Newton.', notes: 'Siswa antusias, perlu lebih banyak latihan soal.' },
-  { id: 'j2', date: '2025-07-13', className: 'XI IPA 2', subject: 'Fisika', topic: 'Usaha dan Energi', activities: 'Review konsep usaha dan energi kinetik/potensial, pembahasan soal latihan, demonstrasi konversi energi.', notes: 'Beberapa siswa bingung energi potensial elastis.' },
-  { id: 'j3', date: '2025-07-11', className: 'X IPA 1', subject: 'Matematika', topic: 'Persamaan Kuadrat', activities: 'Penjelasan rumus abc dan diskriminan, latihan 15 soal, kuis singkat 5 menit.', notes: '80% siswa menguasai materi.' },
-  { id: 'j4', date: '2025-07-10', className: 'XII IPA 1', subject: 'Fisika', topic: 'Gelombang Bunyi', activities: 'Pembahasan sifat gelombang bunyi, resonansi, praktek mengukur kecepatan bunyi.', notes: 'Praktikum berjalan baik.' },
-  { id: 'j5', date: '2025-07-09', className: 'XI IPA 1', subject: 'Fisika', topic: 'Momentum dan Impuls', activities: 'Demonstrasi tumbukan, hukum kekekalan momentum, latihan soal.', notes: 'Perlu repeat tumbukan tidak sempurna.' },
-  { id: 'j6', date: '2025-07-08', className: 'X IPA 2', subject: 'Matematika', topic: 'Sistem Persamaan Linear', activities: 'Metode eliminasi dan substitusi, latihan soal campuran, tugas kelompok.', notes: 'Siswa lebih suka metode eliminasi.' },
-];
+function ClassSelect({ classes, loading, value, onChange }: { classes: ClassItem[]; loading: boolean; value: string; onChange: (v: string) => void }) {
+  return (
+    <Select value={value} onValueChange={onChange} disabled={loading || classes.length === 0}>
+      <SelectTrigger className="rounded-lg"><SelectValue placeholder={loading ? 'Memuat…' : 'Pilih kelas'} /></SelectTrigger>
+      <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
+    </Select>
+  );
+}
 
 const SUBJECTS = ['Fisika', 'Matematika', 'Kimia', 'Biologi', 'Bahasa Indonesia', 'Bahasa Inggris'];
 const MONTHS = [
@@ -540,6 +542,7 @@ const ATTENDANCE_BUTTONS: { status: AttendanceRecord['status']; label: string; c
 
 export function GuruKehadiranView() {
   const user = useAppStore((s) => s.user);
+  const { classes, loading: classesLoading } = useClasses();
   const [date, setDate] = useState(todayStr());
   const [classId, setClassId] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
@@ -608,11 +611,7 @@ export function GuruKehadiranView() {
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Tanggal</Label><Input type="date" value={date} onChange={(e) => { setDate(e.target.value); loadedRef.current = ''; }} className="w-full sm:w-48 rounded-lg" /></div>
             <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Kelas</Label>
-              <div className="flex flex-wrap gap-2">
-                {MOCK_CLASSES.map((c) => (
-                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); loadedRef.current = ''; }} />
-                ))}
-              </div>
+              <ClassPillSelector classes={classes} loading={classesLoading} classId={classId} onSelect={(id) => { setClassId(id); loadedRef.current = ''; }} />
             </div>
             {students.length > 0 && <Button variant="outline" onClick={markAllHadir} className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 rounded-full px-4 transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer"><UserCheck className="w-4 h-4 mr-2" />Semua Hadir</Button>}
           </div>
@@ -687,7 +686,8 @@ export function GuruKehadiranView() {
 
 export function GuruRekapKehadiranView() {
   const user = useAppStore((s) => s.user);
-  const [classId, setClassId] = useState('c1');
+  const { classes, loading: classesLoading } = useClasses();
+  const [classId, setClassId] = useState('');
   const [month, setMonth] = useState(currentMonth());
   const [data, setData] = useState<RekapKehadiran[]>([]);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
@@ -740,11 +740,7 @@ export function GuruRekapKehadiranView() {
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="space-y-2 w-full sm:w-auto">
               <Label className="text-xs text-muted-foreground">Kelas</Label>
-              <div className="flex flex-wrap gap-2">
-                {MOCK_CLASSES.map((c) => (
-                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); fetchedRef.current = ''; }} />
-                ))}
-              </div>
+              <ClassPillSelector classes={classes} loading={classesLoading} classId={classId} onSelect={(id) => { setClassId(id); fetchedRef.current = ''; }} />
             </div>
             <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Bulan</Label>
               <Select value={month} onValueChange={(v) => { setMonth(v); fetchedRef.current = ''; }}>
@@ -825,6 +821,7 @@ export function GuruRekapKehadiranView() {
 
 export function GuruKarakterView() {
   const user = useAppStore((s) => s.user);
+  const { classes, loading: classesLoading } = useClasses();
   const [classId, setClassId] = useState('');
   const [studentId, setStudentId] = useState('');
   const [students, setStudents] = useState<Student[]>([]);
@@ -892,11 +889,7 @@ export function GuruKarakterView() {
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Kelas</Label>
-              <div className="flex flex-wrap gap-2">
-                {MOCK_CLASSES.map((c) => (
-                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); setStudentId(''); studentLoadedRef.current = ''; ratingLoadedRef.current = ''; }} />
-                ))}
-              </div>
+              <ClassPillSelector classes={classes} loading={classesLoading} classId={classId} onSelect={(id) => { setClassId(id); setStudentId(''); studentLoadedRef.current = ''; ratingLoadedRef.current = ''; }} />
             </div>
             <div className="space-y-2 w-full sm:w-auto flex-1 sm:max-w-xs"><Label className="text-xs text-muted-foreground">Siswa</Label>
               <Select value={studentId} onValueChange={(v) => { setStudentId(v); ratingLoadedRef.current = ''; }} disabled={!classId}>
@@ -978,13 +971,14 @@ export function GuruKarakterView() {
 
 export function GuruRekapKarakterView() {
   const user = useAppStore((s) => s.user);
-  const [classId, setClassId] = useState('c1');
+  const { classes, loading: classesLoading } = useClasses();
+  const [classId, setClassId] = useState('');
   const [month, setMonth] = useState(currentMonth());
-  const [data, setData] = useState<typeof MOCK_REKAP_KARAKTER[number][]>([]);
+  const [data, setData] = useState<RekapKarakterItem[]>([]);
   const [sortField, setSortField] = useState<'name' | 'score'>('score');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [detailOpen, setDetailOpen] = useState(false);
-  const [detailStudent, setDetailStudent] = useState<typeof MOCK_REKAP_KARAKTER[number] | null>(null);
+  const [detailStudent, setDetailStudent] = useState<RekapKarakterItem | null>(null);
   const fetchedRef = useRef<string>('');
 
   useEffect(() => {
@@ -1020,7 +1014,7 @@ export function GuruRekapKarakterView() {
   const scoreBg = (avg: number) => avg >= 3.5 ? 'bg-emerald-100' : avg >= 2.5 ? 'bg-amber-100' : 'bg-red-100';
   const scoreBar = (avg: number) => avg >= 3.5 ? 'bg-emerald-500' : avg >= 2.5 ? 'bg-amber-500' : 'bg-red-500';
 
-  const openDetail = (s: typeof MOCK_REKAP_KARAKTER[number]) => { setDetailStudent(s); setDetailOpen(true); };
+  const openDetail = (s: RekapKarakterItem) => { setDetailStudent(s); setDetailOpen(true); };
 
   return (
     <div className="space-y-6">
@@ -1032,11 +1026,7 @@ export function GuruRekapKarakterView() {
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="space-y-2 w-full sm:w-auto">
               <Label className="text-xs text-muted-foreground">Kelas</Label>
-              <div className="flex flex-wrap gap-2">
-                {MOCK_CLASSES.map((c) => (
-                  <FilterPill key={c.id} label={c.name} active={classId === c.id} onClick={() => { setClassId(c.id); fetchedRef.current = ''; }} />
-                ))}
-              </div>
+              <ClassPillSelector classes={classes} loading={classesLoading} classId={classId} onSelect={(id) => { setClassId(id); fetchedRef.current = ''; }} />
             </div>
             <div className="space-y-2 w-full sm:w-auto"><Label className="text-xs text-muted-foreground">Bulan</Label>
               <Select value={month} onValueChange={(v) => { setMonth(v); fetchedRef.current = ''; }}>
@@ -1200,6 +1190,7 @@ export function GuruRekapKarakterView() {
 
 export function GuruJurnalView() {
   const user = useAppStore((s) => s.user);
+  const { classes, loading: classesLoading } = useClasses();
   const [journals, setJournals] = useState<JournalEntry[]>([]);
   const [search, setSearch] = useState('');
   const [dateFilter, setDateFilter] = useState('');
@@ -1350,10 +1341,7 @@ export function GuruJurnalView() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2"><Label>Tanggal</Label><Input type="date" className="rounded-lg" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} /></div>
               <div className="space-y-2"><Label>Kelas *</Label>
-                <Select value={form.className} onValueChange={(v) => setForm((f) => ({ ...f, className: v }))}>
-                  <SelectTrigger className="rounded-lg"><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
-                  <SelectContent>{MOCK_CLASSES.map((c) => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}</SelectContent>
-                </Select>
+                <ClassSelect classes={classes} loading={classesLoading} value={form.className} onChange={(v) => setForm((f) => ({ ...f, className: v }))} />
               </div>
             </div>
             <div className="space-y-2"><Label>Mata Pelajaran *</Label>
