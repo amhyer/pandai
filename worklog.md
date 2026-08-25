@@ -3326,3 +3326,31 @@ Returns `error.message` to client but is **not used anywhere** in the codebase (
 
 ## Verification
 - `bun run lint` — passes cleanly (0 errors, 0 warnings)
+
+---
+Task ID: FASE-3.4
+Agent: main
+Task: FASE 3.4 — P3 Cleanup & Production Readiness (10 Steps)
+
+Work Log:
+- STEP 1: P2 Residual Audit — Found 4 remaining P2 mock data issues, all fixed
+- STEP 2: Created src/lib/attendance.ts centralized utility, wired 4 locations
+- STEP 3: Error handling — 16 API files fixed (catch any→unknown, message exposure)
+- STEP 4: Dead code — 13 mock constants removed (~157 lines), RekapKarakterItem interface extracted
+- STEP 5: Navigation — 4 orphan views documented, GURU tryout/nilai collision documented
+- STEP 6: Type safety — /api/users PATCH field whitelist (privilege escalation prevention)
+- STEP 7: Quality gate — lint PASS, build PASS, 30/30 effective PASS
+- STEP 8: Data integrity — DB clean, 0 TEST_ fixtures
+- STEP 9: Final classification — P0:0, P1:0, P2:0, P3:9
+- STEP 10: Final report generated, git commit 8d6fc13
+
+Stage Summary:
+- 4 P2 residual mock data issues found and fixed
+- 1 new utility file (src/lib/attendance.ts)
+- 1 security fix (privilege escalation on /api/users PATCH)
+- 16 error handling improvements
+- 13 dead mock constants removed
+- 0 security regressions
+- 0 P0/P1/P2 unresolved
+- 9 P3 items documented as technical debt
+- Git checkpoint: 8d6fc13
