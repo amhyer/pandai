@@ -70,6 +70,7 @@ import {
   Crown,
   MessageSquare,
   Calculator,
+  FileBarChart,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
@@ -318,6 +319,8 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         section: 'Hasil',
         items: [
           { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
+          { label: 'Nilai Akhir', view: 'siswa-nilai-akhir' as ViewType, icon: BarChart3 },
+          { label: 'Rapor Saya', view: 'siswa-rapor' as ViewType, icon: FileBarChart },
           { label: 'Kehadiran Saya', view: 'siswa-kehadiran', icon: CalendarDays },
         ],
       },
