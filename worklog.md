@@ -3354,3 +3354,23 @@ Stage Summary:
 - 0 P0/P1/P2 unresolved
 - 9 P3 items documented as technical debt
 - Git checkpoint: 8d6fc13
+---
+Task ID: P51-L1
+Agent: Main
+Task: Fix git credentials, sync remote, fix nav collision, fix orphan views
+
+Work Log:
+- Checked git remote URL: had embedded token (ghp_054wru...), display showed [REDACTED]
+- Token valid for read (git ls-remote OK) but NOT for push (Authentication failed)
+- Fixed URL to clean https://github.com/amhyer/pandai.git, moved token to ~/.git-credentials with credential.helper=store
+- Push still fails — token lacks repo/write scope. Reported to user.
+- Local is 26 commits ahead of origin/main, 0 behind. No pull needed.
+- LANGKAH 3: Confirmed GURU sidebar collision — 'Tryout TKA' and 'Input Nilai' both mapped to view key 'guru-nilai'. Fixed by adding 'guru-tryout' to ViewType, authenticated-app.tsx, and app-layout.tsx (sidebar + VIEW_LABELS + breadcrumbs). Commit: c048421
+- LANGKAH 4: Confirmed 'siswa-rapor' and 'siswa-nilai-akhir' are orphans — registered in view system but no sidebar item. Added both to SISWA "Hasil" section. Commit: 4b5cd84
+- SISWA 'Tryout TKA' correctly maps to 'siswa-tryout' → SiswaTryoutView (no collision with exam-taking UI)
+
+Stage Summary:
+- Git push BLOCKED: token has read-only access, needs new token with repo scope via z.ai Secrets panel
+- 2 commits created (c048421, 4b5cd84), 26 total pending push
+- GURU nav collision: FIXED
+- SISWA orphan views (rapor + nilai-akhir): FIXED
