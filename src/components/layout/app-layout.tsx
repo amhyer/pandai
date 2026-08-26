@@ -71,6 +71,7 @@ import {
   MessageSquare,
   Calculator,
   FileBarChart,
+  Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { LucideIcon } from 'lucide-react';
@@ -416,6 +417,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       {
         section: 'Rekap Sekolah',
         items: [
+          { label: 'Peta Kelas', view: 'kepsek-peta-kelas' as ViewType, icon: Map },
           { label: 'Rekap Per Kelas', view: 'kepsek-rekap-kelas', icon: GraduationCap },
           { label: 'Rekap Per Guru', view: 'kepsek-rekap-guru', icon: Users },
           { label: 'Rekap 7 Kebiasaan', view: 'kepsek-rekap-karakter', icon: Star },
@@ -564,6 +566,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
       { label: VIEW_LABELS['school-detail'] },
     ],
     'users-global': [{ label: VIEW_LABELS['users-global'] }],
+    'questions-global': [{ label: VIEW_LABELS['questions-global'] }],
     'reports-global': [{ label: VIEW_LABELS['reports-global'] }],
     'analytics-global': [{ label: VIEW_LABELS['analytics-global'] }],
     settings: [{ label: VIEW_LABELS.settings }],
