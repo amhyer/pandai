@@ -1,0 +1,28 @@
+#!/bin/bash
+cd /home/z/my-project
+export NODE_OPTIONS="--max-old-space-size=256"
+export JWT_SECRET="dev_jwt_secret_do_not_use_in_prod"
+
+while true; do
+  node .next/standalone/server.js -p 3000 > /tmp/standalone.log 2>&1 &
+  SERVER_PID=$!
+  
+  for i in $(seq 1 15); do
+    sleep 1
+    if ss -tlnp 2>/dev/null | grep -q ":3000 "; then
+      break
+    fi
+    if ! kill -0 $SERVER_PID 2>/dev/null; then
+      break
+    fi
+  done
+  
+  while kill -0 $SERVER_PID 2>/dev/null && ss -tlnp 2>/dev/null | grep -q ":3000 "; do
+    curl -s --max-time 5 -o /dev/null http://127.0.0.1:3000/api/health 2>/dev/null
+    sleep 10
+  done
+  
+  kill $SERVER_PID 2>/dev/null
+  wait $SERVER_PID 2>/dev/null
+  sleep 2
+done
