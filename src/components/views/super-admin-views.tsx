@@ -382,13 +382,18 @@ export function UsersGlobalView() {
         description="Kelola semua pengguna dari seluruh sekolah di platform PANDAI."
         icon={Users}
         action={
-          <Button
-            className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-            onClick={() => toast.info('Fitur unduh data pengguna akan segera hadir.')}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Ekspor Data
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                disabled
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Ekspor Data
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Fitur segera tersedia</TooltipContent>
+          </Tooltip>
         }
       />
 
@@ -542,13 +547,13 @@ export function UsersGlobalView() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                              onClick={() => toast.info(`Detail pengguna: ${user.name}`)}
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200"
+                              disabled
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Lihat Detail</TooltipContent>
+                          <TooltipContent>Segera tersedia</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -1051,13 +1056,13 @@ export function ReportsGlobalView() {
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                            onClick={() => toast.info(`Mengunduh: ${r.name}`)}
+                            className="h-8 w-8 transition-all duration-200"
+                            disabled
                           >
                             <FileDown className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Unduh Laporan</TooltipContent>
+                        <TooltipContent>Segera tersedia</TooltipContent>
                       </Tooltip>
                     </TableCell>
                   </TableRow>
@@ -1448,15 +1453,20 @@ export function AnalyticsGlobalView() {
               <h2 className="text-base font-semibold">Sekolah dengan Performa Terbaik</h2>
               <p className="text-xs text-muted-foreground">Berdasarkan rata-rata skor dan tingkat penyelesaian tryout.</p>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-xs rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98] hidden sm:flex"
-              onClick={() => toast.info('Menampilkan laporan lengkap performa sekolah.')}
-            >
-              <FileBarChart className="mr-1.5 h-3 w-3" />
-              Laporan Detail
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs rounded-lg transition-all duration-200 hidden sm:flex"
+                  disabled
+                >
+                  <FileBarChart className="mr-1.5 h-3 w-3" />
+                  Laporan Detail
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Segera tersedia</TooltipContent>
+            </Tooltip>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -1590,8 +1600,6 @@ export function SettingsView() {
   const [smtpHost, setSmtpHost] = useState('smtp.pandai.id');
   const [smtpPort, setSmtpPort] = useState('587');
   const [featureFlags, setFeatureFlags] = useState(DEFAULT_FEATURE_FLAGS);
-  const [saving, setSaving] = useState(false);
-
   const featureFlagsFitur = featureFlags.filter((f) => f.category === 'fitur');
   const featureFlagsSistem = featureFlags.filter((f) => f.category === 'sistem');
 
@@ -1602,11 +1610,7 @@ export function SettingsView() {
   }
 
   function handleSave() {
-    setSaving(true);
-    setTimeout(() => {
-      setSaving(false);
-      toast.success('Pengaturan berhasil disimpan!');
-    }, 1500);
+    toast.info('Pengaturan platform segera tersedia.');
   }
 
   return (
@@ -1616,23 +1620,19 @@ export function SettingsView() {
         description="Konfigurasi pengaturan global platform PANDAI."
         icon={SettingsIcon}
         action={
-          <Button
-            className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Menyimpan...
-              </>
-            ) : (
-              <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                onClick={handleSave}
+                disabled
+              >
                 <Save className="mr-2 h-4 w-4" />
                 Simpan Pengaturan
-              </>
-            )}
-          </Button>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Segera tersedia</TooltipContent>
+          </Tooltip>
         }
       />
 
@@ -1653,6 +1653,7 @@ export function SettingsView() {
                   onChange={(e) => setAppName(e.target.value)}
                   placeholder="PANDAI"
                   className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                  readOnly
                 />
                 <p className="text-xs text-muted-foreground">
                   Nama yang ditampilkan di browser tab dan email.
@@ -1665,6 +1666,7 @@ export function SettingsView() {
                   onChange={(e) => setAppUrl(e.target.value)}
                   placeholder="https://pandai.id"
                   className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                  readOnly
                 />
                 <p className="text-xs text-muted-foreground">
                   URL dasar yang digunakan untuk link di email dan API.
@@ -1688,6 +1690,7 @@ export function SettingsView() {
                   onChange={(e) => setSenderEmail(e.target.value)}
                   placeholder="noreply@pandai.id"
                   className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                  readOnly
                 />
               </div>
               <div className="space-y-2">
@@ -1697,6 +1700,7 @@ export function SettingsView() {
                   onChange={(e) => setSmtpHost(e.target.value)}
                   placeholder="smtp.pandai.id"
                   className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                  readOnly
                 />
               </div>
               <div className="space-y-2">
@@ -1706,6 +1710,7 @@ export function SettingsView() {
                   onChange={(e) => setSmtpPort(e.target.value)}
                   placeholder="587"
                   className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                  readOnly
                 />
               </div>
               <div className="space-y-2">
@@ -1723,15 +1728,20 @@ export function SettingsView() {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                onClick={() => toast.success('Email test berhasil dikirim ke inbox Anda!')}
-              >
-                <Mail className="mr-2 h-3.5 w-3.5" />
-                Kirim Email Test
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-lg transition-all duration-200"
+                    disabled
+                  >
+                    <Mail className="mr-2 h-3.5 w-3.5" />
+                    Kirim Email Test
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Segera tersedia</TooltipContent>
+              </Tooltip>
             </div>
           </SettingsSection>
 
@@ -1752,6 +1762,7 @@ export function SettingsView() {
                     <Switch
                       checked={flag.enabled}
                       onCheckedChange={() => toggleFeature(flag.key)}
+                      disabled
                     />
                   </div>
                   {idx < featureFlagsFitur.length - 1 && <Separator className="mx-4" />}
@@ -1777,6 +1788,7 @@ export function SettingsView() {
                     <Switch
                       checked={flag.enabled}
                       onCheckedChange={() => toggleFeature(flag.key)}
+                      disabled
                     />
                   </div>
                   {idx < featureFlagsSistem.length - 1 && <Separator className="mx-4" />}
@@ -1838,30 +1850,45 @@ export function SettingsView() {
             description="Tindakan khusus super admin."
           >
             <div className="space-y-2">
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                onClick={() => toast.success('Cache berhasil dibersihkan!')}
-              >
-                <RefreshCw className="h-4 w-4" />
-                Bersihkan Cache
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                onClick={() => toast.info('Mengirim notifikasi ke semua admin sekolah...')}
-              >
-                <Bell className="h-4 w-4" />
-                Broadcast Notifikasi
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                onClick={() => toast.info('Memulai backup database...')}
-              >
-                <Database className="h-4 w-4" />
-                Backup Database
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200"
+                    disabled
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Bersihkan Cache
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Segera tersedia</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200"
+                    disabled
+                  >
+                    <Bell className="h-4 w-4" />
+                    Broadcast Notifikasi
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Segera tersedia</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200"
+                    disabled
+                  >
+                    <Database className="h-4 w-4" />
+                    Backup Database
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Segera tersedia</TooltipContent>
+              </Tooltip>
             </div>
           </SettingsSection>
 
@@ -1881,11 +1908,12 @@ export function SettingsView() {
             <div className="p-5 sm:p-6">
               <Button
                 variant="destructive"
-                className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                className="w-full justify-start gap-2.5 text-sm rounded-lg transition-all duration-200"
                 onClick={() =>
                   toast.error(
                     'Fitur ini dinonaktifkan untuk keamanan. Hubungi developer jika diperlukan.'
                   )}
+                disabled
               >
                 <TriangleAlert className="h-4 w-4" />
                 Reset Platform
