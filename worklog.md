@@ -3460,3 +3460,35 @@ Stage Summary:
 - Feature B was a false positive (test was using wrong endpoint)
 - GURU cross-school isolation now enforced in scores API
 - Push blocked (no credentials)
+---
+---
+Task ID: 53
+Agent: main
+Task: Fix 2 bugs found during dummy user verification
+
+Work Log:
+- Identified Bug 1: 8 API routes used wrong `const { user, error } = await requireAuth(req)` pattern
+  - requireAuth() returns AuthUser directly, throws AuthError on failure (not { user, error })
+  - Some routes also passed { roles: [...] } as 2nd arg but requireAuth only takes 1 arg
+  - Fixed all 8 files: exam-sessions, exam-sessions/[id], analytics/item-analysis, notifications/broadcast, users/change-password, reports, reset, restore
+  - Also fixed user.id → user.userId (AuthUser interface has userId not id)
+  - Also fixed user.name → user.userId (AuthUser has no name field)
+- Identified Bug 2: No KEPALA_SEKOLAH user in seed data
+  - Database was empty (reset), re-seeded with updated seed that includes KEPALA_SEKOLAH
+  - Seed now creates kepsek.sdn1 and kepsek.smpn2 accounts
+- Rebuilt standalone, restarted server, verified all fixes
+
+Stage Summary:
+- Commit: e71b06b
+- All 11 API tests pass:
+  1. SA schools: 2 ✅
+  2. AS classes: 2 ✅  
+  3. GU exam-sessions: HTTP 200 ✅ (was 500)
+  4. SI exam-sessions: HTTP 200 ✅ (was 500)
+  5. OT exam-sessions: HTTP 200 ✅ (was 500)
+  6. KS dashboard: HTTP 200 ✅ (new!)
+  7. NoToken: HTTP 401 ✅
+  8. Inactive: HTTP 401 ✅
+  9. GU scores: HTTP 200 ✅
+  10. OT scores: HTTP 200 ✅
+  11. SI scores: HTTP 200 ✅
