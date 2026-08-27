@@ -183,65 +183,66 @@ export function SiswaMateriView() {
   const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
   const [expandedMaterial, setExpandedMaterial] = useState<string | null>(null);
 
-  useEffect(() => {
-    async function fetchMaterials() {
-      setIsLoading(true);
-      try {
-        const params = new URLSearchParams({
-          schoolId: user?.schoolId || '',
-          classId: user?.classId || '',
-          type: 'materi',
-          status: 'published',
-        });
-        const res = await fetch(`/api/materials?${params}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0) {
-            // Group materials by subject name from API data
-            const grouped = new Map<string, any[]>();
-            (data as any[]).forEach((m: any) => {
-              const subjectName = typeof m.subject === 'string' ? m.subject : m.subject?.name || 'Lainnya';
-              if (!grouped.has(subjectName)) grouped.set(subjectName, []);
-              grouped.get(subjectName)!.push(m);
-            });
-            // Build SubjectData[] only for subjects with materials
-            const mapped: SubjectData[] = Array.from(grouped.entries()).map(([subjectName, apiMaterials]) => {
-              const cfg = getSubjectConfig(subjectName);
-              return {
-                id: cfg.id,
-                name: subjectName,
-                icon: cfg.icon,
-                color: cfg.color,
-                bgLight: cfg.bgLight,
-                borderColor: cfg.borderColor,
-                gradientFrom: cfg.gradientFrom,
-                gradientTo: cfg.gradientTo,
-                materials: apiMaterials.map((m: any) => ({
-                  id: m.id,
-                  title: m.title,
-                  description: m.description || '',
-                  subject: subjectName,
-                  date: m.createdAt || m.date || '2025-01-01',
-                  isRead: false,
-                  content: m.content || '',
-                })),
-              };
-            });
-            setSubjects(mapped);
-          } else {
-            setSubjects([]);
-          }
+  const fetchMaterials = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const params = new URLSearchParams({
+        schoolId: user?.schoolId || '',
+        classId: user?.classId || '',
+        type: 'materi',
+        status: 'published',
+      });
+      const res = await fetch(`/api/materials?${params}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          // Group materials by subject name from API data
+          const grouped = new Map<string, any[]>();
+          (data as any[]).forEach((m: any) => {
+            const subjectName = typeof m.subject === 'string' ? m.subject : m.subject?.name || 'Lainnya';
+            if (!grouped.has(subjectName)) grouped.set(subjectName, []);
+            grouped.get(subjectName)!.push(m);
+          });
+          // Build SubjectData[] only for subjects with materials
+          const mapped: SubjectData[] = Array.from(grouped.entries()).map(([subjectName, apiMaterials]) => {
+            const cfg = getSubjectConfig(subjectName);
+            return {
+              id: cfg.id,
+              name: subjectName,
+              icon: cfg.icon,
+              color: cfg.color,
+              bgLight: cfg.bgLight,
+              borderColor: cfg.borderColor,
+              gradientFrom: cfg.gradientFrom,
+              gradientTo: cfg.gradientTo,
+              materials: apiMaterials.map((m: any) => ({
+                id: m.id,
+                title: m.title,
+                description: m.description || '',
+                subject: subjectName,
+                date: m.createdAt || m.date || '2025-01-01',
+                isRead: false,
+                content: m.content || '',
+              })),
+            };
+          });
+          setSubjects(mapped);
         } else {
           setSubjects([]);
         }
-      } catch {
+      } else {
         setSubjects([]);
-      } finally {
-        setIsLoading(false);
       }
+    } catch {
+      setSubjects([]);
+    } finally {
+      setIsLoading(false);
     }
-    fetchMaterials();
   }, [user?.schoolId, user?.classId]);
+
+  useEffect(() => {
+    fetchMaterials();
+  }, [fetchMaterials]);
 
   const toggleSubject = useCallback((subjectId: string) => {
     setExpandedSubject((prev) => (prev === subjectId ? null : subjectId));
@@ -300,15 +301,10 @@ export function SiswaMateriView() {
         };
       })
     );
-    toast.success('Materi ditandai sudah dibaca!');
   };
 
   const handleRefresh = async () => {
-    setIsLoading(true);
-    toast.loading('Memuat ulang materi...', { id: 'refresh-materi' });
-    await new Promise((r) => setTimeout(r, 600));
-    setIsLoading(false);
-    toast.success('Materi berhasil dimuat ulang', { id: 'refresh-materi' });
+    await fetchMaterials();
   };
 
   if (isLoading) {
@@ -636,7 +632,7 @@ function getDueUrgency(dueDate: string): 'overdue' | 'today' | 'soon' | 'future'
 }
 
 export function SiswaTugasView() {
-  const { user } = useAppStore();
+  const { user, navigateTo } = useAppStore();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState('semua');
@@ -788,16 +784,12 @@ export function SiswaTugasView() {
     }
   };
 
-  const handleStartTask = (taskId: string) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === taskId ? { ...t, status: 'dikerjakan' as const } : t))
-    );
-    toast.success('Tugas dimulai! Semangat mengerjakan!');
+  const handleStartTask = (_taskId: string) => {
+    navigateTo('siswa-tugas');
   };
 
-  const handleViewResult = (taskId: string) => {
-    const task = tasks.find((t) => t.id === taskId);
-    toast.info(`Nilai ${task?.title}: ${task?.score}/100`);
+  const handleViewResult = (_taskId: string) => {
+    navigateTo('siswa-nilai');
   };
 
   const handleSubmitScore = async (taskId: string) => {

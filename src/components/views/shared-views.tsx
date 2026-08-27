@@ -311,10 +311,7 @@ export function ProfileView() {
   };
 
   const handleChangePassword = () => {
-    toast.info(
-      'Fitur ubah password akan segera tersedia. Silakan hubungi administrator sekolah Anda untuk bantuan mengubah password.',
-      { duration: 5000 },
-    );
+    // Not yet implemented — button is disabled in the UI
   };
 
   const initials = (user?.name ?? 'U')
@@ -602,11 +599,11 @@ export function ProfileView() {
             </div>
             <Button
               variant="destructive"
-              className="cursor-pointer rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] sm:shrink-0"
-              onClick={handleChangePassword}
+              className="rounded-xl transition-all duration-200 sm:shrink-0"
+              disabled
             >
               <Lock className="mr-2 h-4 w-4" />
-              Ubah Password
+              Segera Hadir
             </Button>
           </div>
         </CardContent>
@@ -745,7 +742,6 @@ export function NotificationsView() {
 
   const handleMarkAllRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-    toast.success('Semua notifikasi telah ditandai sebagai dibaca');
   };
 
   const handleMarkRead = (id: string) => {
