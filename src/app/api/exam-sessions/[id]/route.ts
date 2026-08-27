@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth';
+import { requireRole, AuthError } from '@/lib/auth';
 
 // PATCH /api/exam-sessions/[id] — cancel an exam session
 export async function PATCH(
@@ -8,10 +8,7 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { user, error } = await requireAuth(req, {
-      roles: ['ADMIN_SCHOOL', 'GURU', 'SUPER_ADMIN'],
-    });
-    if (error) return error;
+    const user = await requireRole(req, ['ADMIN_SCHOOL', 'GURU', 'SUPER_ADMIN']);
 
     const { id } = await params;
     const body = await req.json();
@@ -62,6 +59,9 @@ export async function PATCH(
 
     return NextResponse.json({ data: updated });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error('PATCH /api/exam-sessions/[id] error:', err);
     return NextResponse.json(
       { error: 'Gagal membatalkan sesi ujian' },

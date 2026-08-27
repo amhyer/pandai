@@ -1,20 +1,19 @@
 import { NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 // POST /api/reset — Clear ALL data (destructive, SUPER_ADMIN only, blocked in production)
 export async function POST(req: Request) {
-  const { user, error } = await requireAuth(req as any, { roles: ['SUPER_ADMIN'] });
-  if (error) return error;
-
-  if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json(
-      { error: 'Reset platform dinonaktifkan di lingkungan production.' },
-      { status: 403 }
-    );
-  }
-
   try {
+    const user = await requireRole(req as any, ['SUPER_ADMIN']);
+
+    if (process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Reset platform dinonaktifkan di lingkungan production.' },
+        { status: 403 }
+      );
+    }
+
     // Clear in correct order for FK constraints
     await db.assignmentAnswer.deleteMany();
     await db.assignmentSubmission.deleteMany();
@@ -51,9 +50,9 @@ export async function POST(req: Request) {
     // Log the reset action (this will be the only record)
     await db.activityLog.create({
       data: {
-        userId: user.id,
+        userId: user.userId,
         action: 'Reset Platform',
-        detail: 'Seluruh data platform telah dihapus oleh ' + user.name,
+        detail: 'Seluruh data platform telah dihapus oleh ' + user.userId,
         module: 'sistem',
       },
     });
@@ -63,6 +62,9 @@ export async function POST(req: Request) {
       message: 'Platform berhasil direset. Semua data telah dihapus.',
     });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error('POST /api/reset error:', err);
     return NextResponse.json({ error: 'Gagal mereset platform' }, { status: 500 });
   }

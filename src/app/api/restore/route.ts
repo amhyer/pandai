@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireRole, AuthError } from '@/lib/auth';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { db } from '@/lib/db';
@@ -8,10 +8,9 @@ const SQLITE_MAGIC = Buffer.from('SQLite format 3\x00', 'ascii');
 
 // POST /api/restore — Restore database from uploaded .db file
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireAuth(req, { roles: ['SUPER_ADMIN'] });
-  if (error) return error;
-
   try {
+    const user = await requireRole(req, ['SUPER_ADMIN']);
+
     const formData = await req.formData();
     const file = formData.get('file') as File | null;
 
@@ -44,7 +43,7 @@ export async function POST(req: NextRequest) {
     // Log activity
     await db.activityLog.create({
       data: {
-        userId: user.id,
+        userId: user.userId,
         schoolId: user.schoolId,
         action: 'Memulihkan database',
         detail: `Database dipulihkan dari file: ${file.name} (${(buffer.length / 1024 / 1024).toFixed(2)} MB)`,
@@ -57,6 +56,9 @@ export async function POST(req: NextRequest) {
       message: 'Database berhasil dipulihkan. Silakan refresh halaman.',
     });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error('POST /api/restore error:', err);
     return NextResponse.json({ error: 'Gagal memulihkan database' }, { status: 500 });
   }

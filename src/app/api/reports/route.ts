@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth';
+import { requireRole, AuthError } from '@/lib/auth';
 
 // ── helpers ──────────────────────────────────────────────────────────
 
@@ -31,10 +31,7 @@ function round1(n: number): number {
 
 export async function GET(req: NextRequest) {
   try {
-    const { user, error } = await requireAuth(req, {
-      roles: ['SUPER_ADMIN', 'ADMIN_SCHOOL'],
-    });
-    if (error) return error;
+    const user = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
 
     const { searchParams } = new URL(req.url);
     const globalFlag = searchParams.get('global') === 'true';
@@ -98,10 +95,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { user, error } = await requireAuth(req, {
-      roles: ['SUPER_ADMIN', 'ADMIN_SCHOOL'],
-    });
-    if (error) return error;
+    const user = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
 
     const { searchParams } = new URL(req.url);
     const globalFlag = searchParams.get('global') === 'true';
@@ -404,7 +398,7 @@ export async function POST(req: NextRequest) {
     // ── Log to ActivityLog ──
     await db.activityLog.create({
       data: {
-        userId: user.id,
+        userId: user.userId,
         schoolId: effectiveSchoolId || user.schoolId || null,
         action: 'generate_report',
         module: 'reports',
@@ -416,7 +410,7 @@ export async function POST(req: NextRequest) {
       reportId,
       type,
       generatedAt,
-      generatedBy: user.name,
+      generatedBy: user.userId,
       status: 'Selesai',
       columns,
       rows,

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth';
+import { requireRole, AuthError } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 // POST /api/notifications/broadcast — Send notification to users
 // SUPER_ADMIN: can broadcast to all, by school, or by role
 // ADMIN_SCHOOL: can only broadcast to their own school
 export async function POST(req: NextRequest) {
-  const { user, error } = await requireAuth(req, { roles: ['SUPER_ADMIN', 'ADMIN_SCHOOL'] });
-  if (error) return error;
-
   try {
+    const user = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+
     const body = await req.json();
     const { title, message, schoolId, role, userIds } = body as {
       title: string;
@@ -66,7 +65,7 @@ export async function POST(req: NextRequest) {
     // Log activity
     await db.activityLog.create({
       data: {
-        userId: user.id,
+        userId: user.userId,
         schoolId: user.schoolId,
         action: 'Broadcast Notifikasi',
         detail: `Mengirim notifikasi "${title.trim()}" ke ${targetUsers.length} pengguna`,
@@ -80,6 +79,9 @@ export async function POST(req: NextRequest) {
       count: targetUsers.length,
     });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error('POST /api/notifications/broadcast error:', err);
     return NextResponse.json({ error: 'Gagal mengirim broadcast' }, { status: 500 });
   }

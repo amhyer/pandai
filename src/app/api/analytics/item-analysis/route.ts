@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { requireAuth } from '@/lib/auth'
+import { requireAuth, AuthError } from '@/lib/auth'
 import { Prisma } from '@prisma/client'
 
 /**
@@ -14,19 +14,18 @@ import { Prisma } from '@prisma/client'
  *   schoolId, subjectId, classId
  */
 export async function GET(request: NextRequest) {
-  const { user, error } = await requireAuth(request)
-  if (error) return error
-
-  const { searchParams } = new URL(request.url)
-  const schoolId = searchParams.get('schoolId') || user.schoolId
-  const subjectId = searchParams.get('subjectId') || undefined
-  const classId = searchParams.get('classId') || undefined
-
-  if (!schoolId) {
-    return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 })
-  }
-
   try {
+    const user = await requireAuth(request)
+
+    const { searchParams } = new URL(request.url)
+    const schoolId = searchParams.get('schoolId') || user.schoolId
+    const subjectId = searchParams.get('subjectId') || undefined
+    const classId = searchParams.get('classId') || undefined
+
+    if (!schoolId) {
+      return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 })
+    }
+
     // ────────────────────────────────────────────────────
     // 1. StudentAnswer (Tryout) — aggregated by questionId
     // ────────────────────────────────────────────────────
@@ -171,6 +170,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ data: analysis, total: analysis.length })
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status })
+    }
     console.error('[item-analysis] Error:', err)
     return NextResponse.json(
       { error: 'Gagal mengambil analisis butir soal' },
