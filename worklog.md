@@ -3442,3 +3442,21 @@ Stage Summary:
 - 1 LOW severity: GURU can query cross-school scores (returns empty, CUID-guessing required).
 - 1 operational: .env.production must be created before deployment.
 - Push: BLOCKED until new credentials provided.
+---
+Task ID: P52-fix
+Agent: main
+Task: Fix findings from P52 audit
+
+Work Log:
+- Investigated Feature B "externalLink bug": Found that externalUrl is on Material model, NOT Question. The verify script was testing the wrong endpoint. Materials API already handles externalUrl correctly (POST, GET, provider detection). NOT A BUG.
+- Fixed GURU/ADMIN_SCHOOL cross-school access in /api/scores: Added school isolation check after SISWA/ORANG_TUA checks. Returns 403 when student is from different school.
+- Questions route: Initially edited but reverted (externalUrl doesn't exist on Question model).
+- Lint: 0 errors on changed files. Build: passes.
+- Server OOM prevents runtime testing; verified via code review + build.
+- Committed: c078858
+
+Stage Summary:
+- 1 file changed: src/app/api/scores/route.ts (+9 lines, -1 line)
+- Feature B was a false positive (test was using wrong endpoint)
+- GURU cross-school isolation now enforced in scores API
+- Push blocked (no credentials)
