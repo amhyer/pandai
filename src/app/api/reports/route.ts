@@ -83,6 +83,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ data: enriched, total: enriched.length });
   } catch (err) {
+    if (err instanceof AuthError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error('GET /api/reports error:', err);
     return NextResponse.json(
       { error: 'Gagal mengambil daftar laporan' },

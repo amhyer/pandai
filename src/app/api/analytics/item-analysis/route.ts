@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
              COUNT(*) AS "totalAnswered",
              COALESCE(SUM(CASE WHEN aa."isCorrect" = 1 THEN 1 ELSE 0 END), 0) AS "totalCorrect"
         FROM "AssignmentAnswer" aa
-        JOIN "AssignmentQuestion" aq ON aa."assignmentQuestionId" = aq."id"
+        JOIN "AssignmentQuestion" aq ON aa."questionId" = aq."id"
         JOIN "AssignmentSubmission" aSub ON aa."submissionId" = aSub."id"
         JOIN "Assignment" a ON aSub."assignmentId" = a."id"
        WHERE ${tugasWhere}

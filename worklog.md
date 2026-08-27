@@ -3492,3 +3492,24 @@ Stage Summary:
   9. GU scores: HTTP 200 ✅
   10. OT scores: HTTP 200 ✅
   11. SI scores: HTTP 200 ✅
+
+---
+Task ID: bugfix-continue
+Agent: main
+Task: Continue bug fixes from previous session - verify requireAuth fixes, re-seed DB, fix newly discovered bugs
+
+Work Log:
+- Verified all 8 files previously identified with wrong requireAuth pattern are already fixed
+- Re-seeded database (was empty) - all 27 users created including 2 KEPALA_SEKOLAH
+- Generated JWT tokens for all roles
+- Fixed GET /api/reports missing AuthError catch (was returning 500 instead of 403 for unauthorized roles)
+- Fixed /api/analytics/item-analysis wrong column name: aa."assignmentQuestionId" -> aa."questionId"
+- Rebuilt standalone and tested all 6 user roles
+
+Stage Summary:
+- All original bugs (requireAuth pattern + missing KEPALA_SEKOLAH) were already fixed in previous session
+- Database re-seeded with all roles including KEPALA_SEKOLAH
+- 2 additional bugs found and fixed during verification:
+  1. GET /api/reports missing AuthError handling
+  2. item-analysis SQL column name mismatch
+- All 6 roles verified working: SA(200), AS(200), KS(200), GURU(200), SISWA(200), OT(auth OK)
