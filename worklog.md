@@ -3401,3 +3401,25 @@ Stage Summary:
 - 2 orphan ViewTypes documented (broadcasts, dashboard-kepsek)
 - 35 commits ahead of origin/main (push blocked by credential)
 - Server OOM in sandbox — cannot run full runtime browser tests, verified via build + lint + code review
+---
+Task ID: P54-verify
+Agent: Main
+Task: Verify 7 Fixed→LIVE buttons via API+DB tests (R54)
+
+Work Log:
+- LANGKAH 1: 0 commits behind — all 35 from R53 already pushed
+- Test 1 (GURU Hapus Tugas): POST→create, DELETE /api/materials?id=X→200, verified GONE from DB ✅
+- Test 2 (GURU Hapus Jurnal): POST /api/teaching-journals→create, DELETE→200, verified GONE ✅
+- Test 3 (GURU Edit Tugas PATCH): POST→create, PATCH with id in body→title changed, count unchanged (no duplicate) ✅
+- Test 4 (GURU Ekspor CSV): Code verified — real Blob CSV generation with download link ✅
+- Test 5 (SISWA Refresh): handleRefresh now calls fetchMaterials() which hits GET /api/materials→200 ✅
+- Test 6 (ORTU Download PDF): GET /api/reports/rapor-siswa?format=pdf→200, 7893 bytes, header %PDF- ✅
+- Test 7 (ORTU Cetak): Both handlePrint handlers now call window.print() directly. Found residual fake toast in OrtuNilaiView, fixed.
+- Extra fix: OrtuNilaiView handlePrint had same fake toast pattern as OrtuLaporanView, fixed in commit ca7f1e2
+- All pushed to GitHub, HEAD = origin/main
+
+Stage Summary:
+- 7/7 Fixed→LIVE buttons verified (5 via API+DB, 2 via code review for browser-only features)
+- 1 additional fix found during verification (OrtuNilaiView print toast)
+- Total 36 commits pushed across R53+R54
+- Server OOM prevents full Agent Browser testing; API+DB verification used instead
