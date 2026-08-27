@@ -338,22 +338,49 @@ export function GuruTugasView() {
     if (!form.dueDate) { toast.error('Tanggal tenggat wajib diisi'); return; }
     setSaving(true);
     try {
-      const res = await fetch('/api/materials', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: form.title, description: form.description, content: form.content, schoolId: user?.schoolId, teacherId: user?.id, type: form.type, dueDate: form.dueDate, status: 'published', learningObjective: form.learningObjective.trim() || undefined }),
-      });
-      if (res.ok) { toast.success('Tugas berhasil dibuat'); setDialogOpen(false); setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '', learningObjective: '' }); setSaving(false); return; }
+      if (selected) {
+        // Editing existing item — use PATCH
+        const res = await fetch('/api/materials', {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: selected.id, title: form.title, description: form.description, content: form.content, type: form.type, dueDate: form.dueDate, learningObjective: form.learningObjective.trim() || undefined }),
+        });
+        if (res.ok) {
+          setItems((prev) => prev.map((i) => i.id === selected.id ? { ...i, title: form.title, description: form.description, content: form.content, type: form.type, dueDate: form.dueDate, learningObjective: form.learningObjective } : i));
+          toast.success('Tugas berhasil diperbarui'); setDialogOpen(false); setSelected(null);
+          setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '', learningObjective: '' }); setSaving(false); return;
+        }
+      } else {
+        // Creating new item — use POST
+        const res = await fetch('/api/materials', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: form.title, description: form.description, content: form.content, schoolId: user?.schoolId, teacherId: user?.id, type: form.type, dueDate: form.dueDate, status: 'published', learningObjective: form.learningObjective.trim() || undefined }),
+        });
+        if (res.ok) { toast.success('Tugas berhasil dibuat'); setDialogOpen(false); setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '', learningObjective: '' }); setSaving(false); return; }
+      }
     } catch { /* fallback */ }
-    const newItem: TugasItem = { id: `t${Date.now()}`, ...form, status: 'published' };
-    setItems((prev) => [newItem, ...prev]);
-    toast.success('Tugas berhasil dibuat (lokal)'); setDialogOpen(false);
+    if (selected) {
+      setItems((prev) => prev.map((i) => i.id === selected.id ? { ...i, title: form.title, description: form.description, content: form.content, type: form.type, dueDate: form.dueDate, learningObjective: form.learningObjective } : i));
+      toast.success('Tugas berhasil diperbarui (lokal)'); setDialogOpen(false); setSelected(null);
+    } else {
+      const newItem: TugasItem = { id: `t${Date.now()}`, ...form, status: 'published' };
+      setItems((prev) => [newItem, ...prev]);
+      toast.success('Tugas berhasil dibuat (lokal)'); setDialogOpen(false);
+    }
     setForm({ title: '', description: '', type: 'tugas', dueDate: '', content: '', learningObjective: '' }); setSaving(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selected) return;
+    try {
+      const res = await fetch(`/api/materials?id=${selected.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setItems((prev) => prev.filter((i) => i.id !== selected.id));
+        toast.success('Tugas berhasil dihapus'); setDeleteOpen(false); setSelected(null);
+        return;
+      }
+    } catch { /* fallback to local */ }
     setItems((prev) => prev.filter((i) => i.id !== selected.id));
-    toast.success('Tugas berhasil dihapus'); setDeleteOpen(false); setSelected(null);
+    toast.success('Tugas berhasil dihapus (lokal)'); setDeleteOpen(false); setSelected(null);
   };
 
   const typeBorderColor: Record<string, string> = { tugas: 'border-l-blue-500', quiz: 'border-l-amber-500', ujian: 'border-l-purple-500' };
@@ -691,7 +718,6 @@ export function GuruRekapKehadiranView() {
   const [month, setMonth] = useState(currentMonth());
   const [data, setData] = useState<RekapKehadiran[]>([]);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [exporting, setExporting] = useState(false);
   const fetchedRef = useRef<string>('');
 
   useEffect(() => {
@@ -717,19 +743,32 @@ export function GuruRekapKehadiranView() {
   const pctColor = (p: number) => p >= 90 ? 'text-emerald-600' : p >= 75 ? 'text-amber-600' : 'text-red-600';
   const barColor = (p: number) => p >= 90 ? 'bg-emerald-500' : p >= 75 ? 'bg-amber-500' : 'bg-red-500';
 
-  const handleExport = async () => {
-    setExporting(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    toast.success('Data berhasil diekspor');
-    setExporting(false);
+  const handleExport = () => {
+    const monthLabel = MONTHS.find((m) => m.value === month)?.label || month;
+    const classLabel = classes.find((c) => c.id === classId)?.name || classId || 'Semua Kelas';
+    const csv = [
+      `Rekap Kehadiran - ${classLabel} - ${monthLabel}`,
+      '',
+      'Nama,Hadir,Izin,Sakit,Alpa,Persentase (%)',
+      ...sorted.map((d) => `${d.studentName},${d.hadir},${d.izin},${d.sakit},${d.alpa},${d.persentase}`),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `rekap-kehadiran-${classLabel.toLowerCase().replace(/\s+/g, '-')}-${monthLabel.toLowerCase()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-6">
       <PageHeader icon={<BarChart3 className="w-5 h-5" />} title="Rekap Kehadiran" description="Ringkasan kehadiran siswa per bulan"
         action={<div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport} disabled={exporting} className="rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
-            {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}{exporting ? 'Mengekspor...' : 'Ekspor'}
+          <Button variant="outline" onClick={handleExport} className="rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer">
+            <Download className="w-4 h-4 mr-2" />Ekspor
           </Button>
           <Button variant="outline" onClick={() => window.print()} className="rounded-xl transition-all duration-200 hover:shadow-sm active:scale-[0.98] cursor-pointer"><Printer className="w-4 h-4 mr-2" />Cetak</Button>
         </div>} />
@@ -1244,10 +1283,18 @@ export function GuruJurnalView() {
     toast.success('Jurnal mengajar berhasil disimpan (lokal)'); setDialogOpen(false); setSaving(false);
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selectedJournal) return;
+    try {
+      const res = await fetch(`/api/teaching-journals?id=${selectedJournal.id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setJournals((prev) => prev.filter((j) => j.id !== selectedJournal.id));
+        toast.success('Jurnal berhasil dihapus'); setDeleteOpen(false); setSelectedJournal(null);
+        return;
+      }
+    } catch { /* fallback to local */ }
     setJournals((prev) => prev.filter((j) => j.id !== selectedJournal.id));
-    toast.success('Jurnal berhasil dihapus'); setDeleteOpen(false); setSelectedJournal(null);
+    toast.success('Jurnal berhasil dihapus (lokal)'); setDeleteOpen(false); setSelectedJournal(null);
   };
 
   return (

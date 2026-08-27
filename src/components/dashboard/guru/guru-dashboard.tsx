@@ -239,16 +239,7 @@ export function GuruDashboard() {
       toast.error('Pilih mata pelajaran terlebih dahulu');
       return;
     }
-    try {
-      setCreating(true);
-      // Navigate to question editor with pre-filled subject
-      navigateTo('guru-materi' as ViewType);
-      toast.success(`Membuat soal ${quickSubject}...`);
-    } catch {
-      toast.error('Gagal membuat soal');
-    } finally {
-      setCreating(false);
-    }
+    navigateTo('guru-materi' as ViewType);
   }
 
   return (

@@ -30,6 +30,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { detectExternalProvider, PROVIDER_ICONS, isValidUrl } from '@/lib/external-quiz';
 import { ImportSoalWordDialog } from './guru-import-soal';
@@ -1190,10 +1191,15 @@ export function GuruTryoutView() {
   return (
     <div className="space-y-6">
       <PageHeader icon={ClipboardList} title="Kelola Tryout" description="Buat, jadwalkan, dan pantau tryout untuk siswa Anda.">
-        <Button className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Fitur buat tryout segera hadir')}>
-          <Plus className="mr-2 h-4 w-4" />
-          Buat Tryout
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]" disabled>
+              <Plus className="mr-2 h-4 w-4" />
+              Buat Tryout
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Segera tersedia</TooltipContent>
+        </Tooltip>
       </PageHeader>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -1264,8 +1270,18 @@ export function GuruTryoutView() {
                             </TableCell>
                             <TableCell className="text-center">
                               <div className="flex items-center justify-center gap-1">
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Detail tryout: ' + tryout.title)}><Eye className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Edit tryout: ' + tryout.title)}><Pencil className="h-4 w-4" /></Button>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" disabled><Eye className="h-4 w-4" /></Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Segera tersedia</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]" disabled><Pencil className="h-4 w-4" /></Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Segera tersedia</TooltipContent>
+                                </Tooltip>
                               </div>
                             </TableCell>
                           </TableRow>
@@ -2078,14 +2094,11 @@ export function GuruLaporanView() {
     fetchExams();
   }, [fetchStudents, fetchAttempts, fetchExams]);
 
-  const handleGenerate = useCallback((reportId: string, title: string) => {
-    setGenerating(reportId);
-    setTimeout(() => {
-      setGenerating(null);
-      setReportType(reportId);
-      setShowReport(true);
-      toast.success('Laporan "' + title + '" berhasil dibuat!');
-    }, 1200);
+  const handleGenerate = useCallback((reportId: string) => {
+    setReportType(reportId);
+    setReportExamId('');
+    setShowReport(true);
+    toast.info('Pembuatan laporan otomatis segera tersedia.');
   }, []);
 
   const handlePrint = useCallback(() => {
@@ -2159,25 +2172,33 @@ export function GuruLaporanView() {
                     </div>
                   </CardHeader>
                   <CardContent className="flex justify-end gap-2 border-t pt-4">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1.5 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                      onClick={() => { handleGenerate(rt.id, rt.title); setReportExamId(''); }}
-                      disabled={isGenerating}
-                    >
-                      <Printer className="h-3.5 w-3.5" />
-                      {isGenerating ? 'Memproses...' : 'Cetak'}
-                    </Button>
-                    <Button
-                      size="sm"
-                      className="gap-1.5 rounded-lg bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
-                      onClick={() => { handleGenerate(rt.id, rt.title); setReportExamId(''); }}
-                      disabled={isGenerating}
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      {isGenerating ? 'Memproses...' : 'Unduh PDF'}
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                          disabled
+                        >
+                          <Printer className="h-3.5 w-3.5" />
+                          Cetak
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Segera tersedia</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          className="gap-1.5 rounded-lg bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+                          disabled
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Unduh PDF
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Segera tersedia</TooltipContent>
+                    </Tooltip>
                   </CardContent>
                 </Card>
               );
