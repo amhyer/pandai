@@ -29,8 +29,16 @@ export async function GET(req: NextRequest) {
     }
     if (auth.role === 'ORANG_TUA') {
       // Verify the student is a child of this ortu
-      const student = await db.user.findUnique({ where: { id: studentId }, select: { parentId: true } });
+      const student = await db.user.findUnique({ where: { id: studentId }, select: { parentId: true, schoolId: true } });
       if (!student || student.parentId !== auth.userId) {
+        return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+      }
+    }
+
+    // School isolation: GURU and ADMIN_SCHOOL can only view students in their own school
+    if ((auth.role === 'GURU' || auth.role === 'ADMIN_SCHOOL') && auth.schoolId) {
+      const student = await db.user.findUnique({ where: { id: studentId }, select: { schoolId: true } });
+      if (!student || student.schoolId !== auth.schoolId) {
         return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
       }
     }
