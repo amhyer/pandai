@@ -438,11 +438,7 @@ export function OrtuNilaiView() {
   }
 
   function handlePrint() {
-    toast.info('Menyiapkan laporan nilai untuk dicetak...');
-    setTimeout(() => {
-      window.print();
-      toast.success('Laporan nilai berhasil dicetak!');
-    }, 1000);
+    window.print();
   }
 
   if (loading) return <LoadingSkeleton />;
