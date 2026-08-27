@@ -30,6 +30,11 @@ import {
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Target,
   TrendingUp,
   TrendingDown,
@@ -62,6 +67,36 @@ import {
   GraduationCap,
   FileBarChart,
 } from 'lucide-react';
+
+// ═══════════════════════════════════════════════════════════════════
+// PDF HELPERS (same pattern as rapor-view.tsx)
+// ═══════════════════════════════════════════════════════════════════
+
+async function fetchPdfBlob(url: string): Promise<Blob | null> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      const errText = await res.text().catch(() => 'Gagal mengunduh PDF');
+      throw new Error(errText);
+    }
+    return await res.blob();
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Terjadi kesalahan';
+    toast.error(message);
+    return null;
+  }
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
 
 // ─── Shared Types ───────────────────────────────────────────────────
 
@@ -1230,10 +1265,7 @@ export function OrtuKehadiranView() {
   }
 
   function handleExport() {
-    toast.info('Mengunduh laporan kehadiran...');
-    setTimeout(() => {
-      toast.success('Laporan kehadiran berhasil diunduh!');
-    }, 1500);
+    toast.error('Fitur export kehadiran belum tersedia');
   }
 
   const dayLabels = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
@@ -1253,15 +1285,22 @@ export function OrtuKehadiranView() {
         />
         <div className="flex items-center gap-3 flex-wrap">
           <ChildSelector childList={children} selected={selectedChild} onSelect={setSelectedChild} />
-          <Button
-            variant="outline"
-            size="sm"
-            className="rounded-full"
-            onClick={handleExport}
-          >
-            <Download className="mr-2 h-4 w-4" />
-            Export
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-full"
+                  disabled
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Export
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Fitur export kehadiran belum tersedia</TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -1935,22 +1974,29 @@ export function OrtuLaporanView() {
     setRecentDownloads([]);
   }
 
-  function handleDownloadPDF(reportId: string, reportTitle: string) {
+  async function handleDownloadPDF(reportId: string, reportTitle: string) {
+    if (reportId !== 'rapor') {
+      toast.error(`Laporan "${reportTitle}" belum tersedia`);
+      return;
+    }
+    if (!selectedChild) {
+      toast.error('Pilih anak terlebih dahulu');
+      return;
+    }
     setDownloadingId(reportId);
-    toast.info(`Mengunduh ${reportTitle}...`);
-    setTimeout(() => {
-      setDownloadingId(null);
-      toast.success(`${reportTitle} berhasil diunduh!`);
-    }, 2000);
+    const termParam = periodFilter === 'Semua' ? '2024/2025-Ganjil' : periodFilter;
+    const blob = await fetchPdfBlob(
+      `/api/reports/rapor-siswa?studentId=${encodeURIComponent(selectedChild)}&term=${encodeURIComponent(termParam)}&format=pdf`
+    );
+    setDownloadingId(null);
+    if (blob) {
+      downloadBlob(blob, `Rapor-${reportTitle}-${termParam}.pdf`);
+      toast.success('PDF berhasil diunduh');
+    }
   }
 
-  function handlePrint(reportId: string, reportTitle: string) {
-    setPrintingId(reportId);
-    toast.info(`Menyiapkan ${reportTitle} untuk cetak...`);
-    setTimeout(() => {
-      setPrintingId(null);
-      toast.success(`${reportTitle} siap dicetak.`);
-    }, 1500);
+  function handlePrint(_reportId: string, _reportTitle: string) {
+    window.print();
   }
 
   if (loading) return <LoadingSkeleton />;
@@ -2075,14 +2121,21 @@ export function OrtuLaporanView() {
                         })}
                       </TableCell>
                       <TableCell className="text-center">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="rounded-full h-8 w-8 p-0 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                          onClick={() => toast.info('Mengunduh ulang ' + d.fileName + '...')}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="rounded-full h-8 w-8 p-0"
+                                disabled
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Fitur unduh ulang belum tersedia</TooltipContent>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}

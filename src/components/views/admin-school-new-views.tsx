@@ -10,6 +10,11 @@ import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -1515,29 +1520,13 @@ export function BackupRestoreView() {
         }, 500);
         return;
       }
-    } catch {
+    } catch (error: unknown) {
       clearInterval(interval);
-    }
-    // Mock fallback
-    const newBackup: BackupRecord = {
-      id: `b${Date.now()}`,
-      fileName: `backup_${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15)}.db`,
-      fileSize: `${(2.4 + Math.random() * 0.5).toFixed(1)} MB`,
-      createdAt: new Date().toLocaleString('id-ID', {
-        year: 'numeric', month: '2-digit', day: '2-digit',
-        hour: '2-digit', minute: '2-digit',
-      }),
-      records: totalRecords + 1,
-    };
-    setBackupProgress(100);
-    setTimeout(() => {
-      setBackups((prev) => [newBackup, ...prev.slice(0, 4)]);
-      setLastBackup(newBackup.createdAt);
-      setTotalRecords(newBackup.records);
-      toast.success('Backup berhasil dibuat!');
+      const message = error instanceof Error ? error.message : 'Terjadi kesalahan';
+      toast.error('Gagal membuat backup: ' + message);
       setCreating(false);
       setBackupProgress(0);
-    }, 500);
+    }
   }
 
   async function handleDownload() {
@@ -1558,15 +1547,15 @@ export function BackupRestoreView() {
         setDownloading(false);
         return;
       }
-    } catch {
-      // fallback
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Terjadi kesalahan';
+      toast.error('Gagal mengunduh: ' + message);
+      setDownloading(false);
     }
-    toast.info('File backup demo berhasil diunduh (demo mode)');
-    setDownloading(false);
   }
 
-  function handleDownloadBackup(backup: BackupRecord) {
-    toast.info(`Mengunduh ${backup.fileName} (demo mode)`);
+  function handleDownloadBackup(_backup: BackupRecord) {
+    toast.error('Fitur unduh per-backup belum tersedia');
   }
 
   if (loading) {
@@ -1750,15 +1739,22 @@ export function BackupRestoreView() {
                   Seret & lepas file backup .db di sini, atau klik untuk memilih
                 </p>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2 rounded-full transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                onClick={() => toast.info('Fitur upload pemulihan akan segera tersedia')}
-              >
-                <FolderOpen className="h-3.5 w-3.5" />
-                Pilih File
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span tabIndex={0}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2 rounded-full"
+                      disabled
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                      Pilih File
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Fitur pemulihan dari file belum tersedia</TooltipContent>
+              </Tooltip>
             </div>
           </div>
         </div>
@@ -1824,24 +1820,38 @@ export function BackupRestoreView() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 text-xs rounded-lg transition-all duration-200 hover:shadow-sm"
-                          onClick={() => handleDownloadBackup(b)}
-                        >
-                          <FileDown className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Unduh</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 gap-1 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-all duration-200 hover:shadow-sm"
-                          onClick={() => toast.info('Fitur pemulihan akan segera tersedia')}
-                        >
-                          <Upload className="h-3.5 w-3.5" />
-                          <span className="hidden sm:inline">Pulihkan</span>
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1 text-xs rounded-lg"
+                                disabled
+                              >
+                                <FileDown className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Unduh</span>
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Fitur unduh per-backup belum tersedia</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <span tabIndex={0}>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 gap-1 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 rounded-lg"
+                                disabled
+                              >
+                                <Upload className="h-3.5 w-3.5" />
+                                <span className="hidden sm:inline">Pulihkan</span>
+                              </Button>
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent>Fitur pemulihan akan segera tersedia</TooltipContent>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>
