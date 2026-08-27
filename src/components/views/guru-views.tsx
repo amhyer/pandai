@@ -1014,7 +1014,7 @@ export function GuruSoalView() {
   return (
     <div className="space-y-6">
       <PageHeader icon={ClipboardList} title="Bank Soal" description="Kelola dan organisir soal-soal yang telah Anda buat untuk persiapan TKA.">
-        <Button className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]" onClick={() => toast.info('Fitur pembuat soal segera hadir')}>
+        <Button className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98] opacity-50" disabled>
           <Plus className="mr-2 h-4 w-4" />
           Buat Soal Baru
         </Button>

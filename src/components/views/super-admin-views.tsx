@@ -728,26 +728,16 @@ function getReportTypeBadge(type: string) {
 type SortKey = 'name' | 'students' | 'avgScore' | 'completionRate' | 'tryoutCount';
 
 export function ReportsGlobalView() {
-  const [generating, setGenerating] = useState<string | null>(null);
-  const [exporting, setExporting] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>('avgScore');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
   const [reportTypeFilter, setReportTypeFilter] = useState('all');
 
-  function handleGenerate(type: string) {
-    setGenerating(type);
-    setTimeout(() => {
-      setGenerating(null);
-      toast.success('Laporan berhasil digenerate!');
-    }, 2000);
+  function handleGenerate(_type: string) {
+    toast.info('Fitur generate laporan global segera tersedia.');
   }
 
   function handleExport() {
-    setExporting(true);
-    setTimeout(() => {
-      setExporting(false);
-      toast.success('Data berhasil diekspor!');
-    }, 1500);
+    toast.info('Fitur ekspor data global segera tersedia.');
   }
 
   function toggleSort(key: SortKey) {
@@ -791,23 +781,18 @@ export function ReportsGlobalView() {
         description="Buat dan kelola laporan lintas sekolah di platform PANDAI."
         icon={FileBarChart}
         action={
-          <Button
-            className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-            disabled={exporting}
-            onClick={handleExport}
-          >
-            {exporting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Mengekspor...
-              </>
-            ) : (
-              <>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98] opacity-50"
+                disabled
+              >
                 <Download className="mr-2 h-4 w-4" />
                 Ekspor Semua
-              </>
-            )}
-          </Button>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Fitur segera tersedia</TooltipContent>
+          </Tooltip>
         }
       />
 
@@ -857,20 +842,11 @@ export function ReportsGlobalView() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="w-full text-xs rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                  disabled={isGenerating}
+                  className="w-full text-xs rounded-lg opacity-50"
+                  disabled
                 >
-                  {isGenerating ? (
-                    <>
-                      <RefreshCw className="mr-1.5 h-3 w-3 animate-spin" />
-                      Generating...
-                    </>
-                  ) : (
-                    <>
-                      <FileBarChart className="mr-1.5 h-3 w-3" />
-                      Generate Laporan
-                    </>
-                  )}
+                  <FileBarChart className="mr-1.5 h-3 w-3" />
+                  Generate Laporan
                 </Button>
               </div>
             </div>
