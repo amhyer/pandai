@@ -1,0 +1,47 @@
+============================================
+GRUP D — CRUD SOAL & TRYOUT BUILDER
+Timestamp: 2026-08-13T02:13:47.880Z
+============================================
+
+===== D1: GuruSoalView & GuruTryoutView registration =====
+  GuruSoalView in authenticated-app.tsx: NO
+  GuruTryoutView in authenticated-app.tsx: NO
+  'guru-soal' view key: NO
+  'guru-tryout' view key: NO
+  Sidebar has "Bank Soal": NO
+  Sidebar has "Tryout": NO
+  STATUS: FAIL — GuruSoalView & GuruTryoutView exist as DEAD CODE. Not registered in router or sidebar.
+
+===== D2: Create question via API (since UI not accessible) =====
+  Subjects API: status=200
+  Using subject: id=cmsqspjkq0006rcxti8fadt85 name=Bahasa Indonesia
+  Create question: status=200
+  Created: id=cmsqvwnv90007rc15amf2iyev
+  STATUS: PASS
+
+===== D3: Tryout creation (via API) =====
+  GET /api/exams: status=200
+  Existing exam packages: 0
+  POST /api/exams: status=500
+  Created exam: id=undefined
+  STATUS: FAIL
+
+===== D4: Student access to tryout =====
+  Exam packages for school1: 0
+
+===== D5: Clone-if-used pattern =====
+  PATCH /api/questions has clone-if-used: YES
+  exam-items route exists: NO — file not found
+  STATUS: PASS
+
+===== D6: RestrictedEditDialog + backend guard =====
+  PATCH /api/exams has attemptCount > 0 guard: NO
+  Returns 409 when exam has attempts: NO
+  STATUS: FAIL — Backend guard NOT implemented
+
+===== D7: Draft isolation between gurus =====
+  Guru1 draft question: status=200
+  Guru1 sees 0 draft questions
+  SuperAdmin sees 0 draft questions
+  STATUS: Drafts are school-scoped but NOT user-scoped. Same-school users see each other's drafts.
+  NOTE: "Draft isolation antar-guru" was NEVER implemented — drafts are visible within the same school.

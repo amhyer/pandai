@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">package config\n\nimport (\n\t\"github.com/spf13/viper\"\n)\n\n// Database holds MySQL connection parameters.\ntype Database struct {\n\tUsername string `mapstructure:\"username\"`\n\tPassword string `mapstructure:\"password\"`\n\tHostname string `mapstructure:\"hostname\"`\n\tPort     string `mapstructure:\"port\"`\n\tName     string `mapstructure:\"name\"`\n}\n\n// App holds application-level settings.\ntype App struct {\n\tPort string `mapstructure:\"port\"`\n\tPath string `mapstructure:\"path\"`\n}\n\n// Auth holds authentication settings.\ntype Auth struct {\n\tValidToken string `mapstructure:\"valid_token\"`\n}\n\n// Config is the top-level configuration structure.\ntype Config struct {\n\tApp      App      `mapstructure:\"app\"`\n\tDatabase Database `mapstructure:\"database\"`\n\tAuth     Auth     `mapstructure:\"auth\"`\n}\n\n// Load reads config.yaml from the current directory and returns a Config.\nfunc Load() (Config, error) {\n\tviper.SetConfigName(\"config\")\n\tviper.SetConfigType(\"yaml\")\n\tviper.AddConfigPath(\".\")\n\n\tif err := viper.ReadInConfig(); err != nil {\n\t\treturn Config{}, err\n\t}\n\n\tvar cfg Config\n\tif err := viper.Unmarshal(&cfg); err != nil {\n\t\treturn Config{}, err\n\t}\n\n\treturn cfg, nil\n}\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/devmaarifnu/dapodik-api/refs/heads/main/internal/config/config.go",
+    "usage": {
+      "tokens": 304
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 304
+    }
+  },
+  "status": 200
+}

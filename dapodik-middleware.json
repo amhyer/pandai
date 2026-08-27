@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">package middleware\n\nimport (\n\t\"bytes\"\n\t\"io\"\n\t\"log\"\n\t\"net/http\"\n\t\"strings\"\n\n\t\"github.com/gin-gonic/gin\"\n)\n\n// TokenRequired validates the Bearer token against the configured valid token.\nfunc TokenRequired(validToken string) gin.HandlerFunc {\n\treturn func(c *gin.Context) {\n\t\tauthHeader := c.GetHeader(\"Authorization\")\n\t\tif authHeader == \"\" {\n\t\t\tc.JSON(http.StatusUnauthorized, gin.H{\n\t\t\t\t\"message\": \"Token is missing or invalid!\",\n\t\t\t\t\"code\":    \"401\",\n\t\t\t})\n\t\t\tc.Abort()\n\t\t\treturn\n\t\t}\n\n\t\tparts := strings.SplitN(authHeader, \" \", 2)\n\t\tif len(parts) != 2 || parts[0] != \"Bearer\" {\n\t\t\tc.JSON(http.StatusUnauthorized, gin.H{\n\t\t\t\t\"message\": \"Token is missing or invalid!\",\n\t\t\t\t\"code\":    \"401\",\n\t\t\t})\n\t\t\tc.Abort()\n\t\t\treturn\n\t\t}\n\n\t\tif parts[1] != validToken {\n\t\t\tc.JSON(http.StatusUnauthorized, gin.H{\n\t\t\t\t\"message\": \"Token is missing or invalid!\",\n\t\t\t\t\"code\":    \"401\",\n\t\t\t})\n\t\t\tc.Abort()\n\t\t\treturn\n\t\t}\n\n\t\tc.Next()\n\t}\n}\n\n// responseBodyWriter wraps gin.ResponseWriter to capture the response body.\ntype responseBodyWriter struct {\n\tgin.ResponseWriter\n\tbody *bytes.Buffer\n}\n\nfunc (w *responseBodyWriter) Write(b []byte) (int, error) {\n\tw.body.Write(b)\n\treturn w.ResponseWriter.Write(b)\n}\n\n// RequestResponseLogger logs every incoming request (including raw body) and its response.\nfunc RequestResponseLogger() gin.HandlerFunc {\n\treturn func(c *gin.Context) {\n\t\t// --- Log Request ---\n\t\tvar reqBody string\n\t\tif c.Request.Body != nil {\n\t\t\tbodyBytes, err := io.ReadAll(c.Request.Body)\n\t\t\tif err == nil {\n\t\t\t\treqBody = string(bodyBytes)\n\t\t\t\t// Restore body so downstream handlers can read it\n\t\t\t\tc.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))\n\t\t\t}\n\t\t}\n\n\t\tlog.Printf(\"[REQUEST] %s %s | Query: %s | Headers: %v | Body: %s\",\n\t\t\tc.Request.Method,\n\t\t\tc.Request.URL.Path,\n\t\t\tc.Request.URL.RawQuery,\n\t\t\tc.Request.Header,\n\t\t\treqBody,\n\t\t)\n\n\t\t// --- Capture Response ---\n\t\trw := &responseBodyWriter{\n\t\t\tResponseWriter: c.Writer,\n\t\t\tbody:           bytes.NewBuffer(nil),\n\t\t}\n\t\tc.Writer = rw\n\n\t\tc.Next()\n\n\t\t// --- Log Response ---\n\t\tlog.Printf(\"[RESPONSE] %s %s | Status: %d | Body: %s\",\n\t\t\tc.Request.Method,\n\t\t\tc.Request.URL.Path,\n\t\t\tc.Writer.Status(),\n\t\t\trw.body.String(),\n\t\t)\n\t}\n}\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/devmaarifnu/dapodik-api/refs/heads/main/internal/middleware/middleware.go",
+    "usage": {
+      "tokens": 636
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 636
+    }
+  },
+  "status": 200
+}

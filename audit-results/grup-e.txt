@@ -1,0 +1,71 @@
+============================================
+GRUP E — FITUR PUTARAN 7
+Timestamp: 2026-08-13T02:13:48.535Z
+============================================
+
+===== E1: HasilTryoutView =====
+  HasilTryoutView exists: NO — TIDAK PERNAH DIBUAT
+  Tryout results in admin-school-views: YES
+  Tryout in admin-school-new-views: NO
+  STATUS: FAIL — HasilTryoutView TIDAK PERNAH DIBANGUN
+
+===== E2: Detail Tryout =====
+  'tryout-detail' or 'exam-detail' view key: NO
+  STATUS: FAIL — Detail Tryout NOT registered
+
+===== E3: Edit Tryout =====
+  'tryout-edit' or 'exam-edit' view key: NO
+  STATUS: FAIL — Edit Tryout NOT registered
+
+===== E4: Available ADMIN_SCHOOL views =====
+  All registered view keys (49):
+    - dashboard-super
+    - dashboard-admin
+    - dashboard-guru
+    - dashboard-siswa
+    - dashboard-ortu
+    - schools
+    - school-detail
+    - users-global
+    - questions-global
+    - reports-global
+    - analytics-global
+    - settings
+    - classes
+    - users
+    - subjects
+    - teacher-assignments
+    - backup-restore
+    - activity-log
+    - timetable
+    - wali-kelas
+    - import-csv
+    - dapodik-sync
+    - guru-materi
+    - guru-nilai
+    - guru-analisis
+    - guru-laporan
+    - guru-tugas
+    - guru-kehadiran
+    - guru-rekap-kehadiran
+    - guru-karakter
+    - guru-rekap-karakter
+    - guru-jurnal
+    - guru-pandai-ai
+    - siswa-materi
+    - siswa-tugas
+    - siswa-riwayat
+    - siswa-nilai
+    - siswa-kehadiran
+    - siswa-pandai-ai
+    - ortu-nilai
+    - ortu-materi
+    - ortu-kehadiran
+    - ortu-kuis
+    - ortu-laporan
+    - ortu-karakter
+    - ortu-rekap-karakter
+    - profile
+    - notifications
+    - broadcasts
+  Admin-school accessible views: schools, school-detail, users-global, questions-global, reports-global, analytics-global, settings, classes, users, subjects, teacher-assignments, backup-restore, activity-log, timetable, wali-kelas, import-csv, dapodik-sync

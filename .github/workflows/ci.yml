@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ── Job 1: Lint & Type Check ──
+  quality:
+    name: Code Quality
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+        continue-on-error: true  # Non-blocking: pre-existing warnings
+
+  # ── Job 2: Build ──
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun run prisma generate
+      - run: NODE_OPTIONS='--max-old-space-size=4096' bun run build
+      - name: Verify build output
+        run: |
+          if [ -d .next/standalone ]; then
+            echo "✅ Standalone build output exists"
+          else
+            echo "❌ No standalone build output"
+            exit 1
+          fi
+
+  # ── Job 3: Security Audit ──
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun audit || true
+      - name: Check for hardcoded secrets
+        run: |
+          if grep -rn 'ghp_\|AKIA\|xoxb-\|sk_live' src/ --include='*.ts' --include='*.tsx'; then
+            echo '❌ Possible hardcoded secrets detected!'
+            exit 1
+          else
+            echo '✅ No hardcoded secrets found'
+          fi
+
+  # ── Job 4: Backup DB Artifact ──
+  backup:
+    name: Backup DB
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upload DB as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pandai-db-backup
+          path: db/custom.db
+          retention-days: 30

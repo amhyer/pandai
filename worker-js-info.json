@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">export async function handleSekolah(request, env, ctx = {}) {\n  const url = new URL(request.url);\n\n  if (!url.searchParams.has('npsn')) {\n    return new Response(JSON.stringify({\n      message: \"API Data Sekolah Wilayah Indonesia.\",\n      petunjuk: \"Gunakan parameter `npsn` pada URL untuk mencari data sekolah.\",\n      contoh: \"/v1/sekolah?npsn=20205428\",\n      //sumber_data: \"https://api.data.belajar.id\"\n    }, null, 2), {\n      headers: {\n        'Content-Type': 'application/json',\n        'Access-Control-Allow-Origin': '*'\n      }\n    });\n  }\n\n  const npsn = url.searchParams.get('npsn');\n  const cache = caches.default;\n  const cacheKey = new Request(request.url, request);\n\n  const cached = await cache.match(cacheKey);\n  if (cached) {\n    return new Response(cached.body, {\n      ...cached,\n      headers: {\n        ...cached.headers,\n        'Access-Control-Allow-Origin': '*'\n      }\n    });\n  }\n\n  const apiUrl = `<<email: arvib@fazriansyah.eu.org>>${encodeURIComponent(npsn)}`;\n\n  try {\n    const res = await fetch(apiUrl);\n    const data = await res.json();\n\n    const response = new Response(JSON.stringify({\n      //sumber: new URL(apiUrl).origin,\n      jenis: 'pencarian_sekolah',\n      data\n    }, null, 2), {\n      headers: {\n        'Content-Type': 'application/json',\n        'Cache-Control': 'public, max-age=300',\n        'Access-Control-Allow-Origin': '*'\n      }\n    });\n\n    if (ctx && typeof ctx.waitUntil === 'function') {\n      ctx.waitUntil(cache.put(cacheKey, response.clone()));\n    }\n\n    return response;\n\n  } catch (err) {\n    return new Response(JSON.stringify({\n      error: 'Gagal mengambil data',\n      detail: err.message\n    }, null, 2), {\n      status: 500,\n      headers: {\n        'Content-Type': 'application/json',\n        'Access-Control-Allow-Origin': '*'\n      }\n    });\n  }\n}\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/arv-fazriansyah/api-data-sekolah-indonesia/main/worker.js",
+    "usage": {
+      "tokens": 511
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 511
+    }
+  },
+  "status": 200
+}

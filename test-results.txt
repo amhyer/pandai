@@ -1,0 +1,34 @@
+Tingkat combo ref: @e4
+=== EXPANDING TINGKAT DROPDOWN ===
+✓ Done
+=== TINGKAT OPTIONS ===
+- generic
+  - region "Notifications alt+T" [ref=e1]
+  - button "Open Next.js Dev Tools" [expanded=false, ref=e9]
+    - image
+  - listbox [ref=e2]
+    - option "Kelas 1" [selected, ref=e3]
+      - StaticText "Kelas 1"
+    - option "Kelas 2" [ref=e4]
+      - StaticText "Kelas 2"
+    - option "Kelas 3" [ref=e5]
+      - StaticText "Kelas 3"
+    - option "Kelas 4" [ref=e6]
+      - StaticText "Kelas 4"
+    - option "Kelas 5" [ref=e7]
+      - StaticText "Kelas 5"
+    - option "Kelas 6" [ref=e8]
+      - StaticText "Kelas 6"
+✅ PASS: Found "Kelas 1" option
+✅ PASS: Found "Kelas 2" option
+✅ PASS: Found "Kelas 3" option
+✅ PASS: Found "Kelas 4" option
+✅ PASS: Found "Kelas 5" option
+✅ PASS: Found "Kelas 6" option
+✅ PASS: Form does NOT show "Kelas 7"
+✅ PASS: Form does NOT show "Kelas 8"
+✅ PASS: Form does NOT show "Kelas 9"
+✅ PASS: Form does NOT show "Kelas 10"
+✅ PASS: Form does NOT show "Kelas 11"
+✅ PASS: Form does NOT show "Kelas 12"
+=== GRADE OPTIONS VERIFICATION COMPLETE ===

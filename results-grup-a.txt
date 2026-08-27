@@ -1,0 +1,67 @@
+============================================
+GRUP A — SCORING ENGINE AUDIT
+Timestamp: 2026-08-13T02:10:45.606Z
+============================================
+Server ready (HTTP 200)
+
+===== TEST A1: Transaction check =====
+Checking POST /api/attempts source code for $transaction...
+  Uses $transaction: NO — uses simple loop + individual queries
+  Uses findMany for scoring: YES (but for fetching, not creating)
+  Uses for-loop with individual db.question.findUnique per answer: YES — this is N+1!
+  STATUS: FAIL — No atomic transaction, N+1 pattern detected
+
+===== TEST A2: Submit real attempt =====
+--- Fetching existing exam sessions ---
+  Exam sessions found: none/error
+--- Fetching exam items ---
+  Exam items status: 404
+--- Fetching questions for school1 ---
+  Questions status: 200
+  Q1: id=cmsqspjlh002prcxt3gjkacax type=pg answer=B
+  Q2: id=cmsqspjlh002qrcxtm4tlg0pk type=pg answer=A
+  Submitting: answer=B for Q type=pg
+  Submit status: 200
+  Response: score=1, correct=1, wrong=0, unanswered=0
+  percentage=100, tkaPrediction=1000
+  answers count in response: 0
+  STATUS: PASS — Attempt created with answer records
+
+===== TEST A3: PG Kompleks scoring =====
+Checking source code for PG Kompleks scoring logic...
+  Uses Set comparison for multi-answer: NO
+  Uses string equality (a.answer === question.answer): YES — THIS IS WRONG for multi-answer!
+  PG Kompleks scoring code: pg_kompleks') {
+            isCorrect = a.answer === question.answer;
+            points = isCorrect ? 1 : 0;
+  No PG Kompleks question found in DB — CANNOT TEST. Creating one...
+  Create question status: 500
+
+===== TEST A4: TKA Prediction formula =====
+Source code analysis:
+  Code: tkaPrediction =
+  Uses sigmoid: NO
+  Uses linear (percentage*8+200): YES
+  STATUS: FAIL — Linear formula, NOT sigmoid as claimed
+  Actual: pct=100, tka=1000
+  Expected linear: 1000
+  Expected sigmoid: 993
+  Match: linear=true, sigmoid=false
+
+===== TEST A5: Ranking via /api/scores =====
+  Uses real SQL ranking: YES
+  Uses hardcoded formula: YES — Math.min(Math.ceil(avg/20), total)
+  Ranking code: classRank: 0,
+        totalClassmates: 0,
+        totalTryout: 0,
+        subjects: [],
+        scoreTrend: [],
+        recentScores: [],
+      });
+  Scores API status: 200
+  Response: avgScore=90, classRank=3, totalClassmates=4
+  STATUS: PASS
+
+============================================
+GRUP A COMPLETE
+============================================

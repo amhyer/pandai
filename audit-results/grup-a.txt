@@ -1,0 +1,34 @@
+COMPREHENSIVE AUDIT — Groups A through E
+Started: 2026-08-13T02:13:46.777Z
+Server ready (HTTP 200)
+============================================
+GRUP A — SCORING ENGINE
+Timestamp: 2026-08-13T02:13:46.831Z
+============================================
+
+===== A1: Transaction check =====
+  $transaction: NO
+  N+1 loop (findUnique per answer): YES
+  STATUS: FAIL — No atomic transaction, uses N+1 pattern
+
+===== A2: Submit real attempt =====
+  Q1: id=cmsqspjlh002prcxt3gjkacax type=pg answer=B
+  Submit: status=200 score=1 correct=1 pct=100 tka=1000
+  DB verify: 4 attempts found
+  STATUS: PASS — Attempt created
+
+===== A3: PG Kompleks scoring =====
+  Uses Set comparison: NO
+  Uses string equality: YES — WRONG for multi-answer
+  STATUS: FAIL — String equality used, "C,B,A" !== "A,B,C" even though both are correct
+
+===== A4: TKA Prediction =====
+  Sigmoid: NO
+  Linear (pct*8+200): YES
+  STATUS: FAIL — Linear, NOT sigmoid as claimed
+
+===== A5: Ranking =====
+  Real SQL ranking: NO
+  Hardcoded formula: YES
+  API: avgScore=93 rank=3 classmates=4
+  STATUS: FAIL — Ranking is hardcoded estimation, not actual rank from DB

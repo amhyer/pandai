@@ -1,0 +1,19 @@
+============================================
+GRUP B — XSS PROTECTION
+Timestamp: 2026-08-13T02:13:47.636Z
+============================================
+
+===== B1: dompurify check =====
+  dompurify in package.json: NO
+  dompurify in siswa-ai-views.tsx: NO
+  dompurify in ortu-new-views.tsx: NO
+  dangerouslySetInnerHTML found anywhere: YES
+  STATUS: FAIL — dompurify NOT installed, XSS protection NOT implemented
+
+===== B2: XSS test via curl =====
+  Note: Cannot test browser-side XSS execution via curl alone.
+  However, we can verify that the backend does NOT sanitize HTML/script tags in stored content.
+  POST malicious question: status=500
+  Stored content: undefined
+  Script tag preserved in DB: NO
+  STATUS: FAIL — No sanitization on input, dompurify not installed

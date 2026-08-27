@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">package database\n\nimport (\n\t\"database/sql\"\n\t\"fmt\"\n\n\t_ \"github.com/go-sql-driver/mysql\"\n\t\"github.com/maarifnu/dapodik_api/internal/config\"\n)\n\n// New opens a MySQL connection using the separated config fields and verifies it with a ping.\nfunc New(cfg config.Database) (*sql.DB, error) {\n\tdsn := fmt.Sprintf(\"%s:%s@tcp(%s:%s)/%s?parseTime=true\",\n\t\tcfg.Username,\n\t\tcfg.Password,\n\t\tcfg.Hostname,\n\t\tcfg.Port,\n\t\tcfg.Name,\n\t)\n\n\tdb, err := sql.Open(\"mysql\", dsn)\n\tif err != nil {\n\t\treturn nil, fmt.Errorf(\"sql.Open: %w\", err)\n\t}\n\n\tif err := db.Ping(); err != nil {\n\t\treturn nil, fmt.Errorf(\"db.Ping: %w\", err)\n\t}\n\n\treturn db, nil\n}\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/devmaarifnu/dapodik-api/refs/heads/main/internal/database/database.go",
+    "usage": {
+      "tokens": 229
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 229
+    }
+  },
+  "status": 200
+}

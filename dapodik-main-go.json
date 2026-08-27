@@ -1,0 +1,20 @@
+{
+  "code": 200,
+  "data": {
+    "description": "",
+    "html": "<html><head><meta name=\"color-scheme\" content=\"light dark\"></head><body><pre style=\"word-wrap: break-word; white-space: pre-wrap;\">package main\n\nimport (\n\t\"log\"\n\n\t\"github.com/gin-gonic/gin\"\n\t\"github.com/maarifnu/dapodik_api/internal/config\"\n\t\"github.com/maarifnu/dapodik_api/internal/database\"\n\t\"github.com/maarifnu/dapodik_api/internal/handler\"\n\t\"github.com/maarifnu/dapodik_api/internal/middleware\"\n)\n\nfunc main() {\n\t// Load configuration\n\tcfg, err := config.Load()\n\tif err != nil {\n\t\tlog.Fatalf(\"Error loading config: %v\", err)\n\t}\n\n\t// Connect to database\n\tdb, err := database.New(cfg.Database)\n\tif err != nil {\n\t\tlog.Fatalf(\"Database connection error: %v\", err)\n\t}\n\tdefer db.Close()\n\n\t// Initialise handler with dependencies\n\th := handler.New(db)\n\n\t// Setup Gin router (without default logger — we use our own)\n\tr := gin.New()\n\tr.Use(gin.Recovery())\n\tr.Use(middleware.RequestResponseLogger())\n\n\t// Register routes\n\tapi := r.Group(cfg.App.Path)\n\tapi.Use(middleware.TokenRequired(cfg.Auth.ValidToken))\n\t{\n\t\tapi.GET(\"/:npsn\", h.GetDataByNPSN)\n\t\tapi.DELETE(\"/:npsn\", h.DeleteData)\n\t\tapi.POST(\"\", h.InsertData)\n\t}\n\n\tlog.Printf(\"Server starting on %s\", cfg.App.Port)\n\tif err := r.Run(cfg.App.Port); err != nil {\n\t\tlog.Fatalf(\"Server failed: %v\", err)\n\t}\n}\n</pre></body></html>",
+    "httpStatus": 200,
+    "httpStatusText": "",
+    "title": "",
+    "url": "https://raw.githubusercontent.com/devmaarifnu/dapodik-api/refs/heads/main/cmd/api/main.go",
+    "usage": {
+      "tokens": 352
+    }
+  },
+  "meta": {
+    "usage": {
+      "tokens": 352
+    }
+  },
+  "status": 200
+}

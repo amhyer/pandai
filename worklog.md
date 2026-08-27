@@ -3374,3 +3374,30 @@ Stage Summary:
 - 2 commits created (c048421, 4b5cd84), 26 total pending push
 - GURU nav collision: FIXED
 - SISWA orphan views (rapor + nilai-akhir): FIXED
+---
+Task ID: P53-audit
+Agent: Main
+Task: Audit kesesuaian semua halaman & fungsi tombol (Putaran 53)
+
+Work Log:
+- LANGKAH 1: Inventarisasi 69 ViewType — 61 OK, 2 orphan (broadcasts, dashboard-kepsek), 2 header-only, 3 public, 1 programmatic
+- LANGKAH 2: Scanned ~200+ interactive elements across all view files via 3 parallel subagents
+  - GURU views: 10 MOCK + 1 SEMI-MOCK found
+  - SISWA/ORTU/Shared: 11 MOCK + 1 DEAD found
+  - ADMIN/SUPER_ADMIN/KEPSEK: 17 MOCK/DEAD found
+  - Total: 38-39 MOCK/DEAD buttons
+- LANGKAH 5: Fixed all 38 items across 5 commits:
+  - 37fc570: GURU — delete tugas/jurnal now call real DELETE APIs, CSV export real, edit tugas uses PATCH, Tryout/Laporan mock disabled, dashboard quick-create misleading toast removed
+  - daf95dd: SUPER_ADMIN — all 11 mock buttons disabled + tooltip, settings form readOnly, feature flags disabled
+  - 9d59cf4: ORANG_TUA — PDF download wired to real /api/reports/rapor-siswa, print now calls window.print(), export disabled. ADMIN_SCHOOL — backup error handling fixed, per-backup download/restore disabled
+  - 59cc5e8: SISWA — refresh calls real fetchMaterials(), start task navigates to siswa-tugas, view result to siswa-nilai, mark-read toast removed. Shared — mark-all-read toast removed, password change disabled
+  - 1f504a4: SUPER_ADMIN reports — handleGenerate/handleExport now toast.info, Ekspor/Generate buttons disabled, legacy GuruSoalView Buat Soal disabled
+- LANGKAH 3-4: Build passes ✅, lint 0 errors in modified files ✅, OOM prevents full runtime testing
+- Subagent also found + fixed orphan kepsek-peta-kelas breadcrumb (762921c)
+
+Stage Summary:
+- 38 MOCK/DEAD buttons resolved: 12 wired to real APIs, 26 disabled with tooltip or replaced with honest toast.info
+- 0 fake success toasts remaining
+- 2 orphan ViewTypes documented (broadcasts, dashboard-kepsek)
+- 35 commits ahead of origin/main (push blocked by credential)
+- Server OOM in sandbox — cannot run full runtime browser tests, verified via build + lint + code review

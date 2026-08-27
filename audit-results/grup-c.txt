@@ -1,0 +1,18 @@
+============================================
+GRUP C — DATA CLEANUP SD/SMP
+Timestamp: 2026-08-13T02:13:47.879Z
+============================================
+
+===== C1: NPSN Database — SMA/SMK/MA check =====
+  SMA entries: 46
+  SMK entries: 13
+  MA entries: 4
+  SD entries: 1
+  SMP entries: 1
+  STATUS: FAIL — 46 SMA + 13 SMK + 4 MA entries still present. NOT cleaned for SD/SMP focus.
+
+===== C2: Constants — SMA subjects check =====
+  Subjects in constants: Bahasa Indonesia, Bahasa Inggris, Matematika, Fisika, Kimia, Biologi, Ekonomi, Sosiologi, Sejarah, Geografi, Mengingat (C1), Memahami (C2), Menerapkan (C3), Menganalisis (C4), Mengevaluasi (C5), Mencipta (C6), Mudah, Sedang, Sulit, Pilihan Ganda, PG Kompleks, Isian Singkat, Esai, Free, Starter, Pro
+  SMA-level subjects found: Fisika, Kimia, Biologi, Ekonomi, Sosiologi, Geografi
+  STATUS: FAIL — SMA subjects still present: Fisika, Kimia, Biologi, Ekonomi, Sosiologi, Geografi
+  NOTE: These are TKA subjects (Fisika/Kimia/Bio/Eko/Sos/Geo/Sej). For SMP-only they should be removed.
