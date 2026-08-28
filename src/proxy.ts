@@ -20,7 +20,7 @@ function getHstsHeader(): Record<string, string> {
   return {};
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Extract IP (never trust client headers beyond the first hop)
