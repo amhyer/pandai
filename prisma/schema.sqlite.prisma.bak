@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -169,10 +169,10 @@ model Question {
   topicId       String?
   schoolId      String?  // null = global (NALAR), non-null = privat sekolah
   type          String   @default("pg") // pg, pg_kompleks, isian, esai
-  content       String   @db.Text       // isi soal (text/markdown)
-  options       String?  @db.Text       // JSON: pilihan jawaban [{label, text, isCorrect}]
-  answer        String?  @db.Text       // jawaban benar
-  explanation   String?  @db.Text       // pembahasan
+  content       String   // isi soal (text/markdown)
+  options       String?  // JSON: pilihan jawaban [{label, text, isCorrect}]
+  answer        String?  // jawaban benar
+  explanation   String?  // pembahasan
   cognitiveLevel String @default("C3") // C1-C6
   difficulty    String   @default("sedang") // mudah, sedang, sulit
   status        String   @default("draft") // draft, published, archived
@@ -200,7 +200,7 @@ model Question {
 model ExamPackage {
   id          String   @id @default(cuid())
   title       String
-  description String?  @db.Text
+  description String?
   schoolId    String?  // null = global
   duration    Int      @default(120) // menit
   totalQuestions Int   @default(0)
@@ -278,7 +278,7 @@ model StudentAttempt {
   tkaPrediction Float?
   duration      Int      @default(0) // detik yang dipakai
   status        String   @default("in_progress") // in_progress, submitted, graded
-  learningObjective String? @db.Text // Tujuan Pembelajaran (opsional, ditulis guru saat input)
+  learningObjective String? // Tujuan Pembelajaran (opsional, ditulis guru saat input)
   isRemedial    Boolean  @default(false) // true = ini adalah attempt remedial
   remedialOfId  String?              // self-relation: menunjuk ke attempt asli yang di-remedial
   startedAt     DateTime @default(now())
@@ -374,8 +374,8 @@ model TeachingJournal {
   schoolId   String?
   date       String
   topic      String
-  activities String?  @db.Text
-  notes      String?  @db.Text
+  activities String?
+  notes      String?
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
@@ -413,7 +413,7 @@ model ActivityLog {
   userId    String?
   schoolId  String?
   action    String
-  detail    String?  @db.Text
+  detail    String?
   module    String?               // users, classes, exams, etc
   createdAt DateTime @default(now())
 
@@ -426,8 +426,8 @@ model ActivityLog {
 model Material {
   id               String   @id @default(cuid())
   title            String
-  description      String?  @db.Text
-  content          String?  @db.Text              // markdown/text
+  description      String?
+  content          String?              // markdown/text
   subjectId        String?
   topicId          String?
   classId          String?
@@ -439,7 +439,7 @@ model Material {
   externalUrl      String?              // URL for external quiz (Google Form, Quizizz, etc)
   externalProvider String?              // auto-detected: Google Form, Quizizz, Kahoot, Wordwall, Tautan Lain
   scoreEntryMode   String?              // SELF_REPORTED | TEACHER_ENTERED (for external quiz)
-  learningObjective String?  @db.Text  // Tujuan Pembelajaran (opsional, ditulis guru saat buat tugas)
+  learningObjective String?              // Tujuan Pembelajaran (opsional, ditulis guru saat buat tugas)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -522,7 +522,7 @@ model ChatMessage {
   id         String   @id @default(cuid())
   sessionId  String
   role       String   // user, assistant
-  content    String   @db.Text
+  content    String
   createdAt  DateTime @default(now())
 
   session    ChatbotSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
@@ -534,14 +534,14 @@ model ChatMessage {
 model ErrorLog {
   id        String   @id @default(cuid())
   level     String   @default("error") // error, warn, fatal
-  message   String   @db.Text
-  stack     String?  @db.Text          // error stack trace
+  message   String
+  stack     String?                     // error stack trace
   route     String?                     // API route that caused the error
   method    String?                     // HTTP method
   userId    String?                     // authenticated user (if any)
   schoolId  String?                     // school context (if any)
   statusCode Int?                       // HTTP status code returned
-  body      String?  @db.Text          // truncated request body (first 500 chars)
+  body      String?                     // truncated request body (first 500 chars)
   createdAt DateTime @default(now())
 
   @@index([route])
@@ -576,14 +576,14 @@ model Timetable {
 model Assignment {
   id                 String   @id @default(cuid())
   title              String
-  description        String?  @db.Text
-  instructions       String?  @db.Text              // instruksi kerja tugas
+  description        String?
+  instructions       String?              // instruksi kerja tugas
   subjectId          String?
   classId            String?
   teacherId          String?
   schoolId           String?
   deadline           String               // YYYY-MM-DDTHH:mm
-  learningObjective String?  @db.Text  // Tujuan Pembelajaran (opsional, konsisten dengan StudentAttempt)
+  learningObjective String?              // Tujuan Pembelajaran (opsional, konsisten dengan StudentAttempt)
   submissionType     String   @default("essay_only") // pg_only, essay_only, mixed
   maxScore           Int      @default(100)
   status             String   @default("draft") // draft, published, closed
@@ -628,7 +628,7 @@ model AssignmentSubmission {
   classId      String?
   status       String    @default("belum_dikerjakan") // belum_dikerjakan, dikerjakan, submitted, dinilai
   score        Float?    // total skor setelah dinilai
-  feedback     String?   @db.Text // feedback guru
+  feedback     String?   // feedback guru
   isRemedial   Boolean   @default(false) // true = ini adalah submission remedial
   remedialOfId String?              // self-relation: menunjuk ke submission asli yang di-remedial
   startedAt    DateTime  @default(now())
@@ -654,7 +654,7 @@ model AssignmentAnswer {
   submissionId String
   questionId   String
   answer       String?   // jawaban PG (option label: A/B/C/D)
-  essayAnswer  String?  @db.Text // jawaban esai (text panjang)
+  essayAnswer  String?   // jawaban esai (text panjang)
   isCorrect    Boolean?  // auto-score untuk PG
   pointsEarned Float    @default(0)
 
@@ -733,9 +733,9 @@ model Feedback {
   fromRole     String    // ORANG_TUA, GURU, KEPALA_SEKOLAH
   category     String    // saran, kritik, apresiasi
   subject      String    // judul singkat
-  message      String    @db.Text // isi pesan
+  message      String    // isi pesan
   status       String    @default("baru") // baru, dibaca, ditindaklanjuti
-  response     String?   @db.Text // balasan dari pihak sekolah
+  response     String?   // balasan dari pihak sekolah
   respondedBy  String?   // FK User yang membalas
   respondedAt  DateTime?
   createdAt    DateTime  @default(now())
@@ -792,7 +792,7 @@ model AuditLog {
   targetUserId  String?   // ID of the student whose data was accessed
   ip            String?
   logStatus        String    @default("success") // 'success' or 'denied'
-  detail        String?   @db.Text
+  detail        String?
   createdAt     DateTime  @default(now())
 
   @@index([userId])

@@ -1,7 +1,8 @@
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
-  output: "standalone",
+  // output: "standalone" — dihapus untuk Vercel deployment.
+  // Aktifkan kembali jika deploy ke Docker/VPS.
   typescript: {
     ignoreBuildErrors: true,
   },
