@@ -33,6 +33,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
@@ -77,6 +86,10 @@ import {
   ArrowUpDown,
   Save,
   TriangleAlert,
+  Pencil,
+  KeyRound,
+  Phone,
+  IdCard,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -90,6 +103,13 @@ interface User {
   role: string;
   school: string;
   status: string;
+  username?: string;
+  phone?: string;
+  nisn?: string;
+  nip?: string;
+  nik?: string;
+  jk?: string;
+  className?: string;
 }
 
 function PageHeader({
@@ -294,13 +314,20 @@ export function UsersGlobalView() {
           const json = await res.json();
           if (Array.isArray(json.data) && json.data.length > 0) {
             setUsers(
-              json.data.map((u: Record<string, string>) => ({
+              json.data.map((u: Record<string, any>) => ({
                 id: String(u.id ?? ''),
                 name: u.name ?? u.fullName ?? '',
                 email: u.email ?? u.username ?? '',
                 role: u.role ?? '',
-                school: u.schoolName ?? u.school ?? '',
-                status: u.status ?? 'active',
+                school: u.schoolName ?? u.school ?? u.school?.name ?? '',
+                status: u.status ?? (u.isActive === false ? 'inactive' : 'active'),
+                username: u.username ?? '',
+                phone: u.phone ?? '',
+                nisn: u.nisn ?? '',
+                nip: u.nip ?? '',
+                nik: u.nik ?? '',
+                jk: u.jk ?? '',
+                className: u.class?.name ?? '',
               }))
             );
           } else {
@@ -373,6 +400,103 @@ export function UsersGlobalView() {
       setDeleting(false);
       setDeleteTarget(null);
     }
+  }
+
+  // ── Edit Pengguna ───────────────────────────────────────────────
+  const [editTarget, setEditTarget] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ name: '', email: '', phone: '' });
+  const [editing, setEditing] = useState(false);
+
+  function openEdit(user: User) {
+    setEditForm({ name: user.name, email: user.email, phone: user.phone ?? '' });
+    setEditTarget(user);
+  }
+
+  async function handleEditSave() {
+    if (!editTarget) return;
+    if (!editForm.name.trim()) {
+      toast.error('Nama tidak boleh kosong.');
+      return;
+    }
+    setEditing(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editTarget.id,
+          name: editForm.name.trim(),
+          email: editForm.email.trim() || undefined,
+          phone: editForm.phone.trim() || undefined,
+        }),
+      });
+      if (res.ok) {
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === editTarget.id
+              ? { ...u, name: editForm.name.trim(), email: editForm.email.trim() || u.email, phone: editForm.phone.trim() }
+              : u
+          )
+        );
+        toast.success(`Pengguna "${editForm.name.trim()}" berhasil diperbarui.`);
+        setEditTarget(null);
+      } else {
+        const json = await res.json().catch(() => ({}));
+        toast.error(json.error ?? 'Gagal memperbarui pengguna.');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat memperbarui pengguna.');
+    } finally {
+      setEditing(false);
+    }
+  }
+
+  // ── Reset Password ──────────────────────────────────────────────
+  const [resetTarget, setResetTarget] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
+
+  async function handleResetPassword() {
+    if (!resetTarget) return;
+    if (newPassword.length < 6) {
+      toast.error('Password minimal 6 karakter.');
+      return;
+    }
+    setResetting(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: resetTarget.id, password: newPassword }),
+      });
+      if (res.ok) {
+        toast.success(`Password "${resetTarget.name}" berhasil di-reset.`);
+        setResetTarget(null);
+        setNewPassword('');
+      } else {
+        const json = await res.json().catch(() => ({}));
+        toast.error(json.error ?? 'Gagal mereset password.');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat mereset password.');
+    } finally {
+      setResetting(false);
+    }
+  }
+
+  // ── Detail Akun ─────────────────────────────────────────────────
+  const [detailTarget, setDetailTarget] = useState<User | null>(null);
+
+  function getRoleLabel(role: string) {
+    const map: Record<string, string> = {
+      SUPER_ADMIN: 'Super Admin',
+      ADMIN_SCHOOL: 'Admin Sekolah',
+      KEPALA_SEKOLAH: 'Kepala Sekolah',
+      GURU: 'Guru',
+      SISWA: 'Siswa',
+      ORANG_TUA: 'Orang Tua',
+    };
+    return map[role] ?? role;
   }
 
   return (
@@ -482,7 +606,7 @@ export function UsersGlobalView() {
                 <TableHead>Role</TableHead>
                 <TableHead className="hidden lg:table-cell">Sekolah</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-[100px] text-right rounded-tr-none">Aksi</TableHead>
+                <TableHead className="w-[160px] text-right rounded-tr-none">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -547,13 +671,42 @@ export function UsersGlobalView() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200"
-                              disabled
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-[#1F3864] hover:bg-[#1F3864]/10 hover:shadow-sm active:scale-[0.98]"
+                              onClick={() => setDetailTarget(user)}
                             >
                               <Eye className="h-4 w-4" />
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Segera tersedia</TooltipContent>
+                          <TooltipContent>Detail Akun</TooltipContent>
+                        </Tooltip>
+                     <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-amber-600 hover:bg-amber-50 hover:shadow-sm active:scale-[0.98]"
+                              onClick={() => openEdit(user)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit Pengguna</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-emerald-600 hover:bg-emerald-50 hover:shadow-sm active:scale-[0.98]"
+                              onClick={() => {
+                                setNewPassword('');
+                                setResetTarget(user);
+                              }}
+                            >
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Reset Password</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -615,6 +768,190 @@ export function UsersGlobalView() {
           </div>
         )}
       </div>
+
+      {/* Detail Akun Dialog */}
+      <Dialog open={!!detailTarget} onOpenChange={(open) => !open && setDetailTarget(null)}>
+        <DialogContent className="rounded-xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F3864]/10 text-[#1F3864]">
+                <Eye className="h-5 w-5" />
+              </div>
+              Detail Akun
+            </DialogTitle>
+            <DialogDescription className="pl-12">Informasi lengkap pengguna ini.</DialogDescription>
+          </DialogHeader>
+          <div className="pl-12 space-y-3 text-sm">
+            {[
+              { label: 'Nama', value: detailTarget?.name },
+              { label: 'Email / Username', value: detailTarget?.email || detailTarget?.username },
+              { label: 'Role', value: detailTarget ? getRoleLabel(detailTarget.role) : '' },
+              { label: 'Sekolah', value: detailTarget?.school || '-' },
+              { label: 'Kelas', value: detailTarget?.className || '-' },
+              { label: 'Status', value: detailTarget?.status === 'inactive' ? 'Nonaktif' : 'Aktif' },
+              { label: 'Telepon', value: detailTarget?.phone || '-' },
+              { label: 'NISN', value: detailTarget?.nisn || '-' },
+              { label: 'NIP', value: detailTarget?.nip || '-' },
+              { label: 'NIK', value: detailTarget?.nik || '-' },
+              { label: 'Jenis Kelamin', value: detailTarget?.jk ? (detailTarget.jk === 'L' ? 'Laki-laki' : 'Perempuan') : '-' },
+            ].map((row) => (
+              <div key={row.label} className="flex items-start justify-between gap-4">
+                <span className="text-muted-foreground shrink-0">{row.label}</span>
+                <span className="font-medium text-right break-all">{row.value || '-'}</span>
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              onClick={() => setDetailTarget(null)}
+            >
+              Tutup
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Pengguna Dialog */}
+      <Dialog open={!!editTarget} onOpenChange={(open) => !open && setEditTarget(null)}>
+        <DialogContent className="rounded-xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                <Pencil className="h-5 w-5" />
+              </div>
+              Edit Pengguna
+            </DialogTitle>
+            <DialogDescription className="pl-12">
+              Perbarui informasi akun <span className="font-semibold text-foreground">{editTarget?.name}</span>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pl-12 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Nama Lengkap</Label>
+              <Input
+                id="edit-name"
+                value={editForm.name}
+                onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+                className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                placeholder="Nama lengkap"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-email">Email</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm((f) => ({ ...f, email: e.target.value }))}
+                className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                placeholder="email@sekolah.sch.id"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-phone">No. Telepon</Label>
+              <Input
+                id="edit-phone"
+                value={editForm.phone}
+                onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
+                className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                placeholder="08xxxxxxxxxx"
+              />
+            </div>
+            <div className="rounded-lg bg-muted/50 border px-3 py-2 text-xs text-muted-foreground flex items-center gap-2">
+              <IdCard className="h-3.5 w-3.5 shrink-0" />
+              Role: <span className="font-semibold text-foreground">{editTarget ? getRoleLabel(editTarget.role) : ''}</span>
+              <span className="mx-1">•</span>
+              Sekolah: <span className="font-semibold text-foreground">{editTarget?.school || '-'}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              disabled={editing}
+              onClick={() => setEditTarget(null)}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleEditSave}
+              disabled={editing}
+              className="bg-[#1F3864] hover:bg-[#152850] rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+            >
+              {editing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Simpan Perubahan'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reset Password Dialog */}
+      <Dialog open={!!resetTarget} onOpenChange={(open) => !open && setResetTarget(null)}>
+        <DialogContent className="rounded-xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <KeyRound className="h-5 w-5" />
+              </div>
+              Reset Password
+            </DialogTitle>
+            <DialogDescription className="pl-12">
+              Setel ulang password untuk <span className="font-semibold text-foreground">{resetTarget?.name}</span>.
+              Pengguna akan login dengan password baru ini.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pl-12 space-y-2">
+            <Label htmlFor="reset-password">Password Baru</Label>
+            <Input
+              id="reset-password"
+              type="text"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              className="rounded-lg focus:ring-2 focus:ring-emerald-500/20"
+              placeholder="Minimal 6 karakter"
+            />
+            <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Shield className="h-3 w-3" />
+              Gunakan kombinasi huruf dan angka agar lebih aman.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              disabled={resetting}
+              onClick={() => {
+                setResetTarget(null);
+                setNewPassword('');
+              }}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleResetPassword}
+              disabled={resetting}
+              className="bg-emerald-600 hover:bg-emerald-700 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+            >
+              {resetting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                'Reset Password'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
