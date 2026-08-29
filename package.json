@@ -6,6 +6,7 @@
     "postinstall": "prisma generate",
     "dev": "NODE_OPTIONS='--max-old-space-size=640' next dev -p 3000 >> dev.log 2>&1",
     "build": "next build",
+    "build:vercel": "prisma generate && prisma db push && npx tsx scripts/create-super-admin.ts && next build",
     "build:standalone": "next build && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production next start -p 3000 2>&1 | tee server.log",
     "start:standalone": "NODE_ENV=production node .next/standalone/server.js -p 3000 2>&1 | tee server.log",
@@ -15,6 +16,7 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:reset": "prisma migrate reset",
+    "db:super-admin": "bun run scripts/create-super-admin.ts",
     "seed": "bun run prisma/seed.ts",
     "backup": "bun scripts/backup.mjs",
     "backup:list": "bun scripts/restore.mjs --list",
@@ -95,6 +97,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "tsx": "^4.23.12",
     "better-sqlite3": "^13.0.2",
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^3.0.0",
