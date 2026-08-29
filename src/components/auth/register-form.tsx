@@ -15,7 +15,7 @@ import {
   Upload, Database, FileSpreadsheet, AlertCircle, Download, ArrowLeft, ChevronRight, Check
 } from 'lucide-react';
 
-type RegisterRole = 'SISWA' | 'ORANG_TUA';
+type RegisterRole = 'SISWA' | 'ORANG_TUA' | 'ADMIN_SCHOOL';
 
 interface DapodikSchool {
   npsn: string;

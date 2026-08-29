@@ -34,7 +34,7 @@ export async function GET(
     // SISWA: verify the session is assigned to their class
     if (auth.role === 'SISWA') {
       const assignment = await db.examAssignment.findFirst({
-        where: { examSessionId: sessionId, schoolId: auth.schoolId },
+        where: { examSessionId: sessionId, schoolId: auth.schoolId ?? undefined },
       });
       if (!assignment) {
         return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
@@ -84,16 +84,15 @@ export async function GET(
     });
 
     // Check if student already has a submitted attempt
-    let existingAttempt = null;
-    if (auth.role === 'SISWA') {
-      existingAttempt = await db.studentAttempt.findFirst({
-        where: {
-          userId: auth.userId,
-          examSessionId: sessionId,
-          status: 'submitted',
-        },
-      });
-    }
+    const existingAttempt = auth.role === 'SISWA'
+      ? await db.studentAttempt.findFirst({
+          where: {
+            userId: auth.userId,
+            examSessionId: sessionId,
+            status: 'submitted',
+          },
+        })
+      : null;
 
     // For review mode or non-SISWA: include all question fields
     // For SISWA taking exam: strip answer, explanation

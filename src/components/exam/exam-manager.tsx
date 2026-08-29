@@ -73,8 +73,6 @@ function statusBadge(status: string) {
   in_progress: { label: 'Berlangsung', className: 'bg-amber-100 text-amber-700 border-amber-200' },
   submitted: { label: 'Dikumpulkan', className: 'bg-green-100 text-green-700 border-green-200' },
   graded: { label: 'Dinilai', className: 'bg-blue-100 text-blue-700 border-blue-200' },
-  in_progress: { label: 'Berlangsung', className: 'bg-amber-100 text-amber-700 border-amber-200' },
-  ended: { label: 'Berakhir', className: 'bg-gray-100 text-gray-600 border-gray-200' },
   };
   const cfg = map[status] || { label: status, className: 'bg-gray-100 text-gray-600 border-gray-200' };
   return <Badge variant="outline" className={cn('text-xs font-medium', cfg.className)}>{cfg.label}</Badge>;

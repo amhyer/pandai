@@ -121,6 +121,7 @@ export async function GET(req: NextRequest) {
 
     const materialCountMap = new Map<string, Map<string, number>>();
     for (const r of materialCounts) {
+      if (!r.teacherId) continue;
       if (!materialCountMap.has(r.teacherId)) materialCountMap.set(r.teacherId, new Map());
       materialCountMap.get(r.teacherId)!.set(r.type, r._count as number);
     }

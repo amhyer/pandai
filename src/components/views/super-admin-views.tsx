@@ -820,7 +820,6 @@ export function ReportsGlobalView() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {REPORT_TYPES.map((rt) => {
           const Icon = rt.icon;
-          const isGenerating = generating === rt.id;
           return (
             <div
               key={rt.id}

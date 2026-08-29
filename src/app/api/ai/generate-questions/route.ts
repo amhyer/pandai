@@ -17,6 +17,9 @@ export async function POST(request: Request) {
     if (!subjectId || !count || !subjectName) {
       return NextResponse.json({ error: 'Data tidak lengkap' }, { status: 400 });
     }
+    if (!schoolId) {
+      return NextResponse.json({ error: 'Sekolah tidak terdeteksi pada akun' }, { status: 400 });
+    }
 
     // Rate limit check (using auth identity)
     const rateCheck = await checkRateLimit(userId, schoolId, 'generate_questions');

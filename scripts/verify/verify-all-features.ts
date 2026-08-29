@@ -85,7 +85,8 @@ async function getTestData() {
   const kepsek = await db.user.findFirst({ where: { role: 'KEPALA_SEKOLAH', isActive: true } });
   const admin = await db.user.findFirst({ where: { role: 'ADMIN_SCHOOL', isActive: true } });
   const childOfOrtu = ortu ? await db.user.findFirst({ where: { parentId: ortu.id, isActive: true } }) : null;
-  const subject = await db.subject.findFirst({ where: { schoolId: school?.id } });
+  // Subject bersifat global (bank soal bersama), tidak punya schoolId
+  const subject = await db.subject.findFirst();
 
   return { school, guru, siswa, ortu, kepsek, admin, childOfOrtu, subject };
 }

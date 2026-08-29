@@ -21,6 +21,7 @@ async function main() {
         { questionId: 'q2', answer: 'C', isCorrect: true, pointsEarned: 1, timeSpent: 0 },
       ]},
     },
+    include: { answers: true },
   });
   console.log('answers type:', typeof attempt.answers);
   console.log('is array:', Array.isArray(attempt.answers));

@@ -3,6 +3,21 @@ import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
+/** Build an error JSON response for AuthError / { status, message } shaped errors. */
+function errorResponse(error: unknown): NextResponse | null {
+  if (error instanceof AuthError) {
+    return NextResponse.json({ error: error.message }, { status: error.status });
+  }
+  if (error && typeof error === 'object' && 'status' in error) {
+    const status = (error as { status?: unknown }).status;
+    const message = (error as { message?: unknown }).message;
+    if (typeof status === 'number') {
+      return NextResponse.json({ error: typeof message === 'string' ? message : 'Terjadi kesalahan' }, { status });
+    }
+  }
+  return null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
@@ -33,7 +48,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json(enriched);
   } catch (error) {
-    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    const res = errorResponse(error);
+    if (res) return res;
     console.error('GET /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal mengambil data penugasan' }, { status: 500 });
   }
@@ -56,7 +72,8 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(assignment, { status: 201 });
   } catch (error) {
-    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    const res = errorResponse(error);
+    if (res) return res;
     console.error('POST /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal membuat penugasan' }, { status: 500 });
   }
@@ -80,7 +97,8 @@ export async function PATCH(req: NextRequest) {
     });
     return NextResponse.json(assignment);
   } catch (error) {
-    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    const res = errorResponse(error);
+    if (res) return res;
     console.error('PATCH /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal mengupdate penugasan' }, { status: 500 });
   }
@@ -101,7 +119,8 @@ export async function DELETE(req: NextRequest) {
     await db.teacherAssignment.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    if ((error instanceof AuthError || (error && typeof error === "object" && status in error))) { return NextResponse.json({ error: error.message }, { status: error.status }); }
+    const res = errorResponse(error);
+    if (res) return res;
     console.error('DELETE /api/teacher-assignments error:', error);
     return NextResponse.json({ error: 'Gagal menghapus penugasan' }, { status: 500 });
   }

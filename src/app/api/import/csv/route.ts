@@ -26,7 +26,7 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
 
 export async function POST(request: Request) {
   try {
-    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const type = formData.get('type') as string | null;

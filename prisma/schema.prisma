@@ -89,6 +89,8 @@ model User {
 
   lastLogin   DateTime?
   mustChangePassword Boolean @default(false) // Force password change on first login
+  sessionToken    String?  @unique // Bearer token sesi (auth-guard)
+  sessionExpiresAt DateTime?       // Kadaluarsa sesi token
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -104,6 +106,7 @@ model User {
   competencyAssessments CompetencyAssessment[] @relation("AssessedStudent")
   createdGradeComponents GradeComponent[] @relation("GradeComponentCreator")
   studentGrades      StudentGrade[] @relation("GradedStudent")
+  announcements      Announcement[] @relation("AnnouncementCreator")
 
   @@index([schoolId])
   @@index([role])
@@ -552,21 +555,23 @@ model ErrorLog {
 
 // ===== TIMETABLE (JADWAL PELAJARAN) =====
 model Timetable {
-  id         String   @id @default(cuid())
-  day        String   // SENIN, SELASA, RABU, KAMIS, JUMAT
-  slotNumber Int      // 1-10
-  subjectId  String
-  teacherId  String
-  classId    String
-  schoolId   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(cuid())
+  day          String   // SENIN, SELASA, RABU, KAMIS, JUMAT
+  slotNumber   Int      // 1-10
+  subjectId    String
+  teacherId    String
+  classId      String
+  schoolId     String
+  academicYear String   @default("2024/2025")
+  semester     String   @default("Ganjil")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   subject Subject @relation(fields: [subjectId], references: [id])
   teacher User    @relation("TimetableTeacher", fields: [teacherId], references: [id])
   class   Class   @relation(fields: [classId], references: [id])
 
-  @@unique([day, slotNumber, classId, schoolId])
+  @@unique([classId, day, slotNumber, academicYear, semester])
   @@index([schoolId])
   @@index([classId])
   @@index([teacherId])
@@ -799,4 +804,57 @@ model AuditLog {
   @@index([resourceType, resourceId])
   @@index([targetUserId])
   @@index([createdAt])
+}
+
+// ===== NOTIFICATION (NOTIFIKASI) =====
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  schoolId  String?
+  title     String
+  message   String   @default("")
+  type      String?  // 'pengumuman', 'info', dll
+  link      String?  // tautan tujuan, e.g. 'broadcasts'
+  category  String   @default("general") // general, tryout, nilai, sistem
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([schoolId])
+  @@index([createdAt])
+}
+
+// ===== ANNOUNCEMENT (PENGUMUMAN) =====
+model Announcement {
+  id             String   @id @default(cuid())
+  schoolId       String
+  title          String
+  content        String   @db.Text
+  category       String   @default("Umum")
+  attachmentUrl  String?
+  targetRoles    String?  // JSON array string, null = semua role
+  targetClassIds String?  // JSON array string, null = semua kelas
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  creator User @relation("AnnouncementCreator", fields: [createdById], references: [id])
+
+  @@index([schoolId])
+  @@index([createdById])
+}
+
+// ===== APP SETTING (PENGATURAN APLIKASI) =====
+model AppSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+// ===== SYSTEM SETTING (PENGATURAN SISTEM) =====
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }

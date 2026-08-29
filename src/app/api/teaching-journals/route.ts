@@ -39,9 +39,9 @@ export async function GET(req: NextRequest) {
       subjectIds.length > 0 ? db.subject.findMany({ where: { id: { in: subjectIds } }, select: { id: true, name: true } }) : [],
     ]);
 
-    const teacherMap = new Map(teachers.map((t) => [t.id, t]));
-    const classMap = new Map(classes.map((c) => [c.id, c]));
-    const subjectMap = new Map(subjects.map((s) => [s.id, s]));
+    const teacherMap = new Map(teachers.map((t) => [t.id, t] as [string, typeof t]));
+    const classMap = new Map(classes.map((c) => [c.id, c] as [string, typeof c]));
+    const subjectMap = new Map(subjects.map((s) => [s.id, s] as [string, typeof s]));
 
     const enriched = journals.map((j) => ({
       ...j,

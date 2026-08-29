@@ -58,7 +58,7 @@ async function main() {
   console.log('=== P0-04 INACTIVE/MISSING USER ===');
   await test('P0-04-NO-COOKIE', () => requireAuth(new Request('http://x', { method: 'GET' })), true);
   await test('P0-04-INVALID-JWT', () => requireAuth(mkReq('invalid.token.here')), true);
-  await test('P0-04-GHOST-USER', () => requireAuth(mkReq(await tok('nonexistent_id', 'SISWA', IDS.schA))), true);
+  await test('P0-04-GHOST-USER', async () => requireAuth(mkReq(await tok('nonexistent_id', 'SISWA', IDS.schA))), true);
   await test('P0-04-INACTIVE-USER', () => requireAuth(mkReq(T.INACT)), true);
   await test('P0-04-ACTIVE-SISWA', () => requireAuth(mkReq(T.SIS_A)), false);
 

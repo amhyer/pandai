@@ -488,6 +488,13 @@ const VIEW_LABELS: Record<ViewType, string> = {
   classes: 'Kelas',
   subjects: 'Mata Pelajaran',
   users: 'Data Siswa',
+  questions: 'Bank Soal',
+  'question-editor': 'Editor Soal',
+  exams: 'Kelola Ujian',
+  'exam-assignments': 'Jadwal & Tugaskan',
+  results: 'Hasil Tryout',
+  analytics: 'Analitik',
+  reports: 'Laporan',
   'teacher-assignments': 'Penugasan Guru',
   timetable: 'Jadwal Pelajaran',
   'wali-kelas': 'Wali Kelas',
@@ -499,6 +506,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   // GURU
   'guru-materi': 'Materi Pelajaran',
   'guru-bank-soal': 'Bank Soal',
+  'guru-soal': 'Bank Soal',
   'guru-tugas': 'Tugas Terstruktur',
   'guru-kehadiran': 'Kehadiran Siswa',
   'guru-rekap-kehadiran': 'Rekap Kehadiran',
@@ -525,6 +533,10 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'siswa-pandai-ai': 'PANDAI AI',
   'siswa-nilai-akhir': 'Nilai Akhir',
   'siswa-rapor': 'Rapor Saya',
+  diagnostic: 'Diagnostic Test',
+  practice: 'Latihan Soal',
+  'exam-runner': 'Kerjakan Ujian',
+  leaderboard: 'Peringkat',
 
   // ORANG_TUA
   'ortu-karakter': 'Isi Laporan Harian',

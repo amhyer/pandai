@@ -22,7 +22,7 @@ async function main() {
   }
 
   // Create 5 PG questions
-  const questions = [];
+  const questions: { id: string }[] = [];
   for (let i = 1; i <= 5; i++) {
     const correctIdx = i % 4; // 1,2,3,4,1
     const labels = ['A', 'B', 'C', 'D'];

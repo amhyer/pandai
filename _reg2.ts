@@ -58,7 +58,6 @@ async function main() {
     pkg: pkg.id, assignOpen: assignOpen.id, assignClosed: assignClosed.id, subjId: subj.id, guruId: guru.id, sisAId: sisA.id, sisBId: sisB.id
   });
   console.log(out);
-  await db.
- disconnect();
+  await db.$disconnect();
 }
 main().catch(e => { console.error(e); process.exit(1); });

@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 
     // ORANG_TUA: can only access their own children's reports
     if (session.role === 'ORANG_TUA') {
-      if (student.parentId !== session.userId) {
+      if (student.parentId !== session.id) {
         return NextResponse.json(
           { error: 'Anda tidak memiliki akses ke laporan siswa ini' },
           { status: 403 }

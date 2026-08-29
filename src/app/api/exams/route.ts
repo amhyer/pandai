@@ -22,14 +22,14 @@ export async function GET(request: Request) {
       if (!student?.classId) return NextResponse.json([]);
       if (type === 'session') {
         const sessions = await db.examAssignment.findMany({
-          where: { classId: student.classId, schoolId: student.schoolId },
+          where: { classId: student.classId, schoolId: student.schoolId ?? undefined },
           include: { examSession: { include: { examPackage: true } }, class: { select: { id: true, name: true } } },
           orderBy: { createdAt: 'desc' }, take: 50,
         });
         return NextResponse.json(sessions.map(s => ({ ...s.examSession, _assignment: { classId: s.classId, className: s.class?.name } })));
       }
       const assignments = await db.examAssignment.findMany({
-        where: { classId: student.classId, schoolId: student.schoolId },
+        where: { classId: student.classId, schoolId: student.schoolId ?? undefined },
         include: {
           examSession: { include: { examPackage: { include: { _count: { select: { examItems: true } } } } }, },
           class: { select: { id: true, name: true } },

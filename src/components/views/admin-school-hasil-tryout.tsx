@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { authFetch } from '@/lib/auth-fetch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -121,7 +122,7 @@ function formatTanggalShort(dateStr: string): string {
 // ═══════════════════════════════════════════════════════════════════
 
 export function HasilTryoutView() {
-  const { user, authFetch } = useAppStore();
+  const { user } = useAppStore();
   const [classes, setClasses] = useState<ClassItem[]>([]);
   const [sessions, setSessions] = useState<ExamSession[]>([]);
   const [attempts, setAttempts] = useState<AttemptRow[]>([]);

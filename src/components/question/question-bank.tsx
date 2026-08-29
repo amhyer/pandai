@@ -421,7 +421,7 @@ export function QuestionBank() {
                         <TableCell className="max-w-[300px]">
                           <div className="flex items-start gap-2">
                             {!q.schoolId && (
-                              <Globe className="h-3.5 w-3.5 text-navy mt-0.5 shrink-0" title="Soal global" />
+                              <Globe className="h-3.5 w-3.5 text-navy mt-0.5 shrink-0" aria-label="Soal global" />
                             )}
                             <p className="text-sm line-clamp-2 leading-relaxed">
                               {q.content}

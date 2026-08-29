@@ -25,6 +25,13 @@ export type ViewType =
   | 'classes'
   | 'subjects'
   | 'users'
+  | 'questions'
+  | 'question-editor'
+  | 'exams'
+  | 'exam-assignments'
+  | 'results'
+  | 'analytics'
+  | 'reports'
   | 'teacher-assignments'
   | 'timetable'
   | 'wali-kelas'
@@ -37,6 +44,7 @@ export type ViewType =
   // ── GURU ──
   | 'guru-materi'
   | 'guru-bank-soal'
+  | 'guru-soal'
   | 'guru-tugas'
   | 'guru-kehadiran'
   | 'guru-rekap-kehadiran'
@@ -63,6 +71,10 @@ export type ViewType =
   | 'siswa-pandai-ai'
   | 'siswa-nilai-akhir'
   | 'siswa-rapor'
+  | 'diagnostic'
+  | 'practice'
+  | 'exam-runner'
+  | 'leaderboard'
 
   // ── ORANG_TUA ──
   | 'ortu-karakter'
