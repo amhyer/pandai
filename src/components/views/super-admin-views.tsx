@@ -306,21 +306,30 @@ export function UsersGlobalView() {
               : [];
           if (list.length > 0) {
             setUsers(
-              list.map((u: Record<string, any>) => ({
-                id: String(u.id ?? ''),
-                name: u.name ?? u.fullName ?? '',
-                email: u.email ?? u.username ?? '',
-                role: u.role ?? '',
-                school: u.schoolName ?? u.school ?? u.school?.name ?? '',
-                status: u.status ?? (u.isActive === false ? 'inactive' : 'active'),
-                username: u.username ?? '',
-                phone: u.phone ?? '',
-                nisn: u.nisn ?? '',
-                nip: u.nip ?? '',
-                nik: u.nik ?? '',
-                jk: u.jk ?? '',
-                className: u.class?.name ?? '',
-              }))
+              list.map((u: Record<string, any>) => {
+                // GET /api/users mengembalikan school sebagai objek { name, ... }
+                // (include: { school: true }), bukan string. Normalisasi ke string
+                // supaya tabel tidak crash saat me-render objek.
+                const schoolVal =
+                  u.schoolName ??
+                  (typeof u.school === 'string' ? u.school : u.school?.name) ??
+                  '';
+                return {
+                  id: String(u.id ?? ''),
+                  name: String(u.name ?? u.fullName ?? ''),
+                  email: String(u.email ?? u.username ?? ''),
+                  role: String(u.role ?? ''),
+                  school: String(schoolVal),
+                  status: u.status ?? (u.isActive === false ? 'inactive' : 'active'),
+                  username: u.username ?? '',
+                  phone: u.phone ?? '',
+                  nisn: u.nisn ?? '',
+                  nip: u.nip ?? '',
+                  nik: u.nik ?? '',
+                  jk: u.jk ?? '',
+                  className: u.class?.name ?? '',
+                };
+              })
             );
           } else {
             setUsers([]);
@@ -346,9 +355,9 @@ export function UsersGlobalView() {
       const q = debouncedSearch.toLowerCase();
       list = list.filter(
         (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.school.toLowerCase().includes(q)
+          String(u.name || '').toLowerCase().includes(q) ||
+          String(u.email || '').toLowerCase().includes(q) ||
+          String(u.school || '').toLowerCase().includes(q)
       );
     }
     return list;
