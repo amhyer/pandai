@@ -277,21 +277,6 @@ function useDebounce<T>(value: T, delay: number): T {
 //  1. UsersGlobalView
 // ═══════════════════════════════════════════════════════════════════════
 
-const FALLBACK_USERS: User[] = [
-  { id: '1', name: 'Dr. Surya Dharma, M.Pd.', email: 'surya@smakn1.sch.id', role: 'ADMIN_SCHOOL', school: 'SMA KN 1 Bandung', status: 'active' },
-  { id: '2', name: 'Rina Wulandari, S.Pd.', email: 'rina.w@smakn1.sch.id', role: 'GURU', school: 'SMA KN 1 Bandung', status: 'active' },
-  { id: '3', name: 'Ahmad Fauzan', email: 'ahmad.fauzan@siswa.sch.id', role: 'SISWA', school: 'SMA KN 1 Bandung', status: 'active' },
-  { id: '4', name: 'Budi Santoso', email: 'budi.s@ortu.sch.id', role: 'ORANG_TUA', school: 'SMA KN 1 Bandung', status: 'active' },
-  { id: '5', name: 'Ir. Hendra Wijaya, M.T.', email: 'hendra@smansa.sch.id', role: 'ADMIN_SCHOOL', school: 'SMAN 1 Surabaya', status: 'active' },
-  { id: '6', name: 'Dewi Kartika, S.Pd.', email: 'dewi.k@smansa.sch.id', role: 'GURU', school: 'SMAN 1 Surabaya', status: 'active' },
-  { id: '7', name: 'Rizky Pratama', email: 'rizky.p@siswa.sch.id', role: 'SISWA', school: 'SMAN 1 Surabaya', status: 'inactive' },
-  { id: '8', name: 'Siti Aminah, M.Pd.', email: 'siti@smam2.sch.id', role: 'ADMIN_SCHOOL', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
-  { id: '9', name: 'Agus Supriyadi', email: 'agus.s@smam2.sch.id', role: 'GURU', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
-  { id: '10', name: 'Putri Amelia', email: 'putri.a@siswa.sch.id', role: 'SISWA', school: 'SMA Muhammadiyah 2 Jakarta', status: 'active' },
-  { id: '11', name: 'Fajar Nugroho', email: 'fajar.n@siswa.sch.id', role: 'SISWA', school: 'SMA KN 1 Bandung', status: 'active' },
-  { id: '12', name: 'Lina Marlina, S.Pd.', email: 'lina@smansa.sch.id', role: 'GURU', school: 'SMAN 1 Surabaya', status: 'inactive' },
-];
-
 const ITEMS_PER_PAGE = 8;
 
 export function UsersGlobalView() {
@@ -312,9 +297,16 @@ export function UsersGlobalView() {
         const res = await fetch('/api/users');
         if (res.ok) {
           const json = await res.json();
-          if (Array.isArray(json.data) && json.data.length > 0) {
+          // /api/users mengembalikan array langsung (bukan { data: [...] }).
+          // Terima kedua bentuk supaya data asli dari database selalu tampil.
+          const list = Array.isArray(json)
+            ? json
+            : Array.isArray(json.data)
+              ? json.data
+              : [];
+          if (list.length > 0) {
             setUsers(
-              json.data.map((u: Record<string, any>) => ({
+              list.map((u: Record<string, any>) => ({
                 id: String(u.id ?? ''),
                 name: u.name ?? u.fullName ?? '',
                 email: u.email ?? u.username ?? '',
@@ -331,13 +323,13 @@ export function UsersGlobalView() {
               }))
             );
           } else {
-            setUsers(FALLBACK_USERS);
+            setUsers([]);
           }
         } else {
-          setUsers(FALLBACK_USERS);
+          setUsers([]);
         }
       } catch {
-        setUsers(FALLBACK_USERS);
+        setUsers([]);
       } finally {
         setLoading(false);
       }
@@ -392,7 +384,8 @@ export function UsersGlobalView() {
         setUsers((prev) => prev.filter((u) => u.id !== deleteTarget.id));
         toast.success(`Pengguna "${deleteTarget.name}" berhasil dihapus.`);
       } else {
-        toast.error('Gagal menghapus pengguna.');
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error || 'Gagal menghapus pengguna.');
       }
     } catch {
       toast.error('Terjadi kesalahan saat menghapus pengguna.');
