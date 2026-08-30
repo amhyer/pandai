@@ -372,12 +372,22 @@ export async function DELETE(request: Request) {
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
     try { await logAccess(auth, { action: 'DELETE', resourceType: 'users' }); } catch {}
 
+    // Larang menghapus akun sendiri
+    if (id === auth.userId) {
+      return NextResponse.json({ error: 'Tidak bisa menghapus akun sendiri' }, { status: 400 });
+    }
+
     // IDOR fix: ADMIN_SCHOOL can only delete users in their own school
     if (auth.role !== 'SUPER_ADMIN') {
       const targetUser = await db.user.findUnique({ where: { id }, select: { schoolId: true } });
       if (!targetUser || targetUser.schoolId !== auth.schoolId) {
         return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
       }
+    }
+
+    const existing = await db.user.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 });
     }
 
     await db.user.update({ where: { id }, data: { isActive: false } });
