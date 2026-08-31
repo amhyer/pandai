@@ -9,13 +9,44 @@
 
 export type SchoolLevel = 'SD' | 'SMP' | 'SMA';
 
-const SD_KEYWORDS = ['SDLB', 'SDIT', 'SD', 'MI'];
-const SMP_KEYWORDS = ['SMPLB', 'SLTP', 'MT', 'SMP'];
+const SD_KEYWORDS = ['SDLB', 'SDIT', 'SDN', 'SD', 'MIN', 'MI', 'IBTIDAIYAH'];
+const SMP_KEYWORDS = ['SMPLB', 'SMPIT', 'SMPN', 'SLTP', 'MTSN', 'MTS', 'TSANAWIYAH', 'SMP'];
+const SMA_KEYWORDS = ['SMKN', 'SMAN', 'SMK', 'SMA', 'SLTA', 'SMU', 'MA', 'ALIYAH'];
 
-/** Menentukan level jenjang dari schoolType (SMA/SMK/MA/... → 'SMA' sebagai fallback). */
-export function getSchoolLevel(schoolType?: string | null): SchoolLevel {
+/**
+ * Menebak jenjang sekolah dari nama sekolah (bila schoolType kosong).
+ * Mengembalikan null bila nama tidak cukup meyakinkan (mis. 'SLB', 'TK', dst.).
+ *
+ * Contoh:
+ *   'SD Negeri 1 ...'            → 'SD'
+ *   'Madrasah Ibtidaiyah ...'    → 'SD'
+ *   'SMPN 2 ...' / 'MTsN 1 ...'  → 'SMP'
+ *   'SMK Negeri 1 ...' / 'MAN 1' → 'SMA'
+ */
+export function inferSchoolLevelFromName(name?: string | null): SchoolLevel | null {
+  const n = (name ?? '').trim().toUpperCase();
+  if (!n) return null;
+  for (const k of SD_KEYWORDS) {
+    if (n.includes(k)) return 'SD';
+  }
+  for (const k of SMP_KEYWORDS) {
+    if (n.includes(k)) return 'SMP';
+  }
+  for (const k of SMA_KEYWORDS) {
+    if (n.includes(k)) return 'SMA';
+  }
+  return null;
+}
+
+/**
+ * Menentukan level jenjang. Prioritas:
+ *   1. schoolType bila terisi (SMA/SMK/MA/... → 'SMA' sebagai fallback).
+ *   2. Tebak dari nama sekolah bila schoolType kosong.
+ *   3. Fallback terakhir 'SMA'.
+ */
+export function getSchoolLevel(schoolType?: string | null, schoolName?: string | null): SchoolLevel {
   const t = (schoolType ?? '').trim().toUpperCase();
-  if (!t) return 'SMA';
+  if (!t) return inferSchoolLevelFromName(schoolName) ?? 'SMA';
   // Periksa SDLB/SDIT sebelum 'SD' agar tidak tertangkap lebih dulu.
   for (const k of SD_KEYWORDS) {
     if (t.includes(k)) return 'SD';
@@ -27,8 +58,8 @@ export function getSchoolLevel(schoolType?: string | null): SchoolLevel {
 }
 
 /** Daftar tingkat kelas yang tersedia untuk suatu jenjang. */
-export function getGradeOptions(schoolType?: string | null): string[] {
-  const level = getSchoolLevel(schoolType);
+export function getGradeOptions(schoolType?: string | null, schoolName?: string | null): string[] {
+  const level = getSchoolLevel(schoolType, schoolName);
   if (level === 'SD') return ['1', '2', '3', '4', '5', '6'];
   if (level === 'SMP') return ['7', '8', '9'];
   return ['10', '11', '12'];
@@ -120,8 +151,12 @@ export function extractGradeFromName(name: string): string {
   return '';
 }
 
-/** Apakah grade sesuai dengan jenjang sekolah? */
-export function isGradeValidForSchool(grade: string | number, schoolType?: string | null): boolean {
+/** Apakah grade sesuai dengan jenjang sekolah? (fallback: tebak dari nama sekolah bila schoolType kosong) */
+export function isGradeValidForSchool(
+  grade: string | number,
+  schoolType?: string | null,
+  schoolName?: string | null
+): boolean {
   const g = String(grade).trim();
-  return getGradeOptions(schoolType).includes(g);
+  return getGradeOptions(schoolType, schoolName).includes(g);
 }

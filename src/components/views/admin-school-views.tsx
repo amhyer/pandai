@@ -267,7 +267,7 @@ function AddClassDialog({
 
 export function ClassesView() {
   const user = useAppStore((s) => s.user);
-  const gradeOptions = getGradeOptions(user?.schoolType);
+  const gradeOptions = getGradeOptions(user?.schoolType, user?.schoolName);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
