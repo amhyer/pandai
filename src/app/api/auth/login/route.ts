@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { verifyPassword, rehashIfNeeded, createSession, createSessionCookie } from '@/lib/auth';
+import { verifyPassword, rehashIfNeeded, createSession, createSessionCookie, toPublicUser } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
 import { checkRateLimit, RATE_LOGIN } from '@/lib/rate-limit';
 
@@ -60,28 +60,7 @@ export async function POST(request: Request) {
       schoolId: user.schoolId,
     });
 
-    const response = NextResponse.json({
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      name: user.name,
-      role: user.role,
-      avatar: user.avatar,
-      phone: user.phone,
-      nisn: user.nisn,
-      nip: user.nip,
-      // NIK intentionally excluded — KTP number must never reach client-side JS
-      namaOrtu: user.namaOrtu,
-      jk: user.jk,
-      parentId: user.parentId,
-      schoolId: user.schoolId,
-      schoolName: user.school?.name,
-      schoolType: (user.school?.schoolType as string) || null,
-      classId: user.classId,
-      className: user.class?.name,
-      isActive: user.isActive,
-      mustChangePassword: !!user.mustChangePassword,
-    });
+    const response = NextResponse.json(toPublicUser(user));
 
     // Set httpOnly cookie with JWT
     const cookie = createSessionCookie(token);
