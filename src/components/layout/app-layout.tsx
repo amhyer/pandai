@@ -145,6 +145,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       { label: 'Kelas', view: 'classes', icon: GraduationCap },
       { label: 'Mata Pelajaran', view: 'subjects', icon: BookMarked },
       { label: 'Data Siswa', view: 'users', icon: Users },
+      { label: 'Kelola Akun', view: 'accounts', icon: UserCheck },
       { label: 'Jadwal Pelajaran', view: 'timetable', icon: CalendarDays },
     ];
 
@@ -488,6 +489,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   classes: 'Kelas',
   subjects: 'Mata Pelajaran',
   users: 'Data Siswa',
+  accounts: 'Kelola Akun',
   questions: 'Bank Soal',
   'question-editor': 'Editor Soal',
   exams: 'Kelola Ujian',
