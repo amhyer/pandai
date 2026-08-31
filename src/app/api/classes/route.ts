@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
+import { getSchoolLevel, isGradeValidForSchool } from '@/lib/school-grades';
 
 export async function GET(request: Request) {
   try {
@@ -59,6 +60,20 @@ export async function POST(request: Request) {
       requireSchoolScope(auth, effectiveSchoolId);
     }
 
+    // Pastikan tingkat kelas sesuai jenjang sekolah (SD 1-6, SMP 7-9, SMA/SMK 10-12)
+    const school = await db.school.findUnique({
+      where: { id: effectiveSchoolId },
+      select: { schoolType: true },
+    });
+    if (!isGradeValidForSchool(grade, school?.schoolType)) {
+      const level = getSchoolLevel(school?.schoolType);
+      const valid = level === 'SD' ? '1-6' : level === 'SMP' ? '7-9' : '10-12';
+      return NextResponse.json(
+        { error: `Tingkat kelas tidak sesuai jenjang sekolah (hanya Kelas ${valid} untuk jenjang ini)` },
+        { status: 400 }
+      );
+    }
+
     // Check for duplicate class name in same school
     const existing = await db.class.findFirst({
       where: { schoolId: effectiveSchoolId, name, grade: Number(grade) },
@@ -98,11 +113,33 @@ export async function PUT(request: Request) {
     const { id, waliKelasId, name, grade, academicYear } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
-    // Verify school scope
+    // Verify school scope & cari schoolId kelas tsb (untuk validasi jenjang)
+    let schoolIdForValidation: string;
     if (auth.role !== 'SUPER_ADMIN') {
       const existing = await db.class.findUnique({ where: { id }, select: { schoolId: true } });
       if (!existing || existing.schoolId !== auth.schoolId) {
         return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
+      }
+      schoolIdForValidation = existing.schoolId;
+    } else {
+      const existing = await db.class.findUnique({ where: { id }, select: { schoolId: true } });
+      if (!existing) return NextResponse.json({ error: 'Kelas tidak ditemukan' }, { status: 404 });
+      schoolIdForValidation = existing.schoolId;
+    }
+
+    // Pastikan tingkat kelas sesuai jenjang sekolah
+    if (grade !== undefined) {
+      const school = await db.school.findUnique({
+        where: { id: schoolIdForValidation },
+        select: { schoolType: true },
+      });
+      if (!isGradeValidForSchool(grade, school?.schoolType)) {
+        const level = getSchoolLevel(school?.schoolType);
+        const valid = level === 'SD' ? '1-6' : level === 'SMP' ? '7-9' : '10-12';
+        return NextResponse.json(
+          { error: `Tingkat kelas tidak sesuai jenjang sekolah (hanya Kelas ${valid} untuk jenjang ini)` },
+          { status: 400 }
+        );
       }
     }
 
