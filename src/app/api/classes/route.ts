@@ -63,10 +63,10 @@ export async function POST(request: Request) {
     // Pastikan tingkat kelas sesuai jenjang sekolah (SD 1-6, SMP 7-9, SMA/SMK 10-12)
     const school = await db.school.findUnique({
       where: { id: effectiveSchoolId },
-      select: { schoolType: true },
+      select: { schoolType: true, name: true },
     });
-    if (!isGradeValidForSchool(grade, school?.schoolType)) {
-      const level = getSchoolLevel(school?.schoolType);
+    if (!isGradeValidForSchool(grade, school?.schoolType, school?.name)) {
+      const level = getSchoolLevel(school?.schoolType, school?.name);
       const valid = level === 'SD' ? '1-6' : level === 'SMP' ? '7-9' : '10-12';
       return NextResponse.json(
         { error: `Tingkat kelas tidak sesuai jenjang sekolah (hanya Kelas ${valid} untuk jenjang ini)` },
@@ -131,10 +131,10 @@ export async function PUT(request: Request) {
     if (grade !== undefined) {
       const school = await db.school.findUnique({
         where: { id: schoolIdForValidation },
-        select: { schoolType: true },
+        select: { schoolType: true, name: true },
       });
-      if (!isGradeValidForSchool(grade, school?.schoolType)) {
-        const level = getSchoolLevel(school?.schoolType);
+      if (!isGradeValidForSchool(grade, school?.schoolType, school?.name)) {
+        const level = getSchoolLevel(school?.schoolType, school?.name);
         const valid = level === 'SD' ? '1-6' : level === 'SMP' ? '7-9' : '10-12';
         return NextResponse.json(
           { error: `Tingkat kelas tidak sesuai jenjang sekolah (hanya Kelas ${valid} untuk jenjang ini)` },

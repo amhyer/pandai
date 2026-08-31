@@ -149,7 +149,7 @@ function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting, gradeOpti
 
 export function ClassManager() {
   const user = useAppStore((s) => s.user);
-  const gradeOptions = getGradeOptions(user?.schoolType);
+  const gradeOptions = getGradeOptions(user?.schoolType, user?.schoolName);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [allUsers, setAllUsers] = useState<{ id: string; name: string; role: string; className?: string }[]>([]);
   const [loading, setLoading] = useState(true);

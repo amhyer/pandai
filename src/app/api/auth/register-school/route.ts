@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/auth';
 import { logError } from '@/lib/error-log';
+import { inferSchoolLevelFromName } from '@/lib/school-grades';
 
 export async function POST(request: Request) {
   try {
@@ -41,6 +42,10 @@ export async function POST(request: Request) {
 
     const hashedPassword = await hashPassword(password);
 
+    // Tebak jenjang dari nama sekolah bila schoolType kosong (mis. DAPODIK tidak
+    // mengembalikan bentuk_pendidikan), supaya opsi tingkat kelas langsung benar.
+    const schoolType = (schoolData.schoolType ?? '').trim() || inferSchoolLevelFromName(schoolData.name);
+
     // Create School with Dapodik fields
     const school = await db.school.create({
       data: {
@@ -55,7 +60,7 @@ export async function POST(request: Request) {
         district: schoolData.district || null,
         principalName: schoolData.principalName || null,
         accreditation: schoolData.accreditation || null,
-        schoolType: schoolData.schoolType || null,
+        schoolType: schoolType || null,
         curriculum: schoolData.curriculum || null,
       },
     });
