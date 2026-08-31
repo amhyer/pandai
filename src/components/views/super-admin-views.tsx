@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useAppStore } from '@/store/use-store';
 import {
   CardTitle,
   CardDescription,
@@ -90,6 +91,7 @@ import {
   KeyRound,
   Phone,
   IdCard,
+  Plus,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -288,62 +290,77 @@ export function UsersGlobalView() {
   const [deleteTarget, setDeleteTarget] = useState<User | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  // ── Tambah Pengguna ─────────────────────────────────────────────
+  const [showAddUser, setShowAddUser] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addForm, setAddForm] = useState({ schoolId: '', role: 'ADMIN_SCHOOL', name: '', login: '', password: '' });
+  const [schools, setSchools] = useState<{ id: string; name: string }[]>([]);
+  const [schoolsLoading, setSchoolsLoading] = useState(false);
+
+  // ── Hapus Semua ─────────────────────────────────────────────────
+  const [showDeleteAll, setShowDeleteAll] = useState(false);
+  const [deleteAllConfirm, setDeleteAllConfirm] = useState('');
+  const [deletingAll, setDeletingAll] = useState(false);
+
+  const currentUser = useAppStore((s) => s.user);
+
   const debouncedSearch = useDebounce(rawSearch, 300);
 
-  useEffect(() => {
-    async function fetchUsers() {
-      try {
-        setLoading(true);
-        const res = await fetch('/api/users');
-        if (res.ok) {
-          const json = await res.json();
-          // /api/users mengembalikan array langsung (bukan { data: [...] }).
-          // Terima kedua bentuk supaya data asli dari database selalu tampil.
-          const list = Array.isArray(json)
-            ? json
-            : Array.isArray(json.data)
-              ? json.data
-              : [];
-          if (list.length > 0) {
-            setUsers(
-              list.map((u: Record<string, any>) => {
-                // GET /api/users mengembalikan school sebagai objek { name, ... }
-                // (include: { school: true }), bukan string. Normalisasi ke string
-                // supaya tabel tidak crash saat me-render objek.
-                const schoolVal =
-                  u.schoolName ??
-                  (typeof u.school === 'string' ? u.school : u.school?.name) ??
-                  '';
-                return {
-                  id: String(u.id ?? ''),
-                  name: String(u.name ?? u.fullName ?? ''),
-                  email: String(u.email ?? u.username ?? ''),
-                  role: String(u.role ?? ''),
-                  school: String(schoolVal),
-                  status: u.status ?? (u.isActive === false ? 'inactive' : 'active'),
-                  username: u.username ?? '',
-                  phone: u.phone ?? '',
-                  nisn: u.nisn ?? '',
-                  nip: u.nip ?? '',
-                  nik: u.nik ?? '',
-                  jk: u.jk ?? '',
-                  className: u.class?.name ?? '',
-                };
-              })
-            );
-          } else {
-            setUsers([]);
-          }
+  async function loadUsers() {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/users?limit=1000');
+      if (res.ok) {
+        const json = await res.json();
+        // /api/users mengembalikan array langsung (bukan { data: [...] }).
+        // Terima kedua bentuk supaya data asli dari database selalu tampil.
+        const list = Array.isArray(json)
+          ? json
+          : Array.isArray(json.data)
+            ? json.data
+            : [];
+        if (list.length > 0) {
+          setUsers(
+            list.map((u: Record<string, any>) => {
+              // GET /api/users mengembalikan school sebagai objek { name, ... }
+              // (include: { school: true }), bukan string. Normalisasi ke string
+              // supaya tabel tidak crash saat me-render objek.
+              const schoolVal =
+                u.schoolName ??
+                (typeof u.school === 'string' ? u.school : u.school?.name) ??
+                '';
+              return {
+                id: String(u.id ?? ''),
+                name: String(u.name ?? u.fullName ?? ''),
+                email: String(u.email ?? u.username ?? ''),
+                role: String(u.role ?? ''),
+                school: String(schoolVal),
+                status: u.status ?? (u.isActive === false ? 'inactive' : 'active'),
+                username: u.username ?? '',
+                phone: u.phone ?? '',
+                nisn: u.nisn ?? '',
+                nip: u.nip ?? '',
+                nik: u.nik ?? '',
+                jk: u.jk ?? '',
+                className: u.class?.name ?? '',
+              };
+            })
+          );
         } else {
           setUsers([]);
         }
-      } catch {
+      } else {
         setUsers([]);
-      } finally {
-        setLoading(false);
       }
+    } catch {
+      setUsers([]);
+    } finally {
+      setLoading(false);
     }
-    fetchUsers();
+  }
+
+  useEffect(() => {
+    loadUsers();
   }, []);
 
   const filtered = useMemo(() => {
@@ -402,6 +419,132 @@ export function UsersGlobalView() {
       setDeleting(false);
       setDeleteTarget(null);
     }
+  }
+
+  // ── Tambah Pengguna ─────────────────────────────────────────────
+  async function fetchSchools() {
+    setSchoolsLoading(true);
+    try {
+      const res = await fetch('/api/schools');
+      if (res.ok) {
+        const json = await res.json();
+        const list = Array.isArray(json) ? json : [];
+        setSchools(
+          list.map((s: Record<string, any>) => ({ id: String(s.id ?? ''), name: String(s.name ?? '') }))
+        );
+      }
+    } catch {
+      setSchools([]);
+    } finally {
+      setSchoolsLoading(false);
+    }
+  }
+
+  function openAddUser() {
+    setAddForm({ schoolId: '', role: 'ADMIN_SCHOOL', name: '', login: '', password: '' });
+    setShowAddUser(true);
+    if (schools.length === 0) fetchSchools();
+  }
+
+  function getLoginLabel(role: string) {
+    if (role === 'GURU') return 'NIP / NIK';
+    if (role === 'SISWA') return 'NISN';
+    return 'Email';
+  }
+
+  function getLoginPlaceholder(role: string) {
+    if (role === 'GURU') return 'Masukkan NIP atau NIK';
+    if (role === 'SISWA') return 'Masukkan NISN';
+    return 'email@sekolah.sch.id';
+  }
+
+  async function handleAddUser() {
+    if (!addForm.name.trim()) {
+      toast.error('Nama wajib diisi.');
+      return;
+    }
+    if (!addForm.login.trim()) {
+      toast.error(`${getLoginLabel(addForm.role)} wajib diisi.`);
+      return;
+    }
+    if (
+      (addForm.role === 'ADMIN_SCHOOL' || addForm.role === 'KEPALA_SEKOLAH' || addForm.role === 'ORANG_TUA') &&
+      !addForm.schoolId
+    ) {
+      toast.error('Pilih sekolah terlebih dahulu.');
+      return;
+    }
+    if (!addForm.password || addForm.password.length < 6) {
+      toast.error('Password minimal 6 karakter.');
+      return;
+    }
+
+    setAdding(true);
+    try {
+      const body: Record<string, any> = {
+        name: addForm.name.trim(),
+        role: addForm.role,
+        schoolId: addForm.schoolId || null,
+        password: addForm.password,
+      };
+      if (addForm.role === 'GURU') {
+        body.nip = addForm.login.trim();
+      } else if (addForm.role === 'SISWA') {
+        body.nisn = addForm.login.trim();
+      } else {
+        body.email = addForm.login.trim();
+      }
+
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        toast.success(data.message || `Pengguna "${addForm.name.trim()}" berhasil ditambahkan.`);
+        setShowAddUser(false);
+        await loadUsers();
+      } else {
+        toast.error(data.error || 'Gagal menambahkan pengguna.');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat menambahkan pengguna.');
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  // ── Hapus Semua (soft delete; lewati Super Admin & akun sendiri) ──
+  async function handleDeleteAll() {
+    if (deleteAllConfirm.trim() !== 'HAPUS') {
+      toast.error('Ketik "HAPUS" untuk mengonfirmasi.');
+      return;
+    }
+    setDeletingAll(true);
+    const targets = users.filter((u) => u.role !== 'SUPER_ADMIN' && u.id !== currentUser?.id);
+    let success = 0;
+    let failed = 0;
+    for (const u of targets) {
+      try {
+        const res = await fetch(`/api/users?id=${u.id}`, { method: 'DELETE' });
+        if (res.ok) success += 1;
+        else failed += 1;
+      } catch {
+        failed += 1;
+      }
+    }
+    setDeletingAll(false);
+    setShowDeleteAll(false);
+    setDeleteAllConfirm('');
+    if (success > 0) {
+      toast.success(`${success} pengguna berhasil dinonaktifkan${failed > 0 ? `, ${failed} gagal` : ''}.`);
+    } else if (failed > 0) {
+      toast.error('Tidak ada pengguna yang berhasil dinonaktifkan.');
+    } else {
+      toast.info('Tidak ada pengguna yang perlu dinonaktifkan.');
+    }
+    await loadUsers();
   }
 
   // ── Edit Pengguna ───────────────────────────────────────────────
@@ -508,18 +651,40 @@ export function UsersGlobalView() {
         description="Kelola semua pengguna dari seluruh sekolah di platform PANDAI."
         icon={Users}
         action={
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
-                disabled
-              >
-                <Download className="mr-2 h-4 w-4" />
-                Ekspor Data
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Fitur segera tersedia</TooltipContent>
-          </Tooltip>
+          <>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="rounded-lg border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                  onClick={() => setShowDeleteAll(true)}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Hapus Semua
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Nonaktifkan semua pengguna (kecuali Super Admin & akun Anda)</TooltipContent>
+            </Tooltip>
+            <Button
+              className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              onClick={() => openAddUser()}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Tambah Pengguna
+            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                  disabled
+                >
+                  <Download className="mr-2 h-4 w-4" />
+                  Ekspor Data
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Fitur segera tersedia</TooltipContent>
+            </Tooltip>
+          </>
         }
       />
 
@@ -631,6 +796,15 @@ export function UsersGlobalView() {
                       icon={Users}
                       title="Tidak ada pengguna ditemukan"
                       description="Coba ubah filter atau kata kunci pencarian Anda."
+                      action={
+                        <Button
+                          className="bg-[#1F3864] hover:bg-[#152850] transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+                          onClick={() => openAddUser()}
+                        >
+                          <Plus className="mr-2 h-4 w-4" />
+                          Tambah Pengguna
+                        </Button>
+                      }
                     />
                   </TableCell>
                 </TableRow>
@@ -966,8 +1140,19 @@ export function UsersGlobalView() {
               Hapus Pengguna
             </AlertDialogTitle>
             <AlertDialogDescription className="pl-12">
-              Apakah Anda yakin ingin menghapus <span className="font-semibold text-foreground">{deleteTarget?.name}</span>?
-              Tindakan ini tidak dapat dibatalkan. Semua data terkait pengguna ini akan dihapus permanen.
+              {deleteTarget?.role === 'ADMIN_SCHOOL' ? (
+                <>
+                  Anda akan <span className="font-semibold text-foreground">menonaktifkan admin sekolah</span>{' '}
+                  <span className="font-semibold text-foreground">{deleteTarget?.name}</span>. Guru dan siswa di
+                  sekolah ini <span className="font-semibold text-foreground">TIDAK ikut terhapus</span>.
+                  Jangan langsung menghapus guru/siswa — pastikan akun pengganti admin sekolah tersedia terlebih dahulu.
+                </>
+              ) : (
+                <>
+                  Apakah Anda yakin ingin menghapus <span className="font-semibold text-foreground">{deleteTarget?.name}</span>?
+                  Tindakan ini tidak dapat dibatalkan. Semua data terkait pengguna ini akan dihapus permanen.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -989,6 +1174,165 @@ export function UsersGlobalView() {
                 </>
               ) : (
                 'Hapus Permanen'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Tambah Pengguna Dialog */}
+      <Dialog open={showAddUser} onOpenChange={(open) => !open && !adding && setShowAddUser(false)}>
+        <DialogContent className="rounded-xl max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#1F3864]/10 text-[#1F3864]">
+                <Plus className="h-5 w-5" />
+              </div>
+              Tambah Pengguna
+            </DialogTitle>
+            <DialogDescription className="pl-12">
+              Buat akun baru untuk sekolah terpilih. Role default adalah Admin Sekolah.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="pl-12 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="add-role">Role</Label>
+              <select
+                id="add-role"
+                value={addForm.role}
+                onChange={(e) => setAddForm((f) => ({ ...f, role: e.target.value }))}
+                className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-[#1F3864]/20"
+              >
+                <option value="ADMIN_SCHOOL">Admin Sekolah</option>
+                <option value="KEPALA_SEKOLAH">Kepala Sekolah</option>
+                <option value="GURU">Guru</option>
+                <option value="SISWA">Siswa</option>
+                <option value="ORANG_TUA">Orang Tua</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-school">Sekolah</Label>
+              <select
+                id="add-school"
+                value={addForm.schoolId}
+                onChange={(e) => setAddForm((f) => ({ ...f, schoolId: e.target.value }))}
+                className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm focus:ring-2 focus:ring-[#1F3864]/20 disabled:opacity-60"
+                disabled={schoolsLoading}
+              >
+                <option value="">{schoolsLoading ? 'Memuat sekolah...' : '— Pilih sekolah —'}</option>
+                {schools.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-name">Nama Lengkap</Label>
+              <Input
+                id="add-name"
+                value={addForm.name}
+                onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
+                className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                placeholder="Nama lengkap"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-login">{getLoginLabel(addForm.role)}</Label>
+              <Input
+                id="add-login"
+                value={addForm.login}
+                onChange={(e) => setAddForm((f) => ({ ...f, login: e.target.value }))}
+                className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                placeholder={getLoginPlaceholder(addForm.role)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-password">Password</Label>
+              <Input
+                id="add-password"
+                type="text"
+                value={addForm.password}
+                onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))}
+                className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
+                placeholder="Minimal 6 karakter"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              disabled={adding}
+              onClick={() => setShowAddUser(false)}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleAddUser}
+              disabled={adding}
+              className="bg-[#1F3864] hover:bg-[#152850] rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+            >
+              {adding ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menambahkan...
+                </>
+              ) : (
+                'Tambah Pengguna'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hapus Semua Dialog */}
+      <AlertDialog open={showDeleteAll} onOpenChange={(open) => !open && !deletingAll && setShowDeleteAll(false)}>
+        <AlertDialogContent className="rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 text-red-600">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              Hapus Semua Pengguna
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pl-12">
+              Tindakan ini akan <span className="font-semibold text-foreground">menonaktifkan semua pengguna</span>{' '}
+              kecuali Super Admin dan akun Anda sendiri. Data tidak dihapus permanen, hanya dinonaktifkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="pl-12 space-y-2">
+            <Label htmlFor="delete-all-confirm">
+              Ketik <span className="font-semibold text-foreground">HAPUS</span> untuk melanjutkan:
+            </Label>
+            <Input
+              id="delete-all-confirm"
+              value={deleteAllConfirm}
+              onChange={(e) => setDeleteAllConfirm(e.target.value)}
+              className="rounded-lg focus:ring-2 focus:ring-red-500/20"
+              placeholder="HAPUS"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              className="rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+              disabled={deletingAll}
+              onClick={() => setDeleteAllConfirm('')}
+            >
+              Batal
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAll}
+              disabled={deletingAll || deleteAllConfirm.trim() !== 'HAPUS'}
+              className="bg-red-600 hover:bg-red-700 rounded-lg transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
+            >
+              {deletingAll ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Menonaktifkan...
+                </>
+              ) : (
+                'Hapus Semua'
               )}
             </AlertDialogAction>
           </AlertDialogFooter>
