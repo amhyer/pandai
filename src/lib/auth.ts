@@ -150,6 +150,77 @@ export async function requireRole(request: Request, roles: string | string[]): P
   return user;
 }
 
+// ─── Public user mapper (login + GET /api/auth/me) ───────────
+
+export interface PublicUser {
+  id: string;
+  username: string | null;
+  email: string | null;
+  name: string;
+  role: string;
+  avatar: string | null;
+  phone: string | null;
+  nisn: string | null;
+  nip: string | null;
+  namaOrtu: string | null;
+  jk: string | null;
+  parentId: string | null;
+  schoolId: string | null;
+  schoolName: string | null;
+  schoolType: string | null;
+  classId: string | null;
+  className: string | null;
+  isActive: boolean;
+  mustChangePassword: boolean;
+}
+
+/**
+ * Map a Prisma user (with school & class included) to the safe public shape.
+ * NIK is intentionally excluded — KTP number must never reach client-side JS.
+ */
+export function toPublicUser(user: {
+  id: string;
+  username: string | null;
+  email: string | null;
+  name: string;
+  role: string;
+  avatar: string | null;
+  phone: string | null;
+  nisn: string | null;
+  nip: string | null;
+  namaOrtu: string | null;
+  jk: string | null;
+  parentId: string | null;
+  schoolId: string | null;
+  classId: string | null;
+  isActive: boolean;
+  mustChangePassword: boolean;
+  school?: { name: string; schoolType: string | null } | null;
+  class?: { name: string } | null;
+}): PublicUser {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    avatar: user.avatar,
+    phone: user.phone,
+    nisn: user.nisn,
+    nip: user.nip,
+    namaOrtu: user.namaOrtu,
+    jk: user.jk,
+    parentId: user.parentId,
+    schoolId: user.schoolId,
+    schoolName: user.school?.name ?? null,
+    schoolType: user.school?.schoolType ?? null,
+    classId: user.classId,
+    className: user.class?.name ?? null,
+    isActive: user.isActive,
+    mustChangePassword: !!user.mustChangePassword,
+  };
+}
+
 // ─── Error class for clean 401/403 throwing ──────────────────
 
 export class AuthError extends Error {

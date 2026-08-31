@@ -390,6 +390,11 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 });
     }
 
+    // Larang menghapus (menonaktifkan) Super Admin
+    if (existing.role === 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Tidak bisa menghapus Super Admin' }, { status: 400 });
+    }
+
     await db.user.update({ where: { id }, data: { isActive: false } });
     return NextResponse.json({ success: true });
   } catch (error) {

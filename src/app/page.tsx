@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useAppStore } from '@/store/use-store';
+import { useAppStore, type ViewType } from '@/store/use-store';
 import AppLayout from '@/components/layout/app-layout';
 
 // ─── Auth (static import — small) ──────────────────────────────────
@@ -403,6 +403,46 @@ function LandingPageInline() {
 export default function Home() {
   const isAuthenticated = useAppStore((s) => s.isAuthenticated);
   const currentView = useAppStore((s) => s.currentView);
+  const setUser = useAppStore((s) => s.setUser);
+  const setCurrentView = useAppStore((s) => s.setCurrentView);
+  const [sessionChecked, setSessionChecked] = useState(false);
+
+  // ── Restore session from httpOnly cookie (survives page refresh) ──
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreSession() {
+      try {
+        const res = await fetch('/api/auth/me', { credentials: 'include' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.user) {
+            if (!cancelled) setUser(data.user);
+
+            // Pulihkan view terakhir dari sessionStorage bila masih valid.
+            const saved = typeof window !== 'undefined' ? sessionStorage.getItem('pandai_view') : null;
+            const isPublicView = saved === 'landing' || saved === 'login' || saved === 'register';
+            if (!cancelled) {
+              setCurrentView(saved && !isPublicView ? (saved as ViewType) : 'dashboard');
+            }
+          }
+        }
+      } catch {
+        // Abaikan — anggap belum login.
+      } finally {
+        if (!cancelled) setSessionChecked(true);
+      }
+    }
+
+    restoreSession();
+    return () => {
+      cancelled = true;
+    };
+  }, [setUser, setCurrentView]);
+
+  if (!sessionChecked) {
+    return <AppLoading />;
+  }
 
   if (!isAuthenticated) {
     switch (currentView) {

@@ -162,6 +162,9 @@ export const useAppStore = create<AppState>((set) => ({
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   logout: () => {
     fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    if (typeof window !== 'undefined') {
+      sessionStorage.removeItem('pandai_view');
+    }
     set({ user: null, isAuthenticated: false, currentView: 'landing' });
   },
   setLoading: (isLoading) => set({ isLoading }),
@@ -172,5 +175,10 @@ export const useAppStore = create<AppState>((set) => ({
   setSelectedQuestionId: (selectedQuestionId) => set({ selectedQuestionId }),
   setSidebarOpen: (sidebarOpen) => set({ sidebarOpen }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
-  navigateTo: (view) => set({ currentView: view }),
+  navigateTo: (view) => {
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('pandai_view', view);
+    }
+    set({ currentView: view });
+  },
 }));
