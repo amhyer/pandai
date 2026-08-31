@@ -25,6 +25,7 @@ export type ViewType =
   | 'classes'
   | 'subjects'
   | 'users'
+  | 'accounts'
   | 'questions'
   | 'question-editor'
   | 'exams'
