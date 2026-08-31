@@ -148,7 +148,7 @@ function AccountsPage() {
               </p>
               {availableSchools.size > 0 ? (
                 <select
-                  value selectedSchoolId || ''
+                  value={selectedSchoolId || ''}
                   onChange={(e) => setSelectedSchoolId(e.target.value)}
                   className="mt-1 block w-full rounded border border-input placeholder:text-muted-foreground"
                 >
