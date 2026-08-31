@@ -4,7 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useAppStore } from '@/store/use-store';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { Table, TableHeader, TableRow, TableCell } from '@/components/ui/table';
+import { Table, TableHeader, TableBody, TableRow, TableCell } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
 
 function OrtuAccountsPage() {
