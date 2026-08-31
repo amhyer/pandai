@@ -8,7 +8,7 @@ import { Table, TableHeader, TableRow, TableCell } from '@/components/ui/table';
 import { useRouter } from 'next/navigation';
 
 function AccountsPage() {
-  const { users, isLoading, error, user, setCurrentView } = useAppStore();
+  const { users, isLoading, error, user, selectedSchoolId, setSelectedSchoolId, setCurrentView } = useAppStore();
   const router = useRouter();
 
   // Determine if current user can manage all accounts or only their school's accounts
@@ -47,39 +47,41 @@ function AccountsPage() {
     return <div className="min-h-screen">Anda harus login terlebih dahulu</div>;
   }
 
-  // Filter users based on role
+  // Filter users based on role and selected school
   // SUPER_ADMIN: tampilkan semua akun
-  // ADMIN_SCHOOL: tampilkan hanya akun di sekolah mereka
-  // GURU, SISWA, ORANG_TUA, KEPALA_SEKOLAH: tampilkan sesuai role
+  // ADMIN_SCHOOL: tampilkan akun berdasarkan selectedSchoolId (dapat diubah)
+  // GURU, SISWA, ORANG_TUA, KEPALA_SEKOLAH: tampilkan sesuai role, jika admin sekolah pakai selectedSchoolId
   let filteredUsers = users;
 
-  if (!isSuperAdmin && isAdminSchool && user.schoolId) {
-    // Admin Sekolah hanya melihat akun di sekolah mereka
-    filteredUsers = users.filter((u: any) => u.schoolId === user.schoolId);
-  } else if (!isSuperAdmin && userRole) {
-    // Untuk role lain, filter sesuai role
-    filteredUsers = users.filter((u: any) => u.role === userRole);
+  // Determine the effective school filter
+  let effectiveSchoolId = selectedSchoolId;
+
+  // If admin school and no specific school selected, use their school
+  if (isAdminSchool && !effectiveSchoolId && user.schoolId) {
+    effectiveSchoolId = user.schoolId;
   }
 
-  // If admin sekolah, show school filter option
-  const [showSchoolFilter, setShowSchoolFilter] = useState(false);
-  const [selectedSchoolId, setSelectedSchoolId] = useState<string | null>(user.schoolId);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center py-12">
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center h-12 w-12 rounded-xl bg-[#1F3864] animate-pulse">
-            <svg className="h-6 w-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
-              <path d="M6 12v5c3 3 6 3 6 3s3 0 6-3v-5" />
-            </svg>
-          </div>
-          <p className="text-sm font-medium text-muted-foreground">Memuat data akun...</p>
-        </div>
-      </div>
-    );
+  // Apply filtering
+  if (!isSuperAdmin) {
+    if (isAdminSchool && effectiveSchoolId) {
+      // Admin Sekolah: filter berdasarkan selectedSchoolId
+      filteredUsers = users.filter((u: any) => u.schoolId === effectiveSchoolId);
+    } else if (userRole) {
+      // Untuk role lain, filter sesuai role
+      filteredUsers = users.filter((u: any) => u.role === userRole);
+    }
   }
+
+  // Available schools for filter dropdown (ambil dari users yang sudah memiliki schoolId)
+  const availableSchools = useMemo(() => {
+    const schools = new Map<string, string>();
+    users.forEach((u: any) => {
+      if (u.schoolId && u.schoolName && !schools.has(u.schoolId)) {
+        schools.set(u.schoolId, u.schoolName);
+      }
+    });
+    return schools;
+  }, [users]);
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
@@ -89,7 +91,7 @@ function AccountsPage() {
             Kelola Akun
             {isAdminSchool && (
               <span className="ml-2 text-sm text-muted-foreground">
-                (Sekolah: {user.schoolName || '-'})
+                {selectedSchoolId ? `Sekolah: ${selectedSchoolId}` : '(Sekolah: Sekolah Anda)'}
               </span>
             )}
           </h1>
@@ -105,24 +107,33 @@ function AccountsPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowSchoolFilter(true)}
+                onClick={() => setSelectedSchoolId('')}
               >
-                Filter Sekolah
+                Semua Sekolah
+              </Button>
+            )}
+            {isAdminSchool && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedSchoolId('')}
+              >
+                Reset Filter
               </Button>
             )}
           </div>
         </div>
 
         {/* School filter for Admin Sekolah */}
-        {isAdminSchool && showSchoolFilter && (
+        {isAdminSchool && (
           <div className="mt-4 p-4 bg-muted/50 rounded border border-muted/20">
             <h3 className="font-medium mb-3">Filter Sekolah</h3>
             <div className="space-y-2">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowSchoolFilter(false)}
-                aria-label="Tutup filter"
+                onClick={() => setSelectedSchoolId('')}
+                aria-label="Batal filter sekolah"
               >
                 <svg
                   className="h-4 w-4"
@@ -135,12 +146,30 @@ function AccountsPage() {
               <p className="text-sm text-muted-foreground mb-2">
                 Pilih sekolah untuk melihat akun:
               </p>
-              <div className="space-y-1 max-h-40 overflow-y-auto">
-                {/* School options would be populated from store or API */}
+              {availableSchools.size > 0 ? (
+                <select
+                  value selectedSchoolId || ''
+                  onChange={(e) => setSelectedSchoolId(e.target.value)}
+                  className="mt-1 block w-full rounded border border-input placeholder:text-muted-foreground"
+                >
+                  <option value="">-- Pilih Sekolah --</option>
+                  {Array.from(availableSchools.entries()).map(
+                    ([schoolId, schoolName]) => (
+                      <option
+                        key={schoolId}
+                        value={schoolId}
+                        selected ={selectedSchoolId === schoolId}
+                      >
+                        {schoolName}
+                      </option>
+                    )
+                  )}
+                </select>
+              ) : (
                 <p className="text-xs text-muted-foreground">
-                  (Daftar sekolah akan muncul setelah data dimuat)
+                  (Tidak ada data sekolah yang tersedia)
                 </p>
-              </div>
+              )}
             </div>
           </div>
         )}
@@ -185,7 +214,7 @@ function AccountsPage() {
                   </TableCell>
                   <TableCell>{user.name || '-'}</TableCell>
                   <TableCell>
-                    {user.schoolName || (isAdminSchool ? user.schoolName || '-' : '-')}
+                    {user.schoolName || (isAdminSchool && effectiveSchoolId ? selectedSchoolId || user.schoolName || '-' : '-')}
                   </TableCell>
                   <TableCell>
                     <span
@@ -241,7 +270,7 @@ function AccountsPage() {
                         fill="currentColor"
                       >
                         <path
-                          d="M11.26 13.3a1.26 1.26 0 0 0-.3 1.92h1.37l1.11 1.11a1.26 1.26 0 1 0 1.79-1.79l-1.37-1.37a1.26 1.26 0 0 0-1.92-.3zm2.31-1.96a1.26 1.26 0 0 1-1.82-.3l-.31-.31-.86-.86a1.26 1.26 0 1 1 1.98-1.98l.85.85a1.26 1.26 0 0 1 .3 1.82zM0 12l4.93 4.93a1.26 1.26 0 0 1-.3 1.92L0 21.26l4.93-4.93a1.26 1.26 0 0 1-.3-1.92zM22 12l-4.93 4.93a1.26 1.26 0 0 0 .3 1.92L22 21.26l-4.93-4.93a1.26 1.26 0 0 0-.3-1.92zM3.57 8.93a1.26 1.26 0 0 1 0 1.92l1.36 1.36a1.26 1.26 0 1 1-1.92 1.92l-1.36-1.36a1.26 1.26 0 0 1-1.92.3zM9 21.26l-4.93 4.93a1.26 1.26 0 0 1-.3 1.92L9 24l4.93-4.93a1.26 1.26 0 0 1-.3-1.92l4.93 4.93a1.26 1.26 0 1 1 1.92.3zM14 15.9l.68.68a1.26 1.26 0 0 1-1.92 1.92l-.68-.68a1.26 1.26 0 0 0 1.92-1.92l.68.68zm7.53 0a1.26 1.26 0 0 0 1.92 0l.68-.68a1.26 1.26 0 1 0-1.92-1.92l-.68.68zM21.26 9l4.93-4.93a1.26 1.26 0 0 1 1.92.3l4.93 4.93a1.26 1.26 0 1 0-.3-1.92l-4.93-4.93a1.26 1.26 0 0 0-1.92.3zM21.26 3.57l4.93 4.93a1.26 1.26 0 0 0 .3 1.92L22 2.28l-4.93 4.93a1.26 1.26 0 1 1-1.92-.3L22 .06l4.93-4.93a1.26 1.26 0 0 1-.3-1.92L21.26 0a1.26 1.26 0 0 1 .3-1.92zM1.74 15.9l-.68.68a1.26 1.26 0 0 0 1.92 1.92l.68-.68a1.26 1.26 0 1 1-1.92 1.92l-.68-.68zm-7.53 0a1.26 1.26 0 0 1-1.92 0l-.68.68a1.26 1.26 0 1 0 1.92 1.92l.68-.68zm7.53 0a1.26 1.26 0 0 0 1.92 0l.68-.68a1.26 1.26 0 1 0-1.92-1.92l-.68.68zm9 3.57l4.93-4.93a1.26 1.26 0 0 0 1.92.3L9 .06l4.93 4.93a1.26 1.26 0 1 0-.3-1.92l-4.93 4.93a1.26 1.26 0 0 1-1.92.3zM21.26 3.57l4.93 4.93a1.26 1.26 0 0 0 .3 1.92L22 2.28l-4.93 4.93a1.26 1.26 0 1 1-1.92-.3L22 .06l4.93-4.93a1.26 1.26 0 0 1-.3-1.92L21.26 0a1.26 1.26 0 0 1 .3-1.92zM1.74 15.9l-.68.68a1.26 1.26 0 0 0 1.92 1.92l.68-.68a1.26 1.26 0 1 1-1.92 1.92l-.68-.68zm-7.53 0a1.26 1.26 0 0 1-1.92 0l-.68.68a1.26 1.26 0 1 0 1.92 1.92l.68-.68zM9 3.57l4.93-4.93a1.26 1.26 0 0 0 1.92.3L9 .06l4.93 4.93a1.26 1.26 0 1 0-.3-1.92l-4.93 4.93a1.26 1.26 0 0 1-1.92.3z"
+                          d="M11.26 13.3a1.26 1.26 0 0 0-.3 1.92h1.37l1.11 1.11a1.26 1.26 0 1 0 1.79-1.79l-1.37-1.37a1.26 1.26 0 0 0-1.92-.3zm2.31-1.96a1.26 1.26 0 0 1-1.82-.3l-.31-.31-.86-.86a1.26 1.26 0 1 1 1.98-1.98l.85.85a1.26 1.26 0 0 1 .3 1.82zM0 12l4.93 4.93a1.26 1.26 0 0 1-.3 1.92L0 21.26l4.93-4.93a1.26 1.26 0 0 1-.3-1.92zM22 12l-4.93 4.93a1.26 1.26 0 0 0 .3 1.92L22 21.26l-4.93-4.93a1.26 1.26 0 0 0-.3-1.92zM3.57 8.93a1.26 1.26 0 0 1 0 1.92l1.36 1.36a1.26 1.26 0 1 1-1.92 1.92l-1.36-1.36a1.26 1.26 0 0 1-1.92.3zM9 21.26l-4.93 4.93a1.26 1.26 0 0 1-.3 1.92L9 24l4.93-4.93a1.26 1.26 0 0 1-.3-1.92l4.93 4.93a1.26 1.26 0 1 1 1.92.3zM14 15.9l.68.68a1.26 1.26 0 0 1-1.92 1.92l-.68-.68a1.26 1.26 0 0 0 1.92-1.92l.68.68zm7.53 0a1.26 1.26 0 0 0 1.92 0l.68-.68a1.26 1.26 0 1 0-1.92-1.92l-.68.68zm7.53 0a1.26 1.26 0 0 0 1.92 0l.68-.68a1.26 1.26 0 1 0-1.92-1.92l-.68.68zm9 3.57l4.93-4.93a1.26 1.26 0 0 0 1.92.3L9 .06l4.93 4.93a1.26 1.26 0 1 0-.3-1.92l-4.93 4.93a1.26 1.26 0 0 1-1.92.3z"
                         />
                       </svg>
                     </Button>
