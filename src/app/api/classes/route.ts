@@ -115,39 +115,56 @@ export async function PUT(request: Request) {
 
     // Verify school scope & cari schoolId kelas tsb (untuk validasi jenjang)
     let schoolIdForValidation: string;
-    if (auth.role !== 'SUPER_ADMIN') {
-      const existing = await db.class.findUnique({ where: { id }, select: { schoolId: true } });
-      if (!existing || existing.schoolId !== auth.schoolId) {
-        return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
-      }
-      schoolIdForValidation = existing.schoolId;
-    } else {
-      const existing = await db.class.findUnique({ where: { id }, select: { schoolId: true } });
-      if (!existing) return NextResponse.json({ error: 'Kelas tidak ditemukan' }, { status: 404 });
-      schoolIdForValidation = existing.schoolId;
+    const existing = await db.class.findUnique({
+      where: { id },
+      select: { schoolId: true, name: true, grade: true },
+    });
+    if (!existing) return NextResponse.json({ error: 'Kelas tidak ditemukan' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN' && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
+    }
+    schoolIdForValidation = existing.schoolId;
+
+    const nextName = name === undefined ? existing.name : String(name).trim();
+    const nextGrade = grade === undefined ? existing.grade : Number(grade);
+    if (!nextName || !Number.isInteger(nextGrade)) {
+      return NextResponse.json({ error: 'Nama dan tingkat kelas wajib diisi dengan benar' }, { status: 400 });
     }
 
     // Pastikan tingkat kelas sesuai jenjang sekolah
-    if (grade !== undefined) {
-      const school = await db.school.findUnique({
-        where: { id: schoolIdForValidation },
-        select: { schoolType: true, name: true },
-      });
-      if (!isGradeValidForSchool(grade, school?.schoolType, school?.name)) {
-        const level = getSchoolLevel(school?.schoolType, school?.name);
-        const valid = level === 'SD' ? '1-6' : level === 'SMP' ? '7-9' : '10-12';
-        return NextResponse.json(
-          { error: `Tingkat kelas tidak sesuai jenjang sekolah (hanya Kelas ${valid} untuk jenjang ini)` },
-          { status: 400 }
-        );
-      }
+    const school = await db.school.findUnique({
+      where: { id: schoolIdForValidation },
+      select: { schoolType: true, name: true },
+    });
+    if (!isGradeValidForSchool(nextGrade, school?.schoolType, school?.name)) {
+      const level = getSchoolLevel(school?.schoolType, school?.name);
+      const valid = level === 'SD' ? '1-6' : level === 'SMP' ? '7-9' : '10-12';
+      return NextResponse.json(
+        { error: `Tingkat kelas tidak sesuai jenjang sekolah (hanya Kelas ${valid} untuk jenjang ini)` },
+        { status: 400 }
+      );
     }
 
-    const data: any = {};
+    // Jangan izinkan dua kelas dengan nama dan tingkat yang sama dalam satu sekolah.
+    const duplicate = await db.class.findFirst({
+      where: {
+        schoolId: schoolIdForValidation,
+        name: nextName,
+        grade: nextGrade,
+        NOT: { id },
+      },
+      select: { id: true },
+    });
+    if (duplicate) {
+      return NextResponse.json({ error: 'Kelas dengan nama dan tingkat yang sama sudah ada di sekolah ini' }, { status: 409 });
+    }
+
+    const data: Record<string, unknown> = {
+      name: nextName,
+      grade: nextGrade,
+    };
+    if (academicYear !== undefined) data.academicYear = String(academicYear).trim();
     if (waliKelasId !== undefined) data.waliKelasId = waliKelasId || null;
-    if (name !== undefined) data.name = name;
-    if (grade !== undefined) data.grade = Number(grade);
-    if (academicYear !== undefined) data.academicYear = academicYear;
 
     const cls = await db.class.update({
       where: { id },
@@ -164,5 +181,52 @@ export async function PUT(request: Request) {
     }
     logError({ error, route: '/api/classes', method: 'PUT' });
     return NextResponse.json({ error: 'Gagal memperbarui kelas' }, { status: 500 });
+  }
+}
+
+// DELETE /api/classes — Delete a class (ADMIN_SCHOOL, SUPER_ADMIN)
+export async function DELETE(request: Request) {
+  try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    const existing = await db.class.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        name: true,
+        schoolId: true,
+        _count: { select: { users: true, examAssignments: true, timetables: true } },
+      },
+    });
+    if (!existing) return NextResponse.json({ error: 'Kelas tidak ditemukan' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN' && existing.schoolId !== auth.schoolId) {
+      return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
+    }
+
+    // Jadwal dan penugasan ujian memiliki relasi wajib ke kelas. Menolak penghapusan
+    // lebih aman daripada menghapus data akademik yang masih digunakan.
+    if (existing._count.examAssignments > 0 || existing._count.timetables > 0) {
+      return NextResponse.json(
+        { error: 'Kelas tidak dapat dihapus karena masih digunakan pada jadwal atau penugasan ujian' },
+        { status: 409 }
+      );
+    }
+
+    // Siswa tetap dipertahankan; hanya hubungan kelasnya yang dilepas.
+    await db.$transaction(async (tx) => {
+      await tx.user.updateMany({ where: { classId: id }, data: { classId: null } });
+      await tx.class.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ success: true, studentCount: existing._count.users });
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    logError({ error, route: '/api/classes', method: 'DELETE' });
+    return NextResponse.json({ error: 'Gagal menghapus kelas' }, { status: 500 });
   }
 }

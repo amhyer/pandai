@@ -21,6 +21,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -33,6 +43,8 @@ import {
   Users,
   BookOpen,
   Hash,
+  Pencil,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -66,14 +78,34 @@ interface ClassFormDialogProps {
   onSubmit: (data: ClassFormData) => void;
   isSubmitting: boolean;
   gradeOptions: string[];
+  initialData?: ClassInfo | null;
 }
 
-function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting, gradeOptions }: ClassFormDialogProps) {
+function ClassFormDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  isSubmitting,
+  gradeOptions,
+  initialData,
+}: ClassFormDialogProps) {
   const [form, setForm] = useState<ClassFormData>({
-    name: '',
-    grade: gradeOptions[0] ?? '10',
-    academicYear: new Date().getFullYear().toString(),
+    name: initialData?.name ?? '',
+    grade: initialData ? String(initialData.grade) : (gradeOptions[0] ?? '10'),
+    academicYear: initialData?.academicYear ?? new Date().getFullYear().toString(),
   });
+
+  // Re-initialize the form whenever the selected class changes. This also
+  // prevents stale values from an edit from appearing in the add dialog.
+  const gradeOptionsKey = gradeOptions.join(',');
+  const defaultGrade = gradeOptions[0] ?? '10';
+  useEffect(() => {
+    setForm({
+      name: initialData?.name ?? '',
+      grade: initialData ? String(initialData.grade) : defaultGrade,
+      academicYear: initialData?.academicYear ?? new Date().getFullYear().toString(),
+    });
+  }, [initialData, defaultGrade, gradeOptionsKey]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,7 +120,7 @@ function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting, gradeOpti
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Tambah Kelas Baru</DialogTitle>
+          <DialogTitle>{initialData ? 'Edit Kelas' : 'Tambah Kelas Baru'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
@@ -138,7 +170,7 @@ function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting, gradeOpti
               className="bg-[#1F3864] hover:bg-[#152850]"
               disabled={isSubmitting}
             >
-              {isSubmitting ? 'Menyimpan...' : 'Tambah Kelas'}
+              {isSubmitting ? 'Menyimpan...' : initialData ? 'Simpan Perubahan' : 'Tambah Kelas'}
             </Button>
           </div>
         </form>
@@ -156,7 +188,10 @@ export function ClassManager() {
   const [allUsers, setAllUsers] = useState<{ id: string; name: string; role: string; className?: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingClass, setEditingClass] = useState<ClassInfo | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ClassInfo | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user?.schoolId) return;
@@ -208,29 +243,58 @@ export function ClassManager() {
       return;
     }
     setSubmitting(true);
+    const isEditing = !!editingClass;
     try {
       const res = await fetch('/api/classes', {
-        method: 'POST',
+        method: isEditing ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: form.name,
+          ...(isEditing ? { id: editingClass.id } : { schoolId: user.schoolId }),
+          name: form.name.trim(),
           grade: form.grade,
-          academicYear: form.academicYear,
-          schoolId: user.schoolId,
+          academicYear: form.academicYear.trim(),
         }),
       });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
-        toast.error(err.error || `Gagal membuat kelas (${res.status})`);
+        toast.error(err.error || `Gagal ${isEditing ? 'memperbarui' : 'membuat'} kelas (${res.status})`);
         return;
       }
-      toast.success(`Kelas "${form.name}" berhasil dibuat!`);
+      toast.success(isEditing
+        ? `Kelas "${form.name}" berhasil diperbarui!`
+        : `Kelas "${form.name}" berhasil dibuat!`);
       setDialogOpen(false);
-      fetchData();
+      setEditingClass(null);
+      await fetchData();
     } catch {
-      toast.error('Gagal membuat kelas');
+      toast.error(`Gagal ${isEditing ? 'memperbarui' : 'membuat'} kelas`);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (cls: ClassInfo) => {
+    setEditingClass(cls);
+    setDialogOpen(true);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/classes?id=${deleteTarget.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || `Gagal menghapus kelas (${res.status})`);
+        return;
+      }
+      toast.success(`Kelas "${deleteTarget.name}" berhasil dihapus`);
+      setDeleteTarget(null);
+      await fetchData();
+    } catch {
+      toast.error('Gagal menghapus kelas');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -247,7 +311,10 @@ export function ClassManager() {
         </div>
         <Button
           className="bg-[#1F3864] hover:bg-[#152850]"
-          onClick={() => setDialogOpen(true)}
+          onClick={() => {
+            setEditingClass(null);
+            setDialogOpen(true);
+          }}
         >
           <Plus className="mr-2 h-4 w-4" />
           Tambah Kelas
@@ -310,7 +377,33 @@ export function ClassManager() {
             return (
               <Card key={cls.id} className={`border-l-4 ${getGradeColor(grade)}`}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{cls.name}</CardTitle>
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="text-lg">{cls.name}</CardTitle>
+                    <div className="flex shrink-0 items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-[#1F3864] hover:bg-blue-50 hover:text-[#152850]"
+                        onClick={() => handleEdit(cls)}
+                        aria-label={`Edit ${cls.name}`}
+                        title="Edit kelas"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setDeleteTarget(cls)}
+                        aria-label={`Hapus ${cls.name}`}
+                        title="Hapus kelas"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                   <CardDescription>
                     Tingkat {grade || '-'} • {cls.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`}
                   </CardDescription>
@@ -346,13 +439,43 @@ export function ClassManager() {
 
       {/* Class Form Dialog */}
       <ClassFormDialog
-        key={dialogOpen ? 'class-form-open' : 'closed'}
+        key={`${dialogOpen ? 'class-form-open' : 'closed'}-${editingClass?.id ?? 'new'}`}
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) setEditingClass(null);
+        }}
         onSubmit={handleSubmit}
         isSubmitting={submitting}
         gradeOptions={gradeOptions}
+        initialData={editingClass}
       />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus Kelas</AlertDialogTitle>
+            <AlertDialogDescription>
+              Apakah Anda yakin ingin menghapus kelas <strong>{deleteTarget?.name}</strong>?
+              Siswa di dalamnya tetap tersimpan, tetapi tidak lagi memiliki kelas.
+              Tindakan ini tidak dapat dibatalkan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                void handleDelete();
+              }}
+              disabled={deleting}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {deleting ? 'Menghapus...' : 'Hapus Kelas'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
