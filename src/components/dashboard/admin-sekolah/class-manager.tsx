@@ -40,13 +40,15 @@ import {
   getGradeLabel,
   getGradeColor,
   getGradeBg,
-  extractGradeFromName,
 } from '@/lib/school-grades';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
 interface ClassInfo {
-  className: string;
+  id: string;
+  name: string;
+  grade: number;
+  academicYear: string;
   studentCount: number;
 }
 
@@ -160,33 +162,33 @@ export function ClassManager() {
     if (!user?.schoolId) return;
     try {
       setLoading(true);
-      // Fetch all users (guru + siswa) to derive class info
-      const [siswaRes, guruRes] = await Promise.all([
+      // Daftar kelas = sumber kebenaran dari tabel Class di DB (via /api/classes),
+      // BUKAN diturunkan dari className siswa — kelas baru yang belum punya siswa
+      // tetap harus tampil. Data users tetap diambil untuk statistik Total Siswa/Guru.
+      const [classRes, siswaRes, guruRes] = await Promise.all([
+        fetch(`/api/classes?schoolId=${user.schoolId}`),
         fetch(`/api/users?schoolId=${user.schoolId}&role=SISWA`),
         fetch(`/api/users?schoolId=${user.schoolId}&role=GURU`),
       ]);
 
+      const classData = classRes.ok ? (await classRes.json()) : [];
       const siswaData = siswaRes.ok ? (await siswaRes.json()) : [];
       const guruData = guruRes.ok ? (await guruRes.json()) : [];
 
+      const classList = Array.isArray(classData) ? classData : classData.classes ?? [];
       const siswaList = Array.isArray(siswaData) ? siswaData : siswaData.users ?? [];
       const guruList = Array.isArray(guruData) ? guruData : guruData.users ?? [];
 
       setAllUsers([...guruList, ...siswaList]);
 
-      // Build class list from student classNames
-      const classMap = new Map<string, number>();
-      siswaList.forEach((s: { className?: string }) => {
-        const cls = s.className?.trim();
-        if (cls) {
-          classMap.set(cls, (classMap.get(cls) ?? 0) + 1);
-        }
-      });
-
+      // Jumlah siswa per kelas diambil dari _count.users
       setClasses(
-        Array.from(classMap.entries()).map(([className, studentCount]) => ({
-          className,
-          studentCount,
+        classList.map((c: { id: string; name: string; grade: number; academicYear?: string; _count?: { users?: number } }) => ({
+          id: c.id,
+          name: c.name,
+          grade: Number(c.grade),
+          academicYear: c.academicYear ?? '',
+          studentCount: c._count?.users ?? 0,
         }))
       );
     } catch {
@@ -304,13 +306,13 @@ export function ClassManager() {
       ) : classes.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {classes.map((cls) => {
-            const grade = extractGradeFromName(cls.className);
+            const grade = cls.grade ? String(cls.grade) : '';
             return (
-              <Card key={cls.className} className={`border-l-4 ${getGradeColor(grade)}`}>
+              <Card key={cls.id} className={`border-l-4 ${getGradeColor(grade)}`}>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">{cls.className}</CardTitle>
+                  <CardTitle className="text-lg">{cls.name}</CardTitle>
                   <CardDescription>
-                    Tingkat {grade || '-'} • {new Date().getFullYear()}/{new Date().getFullYear() + 1}
+                    Tingkat {grade || '-'} • {cls.academicYear || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`}
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
