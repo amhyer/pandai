@@ -35,6 +35,13 @@ import {
   Hash,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  getGradeOptions,
+  getGradeLabel,
+  getGradeColor,
+  getGradeBg,
+  extractGradeFromName,
+} from '@/lib/school-grades';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -49,26 +56,6 @@ interface ClassFormData {
   academicYear: string;
 }
 
-// ─── Grade Color ─────────────────────────────────────────────────────
-
-function getGradeColor(grade: string): string {
-  switch (grade) {
-    case '10': return 'border-l-emerald-500';
-    case '11': return 'border-l-blue-500';
-    case '12': return 'border-l-amber-500';
-    default: return 'border-l-gray-400';
-  }
-}
-
-function getGradeBg(grade: string): string {
-  switch (grade) {
-    case '10': return 'bg-emerald-50 text-emerald-700';
-    case '11': return 'bg-blue-50 text-blue-700';
-    case '12': return 'bg-amber-50 text-amber-700';
-    default: return 'bg-gray-50 text-gray-700';
-  }
-}
-
 // ─── Class Form Dialog ─────────────────────────────────────────────
 
 interface ClassFormDialogProps {
@@ -76,12 +63,13 @@ interface ClassFormDialogProps {
   onOpenChange: (open: boolean) => void;
   onSubmit: (data: ClassFormData) => void;
   isSubmitting: boolean;
+  gradeOptions: string[];
 }
 
-function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting }: ClassFormDialogProps) {
+function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting, gradeOptions }: ClassFormDialogProps) {
   const [form, setForm] = useState<ClassFormData>({
     name: '',
-    grade: '10',
+    grade: gradeOptions[0] ?? '10',
     academicYear: new Date().getFullYear().toString(),
   });
 
@@ -121,9 +109,11 @@ function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting }: ClassFo
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="10">Kelas 10</SelectItem>
-                  <SelectItem value="11">Kelas 11</SelectItem>
-                  <SelectItem value="12">Kelas 12</SelectItem>
+                  {gradeOptions.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {getGradeLabel(g)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -159,6 +149,7 @@ function ClassFormDialog({ open, onOpenChange, onSubmit, isSubmitting }: ClassFo
 
 export function ClassManager() {
   const user = useAppStore((s) => s.user);
+  const gradeOptions = getGradeOptions(user?.schoolType);
   const [classes, setClasses] = useState<ClassInfo[]>([]);
   const [allUsers, setAllUsers] = useState<{ id: string; name: string; role: string; className?: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,14 +235,6 @@ export function ClassManager() {
   const totalStudents = allUsers.filter((u) => u.role === 'SISWA').length;
   const totalGuru = allUsers.filter((u) => u.role === 'GURU').length;
 
-  // Try to extract grade from class name
-  function extractGrade(name: string): string {
-    if (/^XII/i.test(name)) return '12';
-    if (/^XI/i.test(name)) return '11';
-    if (/^X[^I]/i.test(name) || /^10/i.test(name)) return '10';
-    return '';
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -321,7 +304,7 @@ export function ClassManager() {
       ) : classes.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {classes.map((cls) => {
-            const grade = extractGrade(cls.className);
+            const grade = extractGradeFromName(cls.className);
             return (
               <Card key={cls.className} className={`border-l-4 ${getGradeColor(grade)}`}>
                 <CardHeader className="pb-2">
@@ -366,6 +349,7 @@ export function ClassManager() {
         onOpenChange={setDialogOpen}
         onSubmit={handleSubmit}
         isSubmitting={submitting}
+        gradeOptions={gradeOptions}
       />
     </div>
   );

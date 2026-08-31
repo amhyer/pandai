@@ -66,6 +66,12 @@ import {
   XCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  getGradeOptions,
+  getGradeLabel,
+  getGradeColor,
+  getGradeBg,
+} from '@/lib/school-grades';
 
 // ═══════════════════════════════════════════════════════════════════════
 // SHARED TYPES
@@ -156,24 +162,6 @@ function getReportStatusVariant(status: string) {
   }
 }
 
-function getGradeColor(grade: string): string {
-  switch (grade) {
-    case '10': return 'border-l-emerald-500';
-    case '11': return 'border-l-blue-500';
-    case '12': return 'border-l-amber-500';
-    default: return 'border-l-gray-400';
-  }
-}
-
-function getGradeLabel(grade: string): string {
-  switch (grade) {
-    case '10': return 'Kelas 10';
-    case '11': return 'Kelas 11';
-    case '12': return 'Kelas 12';
-    default: return '-';
-  }
-}
-
 // ═══════════════════════════════════════════════════════════════════════
 // 1. CLASSES VIEW — Kelola Rombel (Kelas)
 // ═══════════════════════════════════════════════════════════════════════
@@ -190,12 +178,14 @@ function AddClassDialog({
   onSubmit,
   isSubmitting,
   editData,
+  gradeOptions,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onSubmit: (data: ClassFormData) => void;
   isSubmitting: boolean;
   editData?: ClassRow | null;
+  gradeOptions: string[];
 }) {
   // Reset form when dialog opens or editData changes
   const formKey = editData?.id ?? 'new';
@@ -203,7 +193,7 @@ function AddClassDialog({
     if (editData) {
       return { name: editData.name, grade: editData.grade, academicYear: editData.academicYear };
     }
-    return { name: '', grade: '10', academicYear: '2024/2025' };
+    return { name: '', grade: gradeOptions[0] ?? '10', academicYear: '2024/2025' };
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -239,9 +229,11 @@ function AddClassDialog({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="10">Kelas 10</SelectItem>
-                  <SelectItem value="11">Kelas 11</SelectItem>
-                  <SelectItem value="12">Kelas 12</SelectItem>
+                  {gradeOptions.map((g) => (
+                    <SelectItem key={g} value={g}>
+                      {getGradeLabel(g)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -275,6 +267,7 @@ function AddClassDialog({
 
 export function ClassesView() {
   const user = useAppStore((s) => s.user);
+  const gradeOptions = getGradeOptions(user?.schoolType);
   const [classes, setClasses] = useState<ClassRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -366,9 +359,6 @@ export function ClassesView() {
   });
 
   const totalStudents = classes.reduce((acc, c) => acc + c.studentCount, 0);
-  const kelasX = classes.filter((c) => c.grade === '10').length;
-  const kelasXI = classes.filter((c) => c.grade === '11').length;
-  const kelasXII = classes.filter((c) => c.grade === '12').length;
 
   return (
     <div className="space-y-6">
@@ -393,7 +383,7 @@ export function ClassesView() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#1F3864]/10 text-[#1F3864]">
@@ -416,39 +406,23 @@ export function ClassesView() {
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Kelas X</p>
-              <p className="text-xl font-bold">{kelasX}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Kelas XI</p>
-              <p className="text-xl font-bold">{kelasXI}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Kelas XII</p>
-              <p className="text-xl font-bold">{kelasXII}</p>
-            </div>
-          </CardContent>
-        </Card>
+        {gradeOptions.map((g) => (
+          <Card key={g}>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div
+                className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${getGradeBg(g)}`}
+              >
+                <GraduationCap className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">{getGradeLabel(g)}</p>
+                <p className="text-xl font-bold">
+                  {classes.filter((c) => c.grade === g).length}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Filters */}
@@ -469,9 +443,11 @@ export function ClassesView() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Semua Tingkat</SelectItem>
-            <SelectItem value="10">Kelas 10</SelectItem>
-            <SelectItem value="11">Kelas 11</SelectItem>
-            <SelectItem value="12">Kelas 12</SelectItem>
+            {gradeOptions.map((g) => (
+              <SelectItem key={g} value={g}>
+                {getGradeLabel(g)}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
@@ -517,9 +493,7 @@ export function ClassesView() {
                     <TableCell className="font-medium text-muted-foreground">{idx + 1}</TableCell>
                     <TableCell className="font-semibold">{cls.name}</TableCell>
                     <TableCell>
-                      <Badge variant="outline" className={getDifficultyVariant(
-                        cls.grade === '10' ? 'Mudah' : cls.grade === '11' ? 'Sedang' : 'Sukar'
-                      ).replace(/Mudah|Sedang|Sukar/g, '').trim() || ''}>
+                      <Badge variant="outline" className={getGradeBg(cls.grade)}>
                         {getGradeLabel(cls.grade)}
                       </Badge>
                     </TableCell>
@@ -582,6 +556,7 @@ export function ClassesView() {
         onSubmit={handleSubmit}
         isSubmitting={submitting}
         editData={editClass}
+        gradeOptions={gradeOptions}
       />
 
       {/* Delete Confirmation */}
