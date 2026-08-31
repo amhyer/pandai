@@ -847,7 +847,7 @@ export function UsersGlobalView() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-[#1F3864] hover:bg-[#1F3864]/10 hover:shadow-sm active:scale-[0.98]"
+                              className="h-8 w-8 transition-all duration-200 text-[#1F3864] hover:bg-[#1F3864]/10 hover:shadow-sm active:scale-[0.98]"
                               onClick={() => setDetailTarget(user)}
                             >
                               <Eye className="h-4 w-4" />
@@ -860,7 +860,7 @@ export function UsersGlobalView() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-amber-600 hover:bg-amber-50 hover:shadow-sm active:scale-[0.98]"
+                              className="h-8 w-8 transition-all duration-200 text-amber-600 hover:bg-amber-50 hover:shadow-sm active:scale-[0.98]"
                               onClick={() => openEdit(user)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -873,7 +873,7 @@ export function UsersGlobalView() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-emerald-600 hover:bg-emerald-50 hover:shadow-sm active:scale-[0.98]"
+                              className="h-8 w-8 transition-all duration-200 text-emerald-600 hover:bg-emerald-50 hover:shadow-sm active:scale-[0.98]"
                               onClick={() => {
                                 setNewPassword('');
                                 setResetTarget(user);
@@ -889,7 +889,7 @@ export function UsersGlobalView() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all duration-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:shadow-sm active:scale-[0.98]"
+                              className="h-8 w-8 transition-all duration-200 text-red-500 hover:text-red-700 hover:bg-red-50 hover:shadow-sm active:scale-[0.98]"
                               onClick={() => setDeleteTarget(user)}
                             >
                               <Trash2 className="h-4 w-4" />
