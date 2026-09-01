@@ -9,6 +9,7 @@ FROM deps AS builder
 COPY . .
 RUN cp prisma/schema.production.prisma prisma/schema.prisma
 RUN npx prisma generate
+ENV BUILD_STANDALONE=1
 RUN corepack enable bun && bun run build
 
 # ─── Stage 3: Runner (minimal, production) ───

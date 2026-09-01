@@ -92,7 +92,7 @@ interface UserRecord {
   children?: { id: string; name: string; className?: string }[];
 }
 
-type RoleType = 'GURU' | 'SISWA' | 'ORANG_TUA';
+type RoleType = 'GURU' | 'KEPALA_SEKOLAH' | 'SISWA' | 'ORANG_TUA';
 
 // ─── Role Badge ──────────────────────────────────────────────────────
 
@@ -247,6 +247,102 @@ function AddGuruDialog({ open, onOpenChange, schoolId, onSuccess }: AddGuruDialo
             <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Batal</Button>
             <Button type="submit" className="bg-sky-600 hover:bg-sky-700" disabled={submitting}>
               {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Menyimpan...</> : 'Tambah Guru'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── Add Kepala Sekolah Dialog ──────────────────────────────────────
+
+interface AddKepsekDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  schoolId: string;
+  onSuccess: () => void;
+}
+
+function AddKepsekDialog({ open, onOpenChange, schoolId, onSuccess }: AddKepsekDialogProps) {
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '' });
+  const [submitting, setSubmitting] = useState(false);
+
+  const resetForm = () => setForm({ name: '', email: '', phone: '', password: '' });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.name.trim()) { toast.error('Nama wajib diisi'); return; }
+    if (!form.email.trim()) { toast.error('Email wajib diisi untuk kepala sekolah'); return; }
+    if (form.password.trim().length < 6) { toast.error('Password minimal 6 karakter'); return; }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name,
+          email: form.email,
+          phone: form.phone || undefined,
+          password: form.password,
+          role: 'KEPALA_SEKOLAH',
+          schoolId,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        toast.success(data.message || 'Kepala sekolah berhasil ditambahkan');
+        if (data.user?.email) {
+          toast.info(`Login email: ${data.user.email}`, { duration: 5000 });
+        }
+        resetForm();
+        onOpenChange(false);
+        onSuccess();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || 'Gagal menambahkan kepala sekolah');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v); }}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-violet-600" />
+            Tambah Kepala Sekolah Baru
+          </DialogTitle>
+          <DialogDescription>Tambah akun kepala sekolah di sekolah Anda</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="add-kepsek-name">Nama Lengkap <span className="text-red-500">*</span></Label>
+            <Input id="add-kepsek-name" placeholder="Contoh: Drs. Ahmad Suryani, M.Pd." value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="add-kepsek-email">Email <span className="text-red-500">*</span></Label>
+            <Input id="add-kepsek-email" type="email" placeholder="kepsek@sekolah.id" value={form.email} onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+            <p className="text-[11px] text-muted-foreground">Email digunakan sebagai <span className="font-semibold">username login</span> kepala sekolah.</p>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="add-kepsek-phone">No. Telepon</Label>
+            <Input id="add-kepsek-phone" placeholder="08123456789" value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="add-kepsek-password">Password <span className="text-red-500">*</span></Label>
+            <Input id="add-kepsek-password" type="password" placeholder="Minimal 6 karakter" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Batal</Button>
+            <Button type="submit" className="bg-violet-600 hover:bg-violet-700" disabled={submitting}>
+              {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Menyimpan...</> : 'Tambah Kepala Sekolah'}
             </Button>
           </div>
         </form>
@@ -693,7 +789,7 @@ function RoleTable({ users, loading, role, onEdit, onResetPassword, onToggleActi
         <div className="text-center">
           <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <p className="mt-2 text-sm">
-            {role === 'GURU' ? 'Belum ada guru terdaftar' : role === 'SISWA' ? 'Belum ada siswa terdaftar' : 'Belum ada akun orang tua'}
+            {role === 'GURU' ? 'Belum ada guru terdaftar' : role === 'KEPALA_SEKOLAH' ? 'Belum ada kepala sekolah terdaftar' : role === 'SISWA' ? 'Belum ada siswa terdaftar' : 'Belum ada akun orang tua'}
           </p>
         </div>
       </div>
@@ -840,6 +936,12 @@ export function AccountManager() {
   const user = useAppStore((s) => s.user);
   const [activeTab, setActiveTab] = useState<RoleType>('GURU');
   const [users, setUsers] = useState<UserRecord[]>([]);
+  const [counts, setCounts] = useState<Record<RoleType, number>>({
+    GURU: 0,
+    KEPALA_SEKOLAH: 0,
+    SISWA: 0,
+    ORANG_TUA: 0,
+  });
   const [classes, setClasses] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [initialLoading, setInitialLoading] = useState(true);
@@ -884,24 +986,33 @@ export function AccountManager() {
     }
   }, [schoolId]);
 
-  // Fetch all roles for summary counts
+  // Fetch counts for all roles (summary cards)
   const fetchAllCounts = useCallback(async () => {
     if (!schoolId) return;
     try {
-      const roles: RoleType[] = ['GURU', 'SISWA', 'ORANG_TUA'];
-      await Promise.all(roles.map(async (role) => {
-        if (role !== activeTab) {
+      const roles: RoleType[] = ['GURU', 'KEPALA_SEKOLAH', 'SISWA', 'ORANG_TUA'];
+      const results = await Promise.all(
+        roles.map(async (role) => {
           const res = await fetch(`/api/users?schoolId=${schoolId}&role=${role}`);
           if (res.ok) {
             const data = await res.json();
-            // We don't set state here — just preload the cache
+            const list: UserRecord[] = Array.isArray(data) ? data : data.users ?? [];
+            return [role, list.length] as const;
           }
-        }
-      }));
+          return [role, 0] as const;
+        })
+      );
+      setCounts(Object.fromEntries(results) as Record<RoleType, number>);
     } catch {
       // silent
     }
-  }, [schoolId, activeTab]);
+  }, [schoolId]);
+
+  // Refresh table + summary counts after any mutation
+  const refresh = useCallback(() => {
+    fetchUsers();
+    fetchAllCounts();
+  }, [fetchUsers, fetchAllCounts]);
 
   useEffect(() => {
     fetchUsers();
@@ -925,7 +1036,7 @@ export function AccountManager() {
         const res = await fetch(`/api/users?id=${toggleTarget.id}`, { method: 'DELETE' });
         if (res.ok) {
           toast.success(`${toggleTarget.name} berhasil dinonaktifkan`);
-          fetchUsers();
+          refresh();
         } else {
           const err = await res.json().catch(() => ({}));
           toast.error(err.error || 'Gagal menonaktifkan pengguna');
@@ -939,7 +1050,7 @@ export function AccountManager() {
         });
         if (res.ok) {
           toast.success(`${toggleTarget.name} berhasil diaktifkan`);
-          fetchUsers();
+          refresh();
         } else {
           const err = await res.json().catch(() => ({}));
           toast.error(err.error || 'Gagal mengaktifkan pengguna');
@@ -983,6 +1094,12 @@ export function AccountManager() {
       addLabel: 'Tambah Orang Tua',
       color: 'rose',
     },
+    KEPALA_SEKOLAH: {
+      icon: <ShieldCheck className="h-4 w-4" />,
+      label: 'Kepala Sekolah',
+      addLabel: 'Tambah Kepala Sekolah',
+      color: 'violet',
+    },
   };
 
   return (
@@ -991,7 +1108,7 @@ export function AccountManager() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Pengelolaan Akun</h1>
-          <p className="text-muted-foreground">Kelola akun guru, siswa, dan orang tua di sekolah Anda</p>
+          <p className="text-muted-foreground">Kelola akun guru, kepala sekolah, siswa, dan orang tua di sekolah Anda</p>
         </div>
         <Button
           className="bg-[#1F3864] hover:bg-[#152850]"
@@ -1006,7 +1123,7 @@ export function AccountManager() {
       {initialLoading ? (
         <SummarySkeleton />
       ) : (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Card>
             <CardContent className="flex items-center gap-3 p-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
@@ -1014,7 +1131,18 @@ export function AccountManager() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Guru</p>
-                <p className="text-xl font-bold">{users.filter((u) => u.role === 'GURU').length}</p>
+                <p className="text-xl font-bold">{counts.GURU}</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="flex items-center gap-3 p-4">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-violet-50 text-violet-600">
+                <ShieldCheck className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Kepala Sekolah</p>
+                <p className="text-xl font-bold">{counts.KEPALA_SEKOLAH}</p>
               </div>
             </CardContent>
           </Card>
@@ -1025,7 +1153,7 @@ export function AccountManager() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Siswa</p>
-                <p className="text-xl font-bold">{users.filter((u) => u.role === 'SISWA').length}</p>
+                <p className="text-xl font-bold">{counts.SISWA}</p>
               </div>
             </CardContent>
           </Card>
@@ -1036,7 +1164,7 @@ export function AccountManager() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Orang Tua</p>
-                <p className="text-xl font-bold">{users.filter((u) => u.role === 'ORANG_TUA').length}</p>
+                <p className="text-xl font-bold">{counts.ORANG_TUA}</p>
               </div>
             </CardContent>
           </Card>
@@ -1050,6 +1178,10 @@ export function AccountManager() {
             <TabsTrigger value="GURU" className="gap-1.5">
               <GraduationCap className="h-4 w-4" />
               Guru
+            </TabsTrigger>
+            <TabsTrigger value="KEPALA_SEKOLAH" className="gap-1.5">
+              <ShieldCheck className="h-4 w-4" />
+              Kepala Sekolah
             </TabsTrigger>
             <TabsTrigger value="SISWA" className="gap-1.5">
               <Users className="h-4 w-4" />
@@ -1066,6 +1198,7 @@ export function AccountManager() {
             <Input
               placeholder={
                 activeTab === 'GURU' ? 'Cari nama atau NIP...'
+                : activeTab === 'KEPALA_SEKOLAH' ? 'Cari nama atau email kepala sekolah...'
                 : activeTab === 'SISWA' ? 'Cari nama atau NISN...'
                 : 'Cari nama orang tua...'
               }
@@ -1084,6 +1217,22 @@ export function AccountManager() {
                 users={filtered}
                 loading={loading}
                 role="GURU"
+                onEdit={setEditTarget}
+                onResetPassword={setResetTarget}
+                onToggleActive={setToggleTarget}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* KEPALA_SEKOLAH Tab */}
+        <TabsContent value="KEPALA_SEKOLAH" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              <RoleTable
+                users={filtered}
+                loading={loading}
+                role="KEPALA_SEKOLAH"
                 onEdit={setEditTarget}
                 onResetPassword={setResetTarget}
                 onToggleActive={setToggleTarget}
@@ -1130,20 +1279,26 @@ export function AccountManager() {
         open={addDialogOpen && activeTab === 'GURU'}
         onOpenChange={setAddDialogOpen}
         schoolId={schoolId}
-        onSuccess={fetchUsers}
+        onSuccess={refresh}
       />
       <AddSiswaDialog
         open={addDialogOpen && activeTab === 'SISWA'}
         onOpenChange={setAddDialogOpen}
         schoolId={schoolId}
         classes={classes}
-        onSuccess={fetchUsers}
+        onSuccess={refresh}
+      />
+      <AddKepsekDialog
+        open={addDialogOpen && activeTab === 'KEPALA_SEKOLAH'}
+        onOpenChange={setAddDialogOpen}
+        schoolId={schoolId}
+        onSuccess={refresh}
       />
       <AddOrtuDialog
         open={addDialogOpen && activeTab === 'ORANG_TUA'}
         onOpenChange={setAddDialogOpen}
         schoolId={schoolId}
-        onSuccess={fetchUsers}
+        onSuccess={refresh}
       />
 
       {/* Edit Dialog */}

@@ -247,7 +247,7 @@ export function AdminSekolahDashboard() {
           icon={<GraduationCap className="h-5 w-5" />}
           subtext="terdaftar"
           isLoading={loading}
-          onClick={() => navigateTo('users' as ViewType)}
+          onClick={() => navigateTo('accounts')}
           gradientFrom="from-emerald-500"
           gradientTo="to-emerald-600"
         />
@@ -257,7 +257,7 @@ export function AdminSekolahDashboard() {
           icon={<Users className="h-5 w-5" />}
           subtext="pengajar aktif"
           isLoading={loading}
-          onClick={() => navigateTo('users' as ViewType)}
+          onClick={() => navigateTo('accounts')}
           gradientFrom="from-amber-400"
           gradientTo="to-amber-500"
         />
@@ -287,7 +287,7 @@ export function AdminSekolahDashboard() {
           icon={<BarChart3 className="h-5 w-5" />}
           subtext="dari semua tryout"
           isLoading={loading}
-          onClick={() => navigateTo('users' as ViewType)}
+          onClick={() => navigateTo('accounts')}
           gradientFrom="from-purple-500"
           gradientTo="to-purple-600"
         />
@@ -380,7 +380,7 @@ export function AdminSekolahDashboard() {
                 icon={<UserCog className="h-5 w-5" />}
                 label="Guru & Siswa"
                 description="Kelola pengguna"
-                onClick={() => navigateTo('users' as ViewType)}
+                onClick={() => navigateTo('accounts')}
                 color="from-[#1F3864] to-[#2d5289]"
               />
               <QuickActionCard

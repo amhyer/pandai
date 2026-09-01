@@ -144,19 +144,9 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
     const dataInduk: NavItem[] = [
       { label: 'Kelas', view: 'classes', icon: GraduationCap },
       { label: 'Mata Pelajaran', view: 'subjects', icon: BookMarked },
-      { label: 'Data Siswa', view: 'users', icon: Users },
       { label: 'Kelola Akun', view: 'accounts', icon: UserCheck },
       { label: 'Jadwal Pelajaran', view: 'timetable', icon: CalendarDays },
     ];
-
-    // SMA: tambah Penjurusan (IPA/IPS/Bahasa)
-    if (st === 'SMA') {
-      dataInduk.push({ label: 'Penjurusan', view: 'users' as ViewType, icon: Award });
-    }
-    // SMK: tambah Program Keahlian
-    if (st === 'SMK') {
-      dataInduk.push({ label: 'Program Keahlian', view: 'users' as ViewType, icon: FolderOpen });
-    }
 
     const sections: NavSection[] = [
       {
@@ -488,7 +478,6 @@ const VIEW_LABELS: Record<ViewType, string> = {
   // ADMIN_SCHOOL
   classes: 'Kelas',
   subjects: 'Mata Pelajaran',
-  users: 'Data Siswa',
   accounts: 'Kelola Akun',
   questions: 'Bank Soal',
   'question-editor': 'Editor Soal',
@@ -586,7 +575,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     settings: [{ label: VIEW_LABELS.settings }],
     classes: [{ label: VIEW_LABELS.classes }],
     subjects: [{ label: VIEW_LABELS.subjects }],
-    users: [{ label: VIEW_LABELS.users }],
+    accounts: [{ label: VIEW_LABELS.accounts }],
     'teacher-assignments': [{ label: VIEW_LABELS['teacher-assignments'] }],
     timetable: [{ label: VIEW_LABELS.timetable }],
     'wali-kelas': [{ label: VIEW_LABELS['wali-kelas'] }],

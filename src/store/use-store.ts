@@ -24,7 +24,7 @@ export type ViewType =
   // ── ADMIN_SCHOOL ──
   | 'classes'
   | 'subjects'
-  | 'users'
+  | 'accounts'
   | 'questions'
   | 'question-editor'
   | 'exams'
