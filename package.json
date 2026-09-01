@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "NODE_OPTIONS='--max-old-space-size=640' next dev -p 3000 >> dev.log 2>&1",
-    "build": "next build",
+    "build": "node scripts/build.mjs",
     "build:vercel": "prisma generate && prisma db push && npx tsx scripts/create-super-admin.ts && next build",
     "build:standalone": "next build && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production next start -p 3000 2>&1 | tee server.log",
