@@ -20,7 +20,8 @@
     "seed": "bun run prisma/seed.ts",
     "backup": "bun scripts/backup.mjs",
     "backup:list": "bun scripts/restore.mjs --list",
-    "backup:restore": "bun scripts/restore.mjs"
+    "backup:restore": "bun scripts/restore.mjs",
+    "build:exe": "bun build --compile --target=bun-windows-x64 scripts/pull-dapodik.mjs --outfile dist/pull-dapodik.exe"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

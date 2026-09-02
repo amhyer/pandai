@@ -74,3 +74,6 @@ scripts/restore.sh
 # Tool output artifacts
 tool-results/
 .env*
+
+# Build output (EXE)
+dist/
