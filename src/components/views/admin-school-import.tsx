@@ -273,8 +273,16 @@ function FieldMappingDialog({
     toast.info('Mapping direset');
   };
 
-  // Dapatkan field yang sudah di-mapping
-  const mappedFields = new Set(Object.values(mapping).filter((v) => v && v !== '__skip__'));
+  // Hitung field wajib yang sudah/belum ter-mapping
+  const requiredFields = fieldConfigs.filter((f) => f.required);
+  const mappedRequired = requiredFields.filter((f) => mapping[f.key] && mapping[f.key] !== '__skip__');
+  const unmappedRequired = requiredFields.filter((f) => !mapping[f.key] || mapping[f.key] === '__skip__');
+  const allRequiredMapped = unmappedRequired.length === 0;
+
+  // Cek apakah ada kolom yang di-mapping ke lebih dari 1 field
+  const usedHeaders = Object.values(mapping).filter((v) => v && v !== '__skip__');
+  const duplicateHeaders = usedHeaders.filter((h, i) => usedHeaders.indexOf(h) !== i);
+  const hasDuplicates = duplicateHeaders.length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -285,7 +293,7 @@ function FieldMappingDialog({
             Mapping Kolom File
           </DialogTitle>
           <DialogDescription>
-            Pilih field database untuk setiap kolom di file Anda. Kolom yang tidak di-mapping akan dilewati.
+            Pilih field database untuk setiap kolom di file Anda.
           </DialogDescription>
         </DialogHeader>
         
@@ -312,86 +320,165 @@ function FieldMappingDialog({
             </Button>
           </div>
 
-          {/* Info Field Wajib */}
-          <div className="rounded-lg bg-blue-50 border border-blue-200 p-3">
-            <p className="text-xs text-blue-800">
-              <strong>Field Wajib:</strong> {fieldConfigs.filter((f) => f.required).map((f) => f.label).join(', ')}
-            </p>
+          {/* Status Field Wajib */}
+          <div className={cn(
+            'rounded-lg border p-3',
+            allRequiredMapped 
+              ? 'bg-emerald-50 border-emerald-200' 
+              : 'bg-amber-50 border-amber-200'
+          )}>
+            <div className="flex items-start gap-2">
+              {allRequiredMapped ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
+              ) : (
+                <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              )}
+              <div className="text-xs">
+                {allRequiredMapped ? (
+                  <p className="text-emerald-800">
+                    <strong>Semua field wajib sudah ter-mapping!</strong> Anda bisa melanjutkan import.
+                  </p>
+                ) : (
+                  <>
+                    <p className="text-amber-800 font-semibold mb-1">
+                      Field wajib yang belum ter-mapping ({unmappedRequired.length}):
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {unmappedRequired.map((f) => (
+                        <Badge key={f.key} variant="outline" className="text-xs border-amber-300 text-amber-700">
+                          {f.label}
+                        </Badge>
+                      ))}
+                    </div>
+                    <p className="text-amber-700 mt-1">
+                      Silakan mapping field di atas ke kolom file Anda, atau tambahkan kolom tersebut di file Excel.
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
+
+          {/* Peringatan Duplikat */}
+          {hasDuplicates && (
+            <div className="rounded-lg bg-red-50 border border-red-200 p-3">
+              <p className="text-xs text-red-800">
+                <strong>⚠️ Peringatan:</strong> Kolom berikut di-mapping ke lebih dari 1 field. Setiap kolom hanya boleh di-mapping ke 1 field.
+              </p>
+            </div>
+          )}
           
           {/* Daftar Kolom dari File */}
           <div className="space-y-2">
-            <p className="text-sm font-semibold text-foreground">Kolom di File Anda ({fileHeaders.length})</p>
+            <div className="flex items-center justify-between">
+              <p className="text-sm font-semibold text-foreground">
+                Kolom di File Anda ({fileHeaders.length})
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {Object.keys(mapping).filter((k) => mapping[k] && mapping[k] !== '__skip__').length} / {fieldConfigs.length} field ter-mapping
+              </p>
+            </div>
             
-            {fileHeaders.map((header, idx) => {
-              // Cari field yang ter-mapping untuk header ini
-              const mappedFieldKey = Object.entries(mapping).find(([, v]) => v === header)?.[0];
-              const mappedField = fieldConfigs.find((f) => f.key === mappedFieldKey);
-              
-              return (
-                <div key={idx} className="flex items-center gap-3 p-3 rounded-lg border bg-white hover:bg-gray-50/50">
-                  {/* Nomor & Nama Kolom */}
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-xs font-mono text-muted-foreground w-6 text-center shrink-0">
-                      {idx + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground truncate">{header}</p>
-                      {mappedField && (
-                        <p className="text-xs text-muted-foreground">
-                          → {mappedField.label}
-                          {mappedField.required && <span className="text-red-500 ml-1">*</span>}
-                        </p>
-                      )}
+            {fileHeaders.length === 0 ? (
+              <div className="rounded-lg bg-gray-50 border border-dashed p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Tidak ada kolom ditemukan di file. Pastikan file memiliki header di baris pertama.
+                </p>
+              </div>
+            ) : (
+              fileHeaders.map((header, idx) => {
+                // Cari field yang ter-mapping untuk header ini
+                const mappedFieldKey = Object.entries(mapping).find(([, v]) => v === header)?.[0];
+                const mappedField = fieldConfigs.find((f) => f.key === mappedFieldKey);
+                const isRequired = mappedField?.required;
+                
+                return (
+                  <div key={idx} className={cn(
+                    'flex items-center gap-3 p-3 rounded-lg border bg-white hover:bg-gray-50/50 transition-colors',
+                    mappedField && 'border-emerald-200 bg-emerald-50/30',
+                    isRequired && 'border-l-2 border-l-emerald-500'
+                  )}>
+                    {/* Nomor & Nama Kolom */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-xs font-mono text-muted-foreground w-6 text-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{header}</p>
+                        {mappedField ? (
+                          <p className="text-xs text-emerald-600">
+                            → {mappedField.label}
+                            {isRequired && <span className="text-red-500 ml-1">*wajib</span>}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground">
+                            Belum di-mapping
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Status Badge */}
+                    {mappedField && (
+                      <Badge 
+                        variant="secondary" 
+                        className={cn(
+                          'text-xs shrink-0',
+                          isRequired ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-700'
+                        )}
+                      >
+                        {mappedField.label}
+                      </Badge>
+                    )}
+                    
+                    {/* Dropdown Pilih Field */}
+                    <div className="w-56 shrink-0">
+                      <Select
+                        value={mappedFieldKey || '__skip__'}
+                        onValueChange={(value) => {
+                          const newMapping = { ...mapping };
+                          // Hapus mapping lama jika header ini sudah di-mapping ke field lain
+                          Object.entries(newMapping).forEach(([key, val]) => {
+                            if (val === header) delete newMapping[key];
+                          });
+                          // Set mapping baru
+                          if (value !== '__skip__') {
+                            newMapping[value] = header;
+                          }
+                          onMappingChange(newMapping);
+                        }}
+                      >
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="Pilih field..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="__skip__">-- Lewati --</SelectItem>
+                          {fieldConfigs.map((field) => {
+                            const isAlreadyUsed = usedHeaders.includes(field.key) && mapping[field.key] !== header;
+                            return (
+                              <SelectItem 
+                                key={field.key} 
+                                value={field.key}
+                                disabled={isAlreadyUsed}
+                              >
+                                {field.label}
+                                {field.required && ' *'}
+                                {isAlreadyUsed && ' (sudah dipakai)'}
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
                     </div>
                   </div>
-                  
-                  {/* Status Badge */}
-                  {mappedField && (
-                    <Badge variant="secondary" className="text-xs shrink-0">
-                      {mappedField.label}
-                    </Badge>
-                  )}
-                  
-                  {/* Dropdown Pilih Field */}
-                  <div className="w-56 shrink-0">
-                    <Select
-                      value={mappedFieldKey || '__skip__'}
-                      onValueChange={(value) => {
-                        const newMapping = { ...mapping };
-                        // Hapus mapping lama jika header ini sudah di-mapping ke field lain
-                        Object.entries(newMapping).forEach(([key, val]) => {
-                          if (val === header) delete newMapping[key];
-                        });
-                        // Set mapping baru
-                        if (value !== '__skip__') {
-                          newMapping[value] = header;
-                        }
-                        onMappingChange(newMapping);
-                      }}
-                    >
-                      <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Pilih field..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="__skip__">-- Lewati --</SelectItem>
-                        {fieldConfigs.map((field) => (
-                          <SelectItem key={field.key} value={field.key}>
-                            {field.label}
-                            {field.required && ' *'}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
 
           {/* Ringkasan Mapping */}
           <div className="rounded-lg bg-gray-50 border p-3">
-            <p className="text-xs font-medium text-muted-foreground mb-2">Ringkasan:</p>
+            <p className="text-xs font-medium text-muted-foreground mb-2">Ringkasan Field:</p>
             <div className="flex flex-wrap gap-2">
               {fieldConfigs.map((field) => {
                 const isMapped = mapping[field.key] && mapping[field.key] !== '__skip__';
@@ -419,7 +506,11 @@ function FieldMappingDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Batal
           </Button>
-          <Button onClick={onConfirm} style={{ backgroundColor: BRAND }}>
+          <Button 
+            onClick={onConfirm} 
+            style={{ backgroundColor: BRAND }}
+            disabled={!allRequiredMapped || hasDuplicates}
+          >
             Konfirmasi & Import
           </Button>
         </DialogFooter>
