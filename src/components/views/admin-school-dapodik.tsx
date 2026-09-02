@@ -884,21 +884,33 @@ export function DapodikSyncView() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Aplikasi standalone untuk Windows. Tidak perlu install apapun.
                 </p>
-                <a href="/pull-dapodik.exe" download>
-                  <Button
-                    size="lg"
-                    className="mt-4 rounded-xl px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
-                    style={{
-                      background: 'linear-gradient(135deg, #1F3864, #2d5289)',
-                      color: 'white',
-                    }}
-                  >
-                    <Download className="h-5 w-5 mr-2" />
-                    Download EXE (94 MB)
-                  </Button>
-                </a>
+                <div className="flex justify-center gap-3 mt-4">
+                  <a href="/download/dapodik">
+                    <Button
+                      size="lg"
+                      className="rounded-xl px-6 py-5 text-sm font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+                      style={{
+                        background: 'linear-gradient(135deg, #1F3864, #2d5289)',
+                        color: 'white',
+                      }}
+                    >
+                      <Info className="h-4 w-4 mr-2" />
+                      Lihat Panduan
+                    </Button>
+                  </a>
+                  <a href="/pull-dapodik.exe" download>
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="rounded-xl px-6 py-5 text-sm font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+                    >
+                      <Download className="h-4 w-4 mr-2" />
+                      Download EXE
+                    </Button>
+                  </a>
+                </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Standalone • Windows x64 • Tidak perlu install Node.js/Bun
+                  Standalone • Windows x64 • ~94 MB
                 </p>
               </div>
             </CardContent>
