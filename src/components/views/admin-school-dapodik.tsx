@@ -504,22 +504,38 @@ export function DapodikSyncView() {
                   File HTML mandiri — cukup buka di browser, tidak perlu instalasi.
                 </p>
               </div>
-              <a
-                href="/dapodik-tool.html"
-                download="PANDAI-Alat-Ekstraksi-Dapodik.html"
-              >
-                <Button
-                  size="lg"
-                  className="rounded-xl px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
-                  style={{
-                    background: 'linear-gradient(135deg, #F59E0B, #D97706)',
-                    color: 'white',
-                  }}
+              <div className="flex gap-3">
+                <a
+                  href="/dapodik-tool.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
-                  <Download className="h-5 w-5 mr-2" />
-                  Download Alat
-                </Button>
-              </a>
+                  <Button
+                    size="lg"
+                    className="rounded-xl px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+                    style={{
+                      background: 'linear-gradient(135deg, #F59E0B, #D97706)',
+                      color: 'white',
+                    }}
+                  >
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    Buka Alat
+                  </Button>
+                </a>
+                <a
+                  href="/dapodik-tool.html"
+                  download="PANDAI-Alat-Ekstraksi-Dapodik.html"
+                >
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="rounded-xl px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download
+                  </Button>
+                </a>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Format: HTML • Ukuran: ~45 KB • Kompatibel: Chrome, Edge, Firefox
               </p>
