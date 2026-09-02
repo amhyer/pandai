@@ -203,20 +203,32 @@ async function downloadExcelTemplate(fields: FieldConfig[], filename: string) {
 function autoMapHeaders(fileHeaders: string[], fieldConfigs: FieldConfig[]): Record<string, string> {
   const mapping: Record<string, string> = {};
   
+  // Keywords untuk matching yang lebih fleksibel
+  const keywordMap: Record<string, string[]> = {
+    nisn: ['nisn', 'nomor induk siswa', 'no induk siswa', 'no siswa', 'nomor siswa'],
+    name: ['nama', 'nama lengkap', 'nama siswa', 'nama guru', 'fullname', 'full name', 'name'],
+    jk: ['jenis kelamin', 'jk', 'kelamin', 'gender', 'sex'],
+    kelas: ['kelas', 'class', 'rombel', 'rombongan belajar'],
+    phone: ['phone', 'telepon', 'telp', 'hp', 'handphone', 'no hp', 'nomor telepon', 'no telepon'],
+    namaOrtu: ['nama ortu', 'nama orang tua', 'orang tua', 'wali', 'parent'],
+    email: ['email', 'e-mail', 'surel'],
+    mataPelajaran: ['mata pelajaran', 'mapel', 'subject', 'pelajaran'],
+    nip: ['nip', 'nomor induk pegawai', 'no induk pegawai', 'nomor pegawai'],
+    nik: ['nik', 'nomor induk kependudukan', 'no ktp', 'nomor ktp'],
+  };
+  
   for (const field of fieldConfigs) {
     const fieldLabel = field.label.toLowerCase();
     const fieldKey = field.key.toLowerCase();
+    const keywords = keywordMap[fieldKey] || [fieldKey, fieldLabel];
     
     // Cari header yang paling cocok
     const match = fileHeaders.find((h) => {
       const header = h.toLowerCase().trim();
-      return (
-        header === fieldLabel ||
-        header === fieldKey ||
-        header.includes(fieldKey) ||
-        header.includes(fieldLabel) ||
-        fieldLabel.includes(header)
-      );
+      // Exact match
+      if (header === fieldLabel || header === fieldKey) return true;
+      // Keyword match
+      return keywords.some((kw) => header.includes(kw) || kw.includes(header));
     });
     
     if (match) {
@@ -530,10 +542,14 @@ function ImportTab({
   const confirmMappingAndImport = async () => {
     setShowMappingDialog(false);
     
-    // Validate required fields
-    const missingRequired = requiredFields.filter((f) => !fieldMapping[f.key]);
+    // Validate required fields - cek apakah field wajib sudah punya mapping
+    const missingRequired = requiredFields.filter((f) => {
+      const mapped = fieldMapping[f.key];
+      return !mapped || mapped === '__skip__';
+    });
+    
     if (missingRequired.length > 0) {
-      toast.error(`Field wajib belum ter-mapping: ${missingRequired.map((f) => f.label).join(', ')}`);
+      toast.error(`Field wajib belum ter-mapping: ${missingRequired.map((f) => f.label).join(', ')}. Silakan mapping terlebih dahulu.`);
       return;
     }
 
