@@ -5,6 +5,8 @@ import { useAppStore } from '@/store/use-store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Collapsible,
@@ -41,6 +43,10 @@ import {
   Database,
   Info,
   Sparkles,
+  Wifi,
+  Server,
+  KeyRound,
+  RefreshCw,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -171,7 +177,17 @@ export function DapodikSyncView() {
   const { user } = useAppStore();
 
   // State
-  const [activeTab, setActiveTab] = useState<string>('ekstraksi');
+  const [activeTab, setActiveTab] = useState<string>('koneksi');
+  
+  // Dapodik Local connection state
+  const [localServer, setLocalServer] = useState('http://localhost:5774');
+  const [localToken, setLocalToken] = useState('');
+  const [localNpsn, setLocalNpsn] = useState('');
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [connectionMessage, setConnectionMessage] = useState('');
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullProgress, setPullProgress] = useState<Record<string, { status: string; count: string }>>({});
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [uploadPreview, setUploadPreview] = useState<UploadPreview | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -361,6 +377,144 @@ export function DapodikSyncView() {
   }, []);
 
   // ═══════════════════════════════════════════════════════════════════════
+  // DAPODIK LOCAL CONNECTION
+  // ═══════════════════════════════════════════════════════════════════════
+
+  async function testLocalConnection() {
+    if (!localToken || !localNpsn) {
+      toast.error('Token dan NPSN wajib diisi');
+      return;
+    }
+    setIsConnecting(true);
+    setConnectionStatus('idle');
+    setConnectionMessage('');
+
+    try {
+      const res = await fetch('/api/dapodik-proxy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          server: localServer,
+          token: localToken,
+          npsn: localNpsn,
+          endpoint: 'Sekolah',
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setConnectionStatus('success');
+        setConnectionMessage(`Berhasil terhubung! Sekolah: ${data.data?.nama || 'Ditemukan'}`);
+        toast.success('Koneksi berhasil!');
+      } else {
+        setConnectionStatus('error');
+        setConnectionMessage(data.error || 'Gagal terhubung');
+        toast.error('Koneksi gagal');
+      }
+    } catch {
+      setConnectionStatus('error');
+      setConnectionMessage('Gagal menghubungi server');
+      toast.error('Koneksi gagal');
+    } finally {
+      setIsConnecting(false);
+    }
+  }
+
+  async function pullFromDapodikLocal() {
+    if (!localToken || !localNpsn) {
+      toast.error('Token dan NPSN wajib diisi');
+      return;
+    }
+
+    setIsPulling(true);
+    setPullProgress({});
+
+    const endpoints = [
+      { key: 'pesertaDidik', label: 'Peserta Didik', endpoint: 'PesertaDidik' },
+      { key: 'guru', label: 'Guru/PTK', endpoint: 'PTK' },
+      { key: 'rombel', label: 'Rombongan Belajar', endpoint: 'RombonganBelajar' },
+    ];
+
+    const allData: Record<string, unknown[]> = {};
+
+    for (const ep of endpoints) {
+      setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'loading', count: '...' } }));
+
+      try {
+        const res = await fetch('/api/dapodik-proxy', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            server: localServer,
+            token: localToken,
+            npsn: localNpsn,
+            endpoint: ep.endpoint,
+          }),
+        });
+
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+          const rows = Array.isArray(data.data) ? data.data : [];
+          allData[ep.key] = rows;
+          setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'done', count: `${rows.length} record` } }));
+        } else {
+          setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'error', count: 'Gagal' } }));
+        }
+      } catch {
+        setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'error', count: 'Error' } }));
+      }
+    }
+
+    // Build preview from pulled data
+    const preview: UploadPreview = {
+      version: '2.0 (Dapodik Lokal)',
+      exportedAt: new Date().toISOString(),
+      schoolName: `NPSN: ${localNpsn}`,
+      sourceTypes: ['dapodik-local'],
+      totalRecords: Object.values(allData).reduce((sum, arr) => sum + arr.length, 0),
+      data: {
+        pesertaDidik: (allData.pesertaDidik || []).map((row) => {
+          const r = row as Record<string, unknown>;
+          return {
+            nisn: String(r.nisn ?? '').trim(),
+            nama: String(r.nama ?? r.nama_peserta_didik ?? '').trim(),
+            nama_peserta_didik: String(r.nama ?? r.nama_peserta_didik ?? '').trim(),
+            jenis_kelamin: String(r.jenis_kelamin ?? r.jk ?? '').trim(),
+            no_hp: String(r.no_hp ?? r.telepon ?? '').trim(),
+            rombel: String(r.nama_rombel ?? r.rombel ?? '').trim(),
+          };
+        }),
+        guru: (allData.guru || []).map((row) => {
+          const r = row as Record<string, unknown>;
+          return {
+            nip: String(r.nip ?? '').trim(),
+            nama: String(r.nama ?? r.nama_pegawai ?? '').trim(),
+            nama_pegawai: String(r.nama ?? r.nama_pegawai ?? '').trim(),
+            jenis_kelamin: String(r.jenis_kelamin ?? r.jk ?? '').trim(),
+            no_hp: String(r.no_hp ?? r.telepon ?? '').trim(),
+          };
+        }),
+        rombel: (allData.rombel || []).map((row) => {
+          const r = row as Record<string, unknown>;
+          return {
+            nama: String(r.nama ?? r.nama_rombel ?? '').trim(),
+            nama_rombel: String(r.nama ?? r.nama_rombel ?? '').trim(),
+            tingkat: String(r.tingkat_pendidikan ?? r.tingkat ?? '').trim(),
+          };
+        }),
+        mataPelajaran: [],
+      },
+    };
+
+    setUploadPreview(preview);
+    setIsPulling(false);
+    setActiveTab('impor');
+    toast.success('Data berhasil ditarik dari Dapodik Lokal!');
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   // IMPORT HANDLER
   // ═══════════════════════════════════════════════════════════════════════
 
@@ -428,6 +582,13 @@ export function DapodikSyncView() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="bg-muted/80 rounded-lg p-1">
           <TabsTrigger
+            value="koneksi"
+            className="rounded-md px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1F3864] data-[state=active]:font-semibold transition-all"
+          >
+            <Wifi className="h-4 w-4 mr-1.5" />
+            Koneksi Dapodik Lokal
+          </TabsTrigger>
+          <TabsTrigger
             value="ekstraksi"
             className="rounded-md px-4 data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-[#1F3864] data-[state=active]:font-semibold transition-all"
           >
@@ -442,6 +603,143 @@ export function DapodikSyncView() {
             Impor Data
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="koneksi" className="space-y-6">
+          {/* Info Card */}
+          <Card className="rounded-xl border shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Wifi className="h-5 w-5 text-[#1F3864]" />
+                <CardTitle className="text-lg" style={{ color: BRAND }}>
+                  Koneksi ke Dapodik Lokal
+                </CardTitle>
+              </div>
+              <CardDescription className="text-sm">
+                Hubungkan langsung ke aplikasi Dapodik yang berjalan di laptop operator sekolah.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="rounded-lg bg-amber-50 border border-amber-200 p-4 mb-4">
+                <p className="text-sm text-amber-800">
+                  <strong>Persiapan:</strong>
+                </p>
+                <ul className="text-xs text-amber-700 mt-2 space-y-1">
+                  <li>1. Pastikan aplikasi <strong>Dapodik Lokal</strong> sudah berjalan</li>
+                  <li>2. Buka menu <strong>Bantuan → Manajemen Web Service</strong></li>
+                  <li>3. Centang <strong>"Aktif"</strong>, lalu tekan <strong>Simpan</strong></li>
+                  <li>4. Salin <strong>Token</strong> yang muncul di halaman tersebut</li>
+                </ul>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="local-npsn">NPSN Sekolah</Label>
+                    <Input
+                      id="local-npsn"
+                      placeholder="Contoh: 30100001"
+                      value={localNpsn}
+                      onChange={(e) => setLocalNpsn(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="local-token">Token Web Service</Label>
+                    <Input
+                      id="local-token"
+                      type="password"
+                      placeholder="Token dari Dapodik Lokal"
+                      value={localToken}
+                      onChange={(e) => setLocalToken(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="local-server">Server Dapodik (biasanya tidak perlu diubah)</Label>
+                  <Input
+                    id="local-server"
+                    value={localServer}
+                    onChange={(e) => setLocalServer(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Connection Status */}
+                {connectionStatus !== 'idle' && (
+                  <div className={cn(
+                    'rounded-lg p-3 text-sm',
+                    connectionStatus === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-red-50 border border-red-200 text-red-800'
+                  )}>
+                    {connectionStatus === 'success' ? (
+                      <div className="flex items-center gap-2">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>{connectionMessage}</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <XCircle className="h-4 w-4" />
+                        <span>{connectionMessage}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Pull Progress */}
+                {Object.keys(pullProgress).length > 0 && (
+                  <div className="grid grid-cols-3 gap-3">
+                    {Object.entries(pullProgress).map(([key, prog]) => (
+                      <div key={key} className={cn(
+                        'rounded-lg border p-3 text-center',
+                        prog.status === 'done' ? 'bg-emerald-50 border-emerald-200' :
+                        prog.status === 'loading' ? 'bg-amber-50 border-amber-200' :
+                        prog.status === 'error' ? 'bg-red-50 border-red-200' : 'bg-gray-50 border-gray-200'
+                      )}>
+                        <p className="text-xs text-muted-foreground capitalize">{key}</p>
+                        <p className={cn(
+                          'text-lg font-bold',
+                          prog.status === 'done' ? 'text-emerald-600' :
+                          prog.status === 'loading' ? 'text-amber-600' :
+                          prog.status === 'error' ? 'text-red-600' : 'text-gray-400'
+                        )}>{prog.count}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={testLocalConnection}
+                    disabled={isConnecting || isPulling}
+                    className="gap-2"
+                  >
+                    {isConnecting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Wifi className="h-4 w-4" />
+                    )}
+                    {isConnecting ? 'Menghubungkan...' : 'Tes Koneksi'}
+                  </Button>
+                  <Button
+                    onClick={pullFromDapodikLocal}
+                    disabled={isConnecting || isPulling || connectionStatus !== 'success'}
+                    className="gap-2"
+                    style={{ backgroundColor: BRAND }}
+                  >
+                    {isPulling ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    {isPulling ? 'Sedang Menarik...' : 'Tarik Semua Data'}
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="ekstraksi" className="space-y-6">
           {/* Info Card */}
