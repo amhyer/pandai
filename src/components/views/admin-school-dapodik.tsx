@@ -47,6 +47,7 @@ import {
   Server,
   KeyRound,
   RefreshCw,
+  Copy,
 } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -195,6 +196,8 @@ export function DapodikSyncView() {
   const [dragOver, setDragOver] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({});
+  const [sessionToken, setSessionToken] = useState('');
+  const [loadingToken, setLoadingToken] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -375,6 +378,30 @@ export function DapodikSyncView() {
     setExpandedSections({});
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
+
+  // Fetch session token
+  async function fetchSessionToken() {
+    setLoadingToken(true);
+    try {
+      const res = await fetch('/api/auth/session-token');
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSessionToken(data.token);
+        toast.success('Session token berhasil diambil!');
+      } else {
+        toast.error('Gagal mengambil token', { description: data.message });
+      }
+    } catch {
+      toast.error('Gagal mengambil token');
+    } finally {
+      setLoadingToken(false);
+    }
+  }
+
+  function copyToClipboard(text: string, label: string) {
+    navigator.clipboard.writeText(text);
+    toast.success(`${label} berhasil dicopy!`);
+  }
 
   // ═══════════════════════════════════════════════════════════════════════
   // DAPODIK LOCAL CONNECTION
@@ -772,6 +799,54 @@ export function DapodikSyncView() {
                     )}
                     {isPulling ? 'Sedang Menarik...' : 'Tarik Semua Data'}
                   </Button>
+                </div>
+
+                {/* Session Token for EXE */}
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 mt-4">
+                  <p className="text-sm font-semibold text-blue-800 mb-2">
+                    🔑 Token untuk EXE (jika pakai pull-dapodik.exe)
+                  </p>
+                  <p className="text-xs text-blue-600 mb-3">
+                    Klik tombol di bawah untuk mengambil session token yang dibutuhkan EXE.
+                  </p>
+                  {sessionToken ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={sessionToken}
+                          readOnly
+                          className="font-mono text-xs bg-white"
+                        />
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="shrink-0 gap-1"
+                          onClick={() => copyToClipboard(sessionToken, 'Session Token')}
+                        >
+                          <Copy className="h-3 w-3" />
+                          Copy
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-blue-500">
+                        Berlaku 24 jam. Jika expired, klik "Ambil Token" lagi.
+                      </p>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5"
+                      onClick={fetchSessionToken}
+                      disabled={loadingToken}
+                    >
+                      {loadingToken ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <KeyRound className="h-3 w-3" />
+                      )}
+                      {loadingToken ? 'Mengambil...' : 'Ambil Token'}
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
