@@ -380,6 +380,21 @@ export function DapodikSyncView() {
   // DAPODIK LOCAL CONNECTION
   // ═══════════════════════════════════════════════════════════════════════
 
+  // Fetch langsung dari Dapodik Local (localhost:5774) dari browser
+  async function fetchDapodikLocal(endpoint: string, params: Record<string, string> = {}): Promise<unknown> {
+    const searchParams = new URLSearchParams({
+      ws: endpoint,
+      akses_token: localToken,
+      npsn: localNpsn,
+      ...params,
+    });
+    const url = `${localServer}/WebService/?${searchParams.toString()}`;
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : data?.rows ?? data ?? [];
+  }
+
   async function testLocalConnection() {
     if (!localToken || !localNpsn) {
       toast.error('Token dan NPSN wajib diisi');
@@ -390,31 +405,27 @@ export function DapodikSyncView() {
     setConnectionMessage('');
 
     try {
-      const res = await fetch('/api/dapodik-proxy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          server: localServer,
-          token: localToken,
-          npsn: localNpsn,
-          endpoint: 'Sekolah',
-        }),
-      });
+      const data = await fetchDapodikLocal('getSekolah');
+      const rows = Array.isArray(data) ? data : [];
+      const sekolah = rows[0] as Record<string, unknown> | undefined;
 
-      const data = await res.json();
-
-      if (res.ok && data.success) {
+      if (sekolah) {
         setConnectionStatus('success');
-        setConnectionMessage(`Berhasil terhubung! Sekolah: ${data.data?.nama || 'Ditemukan'}`);
+        setConnectionMessage(`Berhasil terhubung! Sekolah: ${(sekolah.nama as string) || 'Ditemukan'}`);
         toast.success('Koneksi berhasil!');
       } else {
         setConnectionStatus('error');
-        setConnectionMessage(data.error || 'Gagal terhubung');
+        setConnectionMessage('Data sekolah tidak ditemukan');
         toast.error('Koneksi gagal');
       }
-    } catch {
+    } catch (err) {
       setConnectionStatus('error');
-      setConnectionMessage('Gagal menghubungi server');
+      const msg = (err as Error).message || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        setConnectionMessage('Tidak bisa terhubung ke Dapodik Lokal. Pastikan Dapodik berjalan dan Web Service aktif.');
+      } else {
+        setConnectionMessage(`Gagal: ${msg}`);
+      }
       toast.error('Koneksi gagal');
     } finally {
       setIsConnecting(false);
@@ -431,39 +442,23 @@ export function DapodikSyncView() {
     setPullProgress({});
 
     const endpoints = [
-      { key: 'pesertaDidik', label: 'Peserta Didik', endpoint: 'PesertaDidik' },
-      { key: 'guru', label: 'Guru/PTK', endpoint: 'PTK' },
-      { key: 'rombel', label: 'Rombongan Belajar', endpoint: 'RombonganBelajar' },
+      { key: 'sekolah', label: 'Sekolah', ws: 'getSekolah' },
+      { key: 'pesertaDidik', label: 'Peserta Didik', ws: 'getPesertaDidik' },
+      { key: 'ptk', label: 'Guru/PTK', ws: 'getPTK' },
+      { key: 'rombonganBelajar', label: 'Rombongan Belajar', ws: 'getRombonganBelajar' },
     ];
 
-    const allData: Record<string, unknown[]> = {};
+    const allData: Record<string, unknown> = {};
 
     for (const ep of endpoints) {
       setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'loading', count: '...' } }));
 
       try {
-        const res = await fetch('/api/dapodik-proxy', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            server: localServer,
-            token: localToken,
-            npsn: localNpsn,
-            endpoint: ep.endpoint,
-          }),
-        });
-
-        const data = await res.json();
-
-        if (res.ok && data.success) {
-          const rows = Array.isArray(data.data) ? data.data : [];
-          allData[ep.key] = rows;
-          setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'done', count: `${rows.length} record` } }));
-        } else {
-          setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'error', count: 'Gagal' } }));
-        }
+        const rows = await fetchDapodikLocal(ep.ws) as unknown[];
+        allData[ep.key] = rows;
+        setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'done', count: `${rows.length} record` } }));
       } catch {
-        setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'error', count: 'Error' } }));
+        setPullProgress((prev) => ({ ...prev, [ep.key]: { status: 'error', count: 'Gagal' } }));
       }
     }
 
@@ -473,37 +468,43 @@ export function DapodikSyncView() {
       exportedAt: new Date().toISOString(),
       schoolName: `NPSN: ${localNpsn}`,
       sourceTypes: ['dapodik-local'],
-      totalRecords: Object.values(allData).reduce((sum, arr) => sum + arr.length, 0),
+      totalRecords: [
+        ...(allData.pesertaDidik as unknown[] || []),
+        ...(allData.ptk as unknown[] || []),
+        ...(allData.rombonganBelajar as unknown[] || []),
+      ].length,
       data: {
-        pesertaDidik: (allData.pesertaDidik || []).map((row) => {
-          const r = row as Record<string, unknown>;
-          return {
-            nisn: String(r.nisn ?? '').trim(),
-            nama: String(r.nama ?? r.nama_peserta_didik ?? '').trim(),
-            nama_peserta_didik: String(r.nama ?? r.nama_peserta_didik ?? '').trim(),
-            jenis_kelamin: String(r.jenis_kelamin ?? r.jk ?? '').trim(),
-            no_hp: String(r.no_hp ?? r.telepon ?? '').trim(),
-            rombel: String(r.nama_rombel ?? r.rombel ?? '').trim(),
-          };
-        }),
-        guru: (allData.guru || []).map((row) => {
-          const r = row as Record<string, unknown>;
-          return {
-            nip: String(r.nip ?? '').trim(),
-            nama: String(r.nama ?? r.nama_pegawai ?? '').trim(),
-            nama_pegawai: String(r.nama ?? r.nama_pegawai ?? '').trim(),
-            jenis_kelamin: String(r.jenis_kelamin ?? r.jk ?? '').trim(),
-            no_hp: String(r.no_hp ?? r.telepon ?? '').trim(),
-          };
-        }),
-        rombel: (allData.rombel || []).map((row) => {
-          const r = row as Record<string, unknown>;
-          return {
-            nama: String(r.nama ?? r.nama_rombel ?? '').trim(),
-            nama_rombel: String(r.nama ?? r.nama_rombel ?? '').trim(),
-            tingkat: String(r.tingkat_pendidikan ?? r.tingkat ?? '').trim(),
-          };
-        }),
+        pesertaDidik: (allData.pesertaDidik as Record<string, unknown>[] || []).map((r) => ({
+          nisn: String(r.nisn ?? '').trim(),
+          nama: String(r.nama ?? '').trim(),
+          nama_peserta_didik: String(r.nama ?? '').trim(),
+          jenis_kelamin: String(r.jenis_kelamin ?? r.jk ?? '').trim(),
+          no_hp: String(r.nomor_hp ?? r.nomor_telepon_rumah ?? '').trim(),
+          rombel: String(r.rombongan_belajar_id ?? '').trim(),
+          nik: String(r.nik ?? '').trim(),
+          nama_ayah: String(r.nama_ayah ?? '').trim(),
+          nama_ibu: String(r.nama_ibu_kandung ?? '').trim(),
+          email: String(r.email ?? '').trim(),
+          tempat_lahir: String(r.tempat_lahir ?? '').trim(),
+          tanggal_lahir: String(r.tanggal_lahir ?? '').trim(),
+        })),
+        guru: (allData.ptk as Record<string, unknown>[] || []).map((r) => ({
+          nip: String(r.nip ?? '').trim(),
+          nama: String(r.nama ?? '').trim(),
+          nama_pegawai: String(r.nama ?? '').trim(),
+          jenis_kelamin: String(r.jenis_kelamin ?? r.jk ?? '').trim(),
+          no_hp: String(r.nomor_hp ?? '').trim(),
+          nik: String(r.nik ?? '').trim(),
+          email: String(r.email ?? '').trim(),
+          jenis_ptk: String(r.jenis_ptk ?? '').trim(),
+        })),
+        rombel: (allData.rombonganBelajar as Record<string, unknown>[] || []).map((r) => ({
+          nama: String(r.nama ?? '').trim(),
+          nama_rombel: String(r.nama ?? '').trim(),
+          rombongan_belajar_id: String(r.rombongan_belajar_id ?? '').trim(),
+          tingkat: String(r.tingkat_pendidikan_id ?? '').trim(),
+          ptk_id: String(r.ptk_id ?? '').trim(),
+        })),
         mataPelajaran: [],
       },
     };
@@ -530,19 +531,51 @@ export function DapodikSyncView() {
 
     setIsImporting(true);
     try {
-      const res = await fetch('/api/dapodik/import', {
+      // Build data in Dapodik format for the sync API
+      const syncData = {
+        pesertaDidik: (uploadPreview.data.pesertaDidik || []).map((r) => ({
+          nisn: r.nisn as string,
+          nama: (r.nama || r.nama_peserta_didik) as string,
+          jenis_kelamin: r.jenis_kelamin as string,
+          nomor_hp: r.no_hp as string,
+          email: r.email as string,
+          nik: r.nik as string,
+          nama_ayah: r.nama_ayah as string,
+          alamat_jalan: r.alamat as string,
+          rombongan_belajar_id: r.rombel as string,
+          tempat_lahir: r.tempat_lahir as string,
+          tanggal_lahir: r.tanggal_lahir as string,
+        })),
+        ptk: (uploadPreview.data.guru || []).map((r) => ({
+          nip: r.nip as string,
+          nama: (r.nama || r.nama_pegawai) as string,
+          jenis_kelamin: r.jenis_kelamin as string,
+          nomor_hp: r.no_hp as string,
+          email: r.email as string,
+          nik: r.nik as string,
+          jenis_ptk: r.jenis_ptk as string,
+        })),
+        rombonganBelajar: (uploadPreview.data.rombel || []).map((r) => ({
+          rombongan_belajar_id: r.rombongan_belajar_id as string,
+          nama: (r.nama || r.nama_rombel) as string,
+          tingkat_pendidikan_id: r.tingkat as string,
+          ptk_id: r.ptk_id as string,
+        })),
+      };
+
+      const res = await fetch('/api/dapodik/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           schoolId: user.schoolId,
-          data: uploadPreview,
+          data: syncData,
         }),
       });
 
       const result = await res.json();
 
       if (!res.ok) {
-        toast.error('Impor gagal', { description: result.error || 'Terjadi kesalahan.' });
+        toast.error('Impor gagal', { description: result.message || 'Terjadi kesalahan.' });
         return;
       }
 
