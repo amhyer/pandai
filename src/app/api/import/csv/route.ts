@@ -16,7 +16,24 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
     }
     result.push(current.trim()); return result;
   }
-  const headers = parseLine(lines[0]); const rows = lines.slice(1).map(parseLine); return { headers, rows };
+  
+  // Deteksi format Dapodik (header di baris ke-5, data mulai baris ke-7)
+  const firstLine = lines[0]?.toLowerCase() || '';
+  const isDapodik = firstLine.includes('daftar') || firstLine.includes('peserta didik');
+  
+  let headerIdx = 0;
+  let dataStartIdx = 1;
+  
+  if (isDapodik && lines.length > 6) {
+    headerIdx = 4; // Row 5 (0-indexed = 4)
+    dataStartIdx = 6; // Row 7 (0-indexed = 6)
+  }
+  
+  const headers = parseLine(lines[headerIdx]);
+  const rows = lines.slice(dataStartIdx)
+    .filter((line) => line.trim() !== '')
+    .map(parseLine);
+  return { headers, rows };
 }
 
 // Auto-create class if not exists

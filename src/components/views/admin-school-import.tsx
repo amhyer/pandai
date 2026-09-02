@@ -159,6 +159,7 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
 }
 
 // Parse Excel file using xlsx library
+// Mendukung format Dapodik (header di row 4, data mulai row 6)
 async function parseExcel(file: File): Promise<{ headers: string[]; rows: string[][] }> {
   const XLSX = await import('xlsx');
   const arrayBuffer = await file.arrayBuffer();
@@ -168,8 +169,31 @@ async function parseExcel(file: File): Promise<{ headers: string[]; rows: string
   
   if (data.length === 0) return { headers: [], rows: [] };
   
-  const headers = (data[0] || []).map(String);
-  const rows = data.slice(1).map((row) => (row || []).map(String));
+  // Deteksi format Dapodik:
+  // - Row 0 = judul ("Daftar Peserta Didik")
+  // - Row 1 = nama sekolah
+  // - Row 2 = lokasi
+  // - Row 3 = tanggal unduh
+  // - Row 4 = header utama
+  // - Row 5 = sub-header (Data Ayah/Ibu/Wali)
+  // - Row 6+ = data
+  
+  const firstCell = String(data[0]?.[0] || '').toLowerCase();
+  const isDapodik = firstCell.includes('daftar') || firstCell.includes('peserta didik');
+  
+  let headerRowIdx = 0;
+  let dataStartRowIdx = 1;
+  
+  if (isDapodik && data.length > 5) {
+    // Format Dapodik - header di row 4, data mulai row 6
+    headerRowIdx = 4;
+    dataStartRowIdx = 6;
+  }
+  
+  const headers = (data[headerRowIdx] || []).map(String);
+  const rows = data.slice(dataStartRowIdx)
+    .filter((row) => row && row.some((cell) => cell !== null && cell !== undefined && cell !== ''))
+    .map((row) => (row || []).map(String));
   
   return { headers, rows };
 }
@@ -203,15 +227,15 @@ async function downloadExcelTemplate(fields: FieldConfig[], filename: string) {
 function autoMapHeaders(fileHeaders: string[], fieldConfigs: FieldConfig[]): Record<string, string> {
   const mapping: Record<string, string> = {};
   
-  // Keywords untuk matching yang lebih fleksibel
+  // Keywords untuk matching yang lebih fleksibel (termasuk format Dapodik)
   const keywordMap: Record<string, string[]> = {
-    nisn: ['nisn', 'nomor induk siswa', 'no induk siswa', 'no siswa', 'nomor siswa'],
+    nisn: ['nisn', 'nomor induk siswa nasional', 'nomor induk siswa', 'no induk siswa', 'no siswa', 'nomor siswa'],
     name: ['nama', 'nama lengkap', 'nama siswa', 'nama guru', 'fullname', 'full name', 'name'],
     jk: ['jenis kelamin', 'jk', 'kelamin', 'gender', 'sex'],
-    kelas: ['kelas', 'class', 'rombel', 'rombongan belajar'],
+    kelas: ['kelas', 'class', 'rombel', 'rombongan belajar', 'rombel saat ini'],
     phone: ['phone', 'telepon', 'telp', 'hp', 'handphone', 'no hp', 'nomor telepon', 'no telepon'],
-    namaOrtu: ['nama ortu', 'nama orang tua', 'orang tua', 'wali', 'parent'],
-    email: ['email', 'e-mail', 'surel'],
+    namaOrtu: ['nama ortu', 'nama orang tua', 'orang tua', 'wali', 'parent', 'nama ayah', 'nama ibu'],
+    email: ['email', 'e-mail', 'surel', 'e-mail'],
     mataPelajaran: ['mata pelajaran', 'mapel', 'subject', 'pelajaran'],
     nip: ['nip', 'nomor induk pegawai', 'no induk pegawai', 'nomor pegawai'],
     nik: ['nik', 'nomor induk kependudukan', 'no ktp', 'nomor ktp'],
