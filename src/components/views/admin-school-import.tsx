@@ -4,6 +4,8 @@ import React, { useState, useCallback, useRef } from 'react';
 import { useAppStore } from '@/store/use-store';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table,
@@ -15,6 +17,21 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   FilePlus,
@@ -27,6 +44,8 @@ import {
   X,
   GraduationCap,
   Users,
+  ArrowRight,
+  Settings,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -43,6 +62,34 @@ interface ImportResult {
   failed?: number;
   errors?: string[];
 }
+
+// Field yang tersedia untuk mapping
+interface FieldConfig {
+  key: string;
+  label: string;
+  required: boolean;
+  description: string;
+}
+
+const SISWA_FIELDS: FieldConfig[] = [
+  { key: 'nisn', label: 'NISN', required: true, description: 'Nomor Induk Siswa Nasional (10 digit)' },
+  { key: 'name', label: 'Nama Lengkap', required: true, description: 'Nama lengkap siswa' },
+  { key: 'jk', label: 'Jenis Kelamin', required: false, description: 'L = Laki-laki, P = Perempuan' },
+  { key: 'kelas', label: 'Kelas', required: false, description: 'Nama kelas (akan auto-create jika belum ada)' },
+  { key: 'phone', label: 'No. Telepon', required: false, description: 'Nomor telepon siswa' },
+  { key: 'namaOrtu', label: 'Nama Orang Tua', required: false, description: 'Nama orang tua/wali siswa' },
+  { key: 'email', label: 'Email', required: false, description: 'Email (opsional untuk siswa)' },
+];
+
+const GURU_FIELDS: FieldConfig[] = [
+  { key: 'nip', label: 'NIP', required: true, description: 'Nomor Induk Pegawai' },
+  { key: 'name', label: 'Nama Lengkap', required: true, description: 'Nama lengkap guru' },
+  { key: 'jk', label: 'Jenis Kelamin', required: false, description: 'L = Laki-laki, P = Perempuan' },
+  { key: 'mataPelajaran', label: 'Mata Pelajaran', required: false, description: 'Mata pelajaran yang diampu' },
+  { key: 'phone', label: 'No. Telepon', required: false, description: 'Nomor telepon guru' },
+  { key: 'email', label: 'Email', required: false, description: 'Email guru' },
+  { key: 'nik', label: 'NIK', required: false, description: 'Nomor Induk Kependudukan (KTP)' },
+];
 
 // ═══════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -68,12 +115,11 @@ function EmptyState({ icon: Icon, title, description }: { icon: React.ElementTyp
   );
 }
 
-// Parse CSV string into array of objects (vanilla JS)
+// Parse CSV string into array of objects
 function parseCsv(text: string): { headers: string[]; rows: string[][] } {
   const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
   if (lines.length === 0) return { headers: [], rows: [] };
 
-  // Parse a single line respecting quoted fields
   function parseLine(line: string): string[] {
     const result: string[] = [];
     let current = '';
@@ -112,8 +158,25 @@ function parseCsv(text: string): { headers: string[]; rows: string[][] } {
   return { headers, rows };
 }
 
+// Parse Excel file using xlsx library
+async function parseExcel(file: File): Promise<{ headers: string[]; rows: string[][] }> {
+  const XLSX = await import('xlsx');
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json<string[]>(firstSheet, { header: 1 });
+  
+  if (data.length === 0) return { headers: [], rows: [] };
+  
+  const headers = (data[0] || []).map(String);
+  const rows = data.slice(1).map((row) => (row || []).map(String));
+  
+  return { headers, rows };
+}
+
 // Generate and download CSV template
-function downloadTemplate(headers: string[], filename: string) {
+function downloadTemplate(fields: FieldConfig[], filename: string) {
+  const headers = fields.map((f) => f.label);
   const csv = headers.join(',') + '\n';
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -124,6 +187,148 @@ function downloadTemplate(headers: string[], filename: string) {
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+// Download Excel template
+async function downloadExcelTemplate(fields: FieldConfig[], filename: string) {
+  const XLSX = await import('xlsx');
+  const headers = fields.map((f) => f.label);
+  const ws = XLSX.utils.aoa_to_sheet([headers]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Template');
+  XLSX.writeFile(wb, filename);
+}
+
+// Generate auto-mapping based on header similarity
+function autoMapHeaders(fileHeaders: string[], fieldConfigs: FieldConfig[]): Record<string, string> {
+  const mapping: Record<string, string> = {};
+  
+  for (const field of fieldConfigs) {
+    const fieldLabel = field.label.toLowerCase();
+    const fieldKey = field.key.toLowerCase();
+    
+    // Cari header yang paling cocok
+    const match = fileHeaders.find((h) => {
+      const header = h.toLowerCase().trim();
+      return (
+        header === fieldLabel ||
+        header === fieldKey ||
+        header.includes(fieldKey) ||
+        header.includes(fieldLabel) ||
+        fieldLabel.includes(header)
+      );
+    });
+    
+    if (match) {
+      mapping[field.key] = match;
+    }
+  }
+  
+  return mapping;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FIELD MAPPING DIALOG
+// ═══════════════════════════════════════════════════════════════════════
+
+interface FieldMappingDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  fileHeaders: string[];
+  fieldConfigs: FieldConfig[];
+  mapping: Record<string, string>;
+  onMappingChange: (mapping: Record<string, string>) => void;
+  onConfirm: () => void;
+}
+
+function FieldMappingDialog({
+  open,
+  onOpenChange,
+  fileHeaders,
+  fieldConfigs,
+  mapping,
+  onMappingChange,
+  onConfirm,
+}: FieldMappingDialogProps) {
+  const handleAutoMap = () => {
+    const autoMapped = autoMapHeaders(fileHeaders, fieldConfigs);
+    onMappingChange(autoMapped);
+    toast.success('Mapping otomatis berhasil!');
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Settings className="h-5 w-5" />
+            Mapping Kolom
+          </DialogTitle>
+          <DialogDescription>
+            Sesuaikan kolom file Anda dengan field database
+          </DialogDescription>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleAutoMap}
+            className="gap-2"
+          >
+            <ArrowRight className="h-4 w-4" />
+            Auto-Mapping
+          </Button>
+          
+          <div className="space-y-3">
+            {fieldConfigs.map((field) => (
+              <div key={field.key} className="flex items-center gap-3">
+                <div className="flex-1">
+                  <Label className="text-sm font-medium">
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">{field.description}</p>
+                </div>
+                
+                <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                
+                <div className="w-48">
+                  <Select
+                    value={mapping[field.key] || ''}
+                    onValueChange={(value) => {
+                      onMappingChange({ ...mapping, [field.key]: value });
+                    }}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Pilih kolom..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__skip__">-- Lewati --</SelectItem>
+                      {fileHeaders.map((header) => (
+                        <SelectItem key={header} value={header}>
+                          {header}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Batal
+          </Button>
+          <Button onClick={onConfirm} style={{ backgroundColor: BRAND }}>
+            Konfirmasi Mapping
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -145,41 +350,51 @@ function ImportTab({
   const [preview, setPreview] = useState<{ headers: string[]; rows: string[][] } | null>(null);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<ImportResult | null>(null);
+  const [showMappingDialog, setShowMappingDialog] = useState(false);
+  const [fieldMapping, setFieldMapping] = useState<Record<string, string>>({});
 
-  const EXPECTED_HEADERS =
-    type === 'siswa'
-      ? ['NISN', 'Nama', 'Jenis Kelamin', 'Kelas']
-      : ['NIP', 'Nama', 'Jenis Kelamin', 'Mata Pelajaran'];
-
-  const TEMPLATE_FILENAME =
-    type === 'siswa' ? 'template_import_siswa.csv' : 'template_import_guru.csv';
+  const fieldConfigs = type === 'siswa' ? SISWA_FIELDS : GURU_FIELDS;
+  const requiredFields = fieldConfigs.filter((f) => f.required);
+  const TEMPLATE_FILENAME = type === 'siswa' ? 'template_import_siswa' : 'template_import_guru';
 
   // Process the file
-  const processFile = useCallback((f: File) => {
+  const processFile = useCallback(async (f: File) => {
     setFile(f);
     setResult(null);
+    setFieldMapping({});
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const text = e.target?.result as string;
-      const parsed = parseCsv(text);
+    try {
+      let parsed: { headers: string[]; rows: string[][] };
+      
+      // Check if Excel file
+      if (f.name.endsWith('.xlsx') || f.name.endsWith('.xls')) {
+        parsed = await parseExcel(f);
+      } else {
+        // CSV file
+        const text = await f.text();
+        parsed = parseCsv(text);
+      }
+
       setPreview(parsed);
 
-      // Validate headers
       if (parsed.headers.length === 0) {
-        toast.error('File CSV kosong atau tidak valid');
+        toast.error('File kosong atau tidak valid');
         return;
       }
 
-      const hasRequired = EXPECTED_HEADERS.every((h) =>
-        parsed.headers.some((ph) => ph.toLowerCase().trim() === h.toLowerCase())
-      );
-      if (!hasRequired) {
-        toast.error(`Kolom tidak sesuai. Harus mengandung: ${EXPECTED_HEADERS.join(', ')}`);
+      // Auto-map headers
+      const autoMapped = autoMapHeaders(parsed.headers, fieldConfigs);
+      setFieldMapping(autoMapped);
+
+      // Check required fields
+      const mappedRequired = requiredFields.filter((f) => autoMapped[f.key]);
+      if (mappedRequired.length < requiredFields.length) {
+        toast.info('Beberapa field wajib belum ter-mapping. Silakan sesuaikan.');
       }
-    };
-    reader.readAsText(f);
-  }, [EXPECTED_HEADERS]);
+    } catch {
+      toast.error('Gagal membaca file. Pastikan format file benar.');
+    }
+  }, [fieldConfigs, requiredFields]);
 
   // Drag handlers
   const handleDragOver = (e: React.DragEvent) => {
@@ -196,10 +411,13 @@ function ImportTab({
     e.preventDefault();
     setIsDragging(false);
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && (droppedFile.name.endsWith('.csv') || droppedFile.type === 'text/csv')) {
-      processFile(droppedFile);
-    } else {
-      toast.error('Hanya file CSV yang diperbolehkan');
+    if (droppedFile) {
+      const ext = droppedFile.name.toLowerCase();
+      if (ext.endsWith('.csv') || ext.endsWith('.xlsx') || ext.endsWith('.xls')) {
+        processFile(droppedFile);
+      } else {
+        toast.error('Hanya file CSV atau Excel (.xlsx/.xls) yang diperbolehkan');
+      }
     }
   };
 
@@ -214,7 +432,27 @@ function ImportTab({
     setFile(null);
     setPreview(null);
     setResult(null);
+    setFieldMapping({});
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // Open mapping dialog
+  const openMappingDialog = () => {
+    setShowMappingDialog(true);
+  };
+
+  // Confirm mapping and start import
+  const confirmMappingAndImport = async () => {
+    setShowMappingDialog(false);
+    
+    // Validate required fields
+    const missingRequired = requiredFields.filter((f) => !fieldMapping[f.key]);
+    if (missingRequired.length > 0) {
+      toast.error(`Field wajib belum ter-mapping: ${missingRequired.map((f) => f.label).join(', ')}`);
+      return;
+    }
+
+    await handleImport();
   };
 
   // Start import
@@ -231,6 +469,7 @@ function ImportTab({
       formData.append('file', file);
       formData.append('type', type);
       formData.append('schoolId', schoolId);
+      formData.append('fieldMapping', JSON.stringify(fieldMapping));
 
       const res = await fetch('/api/import/csv', {
         method: 'POST',
@@ -269,18 +508,29 @@ function ImportTab({
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {type === 'siswa'
-            ? 'Upload file CSV berisi data siswa yang akan diimpor ke sistem.'
-            : 'Upload file CSV berisi data guru yang akan diimpor ke sistem.'}
+            ? 'Upload file CSV atau Excel berisi data siswa yang akan diimpor ke sistem.'
+            : 'Upload file CSV atau Excel berisi data guru yang akan diimpor ke sistem.'}
         </p>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 rounded-lg"
-          onClick={() => downloadTemplate(EXPECTED_HEADERS, TEMPLATE_FILENAME)}
-        >
-          <Download className="h-3.5 w-3.5" />
-          Unduh Template
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 rounded-lg"
+            onClick={() => downloadTemplate(fieldConfigs, `${TEMPLATE_FILENAME}.csv`)}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Template CSV
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 rounded-lg"
+            onClick={() => downloadExcelTemplate(fieldConfigs, `${TEMPLATE_FILENAME}.xlsx`)}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Template Excel
+          </Button>
+        </div>
       </div>
 
       {/* ── Drop Zone ── */}
@@ -306,15 +556,15 @@ function ImportTab({
             <Upload className="h-8 w-8" />
           </div>
           <p className="mt-4 text-sm font-semibold text-foreground">
-            {isDragging ? 'Lepaskan file di sini...' : 'Seret & lepas file CSV, atau klik untuk memilih'}
+            {isDragging ? 'Lepaskan file di sini...' : 'Seret & lepas file CSV/Excel, atau klik untuk memilih'}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Format: .csv — Kolom: {EXPECTED_HEADERS.join(', ')}
+            Format: .csv, .xlsx, .xls — Field: {fieldConfigs.filter((f) => f.required).map((f) => f.label).join(', ')}
           </p>
           <input
             ref={fileInputRef}
             type="file"
-            accept=".csv,text/csv"
+            accept=".csv,.xlsx,.xls,text/csv"
             className="hidden"
             onChange={handleFileChange}
           />
@@ -335,16 +585,43 @@ function ImportTab({
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-600"
-              onClick={removeFile}
-              aria-label="Hapus file"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openMappingDialog}
+                className="gap-2"
+              >
+                <Settings className="h-4 w-4" />
+                Mapping
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 rounded-lg hover:bg-red-50 hover:text-red-600"
+                onClick={removeFile}
+                aria-label="Hapus file"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
+          
+          {/* ── Mapping Summary ── */}
+          {Object.keys(fieldMapping).length > 0 && (
+            <div className="mt-3 pt-3 border-t">
+              <p className="text-xs font-medium text-muted-foreground mb-2">Field Mapping:</p>
+              <div className="flex flex-wrap gap-2">
+                {fieldConfigs
+                  .filter((f) => fieldMapping[f.key] && fieldMapping[f.key] !== '__skip__')
+                  .map((field) => (
+                    <Badge key={field.key} variant="secondary" className="text-xs">
+                      {field.label} ← {fieldMapping[field.key]}
+                    </Badge>
+                  ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -400,7 +677,7 @@ function ImportTab({
       {file && preview && (
         <div className="flex justify-end">
           <Button
-            onClick={handleImport}
+            onClick={openMappingDialog}
             disabled={importing}
             className="gap-2 rounded-lg px-6 transition-all duration-200 hover:shadow-sm active:scale-[0.98]"
             style={{ backgroundColor: BRAND }}
@@ -467,6 +744,17 @@ function ImportTab({
           </div>
         </Alert>
       )}
+
+      {/* ── Field Mapping Dialog ── */}
+      <FieldMappingDialog
+        open={showMappingDialog}
+        onOpenChange={setShowMappingDialog}
+        fileHeaders={preview?.headers || []}
+        fieldConfigs={fieldConfigs}
+        mapping={fieldMapping}
+        onMappingChange={setFieldMapping}
+        onConfirm={confirmMappingAndImport}
+      />
     </div>
   );
 }
@@ -491,7 +779,7 @@ export function ImportCsvView() {
               Import Data
             </h1>
             <p className="text-sm text-muted-foreground">
-              Impor data siswa dan guru dari file CSV ke {user?.schoolName ?? 'sekolah Anda'}
+              Impor data siswa dan guru dari file CSV/Excel ke {user?.schoolName ?? 'sekolah Anda'}
             </p>
           </div>
         </div>
@@ -508,9 +796,11 @@ export function ImportCsvView() {
               Panduan Import Data
             </p>
             <ul className="mt-1 space-y-1 text-xs text-amber-800">
-              <li>• Gunakan format file <strong>.csv</strong> (comma-separated values)</li>
-              <li>• Pastikan baris pertama berisi judul kolom sesuai template</li>
+              <li>• Gunakan format file <strong>.csv</strong> atau <strong>.xlsx/.xls</strong> (Excel)</li>
+              <li>• Baris pertama harus berisi judul kolom</li>
+              <li>• Mapping kolom akan dilakukan otomatis atau bisa disesuaikan manual</li>
               <li>• Data yang sudah ada dengan NISN/NIP yang sama akan dilewati</li>
+              <li>• Kelas baru akan dibuat otomatis jika belum ada</li>
               <li>• Unduh template terlebih dahulu untuk memastikan format yang benar</li>
             </ul>
           </div>
