@@ -180,7 +180,7 @@ export function DapodikSyncView() {
   const [activeTab, setActiveTab] = useState<string>('koneksi');
   
   // Dapodik Local connection state
-  const [localServer, setLocalServer] = useState('http://localhost:5774');
+  const [localServer, setLocalServer] = useState('http://localhost:5775');
   const [localToken, setLocalToken] = useState('');
   const [localNpsn, setLocalNpsn] = useState('');
   const [isConnecting, setIsConnecting] = useState(false);
@@ -380,18 +380,22 @@ export function DapodikSyncView() {
   // DAPODIK LOCAL CONNECTION
   // ═══════════════════════════════════════════════════════════════════════
 
-  // Fetch langsung dari Dapodik Local (localhost:5774) dari browser
-  async function fetchDapodikLocal(endpoint: string, params: Record<string, string> = {}): Promise<unknown> {
-    const searchParams = new URLSearchParams({
-      ws: endpoint,
-      akses_token: localToken,
-      npsn: localNpsn,
-      ...params,
+  // Fetch via local proxy (localhost:5775) → Dapodik Local (localhost:5774)
+  async function fetchDapodikLocal(endpoint: string, extraParams: Record<string, string> = {}): Promise<unknown> {
+    const res = await fetch(localServer, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ws: endpoint,
+        akses_token: localToken,
+        npsn: localNpsn,
+        ...extraParams,
+      }),
     });
-    const url = `${localServer}/WebService/?${searchParams.toString()}`;
-    const res = await fetch(url, { method: 'GET' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
+    const result = await res.json();
+    if (!result.success) throw new Error(result.error || 'Gagal mengambil data');
+    const data = result.data;
     return Array.isArray(data) ? data : data?.rows ?? data ?? [];
   }
 
@@ -657,10 +661,10 @@ export function DapodikSyncView() {
                   <strong>Persiapan:</strong>
                 </p>
                 <ul className="text-xs text-amber-700 mt-2 space-y-1">
-                  <li>1. Pastikan aplikasi <strong>Dapodik Lokal</strong> sudah berjalan</li>
-                  <li>2. Buka menu <strong>Bantuan → Manajemen Web Service</strong></li>
-                  <li>3. Centang <strong>"Aktif"</strong>, lalu tekan <strong>Simpan</strong></li>
-                  <li>4. Salin <strong>Token</strong> yang muncul di halaman tersebut</li>
+                  <li>1. Pastikan <strong>Dapodik Lokal</strong> sudah berjalan (port 5774)</li>
+                  <li>2. Aktifkan Web Service: <strong>Pengaturan → Web Service → Aktif → Simpan</strong></li>
+                  <li>3. Jalankan <strong>Proxy Lokal</strong>: <code className="bg-amber-100 px-1 rounded">node scripts/dapodik-proxy.mjs</code></li>
+                  <li>4. Proxy berjalan di <strong>localhost:5775</strong> → menjembatani koneksi ke Dapodik</li>
                 </ul>
               </div>
 
