@@ -884,17 +884,22 @@ export function DapodikSyncView() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   Aplikasi standalone untuk Windows. Tidak perlu install apapun.
                 </p>
-                <div className="mt-4 space-y-2 text-left text-sm text-muted-foreground">
-                  <p className="font-semibold text-foreground">Cara Mendapatkan:</p>
-                  <ol className="list-inside list-decimal space-y-1">
-                    <li>Buka folder project PANDAI di laptop kamu</li>
-                    <li>Jalankan: <code className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-mono">bun run build:exe</code></li>
-                    <li>File EXE ada di: <code className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-mono">dist/pull-dapodik.exe</code></li>
-                  </ol>
-                  <p className="mt-2 text-xs text-blue-600">
-                    Atau copy file <strong>pull-dapodik.exe</strong> dari folder dist/ ke komputer lain yang ada Dapodik-nya.
-                  </p>
-                </div>
+                <a href="/pull-dapodik.exe" download>
+                  <Button
+                    size="lg"
+                    className="mt-4 rounded-xl px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
+                    style={{
+                      background: 'linear-gradient(135deg, #1F3864, #2d5289)',
+                      color: 'white',
+                    }}
+                  >
+                    <Download className="h-5 w-5 mr-2" />
+                    Download EXE (94 MB)
+                  </Button>
+                </a>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Standalone • Windows x64 • Tidak perlu install Node.js/Bun
+                </p>
               </div>
             </CardContent>
           </Card>
