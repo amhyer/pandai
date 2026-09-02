@@ -854,7 +854,7 @@ export function DapodikSyncView() {
                     }}
                   >
                     <Sparkles className="h-5 w-5 mr-2" />
-                    Buka Alat
+                    Buka Alat HTML
                   </Button>
                 </a>
                 <a
@@ -867,13 +867,35 @@ export function DapodikSyncView() {
                     className="rounded-xl px-8 py-6 text-base font-bold shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
                   >
                     <Download className="h-5 w-5 mr-2" />
-                    Download
+                    Download HTML
                   </Button>
                 </a>
               </div>
               <p className="text-xs text-muted-foreground">
                 Format: HTML • Ukuran: ~45 KB • Kompatibel: Chrome, Edge, Firefox
               </p>
+
+              {/* EXE Download Section */}
+              <div className="mt-6 rounded-xl border-2 border-dashed border-blue-200 bg-blue-50/50 p-6 text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#1F3864] to-[#2d5289] text-white shadow-md">
+                  <Database className="h-6 w-6" />
+                </div>
+                <h4 className="text-base font-bold text-foreground">EXE — Tarik Data Dapodik</h4>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Aplikasi standalone untuk Windows. Tidak perlu install apapun.
+                </p>
+                <div className="mt-4 space-y-2 text-left text-sm text-muted-foreground">
+                  <p className="font-semibold text-foreground">Cara Mendapatkan:</p>
+                  <ol className="list-inside list-decimal space-y-1">
+                    <li>Buka folder project PANDAI di laptop kamu</li>
+                    <li>Jalankan: <code className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-mono">bun run build:exe</code></li>
+                    <li>File EXE ada di: <code className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-mono">dist/pull-dapodik.exe</code></li>
+                  </ol>
+                  <p className="mt-2 text-xs text-blue-600">
+                    Atau copy file <strong>pull-dapodik.exe</strong> dari folder dist/ ke komputer lain yang ada Dapodik-nya.
+                  </p>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
