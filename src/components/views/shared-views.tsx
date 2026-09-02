@@ -38,6 +38,8 @@ import {
   GraduationCap,
   UserCog,
   Baby,
+  Copy,
+  Check,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -521,6 +523,34 @@ export function ProfileView() {
           <CardDescription>Detail akun yang terdaftar dalam sistem</CardDescription>
         </CardHeader>
         <CardContent>
+          {/* User ID with Copy Button */}
+          <div className="mb-4 rounded-xl border border-blue-100 bg-blue-50/50 p-4">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-medium uppercase tracking-wider text-blue-600">
+                  User ID
+                </p>
+                <p className="mt-1 truncate font-mono text-sm font-semibold text-foreground">
+                  {user?.id ?? '-'}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-3 shrink-0 cursor-pointer gap-1.5 rounded-lg text-blue-600 hover:bg-blue-100 hover:text-blue-700"
+                onClick={() => {
+                  if (user?.id) {
+                    navigator.clipboard.writeText(user.id);
+                    toast.success('User ID berhasil dicopy!', { duration: 2000 });
+                  }
+                }}
+              >
+                <Copy className="h-4 w-4" />
+                <span className="text-xs">Copy</span>
+              </Button>
+            </div>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-3">
             {/* ID Card */}
             <div className="rounded-xl border border-gray-100 bg-gradient-to-br from-gray-50/80 to-white p-4 shadow-none transition-all duration-200">
