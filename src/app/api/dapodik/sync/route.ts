@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
-import { requireRole, AuthError } from '@/lib/auth';
+import { requireRole, verifySession, AuthError } from '@/lib/auth';
 import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -117,9 +117,20 @@ function getCurrentAcademicYear(): string {
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const body = await request.json();
-    const { schoolId, data } = body as { schoolId: string; data: SyncData };
+    const { schoolId, data, sessionToken } = body as { schoolId: string; data: SyncData; sessionToken?: string };
+
+    // Auth: from cookie OR from sessionToken in body (for CLI script)
+    let auth;
+    if (sessionToken) {
+      const payload = await verifySession(sessionToken);
+      if (!payload) {
+        return NextResponse.json({ success: false, message: 'Token sesi tidak valid' }, { status: 401 });
+      }
+      auth = payload;
+    } else {
+      auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    }
 
     if (!schoolId || !data) {
       return NextResponse.json(
