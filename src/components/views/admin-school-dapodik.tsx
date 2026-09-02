@@ -100,32 +100,20 @@ function GradientIcon({ children, className }: { children: React.ReactNode; clas
 const WORKFLOW_STEPS = [
   {
     num: 1,
-    title: 'Unduh Alat Ekstraksi',
-    desc: 'Klik tombol "Download Alat" di bawah untuk mengunduh file HTML.',
+    title: 'Unduh Data dari Dapodik',
+    desc: 'Buka aplikasi Dapodik → menu Unduh/Export → pilih "Daftar Peserta Didik" → simpan sebagai file Excel (.xlsx).',
     icon: Download,
   },
   {
     num: 2,
-    title: 'Buka File HTML',
-    desc: 'Buka file yang diunduh menggunakan browser (Chrome/Edge/Firefox).',
-    icon: FileSpreadsheet,
-  },
-  {
-    num: 3,
-    title: 'Unggah File Excel',
-    desc: 'Unggah file ekspor Dapodik (.xlsx / .xls / .csv) ke alat tersebut.',
+    title: 'Upload Langsung ke PANDAI',
+    desc: 'Buka tab "Impor Data" → seret & lepas file Excel Dapodik atau klik untuk memilih file.',
     icon: Upload,
   },
   {
-    num: 4,
-    title: 'Ekspor ke JSON',
-    desc: 'Pilih kolom yang sesuai, lalu ekspor hasilnya sebagai file .json.',
-    icon: FileJson,
-  },
-  {
-    num: 5,
-    title: 'Impor ke PANDAI',
-    desc: 'Kembali ke tab "Impor Data" dan unggah file .json tadi.',
+    num: 3,
+    title: 'Impor Otomatis',
+    desc: 'Sistem akan otomatis membaca data siswa, kelas, dan informasi lainnya dari file Excel.',
     icon: Database,
   },
 ];
@@ -198,12 +186,16 @@ export function DapodikSyncView() {
   // FILE HANDLING
   // ═══════════════════════════════════════════════════════════════════════
 
-  const processFile = useCallback((file: File) => {
-    if (!file.name.endsWith('.json')) {
-      setParseError('Hanya file .json yang diterima.');
+  const processFile = useCallback(async (file: File) => {
+    const ext = file.name.toLowerCase();
+    const isJson = ext.endsWith('.json');
+    const isExcel = ext.endsWith('.xlsx') || ext.endsWith('.xls');
+    
+    if (!isJson && !isExcel) {
+      setParseError('Format file tidak didukung. Gunakan .json, .xlsx, atau .xls');
       setUploadPreview(null);
       setUploadedFile(null);
-      toast.error('Format file tidak didukung', { description: 'Silakan unggah file .json' });
+      toast.error('Format file tidak didukung', { description: 'Gunakan file .json atau .xlsx/.xls' });
       return;
     }
 
@@ -211,20 +203,22 @@ export function DapodikSyncView() {
     setUploadedFile(file);
     setImportResults(null);
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        const parsed = JSON.parse(e.target?.result as string);
-
-        // Validate structure
+    try {
+      let preview: UploadPreview;
+      
+      if (isJson) {
+        // Parse JSON file
+        const text = await file.text();
+        const parsed = JSON.parse(text);
+        
         if (!parsed.data || typeof parsed.data !== 'object') {
           setParseError('Struktur file tidak valid. File harus berisi objek "data".');
           setUploadPreview(null);
           toast.error('Struktur file tidak valid');
           return;
         }
-
-        const preview: UploadPreview = {
+        
+        preview = {
           version: parsed.version,
           exportedAt: parsed.exportedAt,
           schoolName: parsed.schoolName,
@@ -237,33 +231,95 @@ export function DapodikSyncView() {
             mataPelajaran: Array.isArray(parsed.data.mataPelajaran) ? parsed.data.mataPelajaran : [],
           },
         };
-
-        setUploadPreview(preview);
-
-        // Auto-expand sections with data
-        const initialExpand: Record<string, boolean> = {};
-        (Object.keys(preview.data) as DataTypeKey[]).forEach((key) => {
-          if (preview.data[key] && preview.data[key]!.length > 0) {
-            initialExpand[key] = true;
-          }
+      } else {
+        // Parse Excel file (format Dapodik)
+        const XLSX = await import('xlsx');
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>[]>(firstSheet, { header: 1 });
+        
+        if (data.length < 6) {
+          setParseError('File Excel terlalu pendek. Pastikan file Dapodik lengkap.');
+          setUploadPreview(null);
+          toast.error('File tidak valid');
+          return;
+        }
+        
+        // Format Dapodik: header di row 4 (index 4), data mulai row 6 (index 6)
+        const headers = (data[4] || []).map(String);
+        const rows = data.slice(6)
+          .filter((row) => row && (row as unknown[]).some((cell) => cell !== null && cell !== undefined && cell !== ''))
+          .map((row) => {
+            const obj: Record<string, unknown> = {};
+            headers.forEach((h, i) => {
+              if (h) obj[h.toLowerCase().replace(/\s+/g, '_')] = (row as unknown[])[i];
+            });
+            return obj;
+          });
+        
+        // Map Dapodik columns to our format
+        const pesertaDidik = rows.map((row) => ({
+          nisn: String(row.nisn ?? '').trim(),
+          nama: String(row.nama ?? '').trim(),
+          nama_peserta_didik: String(row.nama ?? '').trim(),
+          jenis_kelamin: String(row.jk ?? '').trim(),
+          no_hp: String(row.hp ?? row.telepon ?? '').trim(),
+          rombel: String(row['rombel_saat_ini'] ?? '').trim(),
+          nisn_dapodik: String(row.nipd ?? '').trim(),
+          tempat_lahir: String(row['tempat_lahir'] ?? '').trim(),
+          tanggal_lahir: String(row['tanggal_lahir'] ?? '').trim(),
+          agama: String(row.agama ?? '').trim(),
+          alamat: String(row.alamat ?? '').trim(),
+          nama_ayah: String(row['data_ayah'] ?? '').trim(),
+          nama_ibu: String(row['data_ibu'] ?? '').trim(),
+        }));
+        
+        // Extract unique rombel for class creation
+        const rombelSet = new Set<string>();
+        pesertaDidik.forEach((pd) => {
+          if (pd.rombel) rombelSet.add(pd.rombel);
         });
-        setExpandedSections(initialExpand);
-
-        toast.success('File berhasil dibaca', {
-          description: `${preview.totalRecords ?? '?'} record ditemukan dalam file.`,
-        });
-      } catch {
-        setParseError('Gagal menguraikan file JSON. Pastikan file tidak rusak.');
-        setUploadPreview(null);
-        toast.error('Gagal membaca file', { description: 'File JSON tidak valid atau rusak.' });
+        const rombel = Array.from(rombelSet).map((name) => ({
+          nama: name,
+          nama_rombel: name,
+          tingkat: name.replace(/[^0-9IVX]/g, ''), // Extract grade from class name
+        }));
+        
+        preview = {
+          version: '2.0 (Dapodik Excel)',
+          exportedAt: new Date().toISOString(),
+          schoolName: file.name.replace('daftar_pd-', '').replace(/-\d{4}-\d{2}-\d{2}.*/, '').trim(),
+          sourceTypes: ['excel-dapodik'],
+          totalRecords: pesertaDidik.length,
+          data: {
+            pesertaDidik,
+            guru: [], // File Dapodik siswa tidak berisi data guru
+            rombel,
+            mataPelajaran: [], // File Dapodik siswa tidak berisi data mapel
+          },
+        };
       }
-    };
-    reader.onerror = () => {
-      setParseError('Gagal membaca file.');
+      
+      setUploadPreview(preview);
+      
+      // Auto-expand sections with data
+      const initialExpand: Record<string, boolean> = {};
+      (Object.keys(preview.data) as DataTypeKey[]).forEach((key) => {
+        if (preview.data[key] && preview.data[key]!.length > 0) {
+          initialExpand[key] = true;
+        }
+      });
+      setExpandedSections(initialExpand);
+      
+      toast.success('File berhasil dibaca', {
+        description: `${preview.totalRecords ?? '?'} record ditemukan dalam file.`,
+      });
+    } catch {
+      setParseError('Gagal menguraikan file. Pastikan file tidak rusak.');
       setUploadPreview(null);
-      toast.error('Gagal membaca file');
-    };
-    reader.readAsText(file);
+      toast.error('Gagal membaca file', { description: 'File tidak valid atau rusak.' });
+    }
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -398,7 +454,7 @@ export function DapodikSyncView() {
                 </CardTitle>
               </div>
               <CardDescription className="text-sm">
-                Ikuti 5 langkah berikut untuk mengekstrak dan mengimpor data Dapodik ke PANDAI.
+                Ikuti 3 langkah sederhana untuk mengimpor data Dapodik ke PANDAI.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -489,7 +545,7 @@ export function DapodikSyncView() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".json"
+              accept=".json,.xlsx,.xls"
               className="hidden"
               onChange={handleFileChange}
             />
@@ -520,10 +576,10 @@ export function DapodikSyncView() {
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-semibold text-foreground">
-                      Seret & lepas file JSON di sini
+                      Seret & lepas file Dapodik di sini
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      atau klik untuk memilih file • Format: .json
+                      atau klik untuk memilih file • Format: .json, .xlsx, .xls
                     </p>
                   </div>
                 </>
