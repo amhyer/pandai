@@ -335,8 +335,36 @@ for (const [rel, role] of roleRootPages) {
 const viewRouter = read(join(SRC, 'components', 'app', 'view-router.tsx'));
 assert(
   /export function ViewRouter/.test(viewRouter) &&
-    /React\.lazy/.test(viewRouter),
-  'ViewRouter was not extracted into a reusable component'
+    /React\.lazy/.test(viewRouter) &&
+    /viewFromPathname/.test(viewRouter) &&
+    /usePathname/.test(viewRouter),
+  'ViewRouter is not URL-first'
+);
+
+const serverAuth = read(join(SRC, 'lib', 'server-auth.ts'));
+assert(
+  /cookies/.test(serverAuth) &&
+    /verifySession/.test(serverAuth) &&
+    /db\.user\.findUnique/.test(serverAuth) &&
+    /getServerSessionUser/.test(serverAuth),
+  'server-auth.ts does not load the active user for server components'
+);
+
+const prefetchedShell = read(join(SRC, 'components', 'app', 'prefetched-route-shell.tsx'));
+assert(
+  /AppLayout/.test(prefetchedShell) &&
+    /ViewRouter/.test(prefetchedShell) &&
+    /setUser/.test(prefetchedShell),
+  'PrefetchedRouteShell does not seed the session from server data'
+);
+
+const serverProfilePage = read(join(SRC, 'app', 'accounts', 'profile', 'page.tsx'));
+assert(
+  /getServerSessionUser/.test(serverProfilePage) &&
+    /PrefetchedRouteShell/.test(serverProfilePage) &&
+    /SUPER_ADMIN/.test(serverProfilePage) &&
+    /force-dynamic/.test(serverProfilePage),
+  'Server Component profile route does not preload a SUPER_ADMIN session'
 );
 
 const authenticatedApp = read(join(SRC, 'app', 'authenticated-app.tsx'));

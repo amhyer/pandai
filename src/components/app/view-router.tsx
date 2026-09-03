@@ -1,7 +1,9 @@
 'use client';
 
 import React, { Suspense } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAppStore } from '@/store/use-store';
+import { viewFromPathname } from '@/lib/route-map';
 
 function ViewSkeleton() {
   return (
@@ -111,8 +113,13 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
  * reuse the same view switching during the incremental refactor.
  */
 export function ViewRouter() {
-  const currentView = useAppStore((s) => s.currentView);
+  const pathname = usePathname();
+  const storeView = useAppStore((s) => s.currentView);
   const user = useAppStore((s) => s.user);
+
+  // URL-first: migrated route pages derive the view from the pathname.
+  // Legacy "/" transitions still use the store's currentView.
+  const currentView = viewFromPathname(pathname) ?? storeView;
 
   if (currentView === 'dashboard') {
     const roleDashboards: Record<string, string> = {

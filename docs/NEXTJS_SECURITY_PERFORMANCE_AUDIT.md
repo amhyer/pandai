@@ -930,7 +930,9 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ `/accounts` menjadi root super admin: `/accounts` → dashboard super admin, `/accounts/[feature]` → schools, users, questions, analytics, reports, settings, profile, notifications, broadcasts.
 - ✅ Route dinamis per role ditambahkan untuk `guru`, `siswa`, `ortu`, dan `kepala-sekolah` dengan mapping fitur masing-masing (materi, nilai, kehadiran, karakter, rapor, tryout, dst.) + root dashboard route.
 - ✅ `AppLayout` kini memakai `router.push()` untuk semua role yang punya URL route; fitur yang belum dipetakan tetap fallback ke legacy `navigateTo`/`currentView`.
-- 🔲 Refactor penuh: memindahkan semua fitur `currentView` individual ke komponen Server Components + per-feature data fetching masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
+- ✅ `ViewRouter` kini URL-first: `viewFromPathname()` di `src/lib/route-map.ts` memetakan pathname dewasa ini ke `currentView`; store hanya dipakai sebagai fallback untuk transisi lama di `/`.
+- ✅ Server Component migration dimulai pada `/accounts/profile`: `src/lib/server-auth.ts` (baca cookie + `verifySession` + DB + `toPublicUser`), `src/components/app/prefetched-route-shell.tsx` (seed store tanpa panggilan `/api/auth/me` kedua), dan `src/app/accounts/profile/page.tsx` (server page SUPER_ADMIN).
+- 🔲 Refactor penuh: memindahkan lebih banyak fitur `currentView` ke Server Components per-feature (data fetching + loading/error per fitur) masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
 
 ### C.10 Belum dikerjakan (bisa dijadikan sprint berikutnya)
 - 🔲 Menyelesaikan refactor route-per-feature + Server Components (pindahkan dashboard/feature view ke route nyata, auth guard per segment).
