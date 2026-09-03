@@ -946,9 +946,6 @@ function RaporSiswaTab({
   const [raporNote, setRaporNote] = useState<string>('');
   const [originalRaporNote, setOriginalRaporNote] = useState<string>('');
   const [savingNote, setSavingNote] = useState(false);
-  const [raporNote, setRaporNote] = useState<string>('');
-  const [originalRaporNote, setOriginalRaporNote] = useState<string>('');
-  const [savingNote, setSavingNote] = useState(false);
   const [bulkPrinting, setBulkPrinting] = useState(false);
 
   const canEditNote = user?.role === 'GURU' || user?.role === 'ADMIN_SCHOOL' || user?.role === 'SUPER_ADMIN';
