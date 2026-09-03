@@ -45,7 +45,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email sudah terdaftar' }, { status: 409 });
     }
 
-    // ── schoolCode: only applicable for roles that need school membership ──
+    // ── schoolCode: roles that participate in a school must provide it ──
+    if ((requestedRole === 'SISWA' || requestedRole === 'ORANG_TUA') && !schoolCode?.trim()) {
+      return NextResponse.json({ error: 'Kode sekolah wajib diisi' }, { status: 400 });
+    }
+
     let schoolId: string | undefined;
     if (schoolCode) {
       const school = await db.school.findUnique({ where: { code: schoolCode } });
