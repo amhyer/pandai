@@ -25,7 +25,7 @@ const SUPER_ADMIN_ROUTES: Partial<Record<ViewType, string>> = {
 };
 
 const ADMIN_SCHOOL_ROUTES: Partial<Record<ViewType, string>> = {
-  dashboard: '/admin-school',
+  dashboard: '/admin-school/dashboard',
   accounts: '/admin-school/accounts',
   classes: '/admin-school/classes',
   subjects: '/admin-school/subjects',
@@ -310,6 +310,7 @@ const PATHNAME_VIEWS: Record<string, ViewType> = {
   '/accounts/broadcasts': 'broadcasts',
 
   '/admin-school': 'dashboard',
+  '/admin-school/dashboard': 'dashboard',
   '/admin-school/accounts': 'accounts',
   '/admin-school/classes': 'classes',
   '/admin-school/subjects': 'subjects',

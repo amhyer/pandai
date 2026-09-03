@@ -371,6 +371,36 @@ assert(
     /db\.activityLog\.findMany/.test(serverDashboardData),
   'server-dashboard.ts does not pre-fetch global analytics/activity data'
 );
+assert(
+  /getAdminSchoolDashboardData/.test(serverDashboardData) &&
+    /db\.examSession\.findMany/.test(serverDashboardData) &&
+    /db\.class\.count/.test(serverDashboardData),
+  'server-dashboard.ts does not pre-fetch admin school analytics/exams'
+);
+
+const adminSchoolDashboardPage = read(join(SRC, 'app', 'admin-school', 'dashboard', 'page.tsx'));
+assert(
+  /getServerSessionUser/.test(adminSchoolDashboardPage) &&
+    /getAdminSchoolDashboardData/.test(adminSchoolDashboardPage) &&
+    /ServerAdminSchoolDashboard/.test(adminSchoolDashboardPage) &&
+    /force-dynamic/.test(adminSchoolDashboardPage),
+  'admin-school/dashboard is not a server-fetched dashboard route'
+);
+
+const serverAdminDashboardShell = read(join(SRC, 'components', 'app', 'server-admin-school-dashboard.tsx'));
+assert(
+  /AppLayout/.test(serverAdminDashboardShell) &&
+    /AdminSekolahDashboard/.test(serverAdminDashboardShell) &&
+    /serverData/.test(serverAdminDashboardShell),
+  'ServerAdminSchoolDashboard does not render the dashboard with server data'
+);
+
+const adminSchoolDashboard = read(join(SRC, 'components', 'dashboard', 'admin-sekolah', 'admin-sekolah-dashboard.tsx'));
+assert(
+  /serverData\?/.test(adminSchoolDashboard) &&
+    /AdminSekolahDashboardServerData/.test(adminSchoolDashboard),
+  'AdminSekolahDashboard does not accept server pre-loaded data'
+);
 
 const serverDashboardPage = read(join(SRC, 'app', 'accounts', 'dashboard', 'page.tsx'));
 assert(

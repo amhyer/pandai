@@ -62,6 +62,15 @@ interface UpcomingExam {
   subject: string;
 }
 
+export interface AdminSekolahDashboardServerData {
+  analytics: SchoolAnalytics;
+  upcomingExams: UpcomingExam[];
+}
+
+interface AdminSekolahDashboardProps {
+  serverData?: AdminSekolahDashboardServerData;
+}
+
 // ─── Stat Card ──────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -165,23 +174,29 @@ function QuickActionCard({ icon, label, description, onClick, color }: {
 
 // ─── Main Component ─────────────────────────────────────────────────
 
-export function AdminSekolahDashboard() {
+export function AdminSekolahDashboard({ serverData }: AdminSekolahDashboardProps = {}) {
   const user = useAppStore((s) => s.user);
   const navigateTo = useAppStore((s) => s.navigateTo);
-  const [analytics, setAnalytics] = useState<SchoolAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<SchoolAnalytics | null>(serverData?.analytics ?? null);
+  const [loading, setLoading] = useState(!serverData);
 
   // Current date helper
   const today = new Date();
   const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   // Fetch upcoming exams from database
-  const [upcomingExams, setUpcomingExams] = useState<UpcomingExam[]>([]);
+  const [upcomingExams, setUpcomingExams] = useState<UpcomingExam[]>(serverData?.upcomingExams ?? []);
 
   useEffect(() => {
+    if (serverData) {
+      setAnalytics(serverData.analytics);
+      setUpcomingExams(serverData.upcomingExams);
+      setLoading(false);
+      return;
+    }
     fetchAnalytics();
     fetchUpcomingExams();
-  }, []);
+  }, [serverData]);
 
   async function fetchUpcomingExams() {
     if (!user?.schoolId) return;

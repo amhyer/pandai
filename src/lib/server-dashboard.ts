@@ -36,6 +36,83 @@ export interface SuperAdminDashboardData {
   }[];
 }
 
+export interface AdminSchoolDashboardData {
+  analytics: {
+    totalStudents: number;
+    totalTeachers: number;
+    totalClasses: number;
+    totalQuestions: number;
+    avgScore: number;
+    predictedScore: number;
+    recentAttempts: { name: string; score: number; date: string }[];
+  };
+  upcomingExams: {
+    id: string;
+    name: string;
+    date: string;
+    status: 'scheduled' | 'in_progress' | 'grading';
+    participants: number;
+    subject: string;
+  }[];
+}
+
+export async function getAdminSchoolDashboardData(
+  schoolId: string
+): Promise<AdminSchoolDashboardData> {
+  const [totalStudents, totalTeachers, totalClasses, totalQuestions, attempts, examSessions] =
+    await Promise.all([
+      db.user.count({ where: { schoolId, role: 'SISWA', isActive: true } }),
+      db.user.count({ where: { schoolId, role: 'GURU', isActive: true } }),
+      db.class.count({ where: { schoolId } }),
+      db.question.count({ where: { schoolId } }),
+      db.studentAttempt.findMany({
+        where: { schoolId, status: 'submitted' },
+        select: { percentage: true, tkaPrediction: true, createdAt: true, user: { select: { name: true } } },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+      db.examSession.findMany({
+        where: { schoolId, status: { in: ['scheduled', 'active'] } },
+        include: { examPackage: true, assignments: { select: { id: true } } },
+        orderBy: { startDate: 'asc' },
+        take: 5,
+      }),
+    ]);
+
+  const avgScore =
+    attempts.length > 0
+      ? Math.round((attempts.reduce((s, a) => s + a.percentage, 0) / attempts.length) * 10) / 10
+      : 0;
+  const avgTka =
+    attempts.length > 0
+      ? Math.round(attempts.reduce((s, a) => s + (a.tkaPrediction || 0), 0) / attempts.length)
+      : 0;
+
+  return {
+    analytics: {
+      totalStudents,
+      totalTeachers,
+      totalClasses,
+      totalQuestions,
+      avgScore,
+      predictedScore: avgTka,
+      recentAttempts: attempts.slice(0, 10).map((a) => ({
+        name: a.user?.name || 'Anonim',
+        score: a.percentage,
+        date: a.createdAt.toISOString().split('T')[0],
+      })),
+    },
+    upcomingExams: examSessions.map((session) => ({
+      id: session.id,
+      name: session.title || session.examPackage?.title || 'Tryout',
+      date: session.startDate.toISOString(),
+      status: session.status === 'active' ? 'in_progress' as const : 'scheduled' as const,
+      participants: session.assignments.length,
+      subject: session.examPackage?.title || 'Tryout',
+    })),
+  };
+}
+
 export async function getSuperAdminDashboardData(): Promise<SuperAdminDashboardData> {
   const [
     totalSchools,
