@@ -132,6 +132,24 @@ pandai/
 7. Rotating `JWT_SECRET` invalidates existing sessions — users will need to log in again after redeploy.
 8. Full step-by-step runbook: **`docs/ROTATE_CREDENTIALS.md`**.
 
+### Rate limiting & multi-instance
+
+The app ships a Redis-backed rate limiter for login, AI, and general write routes. It uses
+**Upstash REST** when `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` are set, and falls
+back to a process-local limiter otherwise (fine for local development, but not shared between
+serverless instances).
+
+- Login: 5 attempts / 60s per IP
+- AI: 20 requests / 60s per IP (proxy), plus 20 / 60s per user+action in the AI helper
+- General POST/PUT/DELETE: 30 requests / 60s per IP
+
+Add to `.env.local` for production:
+
+```bash
+UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
+UPSTASH_REDIS_REST_TOKEN=replace_with_upstash_token
+```
+
 ## License
 
 Private — All rights reserved.
