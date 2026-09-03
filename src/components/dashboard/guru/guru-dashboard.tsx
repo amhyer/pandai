@@ -61,6 +61,26 @@ interface GuruDashboardData {
   topStudents: TopStudent[];
 }
 
+export interface GuruDashboardServerData extends GuruDashboardData {
+  recentActivities: Array<{
+    id: string;
+    action: string;
+    detail: string;
+    time: string;
+    type: 'create' | 'exam' | 'result';
+  }>;
+  topStudents: Array<{
+    name: string;
+    score: number;
+    progress: number;
+    trend: 'up' | 'down' | 'stable';
+  }>;
+}
+
+interface GuruDashboardProps {
+  serverData?: GuruDashboardServerData;
+}
+
 // ─── Stat Card ──────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -175,11 +195,11 @@ function QuickActionCard({ icon, label, description, onClick, color }: {
 
 // ─── Main Component ─────────────────────────────────────────────────
 
-export function GuruDashboard() {
+export function GuruDashboard({ serverData }: GuruDashboardProps = {}) {
   const user = useAppStore((s) => s.user);
   const navigateTo = useAppStore((s) => s.navigateTo);
-  const [dashData, setDashData] = useState<GuruDashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [dashData, setDashData] = useState<GuruDashboardData | null>(serverData ?? null);
+  const [loading, setLoading] = useState(!serverData);
   const [quickSubject, setQuickSubject] = useState('');
   const [creating, setCreating] = useState(false);
 
@@ -197,8 +217,13 @@ export function GuruDashboard() {
   ];
 
   useEffect(() => {
+    if (serverData) {
+      setDashData(serverData);
+      setLoading(false);
+      return;
+    }
     fetchDashboardData();
-  }, []);
+  }, [serverData]);
 
   async function fetchDashboardData() {
     if (!user?.schoolId) return;

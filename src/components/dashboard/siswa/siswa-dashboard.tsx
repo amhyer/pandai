@@ -59,6 +59,12 @@ interface StudentAnalytics {
   subjectBreakdown: { subject: string; score: number; maxScore: number }[];
 }
 
+export interface SiswaDashboardServerData extends StudentAnalytics {}
+
+interface SiswaDashboardProps {
+  serverData?: SiswaDashboardServerData;
+}
+
 // ─── Loop Belajar Steps ─────────────────────────────────────────────
 
 const LEARNING_STEPS = [
@@ -191,11 +197,11 @@ function StudyTipCard() {
 
 // ─── Main Component ─────────────────────────────────────────────────
 
-export function SiswaDashboard() {
+export function SiswaDashboard({ serverData }: SiswaDashboardProps = {}) {
   const user = useAppStore((s) => s.user);
   const navigateTo = useAppStore((s) => s.navigateTo);
-  const [analytics, setAnalytics] = useState<StudentAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<StudentAnalytics | null>(serverData ?? null);
+  const [loading, setLoading] = useState(!serverData);
 
   // P0-03: Calculate streak from recent attendance (consecutive hadir days ending today)
   const streak = analytics?.scoreTrend?.length
@@ -207,8 +213,13 @@ export function SiswaDashboard() {
   const dateStr = today.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
   useEffect(() => {
+    if (serverData) {
+      setAnalytics(serverData);
+      setLoading(false);
+      return;
+    }
     fetchAnalytics();
-  }, []);
+  }, [serverData]);
 
   async function fetchAnalytics() {
     if (!user?.id) return;

@@ -3,14 +3,16 @@ import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireRole, AuthError } from '@/lib/auth';
 import { requireSchoolScope } from '@/lib/scope';
-import { SCHOOL_DAY_STATUSES, calcAttendancePct } from '@/lib/attendance';
+import { getKepalaSekolahDashboardData } from '@/lib/server-dashboard';
 
-const SEVEN_HABIT_LABELS: Record<string, { name: string }> = {
-  bangun_pagi: { name: 'Bangun Pagi' }, beribadah: { name: 'Beribadah' }, berolahraga: { name: 'Berolahraga' },
-  makan_sehat: { name: 'Makan Sehat dan Bergizi' }, gemar_belajar: { name: 'Gemar Belajar' },
-  bermasyarakat: { name: 'Bermasyarakat' }, tidur_cepat: { name: 'Tidur Cepat' },
-};
-
+/**
+ * GET /api/kepsek/dashboard?schoolId=...
+ * Role: KEPALA_SEKOLAH | ADMIN_SCHOOL | SUPER_ADMIN
+ *
+ * Data shaping now lives in src/lib/server-dashboard.ts so the Server
+ * Component route (/kepala-sekolah/dashboard) and this legacy endpoint
+ * share one school-scoped query path.
+ */
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['KEPALA_SEKOLAH', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
@@ -25,201 +27,13 @@ export async function GET(req: NextRequest) {
     // IDOR fix: non-super cannot query another school
     requireSchoolScope(auth, schoolId);
 
-    const school = await db.school.findUnique({ where: { id: schoolId } });
+    const school = await db.school.findUnique({ where: { id: schoolId }, select: { id: true } });
     if (!school) {
       return NextResponse.json({ error: 'Sekolah tidak ditemukan' }, { status: 404 });
     }
 
-    // Phase 1: All independent queries (no dependency on classIds/guruIds)
-    const [totalSiswa, totalGuru, totalKelas, classes, gurus] = await Promise.all([
-      db.user.count({ where: { schoolId, role: 'SISWA', isActive: true } }),
-      db.user.count({ where: { schoolId, role: 'GURU', isActive: true } }),
-      db.class.count({ where: { schoolId } }),
-      db.class.findMany({ where: { schoolId }, orderBy: [{ grade: 'asc' }, { name: 'asc' }] }),
-      db.user.findMany({ where: { schoolId, role: 'GURU', isActive: true }, orderBy: { name: 'asc' } }),
-    ]);
-
-    const classIds = classes.map((c) => c.id);
-    const guruIds = gurus.map((g) => g.id);
-
-    // Phase 2: Batched queries using classIds/guruIds
-    const [
-      studentCountsByClass,
-      attendanceRecords,
-      characterRecords,
-      extScoreRecords,
-      journalCounts,
-      materialCounts,
-    ] = await Promise.all([
-      db.user.groupBy({
-        by: ['classId'],
-        where: { classId: { in: classIds }, role: 'SISWA', isActive: true },
-        _count: true,
-      }),
-      db.attendance.findMany({
-        where: { classId: { in: classIds } },
-        select: { classId: true, status: true },
-      }),
-      db.characterReport.findMany({
-        where: { classId: { in: classIds } },
-        select: { classId: true, habit: true, rating: true },
-      }),
-      db.externalQuizScore.findMany({
-        where: { classId: { in: classIds } },
-        select: { classId: true, score: true },
-      }),
-      db.teachingJournal.groupBy({
-        by: ['teacherId'],
-        where: { teacherId: { in: guruIds } },
-        _count: true,
-      }),
-      db.material.groupBy({
-        by: ['teacherId', 'type'],
-        where: { teacherId: { in: guruIds } },
-        _count: true,
-      }),
-    ]);
-
-    // Build lookup maps from batched results
-    // FIX: Prisma 6 groupBy._count returns number directly, not { _all: number }
-    const studentCountMap = new Map(studentCountsByClass.map((r) => [r.classId, r._count as number]));
-
-    // P0-09: Only count school-day statuses (exclude 'weekend'/'none') to match Siswa/Ortu
-    const schoolDayRecords = attendanceRecords.filter((a) => SCHOOL_DAY_STATUSES.has(a.status));
-
-    const attendanceByClass = new Map<string, { hadir: number; total: number }>();
-    for (const a of schoolDayRecords) {
-      if (!a.classId) continue;
-      const entry = attendanceByClass.get(a.classId) || { hadir: 0, total: 0 };
-      entry.total += 1;
-      if (a.status === 'hadir') entry.hadir += 1;
-      attendanceByClass.set(a.classId, entry);
-    }
-
-    // Overall attendance derived from the same batch
-    const overallHadir = schoolDayRecords.filter((a) => a.status === 'hadir').length;
-    const overallAvgKehadiran = calcAttendancePct(overallHadir, schoolDayRecords.length);
-
-    // Character reports grouped by class
-    const characterByClass = new Map<string, Array<{ habit: string; rating: number }>>();
-    for (const r of characterRecords) {
-      if (!r.classId) continue;
-      const arr = characterByClass.get(r.classId) || [];
-      arr.push({ habit: r.habit, rating: r.rating });
-      characterByClass.set(r.classId, arr);
-    }
-
-    const extScoresByClass = new Map<string, number[]>();
-    for (const s of extScoreRecords) {
-      if (!s.classId) continue;
-      const arr = extScoresByClass.get(s.classId) || [];
-      arr.push(s.score);
-      extScoresByClass.set(s.classId, arr);
-    }
-
-    const journalCountMap = new Map(journalCounts.map((r) => [r.teacherId, r._count as number]));
-
-    const materialCountMap = new Map<string, Map<string, number>>();
-    for (const r of materialCounts) {
-      if (!r.teacherId) continue;
-      if (!materialCountMap.has(r.teacherId)) materialCountMap.set(r.teacherId, new Map());
-      materialCountMap.get(r.teacherId)!.set(r.type, r._count as number);
-    }
-
-    // Assemble rekapKelas from maps
-    const rekapKelas = classes.map((cls) => {
-      const studentCount = studentCountMap.get(cls.id) || 0;
-      const att = attendanceByClass.get(cls.id);
-      const avgKehadiran = att ? calcAttendancePct(att.hadir, att.total) : null;
-      const charReports = characterByClass.get(cls.id) || [];
-      let avgKebiasaan: number | null = null;
-      if (charReports.length > 0) {
-        avgKebiasaan =
-          Math.round((charReports.reduce((sum, r) => sum + r.rating, 0) / charReports.length) * 100) / 100;
-      }
-      const scores = extScoresByClass.get(cls.id) || [];
-      let avgNilai: number | null = null;
-      if (scores.length > 0) {
-        avgNilai = Math.round((scores.reduce((sum, s) => sum + s, 0) / scores.length) * 100) / 100;
-      }
-      return { className: cls.name, classId: cls.id, studentCount, avgKehadiran, avgNilai, avgKebiasaan };
-    });
-
-    // Assemble rekapGuru from maps
-    const rekapGuru = gurus.map((guru) => {
-      const types = materialCountMap.get(guru.id) || new Map();
-      return {
-        teacherName: guru.name,
-        teacherId: guru.id,
-        nip: guru.nip || null,
-        kehadiranMengajar: journalCountMap.get(guru.id) || 0,
-        jumlahMateri: types.get('materi') || 0,
-        jumlahKuis: types.get('quiz') || 0,
-        jumlahTugas: types.get('tugas') || 0,
-      };
-    });
-
-    // School-wide habit summary
-    const habitMap = new Map<string, { totalRating: number; count: number }>();
-    for (const report of characterRecords) {
-      const existing = habitMap.get(report.habit) || { totalRating: 0, count: 0 };
-      existing.totalRating += report.rating;
-      existing.count += 1;
-      habitMap.set(report.habit, existing);
-    }
-    const rekapKebiasaan = Object.entries(SEVEN_HABIT_LABELS).map(([habitKey, habitInfo]) => {
-      const data = habitMap.get(habitKey);
-      return {
-        habitId: habitKey,
-        habitName: habitInfo.name,
-        avgRating: data ? Math.round((data.totalRating / data.count) * 100) / 100 : null,
-        reportCount: data ? data.count : 0,
-      };
-    });
-
-    // Per-class habit breakdown
-    const rekapKebiasaanPerKelas = classes.map((cls) => {
-      const classReports = characterByClass.get(cls.id) || [];
-      const classHabitMap = new Map<string, { totalRating: number; count: number }>();
-      for (const report of classReports) {
-        const existing = classHabitMap.get(report.habit) || { totalRating: 0, count: 0 };
-        existing.totalRating += report.rating;
-        existing.count += 1;
-        classHabitMap.set(report.habit, existing);
-      }
-      const habits = Object.entries(SEVEN_HABIT_LABELS).map(([habitKey, habitInfo]) => {
-        const data = classHabitMap.get(habitKey);
-        return {
-          habitId: habitKey,
-          habitName: habitInfo.name,
-          avgRating: data ? Math.round((data.totalRating / data.count) * 100) / 100 : null,
-          reportCount: data ? data.count : 0,
-        };
-      });
-      const totalReports = classReports.length;
-      const totalRating = classReports.reduce((sum, r) => sum + r.rating, 0);
-      return {
-        className: cls.name,
-        classId: cls.id,
-        totalReports,
-        avgOverall: totalReports > 0 ? Math.round((totalRating / totalReports) * 100) / 100 : null,
-        habits,
-      };
-    });
-
-    return NextResponse.json({
-      schoolInfo: {
-        schoolName: school.name,
-        totalSiswa,
-        totalGuru,
-        totalKelas,
-        overallAvgKehadiran,
-      },
-      rekapKelas,
-      rekapGuru,
-      rekapKebiasaan,
-      rekapKebiasaanPerKelas,
-    });
+    const data = await getKepalaSekolahDashboardData(schoolId);
+    return NextResponse.json(data);
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

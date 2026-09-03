@@ -47,6 +47,14 @@ interface ChildData {
   lastActive: string;
 }
 
+export interface OrangTuaDashboardServerData {
+  children: ChildData[];
+}
+
+interface OrangTuaDashboardProps {
+  serverData?: OrangTuaDashboardServerData;
+}
+
 interface Tip {
   id: string;
   icon: React.ReactNode;
@@ -160,11 +168,11 @@ function QuickActionCard({ icon, label, description, onClick, color, badge }: {
 
 // ─── Main Component ─────────────────────────────────────────────────
 
-export function OrangTuaDashboard() {
+export function OrangTuaDashboard({ serverData }: OrangTuaDashboardProps = {}) {
   const user = useAppStore((s) => s.user);
   const navigateTo = useAppStore((s) => s.navigateTo);
-  const [children, setChildren] = useState<ChildData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [children, setChildren] = useState<ChildData[]>(serverData?.children ?? []);
+  const [loading, setLoading] = useState(!serverData);
 
   // Current date helper
   const today = new Date();
@@ -207,8 +215,13 @@ export function OrangTuaDashboard() {
   ];
 
   useEffect(() => {
+    if (serverData) {
+      setChildren(serverData.children);
+      setLoading(false);
+      return;
+    }
     fetchChildren();
-  }, []);
+  }, [serverData]);
 
   async function fetchChildren() {
     if (!user?.id) return;

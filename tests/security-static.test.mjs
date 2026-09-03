@@ -262,6 +262,19 @@ assert(
   'route-map.ts does not expose admin-school/super-admin feature routes'
 );
 
+for (const [url, view] of [
+  ['/guru/dashboard', 'dashboard'],
+  ['/siswa/dashboard', 'dashboard'],
+  ['/ortu/dashboard', 'dashboard'],
+  ['/kepala-sekolah/dashboard', 'dashboard-kepsek'],
+]) {
+  assert(
+    routeMap.includes(`'${url}'`) &&
+      routeMap.includes(`'${view}'`),
+    `route-map.ts should contain the ${url} dashboard URL mapping`
+  );
+}
+
 const appLayout = read(join(SRC, 'components', 'layout', 'app-layout.tsx'));
 assert(
   /getRoleRoute/.test(appLayout) && /router\.push/.test(appLayout),
@@ -401,6 +414,53 @@ assert(
     /AdminSekolahDashboardServerData/.test(adminSchoolDashboard),
   'AdminSekolahDashboard does not accept server pre-loaded data'
 );
+
+// Guru / Siswa / Ortu / Kepala Sekolah server dashboard loaders + routes
+const serverDash = read(join(SRC, 'lib', 'server-dashboard.ts'));
+for (const loader of [
+  'getGuruDashboardData',
+  'getSiswaDashboardData',
+  'getOrtuDashboardData',
+  'getKepalaSekolahDashboardData',
+]) {
+  assert(new RegExp(loader).test(serverDash), `server-dashboard.ts missing ${loader}`);
+}
+
+const serverDashboardRoutes = [
+  ['src/app/guru/dashboard/page.tsx', 'getGuruDashboardData', 'GURU', 'ServerGuruDashboard'],
+  ['src/app/siswa/dashboard/page.tsx', 'getSiswaDashboardData', 'SISWA', 'ServerSiswaDashboard'],
+  ['src/app/ortu/dashboard/page.tsx', 'getOrtuDashboardData', 'ORANG_TUA', 'ServerOrtuDashboard'],
+  ['src/app/kepala-sekolah/dashboard/page.tsx', 'getKepalaSekolahDashboardData', 'KEPALA_SEKOLAH', 'ServerKepalaSekolahDashboard'],
+];
+for (const [rel, loader, role, shell] of serverDashboardRoutes) {
+  const page = read(join(ROOT, rel));
+  assert(
+    /getServerSessionUser/.test(page) &&
+      new RegExp(loader).test(page) &&
+      new RegExp(`['"]${role}['"]`).test(page) &&
+      new RegExp(shell).test(page) &&
+      /force-dynamic/.test(page),
+    `${rel} is not a server dashboard route`
+  );
+}
+
+for (const [dir, component, shell] of [
+  ['guru', 'guru-dashboard.tsx', 'server-guru-dashboard.tsx'],
+  ['siswa', 'siswa-dashboard.tsx', 'server-siswa-dashboard.tsx'],
+  ['orang-tua', 'orang-tua-dashboard.tsx', 'server-ortu-dashboard.tsx'],
+  ['kepala-sekolah', 'kepala-sekolah-dashboard.tsx', 'server-kepala-sekolah-dashboard.tsx'],
+]) {
+  const c = read(join(SRC, 'components', 'dashboard', dir, component));
+  const shellFile = read(join(SRC, 'components', 'app', shell));
+  assert(
+    /serverData\?/.test(c),
+    `${component} does not accept server pre-loaded data`
+  );
+  assert(
+    /AppLayout/.test(shellFile) && /serverData/.test(shellFile),
+    `${shell} does not render the dashboard with server data`
+  );
+}
 
 const serverDashboardPage = read(join(SRC, 'app', 'accounts', 'dashboard', 'page.tsx'));
 assert(

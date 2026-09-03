@@ -50,7 +50,7 @@ const ADMIN_SCHOOL_ROUTES: Partial<Record<ViewType, string>> = {
 };
 
 const GURU_ROUTES: Partial<Record<ViewType, string>> = {
-  dashboard: '/guru',
+  dashboard: '/guru/dashboard',
   'guru-materi': '/guru/materi',
   'guru-bank-soal': '/guru/bank-soal',
   'guru-tugas': '/guru/tugas',
@@ -75,7 +75,7 @@ const GURU_ROUTES: Partial<Record<ViewType, string>> = {
 };
 
 const SISWA_ROUTES: Partial<Record<ViewType, string>> = {
-  dashboard: '/siswa',
+  dashboard: '/siswa/dashboard',
   'siswa-materi': '/siswa/materi',
   'siswa-tugas': '/siswa/tugas',
   'siswa-tryout': '/siswa/tryout',
@@ -96,7 +96,7 @@ const SISWA_ROUTES: Partial<Record<ViewType, string>> = {
 };
 
 const ORANG_TUA_ROUTES: Partial<Record<ViewType, string>> = {
-  dashboard: '/ortu',
+  dashboard: '/ortu/dashboard',
   'ortu-karakter': '/ortu/karakter',
   'ortu-rekap-karakter': '/ortu/rekap-karakter',
   'ortu-nilai': '/ortu/nilai',
@@ -115,7 +115,7 @@ const ORANG_TUA_ROUTES: Partial<Record<ViewType, string>> = {
 };
 
 const KEPALA_SEKOLAH_ROUTES: Partial<Record<ViewType, string>> = {
-  dashboard: '/kepala-sekolah',
+  dashboard: '/kepala-sekolah/dashboard',
   'dashboard-kepsek': '/kepala-sekolah/dashboard',
   'kepsek-peta-kelas': '/kepala-sekolah/peta-kelas',
   'kepsek-rekap-kelas': '/kepala-sekolah/rekap-kelas',
@@ -334,6 +334,7 @@ const PATHNAME_VIEWS: Record<string, ViewType> = {
   '/admin-school/broadcasts': 'broadcasts',
 
   '/guru': 'dashboard',
+  '/guru/dashboard': 'dashboard',
   '/guru/materi': 'guru-materi',
   '/guru/bank-soal': 'guru-bank-soal',
   '/guru/tugas': 'guru-tugas',
@@ -357,6 +358,7 @@ const PATHNAME_VIEWS: Record<string, ViewType> = {
   '/guru/broadcasts': 'broadcasts',
 
   '/siswa': 'dashboard',
+  '/siswa/dashboard': 'dashboard',
   '/siswa/materi': 'siswa-materi',
   '/siswa/tugas': 'siswa-tugas',
   '/siswa/tryout': 'siswa-tryout',
@@ -376,6 +378,7 @@ const PATHNAME_VIEWS: Record<string, ViewType> = {
   '/siswa/broadcasts': 'broadcasts',
 
   '/ortu': 'dashboard',
+  '/ortu/dashboard': 'dashboard',
   '/ortu/karakter': 'ortu-karakter',
   '/ortu/rekap-karakter': 'ortu-rekap-karakter',
   '/ortu/nilai': 'ortu-nilai',

@@ -68,6 +68,12 @@ interface DashboardData {
   rekapKebiasaanPerKelas: RekapKebiasaanPerKelas[];
 }
 
+export interface KepalaSekolahDashboardServerData extends DashboardData {}
+
+interface KepalaSekolahDashboardProps {
+  serverData?: KepalaSekolahDashboardServerData;
+}
+
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'rekap-kelas', label: 'Rekap Per Kelas' },
   { key: 'rekap-guru', label: 'Rekap Per Guru' },
@@ -85,11 +91,11 @@ const HABIT_COLORS = [
   'bg-orange-400',
 ];
 
-export function KepalaSekolahDashboard() {
+export function KepalaSekolahDashboard({ serverData }: KepalaSekolahDashboardProps = {}) {
   const user = useAppStore((s) => s.user);
   const currentView = useAppStore((s) => s.currentView);
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData | null>(serverData ?? null);
+  const [loading, setLoading] = useState(!serverData);
   const [error, setError] = useState<string | null>(null);
 
   // Derive active tab from currentView so sidebar navigation works
@@ -111,6 +117,11 @@ export function KepalaSekolahDashboard() {
   }, [currentView]);
 
   useEffect(() => {
+    if (serverData) {
+      setData(serverData);
+      setLoading(false);
+      return;
+    }
     const schoolId = user?.schoolId;
     if (!schoolId) {
       setError('Data sekolah tidak ditemukan. Silakan hubungi admin.');
@@ -135,7 +146,7 @@ export function KepalaSekolahDashboard() {
     }
 
     fetchData();
-  }, [user?.id, user?.schoolId, user?.role]);
+  }, [serverData, user?.id, user?.schoolId, user?.role]);
 
   if (loading) {
     return (
