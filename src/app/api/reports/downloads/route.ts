@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth, AuthError } from '@/lib/auth';
+import { requireAuth, AuthError, type AuthUser } from '@/lib/auth';
 
 /**
  * GET /api/reports/downloads?studentId=xxx
@@ -10,7 +10,7 @@ import { requireAuth, AuthError } from '@/lib/auth';
  * or by SUPER_ADMIN / ADMIN_SCHOOL / GURU for their school's students.
  */
 export async function GET(request: NextRequest) {
-  let session;
+  let session: AuthUser;
   try {
     session = await requireAuth(request);
   } catch (error) {
