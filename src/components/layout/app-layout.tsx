@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { useAppStore, ViewType, UserRole } from '@/store/use-store';
+import { getRoleRoute } from '@/lib/route-map';
 import {
   Sheet,
   SheetContent,
@@ -733,6 +735,7 @@ function SidebarNav({ sections, currentView, onNavigate, onLogout }: SidebarNavP
 // ═══════════════════════════════════════════════════════════════════════
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const user = useAppStore((s) => s.user);
   const currentView = useAppStore((s) => s.currentView);
   const sidebarOpen = useAppStore((s) => s.sidebarOpen);
@@ -753,6 +756,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = () => {
     logout();
     toast.success('Berhasil keluar');
+  };
+
+  // Migrated features use a real App Router URL; unmigrated views fall back
+  // to the legacy Zustand currentView switch.
+  const handleNavigate = (view: ViewType) => {
+    const route = getRoleRoute(role as UserRole, view);
+    if (route) {
+      router.push(route);
+    } else {
+      navigateTo(view);
+    }
   };
 
   // ── Sidebar content (shared between desktop & mobile) ──
@@ -782,7 +796,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <SidebarNav
       sections={navSections}
       currentView={currentView}
-      onNavigate={navigateTo}
+      onNavigate={handleNavigate}
       onLogout={handleLogout}
     />
   );
@@ -878,7 +892,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       ) : (
                         <BreadcrumbLink
                           className="cursor-pointer"
-                          onClick={() => crumb.view && navigateTo(crumb.view)}
+                          onClick={() => crumb.view && handleNavigate(crumb.view)}
                         >
                           {crumb.label}
                         </BreadcrumbLink>
@@ -904,7 +918,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               size="icon"
               className="relative hover:bg-muted transition-colors duration-200"
               aria-label="Notifikasi"
-              onClick={() => navigateTo('notifications')}
+              onClick={() => handleNavigate('notifications')}
             >
               <Bell className="h-5 w-5" />
               <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 animate-pulse" />
@@ -931,10 +945,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <DropdownMenuSeparator />
                   </>
                 )}
-                <DropdownMenuItem onClick={() => navigateTo('profile')}>
+                <DropdownMenuItem onClick={() => handleNavigate('profile')}>
                   Profil
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigateTo('settings')}>
+                <DropdownMenuItem onClick={() => handleNavigate('settings')}>
                   Pengaturan
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />

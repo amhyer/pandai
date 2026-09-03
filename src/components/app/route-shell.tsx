@@ -34,6 +34,7 @@ export function RouteShell({ initialView, allowedRoles, loadingLabel = 'Menyiapk
   const setUser = useAppStore((s) => s.setUser);
   const setCurrentView = useAppStore((s) => s.setCurrentView);
   const [checked, setChecked] = useState(false);
+  const rolesKey = allowedRoles?.join(',') ?? '';
 
   useEffect(() => {
     let cancelled = false;
@@ -67,7 +68,7 @@ export function RouteShell({ initialView, allowedRoles, loadingLabel = 'Menyiapk
     return () => {
       cancelled = true;
     };
-  }, [allowedRoles, initialView, router, setCurrentView, setUser]);
+  }, [rolesKey, initialView, router, setCurrentView, setUser]);
 
   useEffect(() => {
     setOnUnauthorized(() => {

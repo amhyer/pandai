@@ -254,6 +254,34 @@ for (const segment of featureSegments) {
 }
 
 // ─── 10. Route-per-feature migration invariants ──────────────────────────
+const routeMap = read(join(SRC, 'lib', 'route-map.ts'));
+assert(
+  /export function getRoleRoute|export function getAdminSchoolView/.test(routeMap) &&
+    /admin-school\//.test(routeMap),
+  'route-map.ts does not expose admin-school feature routes'
+);
+
+const appLayout = read(join(SRC, 'components', 'layout', 'app-layout.tsx'));
+assert(
+  /getRoleRoute/.test(appLayout) && /router\.push/.test(appLayout),
+  'AppLayout does not navigate migrated features through the App Router'
+);
+
+const adminSchoolRoot = read(join(SRC, 'app', 'admin-school', 'page.tsx'));
+assert(
+  /RouteShell/.test(adminSchoolRoot) && /initialView="dashboard"/.test(adminSchoolRoot),
+  'admin-school root page is not the RouteShell dashboard'
+);
+
+const adminSchoolFeature = read(join(SRC, 'app', 'admin-school', '[feature]', 'page.tsx'));
+assert(
+  /useParams/.test(adminSchoolFeature) &&
+    /getAdminSchoolView/.test(adminSchoolFeature) &&
+    /RouteShell/.test(adminSchoolFeature) &&
+    /AppRouteNotFound/.test(adminSchoolFeature),
+  'admin-school dynamic feature page does not map segments to views'
+);
+
 const viewRouter = read(join(SRC, 'components', 'app', 'view-router.tsx'));
 assert(
   /export function ViewRouter/.test(viewRouter) &&

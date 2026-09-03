@@ -926,7 +926,9 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ `RouteShell` (`src/components/app/route-shell.tsx`) dibuat: restore session via `/api/auth/me`, cek role, set `currentView`, lalu render `AppLayout + ViewRouter` — jadi URL route nyata sambil `currentView` lama tetap bekerja.
 - ✅ Server-side role layout (`layout.tsx`) ditambahkan untuk `admin-school/accounts`, `guru/accounts`, `kepala-sekolah/accounts`, `siswa/accounts`, `ortu/accounts`, `accounts`; layout memverifikasi session cookie + role sebelum merender halaman.
 - ✅ Halaman stub yang sebelumnya hanya redirect ke `/` kini menjadi route-page sungguhan via `RouteShell`: `/admin-school/accounts` → `accounts`, `/accounts` → `users-global`, `/guru/accounts` → dashboard guru, dst.
-- 🔲 Refactor penuh: memindahkan semua fitur `currentView` ke URL route per fitur (misal `/(dashboard)/.../page.tsx` per fitur) masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
+- ✅ `/admin-school` route-per-feature penuh dimulai: `src/lib/route-map.ts` memetakan `currentView` ↔ URL; `/admin-school` → dashboard, `/admin-school/[feature]` → fitur admin sekolah (classes, subjects, timetable, teacher-assignments, wali-kelas, import-csv, dapodik-sync, settings, backup-restore, activity-log, dst).
+- ✅ `AppLayout` kini memakai `router.push()` untuk fitur admin sekolah yang sudah punya URL route; fitur lain tetap fallback ke legacy `navigateTo`/`currentView`.
+- 🔲 Refactor penuh: memindahkan semua fitur role lain (guru/siswa/ortu/kepala-sekolah/super-admin) ke URL route per fitur masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
 
 ### C.10 Belum dikerjakan (bisa dijadikan sprint berikutnya)
 - 🔲 Menyelesaikan refactor route-per-feature + Server Components (pindahkan dashboard/feature view ke route nyata, auth guard per segment).
