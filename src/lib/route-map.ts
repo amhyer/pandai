@@ -11,7 +11,7 @@ import type { ViewType, UserRole } from '@/store/use-store';
  */
 
 const SUPER_ADMIN_ROUTES: Partial<Record<ViewType, string>> = {
-  dashboard: '/accounts',
+  dashboard: '/accounts/dashboard',
   schools: '/accounts/schools',
   'school-detail': '/accounts/schools',
   'users-global': '/accounts/users',
@@ -298,6 +298,7 @@ export function getKepalaSekolahView(feature: string): ViewType | null {
  */
 const PATHNAME_VIEWS: Record<string, ViewType> = {
   '/accounts': 'dashboard',
+  '/accounts/dashboard': 'dashboard',
   '/accounts/schools': 'schools',
   '/accounts/users': 'users-global',
   '/accounts/questions': 'questions-global',

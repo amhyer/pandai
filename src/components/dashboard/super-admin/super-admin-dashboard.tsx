@@ -82,6 +82,26 @@ interface RecentActivity {
   color: string;
 }
 
+export interface SuperAdminDashboardServerData {
+  analytics: GlobalAnalytics | null;
+  activities: {
+    id: string;
+    action: string;
+    detail: string;
+    module: string;
+    createdAt: Date;
+  }[];
+}
+
+interface SuperAdminDashboardProps {
+  /**
+   * Optional server pre-loaded data. When provided the component skips the
+   * existing client fetch below and renders immediately from the Server
+   * Component's initial payload.
+   */
+  serverData?: SuperAdminDashboardServerData;
+}
+
 // ─── Stat Card ──────────────────────────────────────────────────────
 
 interface StatCardProps {
@@ -193,12 +213,12 @@ function QuickActionCard({ icon, label, description, onClick, color }: {
 
 // ─── Main Component ─────────────────────────────────────────────────
 
-export function SuperAdminDashboard() {
+export function SuperAdminDashboard({ serverData }: SuperAdminDashboardProps = {}) {
   const user = useAppStore((s) => s.user);
   const navigateTo = useAppStore((s) => s.navigateTo);
   const setSelectedSchoolId = useAppStore((s) => s.setSelectedSchoolId);
-  const [analytics, setAnalytics] = useState<GlobalAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [analytics, setAnalytics] = useState<GlobalAnalytics | null>(serverData?.analytics ?? null);
+  const [loading, setLoading] = useState(!serverData);
   const [seeding, setSeeding] = useState(false);
 
   // Current date helper
@@ -208,9 +228,26 @@ export function SuperAdminDashboard() {
   const [recentActivities, setRecentActivities] = useState<RecentActivity[]>([]);
 
   useEffect(() => {
+    if (serverData) {
+      setAnalytics(serverData.analytics);
+      setRecentActivities(
+        serverData.activities.map((activity) => {
+          const style = getActivityStyle(activity.module);
+          return {
+            id: activity.id,
+            action: activity.action,
+            detail: activity.detail || '',
+            time: getRelativeTime(activity.createdAt as unknown as string),
+            icon: style.icon,
+            color: style.color,
+          };
+        })
+      );
+      return;
+    }
     fetchAnalytics();
     fetchRecentActivities();
-  }, []);
+  }, [serverData]);
 
   async function fetchAnalytics() {
     try {

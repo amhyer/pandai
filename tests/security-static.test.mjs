@@ -364,6 +364,38 @@ assert(
   'PrefetchedRouteShell does not seed the session from server data'
 );
 
+const serverDashboardData = read(join(SRC, 'lib', 'server-dashboard.ts'));
+assert(
+  /getSuperAdminDashboardData/.test(serverDashboardData) &&
+    /db\.school\.count/.test(serverDashboardData) &&
+    /db\.activityLog\.findMany/.test(serverDashboardData),
+  'server-dashboard.ts does not pre-fetch global analytics/activity data'
+);
+
+const serverDashboardPage = read(join(SRC, 'app', 'accounts', 'dashboard', 'page.tsx'));
+assert(
+  /getServerSessionUser/.test(serverDashboardPage) &&
+    /getSuperAdminDashboardData/.test(serverDashboardPage) &&
+    /ServerSuperAdminDashboard/.test(serverDashboardPage) &&
+    /force-dynamic/.test(serverDashboardPage),
+  'accounts/dashboard is not a server-fetched dashboard route'
+);
+
+const serverDashboardShell = read(join(SRC, 'components', 'app', 'server-super-admin-dashboard.tsx'));
+assert(
+  /AppLayout/.test(serverDashboardShell) &&
+    /SuperAdminDashboard/.test(serverDashboardShell) &&
+    /serverData/.test(serverDashboardShell),
+  'ServerSuperAdminDashboard does not render the dashboard with server data'
+);
+
+const superAdminDashboard = read(join(SRC, 'components', 'dashboard', 'super-admin', 'super-admin-dashboard.tsx'));
+assert(
+  /serverData\?/.test(superAdminDashboard) &&
+    /SuperAdminDashboardServerData/.test(superAdminDashboard),
+  'SuperAdminDashboard does not accept server pre-loaded data'
+);
+
 const serverProfilePage = read(join(SRC, 'app', 'accounts', 'profile', 'page.tsx'));
 assert(
   /getServerSessionUser/.test(serverProfilePage) &&
