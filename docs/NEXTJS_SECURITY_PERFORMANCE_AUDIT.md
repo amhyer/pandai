@@ -899,10 +899,14 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ `poweredByHeader: false` pada `next.config.ts`.
 - ✅ `JWT_SECRET`/`PASSWORD_SALT` menolak placeholder & secret pendek (<32 karakter) di production.
 
-### C.6 Belum dikerjakan (bisa dijadikan sprint berikutnya)
+### C.6 Housekeeping
+- ✅ File backup `src/app/page.tsx.bak`, `.bak2`, dan `.full` dihapus dari repo.
+- ✅ `src/app/loading.tsx` ditambahkan (App Router loading state).
+
+### C.7 Belum dikerjakan (bisa dijadikan sprint berikutnya)
 - 🔲 Verifikasi/approval pada `POST /api/auth/register-school` (anti-school squatting).
 - 🔲 Refactor route-per-feature + Server Components.
-- 🔲 Menambahkan `loading.tsx` dan Error Boundary per segment.
+- 🔲 Menambahkan Error Boundary per segment.
 - 🔲 Hapus dependency `@mdxeditor/editor`, `next-auth`, `@tanstack/react-query` bila dipastikan tidak terpakai.
 - 🔲 Pindahkan rate limiter in-memory ke Redis untuk multi-instance.
 - 🔲 Tambahkan automated integration/security tests di CI.
