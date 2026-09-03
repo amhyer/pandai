@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { requireRole, AuthError } from '@/lib/auth';
 
 // GET /api/import/template?type=siswa|guru — Return CSV template
 export async function GET(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
 
@@ -29,6 +31,9 @@ export async function GET(request: Request) {
       },
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     return NextResponse.json({ error: 'Gagal mengunduh template' }, { status: 500 });
   }
 }
