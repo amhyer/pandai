@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { requireAuth, AuthError } from '@/lib/auth'
+import { requireSchoolScope } from '@/lib/scope'
 import { Prisma } from '@prisma/client'
 
 /**
@@ -25,6 +26,9 @@ export async function GET(request: NextRequest) {
     if (!schoolId) {
       return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 })
     }
+
+    // Tenancy enforcement: non-super-admin cannot query another school.
+    requireSchoolScope(user, schoolId)
 
     // ────────────────────────────────────────────────────
     // 1. StudentAnswer (Tryout) — aggregated by questionId

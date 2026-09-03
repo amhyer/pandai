@@ -112,8 +112,12 @@ export function RegisterForm() {
       toast.error('Format email tidak valid');
       return false;
     }
-    if (password.length < 6) {
-      toast.error('Password minimal 6 karakter');
+    if (password.length < 8) {
+      toast.error('Password minimal 8 karakter');
+      return false;
+    }
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      toast.error('Password harus mengandung huruf dan angka');
       return false;
     }
     if (password !== confirmPassword) {
@@ -767,7 +771,7 @@ export function RegisterForm() {
                   <Input
                     id="reg-password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Minimal 6 karakter"
+                    placeholder="Minimal 8 karakter"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className={`${inputClass} pr-10`}

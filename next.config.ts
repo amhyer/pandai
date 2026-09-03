@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  poweredByHeader: false,
   serverExternalPackages: ["pdfkit", "jspdf", "mammoth"],
   allowedDevOrigins: ["*"],
   productionBrowserSourceMaps: false,

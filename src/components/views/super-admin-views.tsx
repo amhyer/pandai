@@ -474,8 +474,12 @@ export function UsersGlobalView() {
       toast.error('Pilih sekolah terlebih dahulu.');
       return;
     }
-    if (!addForm.password || addForm.password.length < 6) {
-      toast.error('Password minimal 6 karakter.');
+    if (!addForm.password || addForm.password.length < 8) {
+      toast.error('Password minimal 8 karakter.');
+      return;
+    }
+    if (!/[A-Za-z]/.test(addForm.password) || !/\d/.test(addForm.password)) {
+      toast.error('Password harus mengandung huruf dan angka.');
       return;
     }
 
@@ -603,8 +607,12 @@ export function UsersGlobalView() {
 
   async function handleResetPassword() {
     if (!resetTarget) return;
-    if (newPassword.length < 6) {
-      toast.error('Password minimal 6 karakter.');
+    if (newPassword.length < 8) {
+      toast.error('Password minimal 8 karakter.');
+      return;
+    }
+    if (!/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+      toast.error('Password harus mengandung huruf dan angka.');
       return;
     }
     setResetting(true);
@@ -1092,7 +1100,7 @@ export function UsersGlobalView() {
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
               className="rounded-lg focus:ring-2 focus:ring-emerald-500/20"
-              placeholder="Minimal 6 karakter"
+              placeholder="Minimal 8 karakter"
             />
             <p className="text-xs text-muted-foreground flex items-center gap-1.5">
               <Shield className="h-3 w-3" />
@@ -1255,7 +1263,7 @@ export function UsersGlobalView() {
                 value={addForm.password}
                 onChange={(e) => setAddForm((f) => ({ ...f, password: e.target.value }))}
                 className="rounded-lg focus:ring-2 focus:ring-[#1F3864]/20"
-                placeholder="Minimal 6 karakter"
+                placeholder="Minimal 8 karakter"
               />
             </div>
           </div>

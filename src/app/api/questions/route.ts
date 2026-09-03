@@ -50,9 +50,25 @@ export async function GET(request: Request) {
       skip,
     });
 
-    // Security: strip answer key from SISWA responses
+    // Security: strip answer key from SISWA responses (including options[].isCorrect)
     if (auth.role === 'SISWA') {
-      const sanitized = questions.map(({ answer, explanation, ...rest }) => rest);
+      const sanitized = questions.map(({ answer, explanation, ...rest }) => {
+        let options = rest.options;
+        if (options) {
+          try {
+            const parsed = JSON.parse(options);
+            options = JSON.stringify(
+              (Array.isArray(parsed) ? parsed : []).map((o: Record<string, unknown>) => ({
+                label: String(o.label ?? ''),
+                text: String(o.text ?? ''),
+              }))
+            );
+          } catch {
+            options = null;
+          }
+        }
+        return { ...rest, options };
+      });
       return NextResponse.json(sanitized);
     }
 

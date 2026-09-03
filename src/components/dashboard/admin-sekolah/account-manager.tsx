@@ -274,7 +274,8 @@ function AddKepsekDialog({ open, onOpenChange, schoolId, onSuccess }: AddKepsekD
     e.preventDefault();
     if (!form.name.trim()) { toast.error('Nama wajib diisi'); return; }
     if (!form.email.trim()) { toast.error('Email wajib diisi untuk kepala sekolah'); return; }
-    if (form.password.trim().length < 6) { toast.error('Password minimal 6 karakter'); return; }
+    if (form.password.trim().length < 8) { toast.error('Password minimal 8 karakter'); return; }
+    if (!/[A-Za-z]/.test(form.password.trim()) || !/\d/.test(form.password.trim())) { toast.error('Password harus mengandung huruf dan angka'); return; }
 
     try {
       setSubmitting(true);
@@ -337,7 +338,7 @@ function AddKepsekDialog({ open, onOpenChange, schoolId, onSuccess }: AddKepsekD
           </div>
           <div className="space-y-2">
             <Label htmlFor="add-kepsek-password">Password <span className="text-red-500">*</span></Label>
-            <Input id="add-kepsek-password" type="password" placeholder="Minimal 6 karakter" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
+            <Input id="add-kepsek-password" type="password" placeholder="Minimal 8 karakter" value={form.password} onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => { resetForm(); onOpenChange(false); }}>Batal</Button>
@@ -679,8 +680,12 @@ function ResetPasswordDialog({ open, onOpenChange, user, onSuccess }: ResetPassw
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newPassword.trim() || newPassword.trim().length < 6) {
-      toast.error('Password minimal 6 karakter');
+    if (!newPassword.trim() || newPassword.trim().length < 8) {
+      toast.error('Password minimal 8 karakter');
+      return;
+    }
+    if (!/[A-Za-z]/.test(newPassword.trim()) || !/\d/.test(newPassword.trim())) {
+      toast.error('Password harus mengandung huruf dan angka');
       return;
     }
     if (!user) return;
@@ -729,7 +734,7 @@ function ResetPasswordDialog({ open, onOpenChange, user, onSuccess }: ResetPassw
               <Input
                 id="reset-pwd"
                 type={showPassword ? 'text' : 'password'}
-                placeholder="Minimal 6 karakter"
+                placeholder="Minimal 8 karakter"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 autoFocus
@@ -750,7 +755,7 @@ function ResetPasswordDialog({ open, onOpenChange, user, onSuccess }: ResetPassw
             <Button
               type="submit"
               className="bg-amber-600 hover:bg-amber-700"
-              disabled={submitting || newPassword.trim().length < 6}
+              disabled={submitting || newPassword.trim().length < 8}
             >
               {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Merest...</> : 'Reset Password'}
             </Button>

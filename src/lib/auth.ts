@@ -232,6 +232,15 @@ export class AuthError extends Error {
   }
 }
 
+// ─── Sensitive user sanitizer for admin/user routes ────────────
+
+/** Remove secrets that must never be sent to the browser even for authorized admin views. */
+export function sanitizeUser(user: any): any {
+  if (!user) return user;
+  const { password, sessionToken, ...safe } = user;
+  return safe;
+}
+
 // ─── Cookie helpers for login/logout ─────────────────────────
 
 export function createSessionCookie(token: string) {

@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { requireRole, AuthError } from '@/lib/auth';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const IS_POSTGRESQL = (process.env.DATABASE_URL || '').startsWith('postgresql://');
 
@@ -106,7 +106,7 @@ export async function POST(req: NextRequest) {
       const backupPath = path.join(backupDir, `pandai-${timestamp}.sql`);
 
       try {
-        await execAsync(`pg_dump "${DATABASE_URL}" > "${backupPath}"`);
+        await execFileAsync('pg_dump', ['--file', backupPath, DATABASE_URL]);
         const stats = await fs.stat(backupPath);
 
         return NextResponse.json({

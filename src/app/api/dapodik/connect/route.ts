@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
+import { requireRole, AuthError } from '@/lib/auth';
 
 const CONNECT_TIMEOUT_MS = 10_000;
-const DEFAULT_TOKEN = '7FJ9KP0Q3W8H6R2D5T1V';
+const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const ALLOWED_PORTS = new Set(['5774', '8881']);
 
 /**
  * POST /api/dapodik/connect
@@ -14,6 +16,7 @@ const DEFAULT_TOKEN = '7FJ9KP0Q3W8H6R2D5T1V';
  *   - bentuk?: string (optional filter for action=schools, e.g. "SD" or "SMP")
  *
  * Proxies requests to the operator's local Dapodik API (devmaarifnu/dapodik-api).
+ * Only localhost/127.0.0.1 on configured ports is allowed (SSRF protection).
  */
 
 function normalizeUrl(serverUrl: string): string {
@@ -22,6 +25,24 @@ function normalizeUrl(serverUrl: string): string {
     url = 'http://' + url;
   }
   return url;
+}
+
+function isAllowedDapodikUrl(baseUrl: string): { allowed: boolean; reason?: string } {
+  try {
+    const parsed = new URL(baseUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return { allowed: false, reason: 'Only http/https is allowed' };
+    }
+    if (!ALLOWED_HOSTS.has(parsed.hostname)) {
+      return { allowed: false, reason: 'Host Dapodik harus localhost, 127.0.0.1, atau [::1]' };
+    }
+    if (!ALLOWED_PORTS.has(parsed.port)) {
+      return { allowed: false, reason: 'Port Dapodik harus 5774 atau 8881' };
+    }
+    return { allowed: true };
+  } catch {
+    return { allowed: false, reason: 'Format URL server tidak valid' };
+  }
 }
 
 async function fetchFromDapodik(
@@ -51,17 +72,30 @@ async function fetchFromDapodik(
 
 export async function POST(request: Request) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    if (!auth) throw new AuthError('Unauthorized', 401);
+
     const body = await request.json();
     const { serverUrl, token: userToken, action, npsn, bentuk } = body;
 
     const baseUrl = normalizeUrl(serverUrl || 'localhost:8881');
-    const token = userToken || DEFAULT_TOKEN;
+    const token = userToken || '';
+    if (!token) {
+      return NextResponse.json({ error: 'Token Dapodik wajib diisi' }, { status: 400 });
+    }
+
+    const urlCheck = isAllowedDapodikUrl(baseUrl);
+    if (!urlCheck.allowed) {
+      return NextResponse.json(
+        { error: urlCheck.reason || 'Server Dapodik tidak diizinkan' },
+        { status: 403 }
+      );
+    }
 
     if (!action) {
       return NextResponse.json({ error: 'Action wajib diisi (test/schools/school)' }, { status: 400 });
     }
 
-    // ── Action: Test Connection ──
     if (action === 'test') {
       try {
         const result = await fetchFromDapodik(baseUrl, token, '', 5_000);
@@ -99,7 +133,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Action: Fetch All Schools ──
     if (action === 'schools') {
       try {
         const queryParams: string[] = [];
@@ -139,7 +172,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // ── Action: Fetch Single School by NPSN ──
     if (action === 'school') {
       if (!npsn || !/^\d{8}$/.test(String(npsn))) {
         return NextResponse.json({ error: 'NPSN harus 8 digit angka' }, { status: 400 });
@@ -186,6 +218,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: `Action "${action}" tidak dikenali` }, { status: 400 });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('[Dapodik Connect Error]', error);
     return NextResponse.json({ error: 'Terjadi kesalahan server' }, { status: 500 });
   }

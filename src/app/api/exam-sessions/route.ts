@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 // GET /api/exam-sessions — list exam sessions for a school
 export async function GET(req: NextRequest) {
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest) {
     if (!schoolId) {
       return NextResponse.json({ error: 'schoolId diperlukan' }, { status: 400 });
     }
+
+    // Tenancy enforcement: non-super-admin cannot query another school.
+    requireSchoolScope(user, schoolId);
 
     const where: Record<string, unknown> = { schoolId };
     if (status) where.status = status;
