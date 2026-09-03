@@ -852,6 +852,62 @@ Banyak route menggunakan `findMany` + `_count`, lalu melakukan additional query 
 
 ---
 
+## Lampiran C — Status Implementasi Perbaikan (2026-09-03)
+
+Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff-pandai` setelah audit ini dibuat.
+
+### C.1 Auth & Tenancy
+- ✅ `POST /api/users/[id]/reset-password` sekarang wajib `SUPER_ADMIN`/`ADMIN_SCHOOL`, dengan school-scope dan kebijakan password baru.
+- ✅ `GET/POST/PATCH /api/schools/[id]/admin-account` sekarang diautentikasi + tenancy, tanpa password default.
+- ✅ `GET/POST/PATCH/DELETE /api/exam-items` sekarang diautentikasi, dengan tenancy scope dan sanitasi `answer`/`explanation`/`options[].isCorrect`.
+- ✅ `GET/POST /api/notifications`, `PATCH/DELETE /api/notifications/[id]`, dan `PATCH /api/notifications/mark-all-read` sekarang memakai session (`userId` dari cookie), bukan dari query/body.
+- ✅ `GET/POST/PATCH/DELETE /api/announcements` sekarang diautentikasi dengan school-scope.
+- ✅ `POST/DELETE /api/timetable/bulk` sekarang diautentikasi + school-scope + verifikasi class-school.
+- ✅ `GET /api/dapodik/status`, `GET /api/dapodik-proxy`, `POST /api/dapodik/proxy`, `POST /api/dapodik/connect`, dan `POST /api/schools/lookup-local` sekarang diautentikasi.
+- ✅ `GET /api/import/template` sekarang diautentikasi.
+- ✅ `POST /api/exam-sessions` dan `GET /api/analytics/item-analysis` menggunakan school-scope.
+- ✅ `reports/downloads` dipindahkan dari `auth-guard.ts` (Bearer token) ke `requireAuth` (JWT cookie) sehingga berfungsi dengan aplikasi.
+
+### C.2 Privilege Escalation & Data Leak
+- ✅ `POST /api/users` sekarang memvalidasi role yang boleh dibuat per actor (`ADMIN_SCHOOL` tidak bisa membuat `SUPER_ADMIN`/`ADMIN_SCHOOL`).
+- ✅ Semua response `users` (GET/POST/PATCH/PUT) melewati `sanitizeUser()`, sehingga **password hash dan `sessionToken` tidak pernah dikirim** ke browser.
+- ✅ `GET /api/questions` untuk `SISWA` menghapus `answer`, `explanation`, dan `options[].isCorrect`.
+- ✅ `GET /api/exam-items` tidak lagi mengembalikan answer key.
+- ✅ `POST /api/users/reset-password` dan reset admin tidak lagi mengembalikan raw password baru.
+
+### C.3 Input Validation & Password Policy
+- ✅ Password minimum dinaikkan menjadi **8 karakter** dan harus mengandung **huruf + angka** pada:
+  - `/api/auth/register`
+  - `/api/auth/register-school`
+  - `/api/users` (POST/PATCH)
+  - `/api/auth/change-password`
+  - `/api/users/[id]/reset-password`
+  - `/api/users/reset-password`
+  - `/api/schools/[id]/admin-account`
+  - UI form register / tambah akun / reset password.
+- ✅ Self-registration siswa/ortu sekarang wajib `schoolCode`.
+
+### C.4 SSRF & Command Injection
+- ✅ Menghapus `DEFAULT_TOKEN` hardcoded pada `/api/dapodik/connect`.
+- ✅ Allowlist host `localhost`, `127.0.0.1`, `[::1]` dan port `5774`/`8881` pada route Dapodik dan lookup lokal.
+- ✅ `pg_dump` di `/api/backup` memakai `execFile` dengan argumen array, bukan shell string.
+
+### C.5 Lainnya
+- ✅ `src/lib/auth-guard.ts` dihapus karena tidak dipakai lagi (auth terpusat di `lib/auth.ts`).
+- ✅ Batas ukuran file restore 500MB.
+- ✅ CSP menambahkan `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`.
+- ✅ `poweredByHeader: false` pada `next.config.ts`.
+
+### C.6 Belum dikerjakan (bisa dijadikan sprint berikutnya)
+- 🔲 Verifikasi/approval pada `POST /api/auth/register-school` (anti-school squatting).
+- 🔲 Refactor route-per-feature + Server Components.
+- 🔲 Menambahkan `loading.tsx` dan Error Boundary per segment.
+- 🔲 Hapus dependency `@mdxeditor/editor`, `next-auth`, `@tanstack/react-query` bila dipastikan tidak terpakai.
+- 🔲 Pindahkan rate limiter in-memory ke Redis untuk multi-instance.
+- 🔲 Tambahkan automated integration/security tests di CI.
+
+---
+
 ## Lampiran A — Daftar Route “Tanpa Auth” yang Perlu Divalidasi
 
 Dari penelusuran, 25 route tidak memanggil `requireAuth`/`requireRole`/`getCurrentUser`. Beberapa memang boleh publik (`/api/health`, `/api/npsn`, login/register), tetapi berikut harus segera ditangani:
