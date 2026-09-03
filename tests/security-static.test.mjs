@@ -367,6 +367,23 @@ assert(
   'Server Component profile route does not preload a SUPER_ADMIN session'
 );
 
+const serverPages = [
+  ['src/app/admin-school/profile/page.tsx', 'ADMIN_SCHOOL', 'profile'],
+  ['src/app/accounts/notifications/page.tsx', 'SUPER_ADMIN', 'notifications'],
+  ['src/app/admin-school/notifications/page.tsx', 'ADMIN_SCHOOL', 'notifications'],
+];
+for (const [rel, role, initialView] of serverPages) {
+  const page = read(join(ROOT, rel));
+  assert(
+    /getServerSessionUser/.test(page) &&
+      /PrefetchedRouteShell/.test(page) &&
+      new RegExp(`['"]${role}['"]`).test(page) &&
+      new RegExp(initialView).test(page) &&
+      /force-dynamic/.test(page),
+    `${rel} is not a Server Component route for ${role} (${initialView})`
+  );
+}
+
 const authenticatedApp = read(join(SRC, 'app', 'authenticated-app.tsx'));
 assert(
   authenticatedApp.includes("from '@/components/app/view-router'"),
