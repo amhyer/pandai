@@ -921,6 +921,7 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 ### C.9 Route-per-feature (tahap awal / incremental)
 - ✅ Shared App Router route states dibuat: `src/components/app/app-route-loading.tsx`, `app-route-error.tsx`, `app-route-not-found.tsx`.
 - ✅ Route boundaries `loading.tsx` / `error.tsx` / `not-found.tsx` ditambahkan untuk segmen fitur: `admin-school`, `guru`, `kepala-sekolah`, `siswa`, `ortu`, `accounts`, `download` + sub-segmen accounts/dapodik.
+- ✅ Edge session guard ditambahkan via `src/lib/proxy-auth.ts` (jose-only, tanpa Prisma) dan `src/proxy.ts`: route halaman `/admin-school`, `/guru`, `/kepala-sekolah`, `/siswa`, `/ortu`, `/accounts` kini redirect ke `/` (login) bila tidak ada/valid session JWT.
 - 🔲 Refactor penuh dari SPA Zustand (`currentView`/`authenticated-app.tsx`) ke route-per-feature dengan Server Components dan halaman nyata per fitur masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
 
 ### C.10 Belum dikerjakan (bisa dijadikan sprint berikutnya)

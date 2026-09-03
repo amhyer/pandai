@@ -211,6 +211,20 @@ assert(
   'Password salt production validation is missing'
 );
 
+// ─── 8b. Edge page-route auth guard ─────────────────────────────────────
+const proxyAuth = read(join(SRC, 'lib', 'proxy-auth.ts'));
+assert(
+  /jwtVerify/.test(proxyAuth) && /pandai_session/.test(proxyAuth),
+  'src/lib/proxy-auth.ts does not provide an edge-safe session verifier'
+);
+assert(
+  /verifyProxySession/.test(proxyContent) &&
+    /getSessionTokenFromRequest/.test(proxyContent) &&
+    /admin-school/.test(proxyContent) &&
+    /accounts/.test(proxyContent),
+  'src/proxy.ts does not protect role/dashboard page routes at the edge'
+);
+
 // ─── 9. App Router feature segments have route boundaries ────────────────
 const featureSegments = [
   'admin-school',

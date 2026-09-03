@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { checkRateLimitAsync, RATE_AI, RATE_POST } from '@/lib/rate-limit';
+import { getSessionTokenFromRequest, verifyProxySession } from '@/lib/proxy-auth';
 
 // Security headers applied to all API responses
 const SECURITY_HEADERS: Record<string, string> = {
@@ -25,6 +26,29 @@ export async function proxy(request: NextRequest) {
 
   // Extract IP (never trust client headers beyond the first hop)
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+
+  // ─── 0. Segment auth guard for role/dashboard page routes ───
+  // These routes are the SPA's deep-link targets. Without an edge guard an
+  // unauthenticated visitor receives the page HTML instead of being sent back
+  // to the login screen at "/".
+  const protectedPagePrefixes = [
+    '/admin-school',
+    '/guru',
+    '/kepala-sekolah',
+    '/siswa',
+    '/ortu',
+    '/accounts',
+  ];
+  const isProtectedPage = protectedPagePrefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+  if (isProtectedPage) {
+    const token = getSessionTokenFromRequest(request);
+    const session = token ? await verifyProxySession(token) : null;
+    if (!session) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
 
   // Login brute-force protection lives in the login API route so the same
   // Redis-backed key is not consumed twice (proxy + route).
@@ -94,5 +118,12 @@ export const config = {
     '/api/auth/login',
     '/api/ai/:path*',
     '/api/:path((?!_next|static|favicon.ico).*)',
+    // Protect role/dashboard deep-link page routes at the edge
+    '/admin-school/:path*',
+    '/guru/:path*',
+    '/kepala-sekolah/:path*',
+    '/siswa/:path*',
+    '/ortu/:path*',
+    '/accounts/:path*',
   ],
 };
