@@ -903,8 +903,14 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ File backup `src/app/page.tsx.bak`, `.bak2`, dan `.full` dihapus dari repo.
 - ✅ `src/app/loading.tsx` ditambahkan (App Router loading state).
 
-### C.7 Belum dikerjakan (bisa dijadikan sprint berikutnya)
-- 🔲 Verifikasi/approval pada `POST /api/auth/register-school` (anti-school squatting).
+### C.7 Anti school-squatting
+- ✅ `POST /api/auth/register-school` sekarang membuat sekolah dengan status `pending` dan admin sekolah `isActive: false`.
+- ✅ `POST /api/schools/[id]/approve` ditambahkan untuk persetujuan oleh `SUPER_ADMIN`; saat disetujui, sekolah menjadi `active` dan admin diaktifkan.
+- ✅ `DELETE /api/schools` kini juga menonaktifkan akun admin sekolah saat sekolah dihapus.
+- ✅ UI `SchoolManager` menampilkan status “Menunggu Persetujuan” dan tombol **Setujui**.
+- ✅ Form registrasi admin sekolah menampilkan pesan bahwa akun akan aktif setelah persetujuan, lalu kembali ke login.
+
+### C.8 Belum dikerjakan (bisa dijadikan sprint berikutnya)
 - 🔲 Refactor route-per-feature + Server Components.
 - 🔲 Menambahkan Error Boundary per segment.
 - 🔲 Hapus dependency `@mdxeditor/editor`, `next-auth`, `@tanstack/react-query` bila dipastikan tidak terpakai.

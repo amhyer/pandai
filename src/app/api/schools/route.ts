@@ -88,7 +88,18 @@ export async function DELETE(request: Request) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
+
+    const school = await db.school.findUnique({ where: { id }, select: { id: true } });
+    if (!school) return NextResponse.json({ error: 'Sekolah tidak ditemukan' }, { status: 404 });
+
     await db.school.update({ where: { id }, data: { status: 'deleted' } });
+
+    // Deactivate the school's admin account(s) so a deleted school cannot log in.
+    await db.user.updateMany({
+      where: { schoolId: id, role: 'ADMIN_SCHOOL' },
+      data: { isActive: false },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error) {
     if (error instanceof AuthError) {

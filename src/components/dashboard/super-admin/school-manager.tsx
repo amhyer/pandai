@@ -54,6 +54,7 @@ import {
   Search,
   GraduationCap,
   Building,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -109,6 +110,9 @@ function PlanBadge({ plan }: { plan: string }) {
 function StatusBadge({ status }: { status: string }) {
   if (status === 'active') {
     return <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 border">Aktif</Badge>;
+  }
+  if (status === 'pending') {
+    return <Badge className="bg-blue-100 text-blue-700 border-blue-200 border">Menunggu Persetujuan</Badge>;
   }
   if (status === 'suspended') {
     return <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200 border">Ditangguhkan</Badge>;
@@ -240,6 +244,7 @@ export function SchoolManager() {
   const [editingSchool, setEditingSchool] = useState<School | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<School | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
 
   const fetchSchools = useCallback(async () => {
     try {
@@ -321,6 +326,24 @@ export function SchoolManager() {
     setDialogOpen(true);
   };
 
+  const handleApprove = async (school: School) => {
+    try {
+      setApprovingId(school.id);
+      const res = await fetch(`/api/schools/${school.id}/approve`, { method: 'POST' });
+      if (res.ok) {
+        toast.success(`Sekolah "${school.name}" disetujui`);
+        fetchSchools();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error ?? 'Gagal menyetujui sekolah');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan');
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
   const filtered = schools.filter(
     (s) =>
       s.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -373,6 +396,17 @@ export function SchoolManager() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+              <Check className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Menunggu Persetujuan</p>
+              <p className="text-xl font-bold">{schools.filter((s) => s.status === 'pending').length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 p-4">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
               <GraduationCap className="h-5 w-5" />
             </div>
@@ -386,7 +420,7 @@ export function SchoolManager() {
         </Card>
         <Card>
           <CardContent className="flex items-center gap-3 p-4">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-purple-50 text-purple-600">
               <School className="h-5 w-5" />
             </div>
             <div>
@@ -447,6 +481,17 @@ export function SchoolManager() {
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {school.status === 'pending' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800"
+                              onClick={() => handleApprove(school)}
+                              disabled={approvingId === school.id}
+                            >
+                              {approvingId === school.id ? 'Menyetujui...' : 'Setujui'}
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

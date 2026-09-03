@@ -285,6 +285,12 @@ export function RegisterForm() {
           return;
         }
 
+        if (data?.pendingApproval || data?.schoolStatus === 'pending') {
+          toast.success('Registrasi sekolah terkirim! Akun akan aktif setelah disetujui Super Admin.');
+          navigateTo('login');
+          return;
+        }
+
         setUser(data);
         toast.success('Registrasi berhasil! Selamat datang, Admin Sekolah.');
         navigateTo('dashboard');
