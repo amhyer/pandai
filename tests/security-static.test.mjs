@@ -238,6 +238,12 @@ const featureSegments = [
   'ortu',
   'ortu/accounts',
   'accounts',
+  'accounts/[feature]',
+  'admin-school/[feature]',
+  'guru/[feature]',
+  'siswa/[feature]',
+  'ortu/[feature]',
+  'kepala-sekolah/[feature]',
   'download',
   'download/dapodik',
 ];
