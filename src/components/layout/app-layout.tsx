@@ -74,6 +74,7 @@ import {
   Map,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ErrorBoundary } from '@/components/ui/error-boundary';
 import type { LucideIcon } from 'lucide-react';
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -949,7 +950,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* ── Main Content ── */}
         <main className="flex-1 overflow-y-auto bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 p-4 sm:p-6">
           <div className="mx-auto max-w-7xl">
-            {children}
+            <ErrorBoundary>
+              {children}
+            </ErrorBoundary>
           </div>
         </main>
       </div>

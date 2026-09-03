@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { toast } from 'sonner';
-import { Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck, Users, ArrowLeft, BookOpen, Sparkles, ChevronRight, Crown } from 'lucide-react';
+import { Lock, Eye, EyeOff, GraduationCap, Shield, UserCheck, Users, ArrowLeft, BookOpen, Sparkles, ChevronRight, Crown, Mail, KeyRound, CheckCircle2 } from 'lucide-react';
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -28,6 +29,14 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const [resetNewPassword, setResetNewPassword] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!identifier.trim() || !password.trim()) {
@@ -83,6 +92,67 @@ export function LoginForm() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail.trim()) {
+      toast.error('Harap isi email');
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Gagal mengirim email reset password');
+        return;
+      }
+      setForgotSuccess(true);
+      toast.success('Email reset password berhasil dikirim!');
+    } catch {
+      toast.error('Terjadi kesalahan. Silakan coba lagi.');
+    }
+    setForgotLoading(false);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetToken.trim() || !resetNewPassword.trim()) {
+      toast.error('Harap isi token dan password baru');
+      return;
+    }
+    if (resetNewPassword.length < 6) {
+      toast.error('Password minimal 6 karakter');
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken.trim(), newPassword: resetNewPassword }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data.error || 'Gagal reset password');
+        return;
+      }
+      toast.success('Password berhasil direset! Silakan login dengan password baru.');
+      setShowForgotPassword(false);
+      setShowResetPassword(false);
+      setForgotSuccess(false);
+      setResetToken('');
+      setResetNewPassword('');
+      setForgotEmail('');
+    } catch {
+      toast.error('Terjadi kesalahan. Silakan coba lagi.');
+    }
+    setResetLoading(false);
   };
 
   return (
@@ -225,6 +295,11 @@ export function LoginForm() {
                   </Label>
                   <button
                     type="button"
+                    onClick={() => {
+                      setShowForgotPassword(true);
+                      setForgotSuccess(false);
+                      setShowResetPassword(false);
+                    }}
                     className="text-xs text-[#1F3864]/60 hover:text-[#1F3864] font-medium transition-colors"
                   >
                     Lupa password?
@@ -331,6 +406,115 @@ export function LoginForm() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Forgot Password Modal */}
+      <Dialog open={showForgotPassword} onOpenChange={setShowForgotPassword}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {showResetPassword ? (
+                <>
+                  <KeyRound className="h-5 w-5 text-amber-500" />
+                  Reset Password
+                </>
+              ) : forgotSuccess ? (
+                <>
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  Email Terkirim
+                </>
+              ) : (
+                <>
+                  <Mail className="h-5 w-5 text-[#1F3864]" />
+                  Lupa Password
+                </>
+              )}
+            </DialogTitle>
+            <DialogDescription>
+              {showResetPassword
+                ? 'Masukkan token dari email dan password baru Anda'
+                : forgotSuccess
+                ? 'Cek email Anda untuk token reset password'
+                : 'Masukkan email yang terdaftar untuk menerima token reset password'}
+            </DialogDescription>
+          </DialogHeader>
+
+          {!showResetPassword && !forgotSuccess && (
+            <form onSubmit={handleForgotPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="forgot-email">Email</Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="email@sekolah.id"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    className="pl-10"
+                    disabled={forgotLoading}
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={forgotLoading}>
+                {forgotLoading ? 'Mengirim...' : 'Kirim Token Reset'}
+              </Button>
+            </form>
+          )}
+
+          {forgotSuccess && !showResetPassword && (
+            <div className="space-y-4">
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm text-green-700">
+                Token reset password telah dikirim ke <strong>{forgotEmail}</strong>. 
+                Silakan cek inbox atau spam folder Anda.
+              </div>
+              <Button 
+                className="w-full" 
+                onClick={() => setShowResetPassword(true)}
+              >
+                Masukkan Token
+              </Button>
+            </div>
+          )}
+
+          {showResetPassword && (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-token">Token</Label>
+                <div className="relative">
+                  <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="reset-token"
+                    type="text"
+                    placeholder="Masukkan token dari email"
+                    value={resetToken}
+                    onChange={(e) => setResetToken(e.target.value)}
+                    className="pl-10"
+                    disabled={resetLoading}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="reset-password">Password Baru</Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    id="reset-password"
+                    type="password"
+                    placeholder="Minimal 6 karakter"
+                    value={resetNewPassword}
+                    onChange={(e) => setResetNewPassword(e.target.value)}
+                    className="pl-10"
+                    disabled={resetLoading}
+                  />
+                </div>
+              </div>
+              <Button type="submit" className="w-full" disabled={resetLoading}>
+                {resetLoading ? 'Memproses...' : 'Reset Password'}
+              </Button>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -13,8 +13,9 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import {
-  FileText, Download, Printer, Users, BarChart3, Loader2, Eye, BookOpen,
+  FileText, Download, Printer, Users, BarChart3, Loader2, Eye, BookOpen, Save,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
@@ -615,8 +616,30 @@ function RaporDisplay({
           <CardTitle className="text-base">Catatan Guru / Wali Kelas</CardTitle>
         </CardHeader>
         <CardContent className="p-4">
-          <div className="min-h-[80px] border rounded-lg p-3">
-            <p className="text-sm text-muted-foreground italic">Belum ada catatan</p>
+          <div className="space-y-3">
+            <Textarea
+              placeholder="Tulis catatan naratif untuk siswa ini di sini..."
+              className="min-h-[100px]"
+              value={raporNote}
+              onChange={(e) => setRaporNote(e.target.value)}
+              disabled={!canEditNote}
+            />
+            {canEditNote && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  onClick={handleSaveNote}
+                  disabled={savingNote || raporNote === originalRaporNote}
+                >
+                  {savingNote ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-4 w-4" />
+                  )}
+                  Simpan Catatan
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -912,6 +935,7 @@ function RaporSiswaTab({
   classes: ClassItem[];
   schoolId?: string;
 }) {
+  const user = useAppStore((s) => s.user);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
@@ -919,6 +943,86 @@ function RaporSiswaTab({
   const [raporData, setRaporData] = useState<RaporData | null>(null);
   const [loading, setLoading] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [raporNote, setRaporNote] = useState<string>('');
+  const [originalRaporNote, setOriginalRaporNote] = useState<string>('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [raporNote, setRaporNote] = useState<string>('');
+  const [originalRaporNote, setOriginalRaporNote] = useState<string>('');
+  const [savingNote, setSavingNote] = useState(false);
+  const [bulkPrinting, setBulkPrinting] = useState(false);
+
+  const canEditNote = user?.role === 'GURU' || user?.role === 'ADMIN_SCHOOL' || user?.role === 'SUPER_ADMIN';
+
+  useEffect(() => {
+    if (raporData) {
+      const note = (raporData as any).raporNote || '';
+      setRaporNote(note);
+      setOriginalRaporNote(note);
+    }
+  }, [raporData]);
+
+  const handleSaveNote = async () => {
+    if (!selectedStudentId || !term) return;
+    setSavingNote(true);
+    try {
+      const res = await fetch('/api/rapor-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: selectedStudentId,
+          term,
+          note: raporNote,
+        }),
+      });
+      if (res.ok) {
+        setOriginalRaporNote(raporNote);
+        toast.success('Catatan berhasil disimpan');
+      } else {
+        toast.error('Gagal menyimpan catatan');
+      }
+    } catch {
+      toast.error('Terjadi kesalahan saat menyimpan catatan');
+    }
+    setSavingNote(false);
+  };
+
+  const handleBulkPrint = async () => {
+    if (!selectedClassId || !term) {
+      toast.error('Pilih kelas dan semester terlebih dahulu');
+      return;
+    }
+    if (students.length === 0) {
+      toast.error('Tidak ada siswa di kelas ini');
+      return;
+    }
+    setBulkPrinting(true);
+    try {
+      const studentIds = students.map(s => s.id);
+      const res = await fetch('/api/reports/rapor-massal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds, term }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || 'Gagal cetak rapor massal');
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rapor-massal-${term}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Berhasil cetak ${studentIds.length} rapor!`);
+    } catch {
+      toast.error('Terjadi kesalahan saat cetak rapor massal');
+    }
+    setBulkPrinting(false);
+  };
 
   const fetchStudents = useCallback(async (classId: string) => {
     setLoadingStudents(true);
@@ -1042,6 +1146,26 @@ function RaporSiswaTab({
               <SelectItem value="2023/2024-Genap">2023/2024 — Genap</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+        <div className="sm:w-48 flex items-end">
+          <Button
+            variant="outline"
+            className="w-full"
+            disabled={!selectedClassId || bulkPrinting}
+            onClick={handleBulkPrint}
+          >
+            {bulkPrinting ? (
+              <span className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Mencetak...
+              </span>
+            ) : (
+              <span className="flex items-center gap-2">
+                <Printer className="h-4 w-4" />
+                Cetak Massal
+              </span>
+            )}
+          </Button>
         </div>
       </div>
 

@@ -160,6 +160,20 @@ export async function POST(request: Request) {
 
     const userRole = (role || 'SISWA').toUpperCase();
 
+    // Role whitelist: prevent privilege escalation
+    const VALID_ROLES = ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA', 'ORANG_TUA'];
+    if (!VALID_ROLES.includes(userRole)) {
+      return NextResponse.json({ error: 'Role tidak valid' }, { status: 400 });
+    }
+
+    // ADMIN_SCHOOL cannot create SUPER_ADMIN or other ADMIN_SCHOOL
+    if (auth.role === 'ADMIN_SCHOOL') {
+      const FORBIDDEN_ROLES_FOR_ADMIN = ['SUPER_ADMIN', 'ADMIN_SCHOOL'];
+      if (FORBIDDEN_ROLES_FOR_ADMIN.includes(userRole)) {
+        return NextResponse.json({ error: 'Tidak diizinkan membuat akun dengan role ini' }, { status: 403 });
+      }
+    }
+
     // ── GURU: require NIP or NIK as username ──
     if (userRole === 'GURU') {
       const loginId = (nip || nik || '').trim();

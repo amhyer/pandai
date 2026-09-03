@@ -16,10 +16,14 @@ export async function POST(request: Request) {
     }
 
     // ─── AUTH GUARD (JWT) ───
-    try { await requireRole(request, ['SUPER_ADMIN']); } catch (error) {
+    try {
+      await requireRole(request, ['SUPER_ADMIN']);
+    } catch (error) {
       if (error instanceof AuthError) {
         return NextResponse.json({ error: error.message }, { status: error.status });
       }
+      // Non-AuthError (DB failure, network error, etc.) — deny access
+      return NextResponse.json({ error: 'Autentikasi gagal' }, { status: 401 });
     }
 
     // Clear existing data (order matters for FK constraints)

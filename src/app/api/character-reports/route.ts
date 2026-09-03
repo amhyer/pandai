@@ -105,10 +105,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/character-reports — ONLY ORANG_TUA can create
+// POST /api/character-reports — ORANG_TUA and GURU/KEPALA_SEKOLAH can create
 export async function POST(req: NextRequest) {
   try {
-    const auth = await requireRole(req, ['ORANG_TUA']);
+    const auth = await requireRole(req, ['ORANG_TUA', 'GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     try { await logAccess(auth, { action: 'CREATE', resourceType: 'character-reports' }); } catch {}
     const body = await req.json();
     const items = Array.isArray(body) ? body : [body];
@@ -117,11 +117,11 @@ export async function POST(req: NextRequest) {
     for (const item of items) {
       const { studentId, classId, schoolId, reporterId, date, habit, rating, note } = item;
 
-      if (!studentId || !reporterId || !date || !habit) {
+      if (!studentId || !date || !habit) {
         return NextResponse.json({ error: 'Data wajib belum lengkap' }, { status: 400 });
       }
 
-      // IDOR fix: ORANG_TUA can only create reports for own children
+      // IDOR fix: check student scope
       await requireStudentScope(auth, studentId);
       if (!SEVEN_HABITS.includes(habit as typeof SEVEN_HABITS[number])) {
         return NextResponse.json({ error: 'Kebiasaan tidak valid' }, { status: 400 });
@@ -130,10 +130,18 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: 'Rating harus antara 1-4 (Belum/Kadang/Sering/Selalu)' }, { status: 400 });
       }
 
+      // Determine filledBy based on role
+      let filledBy: string;
+      if (auth.role === 'ORANG_TUA') {
+        filledBy = 'ORANG_TUA';
+      } else {
+        filledBy = 'GURU';
+      }
+
       const report = await db.characterReport.create({
         data: {
-          studentId, classId: classId || null, schoolId: schoolId || null,
-          reporterId, filledBy: 'ORANG_TUA', date, habit, rating, note: note || null,
+          studentId, classId: classId || null, schoolId: schoolId || auth.schoolId || null,
+          reporterId: auth.userId, filledBy, date, habit, rating, note: note || null,
         },
       });
       results.push(report);
@@ -149,10 +157,10 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// PATCH /api/character-reports — ONLY ORANG_TUA
+// PATCH /api/character-reports — ORANG_TUA and GURU/ADMIN can update
 export async function PATCH(req: NextRequest) {
   try {
-    const auth = await requireRole(req, ['ORANG_TUA']);
+    const auth = await requireRole(req, ['ORANG_TUA', 'GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     try { await logAccess(auth, { action: 'UPDATE', resourceType: 'character-reports' }); } catch {}
     const body = await req.json();
     const { id, rating, note } = body;
@@ -161,7 +169,7 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ error: 'Rating harus antara 1-4' }, { status: 400 });
     }
 
-    // IDOR fix: ORANG_TUA can only update reports for own children
+    // IDOR fix: check student scope
     const existing = await db.characterReport.findUnique({ where: { id }, select: { studentId: true } });
     if (!existing) return NextResponse.json({ error: 'Laporan tidak ditemukan' }, { status: 404 });
     await requireStudentScope(auth, existing.studentId);
@@ -179,16 +187,16 @@ export async function PATCH(req: NextRequest) {
   }
 }
 
-// DELETE /api/character-reports — ONLY ORANG_TUA
+// DELETE /api/character-reports — ORANG_TUA and GURU/ADMIN can delete
 export async function DELETE(req: NextRequest) {
   try {
-    const auth = await requireRole(req, ['ORANG_TUA']);
+    const auth = await requireRole(req, ['ORANG_TUA', 'GURU', 'KEPALA_SEKOLAH', 'ADMIN_SCHOOL', 'SUPER_ADMIN']);
     try { await logAccess(auth, { action: 'DELETE', resourceType: 'character-reports' }); } catch {}
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID wajib' }, { status: 400 });
 
-    // IDOR fix: ORANG_TUA can only delete reports for own children
+    // IDOR fix: check student scope
     const existing = await db.characterReport.findUnique({ where: { id }, select: { studentId: true } });
     if (!existing) return NextResponse.json({ error: 'Laporan tidak ditemukan' }, { status: 404 });
     await requireStudentScope(auth, existing.studentId);

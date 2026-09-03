@@ -1191,15 +1191,19 @@ export function GuruTryoutView() {
   return (
     <div className="space-y-6">
       <PageHeader icon={ClipboardList} title="Kelola Tryout" description="Buat, jadwalkan, dan pantau tryout untuk siswa Anda.">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]" disabled>
-              <Plus className="mr-2 h-4 w-4" />
-              Buat Tryout
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Segera tersedia</TooltipContent>
-        </Tooltip>
+        <Button 
+          className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
+          onClick={() => {
+            // Navigate to create tryout view
+            const store = useAppStore.getState();
+            if (store.navigate) {
+              store.navigate('guru-tryout');
+            }
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Buat Tryout
+        </Button>
       </PageHeader>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -1394,32 +1398,36 @@ export function GuruNilaiView() {
         setSaving(false);
         return;
       }
+      
+      // Use bulk API for better performance
+      const bulkEntries = [];
       for (const [attemptId, nilaiStr] of entries) {
         const nilai = parseFloat(nilaiStr);
         if (isNaN(nilai)) continue;
         const attempt = attempts.find((a) => a.id === attemptId);
         if (!attempt) continue;
-        const totalItems = attempt.totalCorrect + attempt.totalWrong + attempt.totalUnanswered;
-        const benar = Math.round((nilai / 100) * totalItems);
-        await fetch('/api/attempts', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: attempt.userId,
-            examPackageId: attempt.examPackageId,
-            schoolId: attempt.schoolId,
-            classId: attempt.classId,
-            answers: Array.from({ length: totalItems || 1 }, (_, i) => ({
-              questionId: `placeholder-${i}`,
-              answer: i < benar ? 'correct' : 'wrong',
-              timeSpent: 0,
-            })),
-            duration: 0,
-            learningObjective: learningObjective.trim() || undefined,
-          }),
+        
+        bulkEntries.push({
+          studentId: attempt.userId,
+          examPackageId: attempt.examPackageId,
+          score: nilai,
+          classId: attempt.classId,
         });
       }
-      toast.success('Nilai berhasil disimpan!');
+      
+      if (bulkEntries.length > 0) {
+        const res = await fetch('/api/student-grades/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ entries: bulkEntries }),
+        });
+        
+        if (!res.ok) {
+          throw new Error('Gagal menyimpan nilai');
+        }
+      }
+      
+      toast.success(`${bulkEntries.length} nilai berhasil disimpan!`);
       fetchAttempts(selectedExam || undefined);
       setNilaiMap({});
     } catch {

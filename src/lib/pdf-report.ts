@@ -88,6 +88,7 @@ interface RaporData {
   compResults: { name: string; weight: number; score: number | null; weighted: number | null }[];
   finalGrade: number | null;
   totalWeightFilled: number;
+  raporNote: string | null;
 }
 
 async function fetchRaporData(studentId: string, term: string): Promise<RaporData> {
@@ -172,6 +173,19 @@ async function fetchRaporData(studentId: string, term: string): Promise<RaporDat
     dimAvg[k] = Math.round((v.sum / v.count) * 100) / 100;
   }
 
+  // Catatan Guru (Rapor Note)
+  const raporNoteRecord = await db.raporNote.findUnique({
+    where: {
+      studentId_schoolId_term: {
+        studentId,
+        schoolId: student.schoolId!,
+        term,
+      },
+    },
+    select: { note: true },
+  });
+  const raporNote = raporNoteRecord?.note || null;
+
   return {
     student,
     school,
@@ -186,6 +200,7 @@ async function fetchRaporData(studentId: string, term: string): Promise<RaporDat
     compResults,
     finalGrade,
     totalWeightFilled,
+    raporNote,
   };
 }
 
@@ -377,10 +392,17 @@ export async function generateRaporSiswaPDF(studentId: string, term: string): Pr
   doc.text('Catatan Guru:', m, y);
   y += 6;
   doc.setFontSize(8).setFont('helvetica', 'normal');
-  doc.setTextColor(150);
-  doc.text('(Belum diisi)', m + 5, y);
-  doc.setTextColor(0);
-  y += 8;
+  if (d.raporNote) {
+    doc.setTextColor(0);
+    const noteLines = doc.splitTextToSize(d.raporNote, cw - 10);
+    doc.text(noteLines, m + 5, y);
+    y += noteLines.length * 4 + 4;
+  } else {
+    doc.setTextColor(150);
+    doc.text('(Belum diisi)', m + 5, y);
+    doc.setTextColor(0);
+    y += 8;
+  }
 
   // ── TANDA TANGAN ──
   const pageH = doc.internal.pageSize.getHeight();

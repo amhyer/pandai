@@ -1,14 +1,16 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
+import { requireRole, AuthError } from '@/lib/auth';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
 // GET /api/schools/[id]/admin-account — Find the ADMIN_SCHOOL user for this school
-export async function GET(_request: Request, { params }: RouteParams) {
+export async function GET(request: Request, { params }: RouteParams) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN']);
     const { id } = await params;
 
     const school = await db.school.findUnique({ where: { id } });
@@ -40,6 +42,9 @@ export async function GET(_request: Request, { params }: RouteParams) {
 
     return NextResponse.json({ exists: true, admin });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Get admin account error:', error);
     return NextResponse.json({ error: 'Gagal mengambil data akun admin' }, { status: 500 });
   }
@@ -48,6 +53,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 // POST /api/schools/[id]/admin-account — Create or update the admin account
 export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN']);
     const { id } = await params;
     const body = await request.json();
     const { name, email, password } = body;
@@ -119,19 +125,21 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     return NextResponse.json({
       admin: newAdmin,
-      message: password
-        ? 'Akun admin berhasil dibuat dengan password yang ditentukan'
-        : `Akun admin berhasil dibuat. Password default: password123`,
+      message: 'Akun admin berhasil dibuat. Password default: password123',
     });
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Create/update admin account error:', error);
-    return NextResponse.json({ error: error.message || 'Gagal membuat/memperbarui akun admin' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal membuat/memperbarui akun admin' }, { status: 500 });
   }
 }
 
 // PATCH /api/schools/[id]/admin-account — Reset admin password
 export async function PATCH(request: Request, { params }: RouteParams) {
   try {
+    const auth = await requireRole(request, ['SUPER_ADMIN']);
     const { id } = await params;
     const body = await request.json();
     const newPassword = body.password || body.newPassword;
@@ -162,9 +170,11 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     return NextResponse.json({
       success: true,
       message: 'Password admin berhasil direset',
-      newPassword,
     });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Reset admin password error:', error);
     return NextResponse.json({ error: 'Gagal mereset password admin' }, { status: 500 });
   }

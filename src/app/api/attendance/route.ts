@@ -117,6 +117,46 @@ export async function POST(req: NextRequest) {
       })),
     });
 
+    // Send notification to parents for alpa/sakit/izin status
+    try {
+      const studentIds = records
+        .filter((r: { studentId: string; status: string }) => r.status === 'alpa' || r.status === 'sakit' || r.status === 'izin')
+        .map((r: { studentId: string }) => r.studentId);
+
+      if (studentIds.length > 0) {
+        // Find parents of these students
+        const students = await db.user.findMany({
+          where: { id: { in: studentIds }, parentId: { not: null } },
+          select: { id: true, name: true, parentId: true },
+        });
+
+        const statusLabels: Record<string, string> = {
+          alpa: 'Tidak Hadir (Alpa)',
+          sakit: 'Sakit',
+          izin: 'Izin',
+        };
+
+        for (const student of students) {
+          if (!student.parentId) continue;
+          const record = records.find((r: { studentId: string; status: string }) => r.studentId === student.id);
+          if (!record) continue;
+
+          await db.notification.create({
+            data: {
+              userId: student.parentId,
+              schoolId,
+              title: `Kehadiran ${student.name}`,
+              message: `${student.name} ${statusLabels[record.status] || record.status} pada ${date}`,
+              category: 'attendance',
+            },
+          });
+        }
+      }
+    } catch (notifError) {
+      // Don't fail the attendance creation if notification fails
+      console.error('Failed to send attendance notification:', notifError);
+    }
+
     return NextResponse.json({ created: created.count }, { status: 201 });
   } catch (error) {
     if (error instanceof AuthError) {
