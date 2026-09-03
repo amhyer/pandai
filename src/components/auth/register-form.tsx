@@ -15,7 +15,7 @@ import {
   Upload, Database, FileSpreadsheet, AlertCircle, Download, ArrowLeft, ChevronRight, Check
 } from 'lucide-react';
 
-type RegisterRole = 'SISWA' | 'ORANG_TUA' | 'ADMIN_SCHOOL';
+type RegisterRole = 'ADMIN_SCHOOL';
 
 interface DapodikSchool {
   npsn: string;
@@ -37,8 +37,7 @@ interface DapodikSchool {
 }
 
 const ROLE_CARDS = [
-  { value: 'SISWA' as RegisterRole, icon: GraduationCap, label: 'Siswa', desc: 'Pelajar sekolah', gradient: 'from-amber-400 to-orange-400', ring: 'ring-amber-200', bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-800', subtext: 'text-amber-600' },
-  { value: 'ORANG_TUA' as RegisterRole, icon: User, label: 'Orang Tua', desc: 'Orang tua/wali siswa', gradient: 'from-emerald-400 to-teal-500', ring: 'ring-emerald-200', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800', subtext: 'text-emerald-600' },
+  { value: 'ADMIN_SCHOOL' as RegisterRole, icon: ShieldCheck, label: 'Admin Sekolah', desc: 'Buat & kelola akun sekolah', gradient: 'from-emerald-400 to-teal-500', ring: 'ring-emerald-200', bg: 'bg-emerald-50', border: 'border-emerald-300', text: 'text-emerald-800', subtext: 'text-emerald-600' },
 ];
 
 export function RegisterForm() {
@@ -72,7 +71,7 @@ export function RegisterForm() {
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isSchoolAdmin = role === 'ADMIN_SCHOOL';
+  const isSchoolAdmin = true; // Always admin school
 
   // Auto-fill nama kepala sekolah & email sekolah when Dapodik data is verified
   useEffect(() => {
@@ -123,11 +122,6 @@ export function RegisterForm() {
     if (isSchoolAdmin) {
       if (!dapodikVerified || !dapodikSchool) {
         toast.error('Harap verifikasi data sekolah melalui Dapodik terlebih dahulu');
-        return false;
-      }
-    } else {
-      if (!schoolCode.trim()) {
-        toast.error('Harap isi kode sekolah');
         return false;
       }
     }
@@ -284,29 +278,6 @@ export function RegisterForm() {
         setUser(data);
         toast.success('Registrasi berhasil! Selamat datang, Admin Sekolah.');
         navigateTo('dashboard');
-      } else {
-        const res = await fetch('/api/auth/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: name.trim(),
-            email: email.trim(),
-            password,
-            role,
-            schoolCode: schoolCode.trim(),
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          toast.error(data.error || 'Registrasi gagal. Silakan coba lagi.');
-          return;
-        }
-
-        setUser(data);
-        toast.success('Registrasi berhasil! Selamat datang.');
-        navigateTo('dashboard');
       }
     } catch {
       toast.error('Terjadi kesalahan jaringan. Silakan coba lagi.');
@@ -317,12 +288,6 @@ export function RegisterForm() {
 
   const handleRoleChange = (val: string) => {
     setRole(val as RegisterRole);
-    if (val === 'ADMIN_SCHOOL') {
-      setDapodikSchool(null);
-      setDapodikVerified(false);
-      setName('');
-      setEmail('');
-    }
   };
 
   const inputClass = 'pl-10 h-11 rounded-xl border-slate-200 bg-slate-50/50 focus-visible:ring-2 focus-visible:ring-[#1F3864]/20 focus-visible:border-[#1F3864]/40 focus-visible:bg-white transition-all duration-200';
@@ -361,7 +326,7 @@ export function RegisterForm() {
               Daftar Akun Baru
             </CardTitle>
             <CardDescription className="text-slate-500">
-              Bergabung dengan platform persiapan TKA
+              Buat akun sekolah baru di platform PANDAI
             </CardDescription>
           </CardHeader>
 
@@ -375,7 +340,7 @@ export function RegisterForm() {
                 <RadioGroup
                   value={role}
                   onValueChange={handleRoleChange}
-                  className="grid grid-cols-3 gap-2"
+                  className="grid grid-cols-1 gap-2"
                   disabled={isLoading}
                 >
                   {ROLE_CARDS.map((rc) => {
