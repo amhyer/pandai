@@ -26,6 +26,12 @@ export async function POST(req: NextRequest) {
     // Read file buffer
     const buffer = Buffer.from(await file.arrayBuffer());
 
+    // Prevent memory DoS from oversized uploads.
+    const MAX_BACKUP_BYTES = 500 * 1024 * 1024;
+    if (buffer.length > MAX_BACKUP_BYTES) {
+      return NextResponse.json({ error: 'Ukuran file terlalu besar (maks. 500MB)' }, { status: 413 });
+    }
+
     // Validate SQLite magic bytes
     if (buffer.length < 16 || buffer.subarray(0, 15).toString('ascii') !== 'SQLite format 3') {
       return NextResponse.json({ error: 'File bukan database SQLite yang valid' }, { status: 400 });

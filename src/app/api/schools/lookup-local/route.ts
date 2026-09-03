@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
+import { requireRole, AuthError } from '@/lib/auth';
 import type { NpsnSchool } from '@/lib/npsn-database';
 
 const LOCAL_API_TIMEOUT_MS = 8_000;
 const NPSN_REGEX = /^\d{8}$/;
+const ALLOWED_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const ALLOWED_PORTS = new Set(['5774', '8881']);
 
 /** Allowed school types for PANDAI */
 const ALLOWED_TYPES = ['SD', 'SMP'];
@@ -29,6 +32,7 @@ const ALLOWED_TYPES = ['SD', 'SMP'];
  */
 export async function POST(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const body = await request.json();
     const { serverUrl, token, npsn } = body;
 
@@ -52,6 +56,20 @@ export async function POST(request: Request) {
     // Ensure it starts with http:// or https://
     if (!baseUrl.startsWith('http://') && !baseUrl.startsWith('https://')) {
       baseUrl = 'http://' + baseUrl;
+    }
+
+    // SSRF protection: only local Dapodik services on configured ports.
+    let parsedBase: URL;
+    try {
+      parsedBase = new URL(baseUrl);
+    } catch {
+      return NextResponse.json({ error: 'Format URL server tidak valid' }, { status: 400 });
+    }
+    if (!ALLOWED_HOSTS.has(parsedBase.hostname) || !ALLOWED_PORTS.has(parsedBase.port)) {
+      return NextResponse.json(
+        { error: 'Server hanya boleh localhost/127.0.0.1 pada port 5774 atau 8881' },
+        { status: 403 }
+      );
     }
 
     const controller = new AbortController();
@@ -179,6 +197,9 @@ export async function POST(request: Request) {
       clearTimeout(timeoutId);
     }
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('Local Dapodik lookup error:', error);
     return NextResponse.json(
       { error: 'Terjadi kesalahan server' },
