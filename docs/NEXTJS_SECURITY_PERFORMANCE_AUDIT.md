@@ -918,9 +918,14 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ `tests/security-static.test.mjs` (zero-dependency) ditambahkan; jalankan dengan `npm run test:security` atau `node tests/security-static.test.mjs`. Cakupan: env ter-track, secret hardcoded, auth helper pada route sensitif, pemasangan rate limiter, sanitasi reset-password, sanitasi HTML, keamanan generator kredensial, validasi secret production, dan invariant alur persetujuan sekolah. Perubahan `.github/workflows/ci.yml` yang akan menjalankannya di job `security` sudah disiapkan, tetapi belum bisa di-push karena GitHub App sandbox belum punya permission `workflows`.
 - ✅ README menambahkan bagian muatan multi-instance & rate limiting.
 
-### C.9 Belum dikerjakan (bisa dijadikan sprint berikutnya)
-- 🔲 Refactor route-per-feature + Server Components.
-- 🔲 Menambahkan Error Boundary per segment.
+### C.9 Route-per-feature (tahap awal / incremental)
+- ✅ Shared App Router route states dibuat: `src/components/app/app-route-loading.tsx`, `app-route-error.tsx`, `app-route-not-found.tsx`.
+- ✅ Route boundaries `loading.tsx` / `error.tsx` / `not-found.tsx` ditambahkan untuk segmen fitur: `admin-school`, `guru`, `kepala-sekolah`, `siswa`, `ortu`, `accounts`, `download` + sub-segmen accounts/dapodik.
+- 🔲 Refactor penuh dari SPA Zustand (`currentView`/`authenticated-app.tsx`) ke route-per-feature dengan Server Components dan halaman nyata per fitur masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
+
+### C.10 Belum dikerjakan (bisa dijadikan sprint berikutnya)
+- 🔲 Menyelesaikan refactor route-per-feature + Server Components (pindahkan dashboard/feature view ke route nyata, auth guard per segment).
+- 🔲 Menambahkan Error Boundary per segment yang sudah dibuat ke CI via perubahan workflow `.github/workflows/ci.yml` (menunggu permission `workflows`).
 
 ---
 

@@ -211,6 +211,34 @@ assert(
   'Password salt production validation is missing'
 );
 
+// ─── 9. App Router feature segments have route boundaries ────────────────
+const featureSegments = [
+  'admin-school',
+  'admin-school/accounts',
+  'guru',
+  'guru/accounts',
+  'kepala-sekolah',
+  'kepala-sekolah/accounts',
+  'siswa',
+  'siswa/accounts',
+  'ortu',
+  'ortu/accounts',
+  'accounts',
+  'download',
+  'download/dapodik',
+];
+
+for (const segment of featureSegments) {
+  const dir = join(SRC, 'app', segment);
+  for (const boundary of ['loading.tsx', 'error.tsx', 'not-found.tsx']) {
+    try {
+      readFileSync(join(dir, boundary), 'utf8');
+    } catch {
+      failures.push(`Missing route boundary ${segment}/${boundary}`);
+    }
+  }
+}
+
 if (failures.length) {
   console.error('\n❌ Static security checks failed:');
   for (const f of failures) console.error(`  - ${f}`);
