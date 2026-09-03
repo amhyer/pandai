@@ -934,7 +934,9 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ Server Component migration dimulai pada `/accounts/profile`: `src/lib/server-auth.ts` (baca cookie + `verifySession` + DB + `toPublicUser`), `src/components/app/prefetched-route-shell.tsx` (seed store tanpa panggilan `/api/auth/me` kedua), dan `src/app/accounts/profile/page.tsx` (server page SUPER_ADMIN).
 - ✅ Server Component route tambahan menggunakan pola yang sama: `/admin-school/profile` (ADMIN_SCHOOL), `/accounts/notifications` (SUPER_ADMIN), `/admin-school/notifications` (ADMIN_SCHOOL), semuanya `force-dynamic` + role guard server-side + `PrefetchedRouteShell`.
 - ✅ Semua role kini punya Server Component page untuk `profile` dan `notifications`: super admin, admin sekolah, guru, siswa, orang tua, kepala sekolah — semuanya pre-load session dari DB (`getServerSessionUser`) tanpa panggilan `/api/auth/me` kedua.
-- 🔲 Refactor penuh: memindahkan lebih banyak fitur `currentView` ke Server Components per-feature (data fetching + loading/error per fitur) masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
+- ✅ Seluruh root dashboard & dynamic `[feature]` route untuk semua role kini Server Component (`force-dynamic`): `/accounts`, `/admin-school`, `/guru`, `/siswa`, `/ortu`, `/kepala-sekolah` serta sub-fitur dinamis memakai `Pre-fetchRouteShell` + `getXView` dari URL path, tanpa `useParams` client.
+- ✅ Stub `*/accounts` diubah menjadi server pages dengan session pre-load DB.
+- 🔲 Refactor penuh: memindahkan lebih banyak data fetching per-feature ke Server Components & membuat `loading.tsx`/`error.tsx` per fitur masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
 
 ### C.10 Belum dikerjakan (bisa dijadikan sprint berikutnya)
 - 🔲 Menyelesaikan refactor route-per-feature + Server Components (pindahkan dashboard/feature view ke route nyata, auth guard per segment).

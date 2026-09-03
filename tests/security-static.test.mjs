@@ -270,30 +270,34 @@ assert(
 
 const superAdminRoot = read(join(SRC, 'app', 'accounts', 'page.tsx'));
 assert(
-  /RouteShell/.test(superAdminRoot) && /initialView="dashboard"/.test(superAdminRoot),
-  'accounts root page is not the RouteShell super-admin dashboard'
+  /PrefetchedRouteShell/.test(superAdminRoot) &&
+    /force-dynamic/.test(superAdminRoot) &&
+    /SUPER_ADMIN/.test(superAdminRoot),
+  'accounts root page is not the server super-admin dashboard'
 );
 
 const superAdminFeature = read(join(SRC, 'app', 'accounts', '[feature]', 'page.tsx'));
 assert(
-  /useParams/.test(superAdminFeature) &&
+  /params: Promise/.test(superAdminFeature) &&
     /getSuperAdminView/.test(superAdminFeature) &&
-    /RouteShell/.test(superAdminFeature) &&
+    /PrefetchedRouteShell/.test(superAdminFeature) &&
     /AppRouteNotFound/.test(superAdminFeature),
   'accounts dynamic feature page does not map segments to views'
 );
 
 const adminSchoolRoot = read(join(SRC, 'app', 'admin-school', 'page.tsx'));
 assert(
-  /RouteShell/.test(adminSchoolRoot) && /initialView="dashboard"/.test(adminSchoolRoot),
-  'admin-school root page is not the RouteShell dashboard'
+  /PrefetchedRouteShell/.test(adminSchoolRoot) &&
+    /force-dynamic/.test(adminSchoolRoot) &&
+    /ADMIN_SCHOOL/.test(adminSchoolRoot),
+  'admin-school root page is not the server dashboard'
 );
 
 const adminSchoolFeature = read(join(SRC, 'app', 'admin-school', '[feature]', 'page.tsx'));
 assert(
-  /useParams/.test(adminSchoolFeature) &&
+  /params: Promise/.test(adminSchoolFeature) &&
     /getAdminSchoolView/.test(adminSchoolFeature) &&
-    /RouteShell/.test(adminSchoolFeature) &&
+    /PrefetchedRouteShell/.test(adminSchoolFeature) &&
     /AppRouteNotFound/.test(adminSchoolFeature),
   'admin-school dynamic feature page does not map segments to views'
 );
@@ -307,12 +311,13 @@ const roleFeaturePages = [
 for (const [rel, viewFn, role] of roleFeaturePages) {
   const page = read(join(ROOT, rel));
   assert(
-    /useParams/.test(page) &&
+    /params: Promise/.test(page) &&
       new RegExp(viewFn).test(page) &&
-      /RouteShell/.test(page) &&
+      /PrefetchedRouteShell/.test(page) &&
       /AppRouteNotFound/.test(page) &&
-      new RegExp(`['"]${role}['"]`).test(page),
-    `${rel} is not a role feature route`
+      new RegExp(`['"]${role}['"]`).test(page) &&
+      /force-dynamic/.test(page),
+    `${rel} is not a server role feature route`
   );
 }
 
@@ -325,10 +330,11 @@ const roleRootPages = [
 for (const [rel, role] of roleRootPages) {
   const page = read(join(ROOT, rel));
   assert(
-    /RouteShell/.test(page) &&
+    /PrefetchedRouteShell/.test(page) &&
       new RegExp(`['"]${role}['"]`).test(page) &&
-      /initialView="dashboard/.test(page),
-    `${rel} is not the Dashboard RouteShell page for ${role}`
+      /getServerSessionUser/.test(page) &&
+      /force-dynamic/.test(page),
+    `${rel} is not the server Dashboard page for ${role}`
   );
 }
 
@@ -434,10 +440,12 @@ const routePages = [
 for (const [rel, initialView, role] of routePages) {
   const page = read(join(ROOT, rel));
   assert(
-    /RouteShell/.test(page) &&
+    /PrefetchedRouteShell/.test(page) &&
       new RegExp(initialView).test(page) &&
-      new RegExp(`['"]${role}['"]`).test(page),
-    `${rel} is not a RouteShell page for ${role} (${initialView})`
+      new RegExp(`['"]${role}['"]`).test(page) &&
+      /getServerSessionUser/.test(page) &&
+      /force-dynamic/.test(page),
+    `${rel} is not a server route page for ${role} (${initialView})`
   );
 }
 

@@ -1,12 +1,23 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { getServerSessionUser } from '@/lib/server-auth';
+import { PrefetchedRouteShell } from '@/components/app/prefetched-route-shell';
+import type { User as StoreUser } from '@/store/use-store';
 
-import { RouteShell } from '@/components/app/route-shell';
+export const dynamic = 'force-dynamic';
 
-export default function OrtuPage() {
+export default async function OrtuPage() {
+  const user = await getServerSessionUser(['ORANG_TUA']);
+  if (!user) redirect('/');
+
+  const storeUser: StoreUser = {
+    ...user,
+    role: user.role as StoreUser['role'],
+  };
+
   return (
-    <RouteShell
+    <PrefetchedRouteShell
+      initialUser={storeUser}
       initialView="dashboard"
-      allowedRoles={['ORANG_TUA']}
       loadingLabel="Membuka Beranda Orang Tua..."
     />
   );

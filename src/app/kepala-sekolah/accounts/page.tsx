@@ -1,12 +1,23 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { getServerSessionUser } from '@/lib/server-auth';
+import { PrefetchedRouteShell } from '@/components/app/prefetched-route-shell';
+import type { User as StoreUser } from '@/store/use-store';
 
-import { RouteShell } from '@/components/app/route-shell';
+export const dynamic = 'force-dynamic';
 
-export default function Page() {
+export default async function KepalaSekolahAccountsPage() {
+  const user = await getServerSessionUser(['KEPALA_SEKOLAH']);
+  if (!user) redirect('/');
+
+  const storeUser: StoreUser = {
+    ...user,
+    role: user.role as StoreUser['role'],
+  };
+
   return (
-    <RouteShell
+    <PrefetchedRouteShell
+      initialUser={storeUser}
       initialView="dashboard-kepsek"
-      allowedRoles={['KEPALA_SEKOLAH']}
       loadingLabel="Membuka Dashboard Kepala Sekolah..."
     />
   );
