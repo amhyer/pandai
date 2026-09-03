@@ -92,11 +92,15 @@ export const STATUS_LABELS: Record<string, string> = {
 // which uses bcrypt.
 function getSalt(): string {
   const salt = process.env.PASSWORD_SALT;
-  if (!salt || salt === 'CHANGE_ME_IN_PRODUCTION') {
+  const placeholder = salt === 'CHANGE_ME_IN_PRODUCTION' || salt.startsWith('replace_with_') || salt.startsWith('pandai_dev_salt');
+  if (!salt || placeholder) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('[SECURITY] PASSWORD_SALT env var is not set in production!');
     }
     return 'pandai_dev_salt_2024';
+  }
+  if (salt.length < 32) {
+    throw new Error('[SECURITY] PASSWORD_SALT must be at least 32 characters');
   }
   return salt;
 }

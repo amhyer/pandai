@@ -38,6 +38,7 @@ Kedua nilai harus:
 - Berbeda satu sama lain.
 - Tidak pernah di-commit.
 - Di-copy ke environment variables di platform hosting (Vercel / self-hosted).
+- Jangan memakai placeholder `.env.example` (`replace_with_*`) atau nilai hardcoded di production. Aplikasi akan menolak memuat secret yang masih berupa placeholder atau panjangnya kurang dari 32 karakter.
 
 > Catatan: `PASSWORD_SALT` saat ini hanya dipakai untuk verifikasi password legacy SHA-256. Jika tidak ada user legacy, Anda tetap bisa mengubahnya. Jika ada user legacy, pastikan nilai lama disimpan sementara di tempat aman agar akun tersebut tidak terkunci selama migrasi.
 

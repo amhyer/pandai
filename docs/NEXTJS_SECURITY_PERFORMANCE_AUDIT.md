@@ -897,6 +897,7 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ Batas ukuran file restore 500MB.
 - ✅ CSP menambahkan `base-uri 'self'`, `form-action 'self'`, `object-src 'none'`.
 - ✅ `poweredByHeader: false` pada `next.config.ts`.
+- ✅ `JWT_SECRET`/`PASSWORD_SALT` menolak placeholder & secret pendek (<32 karakter) di production.
 
 ### C.6 Belum dikerjakan (bisa dijadikan sprint berikutnya)
 - 🔲 Verifikasi/approval pada `POST /api/auth/register-school` (anti-school squatting).
