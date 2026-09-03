@@ -106,6 +106,31 @@ pandai/
 - Pre-commit hook prevents database/env file commits
 - Rate limiting on login endpoint
 
+### Production credentials — security checklist
+
+1. **Never commit real secrets.** `.env`, `.env.local`, and `.env.production` are gitignored.
+2. **Generate strong app secrets** instead of hardcoding:
+   ```bash
+   chmod +x scripts/generate-credentials.sh
+   ./scripts/generate-credentials.sh --force
+   ```
+   The script writes to gitignored `.env.local` (mode `600`) and does **not** print credential values.
+3. **Rotate database & platform credentials** when they may have been exposed:
+   - Neon PostgreSQL: https://console.neon.tech → **Settings** → **Members** → **Rotate password**
+   - Vercel: https://vercel.com/dashboard → **Settings** → **OIDC Token** → **Regenerate**
+4. **Clean leaked credentials from Git history** with the built-in safe script:
+   ```bash
+   ./scripts/purge-git-secrets.sh --inspect                 # non-destructive scan
+   ./scripts/purge-git-secrets.sh --filter-repo --yes      # or --bfg --yes
+   ```
+5. After a history rewrite, **force-push every affected branch**:
+   ```bash
+   git push --force-with-lease origin main
+   git push --force-with-lease origin arena/01a064ff-pandai
+   ```
+6. Rotating `JWT_SECRET` invalidates existing sessions — users will need to log in again after redeploy.
+7. Full step-by-step runbook: **`docs/ROTATE_CREDENTIALS.md`**.
+
 ## License
 
 Private — All rights reserved.
