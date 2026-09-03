@@ -1,19 +1,13 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { RouteShell } from '@/components/app/route-shell';
 
-// Stub lama — dialihkan ke dashboard utama.
-export default function KepalaSekolahAccountsPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace('/');
-  }, [router]);
-
+export default function Page() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8f9fc]">
-      <p className="text-sm font-medium text-muted-foreground">Mengalihkan ke dashboard...</p>
-    </div>
+    <RouteShell
+      initialView="dashboard-kepsek"
+      allowedRoles={['KEPALA_SEKOLAH']}
+      loadingLabel="Membuka Dashboard Kepala Sekolah..."
+    />
   );
 }

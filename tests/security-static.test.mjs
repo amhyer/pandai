@@ -253,6 +253,63 @@ for (const segment of featureSegments) {
   }
 }
 
+// ─── 10. Route-per-feature migration invariants ──────────────────────────
+const viewRouter = read(join(SRC, 'components', 'app', 'view-router.tsx'));
+assert(
+  /export function ViewRouter/.test(viewRouter) &&
+    /React\.lazy/.test(viewRouter),
+  'ViewRouter was not extracted into a reusable component'
+);
+
+const authenticatedApp = read(join(SRC, 'app', 'authenticated-app.tsx'));
+assert(
+  authenticatedApp.includes("from '@/components/app/view-router'"),
+  'authenticated-app.tsx no longer reuses the extracted ViewRouter'
+);
+
+const routeShell = read(join(SRC, 'components', 'app', 'route-shell.tsx'));
+assert(
+  /restoreSession/.test(routeShell) &&
+    /api\/auth\/me/.test(routeShell) &&
+    /AppLayout/.test(routeShell) &&
+    /ViewRouter/.test(routeShell),
+  'RouteShell does not restore session and render the shared app shell'
+);
+
+const roleLayouts = [
+  ['src/app/admin-school/layout.tsx', 'ADMIN_SCHOOL'],
+  ['src/app/guru/layout.tsx', 'GURU'],
+  ['src/app/kepala-sekolah/layout.tsx', 'KEPALA_SEKOLAH'],
+  ['src/app/siswa/layout.tsx', 'SISWA'],
+  ['src/app/ortu/layout.tsx', 'ORANG_TUA'],
+  ['src/app/accounts/layout.tsx', 'SUPER_ADMIN'],
+];
+for (const [rel, role] of roleLayouts) {
+  const layout = read(join(ROOT, rel));
+  assert(
+    /verifySession/.test(layout) && new RegExp(`'${role}'`).test(layout),
+    `${rel} does not enforce ${role} on the server`
+  );
+}
+
+const routePages = [
+  ['src/app/admin-school/accounts/page.tsx', 'accounts', 'ADMIN_SCHOOL'],
+  ['src/app/guru/accounts/page.tsx', 'dashboard-guru', 'GURU'],
+  ['src/app/kepala-sekolah/accounts/page.tsx', 'dashboard-kepsek', 'KEPALA_SEKOLAH'],
+  ['src/app/siswa/accounts/page.tsx', 'dashboard-siswa', 'SISWA'],
+  ['src/app/ortu/accounts/page.tsx', 'dashboard-ortu', 'ORANG_TUA'],
+  ['src/app/accounts/page.tsx', 'users-global', 'SUPER_ADMIN'],
+];
+for (const [rel, initialView, role] of routePages) {
+  const page = read(join(ROOT, rel));
+  assert(
+    /RouteShell/.test(page) &&
+      new RegExp(initialView).test(page) &&
+      new RegExp(`['"]${role}['"]`).test(page),
+    `${rel} is not a RouteShell page for ${role} (${initialView})`
+  );
+}
+
 if (failures.length) {
   console.error('\n❌ Static security checks failed:');
   for (const f of failures) console.error(`  - ${f}`);

@@ -922,7 +922,11 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ Shared App Router route states dibuat: `src/components/app/app-route-loading.tsx`, `app-route-error.tsx`, `app-route-not-found.tsx`.
 - ✅ Route boundaries `loading.tsx` / `error.tsx` / `not-found.tsx` ditambahkan untuk segmen fitur: `admin-school`, `guru`, `kepala-sekolah`, `siswa`, `ortu`, `accounts`, `download` + sub-segmen accounts/dapodik.
 - ✅ Edge session guard ditambahkan via `src/lib/proxy-auth.ts` (jose-only, tanpa Prisma) dan `src/proxy.ts`: route halaman `/admin-school`, `/guru`, `/kepala-sekolah`, `/siswa`, `/ortu`, `/accounts` kini redirect ke `/` (login) bila tidak ada/valid session JWT.
-- 🔲 Refactor penuh dari SPA Zustand (`currentView`/`authenticated-app.tsx`) ke route-per-feature dengan Server Components dan halaman nyata per fitur masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
+- ✅ `ViewRouter` dipisah dari `authenticated-app.tsx` menjadi `src/components/app/view-router.tsx` sehingga bisa dipakai ulang oleh halaman route.
+- ✅ `RouteShell` (`src/components/app/route-shell.tsx`) dibuat: restore session via `/api/auth/me`, cek role, set `currentView`, lalu render `AppLayout + ViewRouter` — jadi URL route nyata sambil `currentView` lama tetap bekerja.
+- ✅ Server-side role layout (`layout.tsx`) ditambahkan untuk `admin-school/accounts`, `guru/accounts`, `kepala-sekolah/accounts`, `siswa/accounts`, `ortu/accounts`, `accounts`; layout memverifikasi session cookie + role sebelum merender halaman.
+- ✅ Halaman stub yang sebelumnya hanya redirect ke `/` kini menjadi route-page sungguhan via `RouteShell`: `/admin-school/accounts` → `accounts`, `/accounts` → `users-global`, `/guru/accounts` → dashboard guru, dst.
+- 🔲 Refactor penuh: memindahkan semua fitur `currentView` ke URL route per fitur (misal `/(dashboard)/.../page.tsx` per fitur) masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
 
 ### C.10 Belum dikerjakan (bisa dijadikan sprint berikutnya)
 - 🔲 Menyelesaikan refactor route-per-feature + Server Components (pindahkan dashboard/feature view ke route nyata, auth guard per segment).
