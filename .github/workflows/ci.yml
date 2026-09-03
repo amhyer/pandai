@@ -54,6 +54,8 @@ jobs:
           bun-version: latest
       - run: bun install --frozen-lockfile
       - run: bun audit || true
+      - name: Automated security/static-integration tests
+        run: node tests/security-static.test.mjs
       - name: Check for hardcoded secrets
         run: |
           if grep -rn 'ghp_\|AKIA\|xoxb-\|sk_live' src/ --include='*.ts' --include='*.tsx'; then

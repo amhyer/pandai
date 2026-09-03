@@ -915,7 +915,7 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ `src/lib/rate-limit.ts` menyediakan rate limiter in-memory + **Upstash Redis REST** (multi-instance), dengan fallback ke memory saat Redis gagal/absent.
 - ✅ Rate limiter terpasang di `src/app/api/auth/login/route.ts`, `src/lib/ai-helper.ts` (per-user AI burst), dan `src/proxy.ts` (AI + POST/PUT/DELETE per IP).
 - ✅ `.env.example` didokumentasikan `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`.
-- ✅ `tests/security-static.test.mjs` (zero-dependency) ditambahkan; jalankan lokal dengan `npm run test:security` atau `node tests/security-static.test.mjs`. Cakupan: env ter-track, secret hardcoded, auth helper pada route sensitif, pemasangan rate limiter, sanitasi reset-password, sanitasi HTML, keamanan generator kredensial, validasi secret production, invariant alur persetujuan sekolah, dan keberadaan route boundaries per segmen fitur. Perubahan `.github/workflows/ci.yml` untuk menjalankannya sudah disiapkan, tetapi push masih ditolak karena token GitHub sandbox belum diberi permission `workflows`.
+- ✅ `tests/security-static.test.mjs` (zero-dependency) ditambahkan dan dijalankan di CI (`.github/workflows/ci.yml` job `security`); jalankan lokal dengan `npm run test:security` atau `node tests/security-static.test.mjs`. Cakupan: env ter-track, secret hardcoded, auth helper pada route sensitif, pemasangan rate limiter, sanitasi reset-password, sanitasi HTML, keamanan generator kredensial, validasi secret production, invariant alur persetujuan sekolah, dan keberadaan route boundaries per segmen fitur.
 - ✅ README menambahkan bagian muatan multi-instance & rate limiting.
 
 ### C.9 Route-per-feature (tahap awal / incremental)
