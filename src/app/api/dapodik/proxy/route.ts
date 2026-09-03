@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { requireRole, AuthError } from '@/lib/auth';
 
 // ═══════════════════════════════════════════════════════════════════════
 // API Proxy untuk Dapodik Lokal WebService
@@ -22,6 +23,7 @@ interface ProxyRequest {
 
 export async function POST(request: Request) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const body: ProxyRequest = await request.json();
     const { npsn, token, endpoint } = body;
 
@@ -135,6 +137,9 @@ export async function POST(request: Request) {
     });
 
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('[Dapodik Proxy Error]', error);
     const msg = error instanceof Error ? error.message : 'Terjadi kesalahan tidak terduga.';
     return NextResponse.json(

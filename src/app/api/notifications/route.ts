@@ -1,34 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
-// GET /api/notifications?userId=xxx&schoolId=xxx&category=xxx&unread=true
+// GET /api/notifications?category=xxx&unread=true — current user's notifications
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireAuth(req);
+
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get('userId');
     const category = searchParams.get('category');
     const unreadOnly = searchParams.get('unread') === 'true';
 
-    // Users can only see their own notifications
-    // Admin can see all notifications in their school
-    let targetUserId = auth.userId;
-    if (userId && userId !== auth.userId) {
-      if (auth.role !== 'SUPER_ADMIN' && auth.role !== 'ADMIN_SCHOOL') {
-        return NextResponse.json({ error: 'Tidak diizinkan melihat notifikasi orang lain' }, { status: 403 });
-      }
-      targetUserId = userId;
-    }
-
-    const where: Record<string, unknown> = { userId: targetUserId };
+    // userId is always derived from the authenticated session.
+    const where: Record<string, unknown> = { userId: auth.userId };
     if (category && category !== 'semua') where.category = category;
     if (unreadOnly) where.isRead = false;
 
     const notifications = await db.notification.findMany({
       where,
       orderBy: [{ createdAt: 'desc' }],
-      take: 100,
+      take: Math.min(parseInt(searchParams.get('limit') || '100', 10) || 100, 100),
     });
 
     return NextResponse.json({ data: notifications });
@@ -41,33 +33,40 @@ export async function GET(req: NextRequest) {
   }
 }
 
-// POST /api/notifications — create a new notification (admin only)
+// POST /api/notifications — create a new notification (admin/kepala only)
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH']);
     const body = await req.json();
-    const { userId, title, message, category } = body;
+    const { userId, schoolId, title, message, category } = body;
 
     if (!userId || !title) {
       return NextResponse.json({ error: 'userId dan title wajib diisi' }, { status: 400 });
     }
 
-    // Verify target user exists and is in same school (for non-super-admin)
-    const targetUser = await db.user.findUnique({ where: { id: userId }, select: { schoolId: true } });
-    if (!targetUser) {
-      return NextResponse.json({ error: 'Pengguna tidak ditemukan' }, { status: 404 });
+    // Non-super-admins can only create notifications inside their own school.
+    if (schoolId && auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, schoolId);
     }
-    if (auth.role !== 'SUPER_ADMIN' && targetUser.schoolId !== auth.schoolId) {
-      return NextResponse.json({ error: 'Tidak diizinkan' }, { status: 403 });
+
+    const target = await db.user.findUnique({
+      where: { id: userId },
+      select: { id: true, schoolId: true },
+    });
+    if (!target) {
+      return NextResponse.json({ error: 'Pengguna tujuan tidak ditemukan' }, { status: 404 });
+    }
+    if (auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, target.schoolId ?? '');
     }
 
     const notification = await db.notification.create({
       data: {
         userId,
-        schoolId: auth.schoolId || null,
-        title,
-        message: message || '',
-        category: category || 'general',
+        schoolId: schoolId || target.schoolId || null,
+        title: String(title).trim(),
+        message: String(message || '').trim(),
+        category: String(category || 'general').trim(),
       },
     });
 

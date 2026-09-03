@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireSchoolScope } from '@/lib/scope';
 
 // Helper: auto-create Notification records for targeted users
 async function createNotificationsForAnnouncement(
@@ -11,7 +13,6 @@ async function createNotificationsForAnnouncement(
 ): Promise<number> {
   const where: Record<string, unknown> = { schoolId, isActive: true };
 
-  // Build role filter
   let roles: string[] = [];
   if (targetRoles) {
     try {
@@ -21,7 +22,6 @@ async function createNotificationsForAnnouncement(
     }
   }
 
-  // Build class filter
   let classIds: string[] = [];
   if (targetClassIds) {
     try {
@@ -31,7 +31,6 @@ async function createNotificationsForAnnouncement(
     }
   }
 
-  // Find matching users
   const users = await db.user.findMany({
     where: {
       ...where,
@@ -55,15 +54,30 @@ async function createNotificationsForAnnouncement(
   return result.count;
 }
 
-// GET /api/announcements — List announcements
+// GET /api/announcements — List announcements visible to the current user
 export async function GET(request: Request) {
   try {
+    const auth = await requireAuth(request);
     const { searchParams } = new URL(request.url);
-    const schoolId = searchParams.get('schoolId');
-    const role = searchParams.get('role');
+    const requestedSchoolId = searchParams.get('schoolId');
+
+    // Non-super-admin users always see announcements from their own school.
+    let schoolId = requestedSchoolId || auth.schoolId;
+    if (schoolId && auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, schoolId);
+    }
 
     const where: Record<string, unknown> = {};
     if (schoolId) where.schoolId = schoolId;
+    if (!schoolId && auth.role !== 'SUPER_ADMIN') {
+      return NextResponse.json({ error: 'Akses ditolak' }, { status: 403 });
+    }
+    if (!schoolId && auth.role === 'SUPER_ADMIN') {
+      // Super admin without a school filter sees school announcements?
+      // Without a filter, return only platform-wide announcements.
+      // If you need all announcements, pass schoolId explicitly.
+      where.schoolId = null;
+    }
 
     let announcements = await db.announcement.findMany({
       where,
@@ -76,9 +90,10 @@ export async function GET(request: Request) {
 
     // Client-side filter by role: if role is specified, only return announcements
     // where targetRoles is null (all) or contains the role
+    const role = searchParams.get('role') || auth.role;
     if (role) {
       announcements = announcements.filter((a) => {
-        if (!a.targetRoles) return true; // null = semua role
+        if (!a.targetRoles) return true;
         try {
           const roles: string[] = JSON.parse(a.targetRoles);
           return roles.includes(role);
@@ -90,6 +105,9 @@ export async function GET(request: Request) {
 
     return NextResponse.json(announcements);
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('GET /api/announcements error:', error);
     return NextResponse.json({ error: 'Gagal mengambil data pengumuman' }, { status: 500 });
   }
@@ -98,61 +116,71 @@ export async function GET(request: Request) {
 // POST /api/announcements — Create announcement + auto-notifications
 export async function POST(req: NextRequest) {
   try {
-    const { schoolId, title, content, category, attachmentUrl, targetRoles, targetClassIds, createdById } = await req.json();
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const { schoolId, title, content, category, attachmentUrl, targetRoles, targetClassIds } = await req.json();
 
-    if (!schoolId || !title || !content || !createdById) {
-      return NextResponse.json({ error: 'schoolId, title, content, dan createdById wajib diisi' }, { status: 400 });
+    if (!schoolId || !title || !content) {
+      return NextResponse.json({ error: 'schoolId, title, dan content wajib diisi' }, { status: 400 });
+    }
+    if (auth.role !== 'SUPER_ADMIN') {
+      requireSchoolScope(auth, schoolId);
     }
 
     const announcement = await db.announcement.create({
       data: {
         schoolId,
-        title,
-        content,
-        category: category || 'Umum',
-        attachmentUrl: attachmentUrl || null,
+        title: String(title).trim(),
+        content: String(content).trim(),
+        category: String(category || 'Umum').trim(),
+        attachmentUrl: String(attachmentUrl || '').trim() || null,
         targetRoles: targetRoles ? JSON.stringify(targetRoles) : null,
         targetClassIds: targetClassIds ? JSON.stringify(targetClassIds) : null,
-        createdById,
+        createdById: auth.userId, // always derived from session
       },
       include: {
         creator: { select: { id: true, name: true } },
       },
     });
 
-    // Auto-create notifications for targeted users
     const notifCount = await createNotificationsForAnnouncement(
       schoolId,
-      title,
+      announcement.title,
       announcement.id,
       announcement.targetRoles,
       announcement.targetClassIds,
     );
 
     return NextResponse.json({ announcement, notificationsCreated: notifCount }, { status: 201 });
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('POST /api/announcements error:', error);
-    return NextResponse.json({ error: error.message || 'Gagal membuat pengumuman' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal membuat pengumuman' }, { status: 500 });
   }
 }
 
 // PATCH /api/announcements — Update announcement by id
 export async function PATCH(req: NextRequest) {
   try {
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { id, ...data } = await req.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
-    // Re-stringify arrays if passed
-    const updateData: Record<string, unknown> = { ...data };
-    if (data.targetRoles && !Array.isArray(data.targetRoles)) {
-      // Already a string, pass through
-    } else if (data.targetRoles && Array.isArray(data.targetRoles)) {
-      updateData.targetRoles = JSON.stringify(data.targetRoles);
+    const existing = await db.announcement.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Pengumuman tidak ditemukan' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN') requireSchoolScope(auth, existing.schoolId);
+
+    const updateData: Record<string, unknown> = {};
+    if (data.title !== undefined) updateData.title = String(data.title).trim();
+    if (data.content !== undefined) updateData.content = String(data.content).trim();
+    if (data.category !== undefined) updateData.category = String(data.category).trim();
+    if (data.attachmentUrl !== undefined) updateData.attachmentUrl = String(data.attachmentUrl || '').trim() || null;
+    if (data.targetRoles !== undefined) {
+      updateData.targetRoles = Array.isArray(data.targetRoles) ? JSON.stringify(data.targetRoles) : String(data.targetRoles);
     }
-    if (data.targetClassIds && !Array.isArray(data.targetClassIds)) {
-      // Already a string, pass through
-    } else if (data.targetClassIds && Array.isArray(data.targetClassIds)) {
-      updateData.targetClassIds = JSON.stringify(data.targetClassIds);
+    if (data.targetClassIds !== undefined) {
+      updateData.targetClassIds = Array.isArray(data.targetClassIds) ? JSON.stringify(data.targetClassIds) : String(data.targetClassIds);
     }
 
     const announcement = await db.announcement.update({
@@ -164,22 +192,33 @@ export async function PATCH(req: NextRequest) {
     });
 
     return NextResponse.json(announcement);
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('PATCH /api/announcements error:', error);
-    return NextResponse.json({ error: error.message || 'Gagal mengupdate pengumuman' }, { status: 500 });
+    return NextResponse.json({ error: 'Gagal mengupdate pengumuman' }, { status: 500 });
   }
 }
 
 // DELETE /api/announcements — Delete announcement by id
 export async function DELETE(req: NextRequest) {
   try {
+    const auth = await requireRole(req, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
+    const existing = await db.announcement.findUnique({ where: { id }, select: { schoolId: true } });
+    if (!existing) return NextResponse.json({ error: 'Pengumuman tidak ditemukan' }, { status: 404 });
+    if (auth.role !== 'SUPER_ADMIN') requireSchoolScope(auth, existing.schoolId);
+
     await db.announcement.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     console.error('DELETE /api/announcements error:', error);
     return NextResponse.json({ error: 'Gagal menghapus pengumuman' }, { status: 500 });
   }

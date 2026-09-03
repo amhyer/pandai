@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { requireAuth } from '@/lib/auth-guard';
+import { requireAuth, AuthError, type AuthUser } from '@/lib/auth';
 
 /**
  * GET /api/reports/downloads?studentId=xxx
@@ -10,8 +10,15 @@ import { requireAuth } from '@/lib/auth-guard';
  * or by SUPER_ADMIN / ADMIN_SCHOOL / GURU for their school's students.
  */
 export async function GET(request: NextRequest) {
-  const { session, error } = await requireAuth(request);
-  if (error) return error;
+  let session: AuthUser;
+  try {
+    session = await requireAuth(request);
+  } catch (error) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    return NextResponse.json({ error: 'Autentikasi diperlukan' }, { status: 401 });
+  }
 
   try {
     const { searchParams } = new URL(request.url);
@@ -39,7 +46,7 @@ export async function GET(request: NextRequest) {
 
     // ORANG_TUA: can only access their own children's reports
     if (session.role === 'ORANG_TUA') {
-      if (student.parentId !== session.id) {
+      if (student.parentId !== session.userId) {
         return NextResponse.json(
           { error: 'Anda tidak memiliki akses ke laporan siswa ini' },
           { status: 403 }

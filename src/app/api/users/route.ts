@@ -3,13 +3,27 @@ import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
 import { generateTempPassword } from '@/lib/temp-password';
 import { logError } from '@/lib/error-log';
-import { requireAuth, requireRole, AuthError } from '@/lib/auth';
+import { requireAuth, requireRole, AuthError, sanitizeUser } from '@/lib/auth';
 import { logAccess } from '@/lib/audit-log';
 
 // Helper: extract first name from full name
 function getFirstName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
   return parts[0].toLowerCase();
+}
+
+// Which roles an authenticated actor may create. Prevents privilege escalation.
+const ALLOWED_CREATE_ROLES: Record<string, string[]> = {
+  SUPER_ADMIN: ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'KEPALA_SEKOLAH', 'GURU', 'SISWA', 'ORANG_TUA'],
+  ADMIN_SCHOOL: ['KEPALA_SEKOLAH', 'GURU', 'SISWA', 'ORANG_TUA'],
+};
+
+function validatePasswordPolicy(password: string): string | null {
+  if (password.length < 8) return 'Password minimal 8 karakter';
+  if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+    return 'Password harus mengandung huruf dan angka';
+  }
+  return null;
 }
 
 // Helper: generate unique username for orang tua (avoid collision)
@@ -130,7 +144,8 @@ export async function GET(request: Request) {
       take: limit,
       skip,
     });
-    return NextResponse.json(users);
+    // Never leak password hashes or session tokens through the API.
+    return NextResponse.json(users.map((u) => sanitizeUser(u)));
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -151,14 +166,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Nama wajib diisi' }, { status: 400 });
     }
 
-    // IDOR fix: ADMIN_SCHOOL can only create users in their own school
+    const userRole = (role || 'SISWA').toUpperCase();
+
+    // Privilege escalation guard: an ADMIN_SCHOOL must never create another
+    // ADMIN_SCHOOL or SUPER_ADMIN. Only SUPER_ADMIN may create those.
+    const allowedCreateRoles = ALLOWED_CREATE_ROLES[auth.role] ?? [];
+    if (!allowedCreateRoles.includes(userRole)) {
+      return NextResponse.json(
+        { error: 'Role tidak diizinkan untuk role Anda' },
+        { status: 403 }
+      );
+    }
+
+    // IDOR fix: ADMIN_SCHOOL can only create users in their own school.
+    // When schoolId is omitted, fall back to the actor's school.
+    const effectiveSchoolId = schoolId || auth.schoolId || undefined;
     if (auth.role !== 'SUPER_ADMIN') {
-      if (schoolId && schoolId !== auth.schoolId) {
+      if (!effectiveSchoolId || (schoolId && schoolId !== auth.schoolId)) {
         return NextResponse.json({ error: 'Akses ditolak — bukan sekolah Anda' }, { status: 403 });
       }
     }
-
-    const userRole = (role || 'SISWA').toUpperCase();
+    // SUPER_ADMIN is a platform-wide role and does not belong to a school.
+    const requiresSchool = userRole !== 'SUPER_ADMIN';
+    if (requiresSchool && !effectiveSchoolId) {
+      return NextResponse.json({ error: 'School ID diperlukan' }, { status: 400 });
+    }
 
     // Role whitelist: prevent privilege escalation
     const VALID_ROLES = ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA', 'ORANG_TUA'];
@@ -183,13 +215,15 @@ export async function POST(request: Request) {
       if (!data.password) {
         return NextResponse.json({ error: 'Password wajib diisi untuk guru' }, { status: 400 });
       }
+      const pwdError = validatePasswordPolicy(String(data.password));
+      if (pwdError) return NextResponse.json({ error: pwdError }, { status: 400 });
 
       if (nip) {
         const existingNip = await db.user.findUnique({ where: { nip } });
         if (existingNip) return NextResponse.json({ error: 'NIP sudah terdaftar' }, { status: 409 });
       }
       if (nik) {
-        const existingNik = await db.user.findFirst({ where: { nik, schoolId } });
+        const existingNik = await db.user.findFirst({ where: { nik, schoolId: effectiveSchoolId } });
         if (existingNik) return NextResponse.json({ error: 'NIK sudah terdaftar di sekolah ini' }, { status: 409 });
       }
 
@@ -202,7 +236,7 @@ export async function POST(request: Request) {
           password: await hashPassword(data.password),
           name,
           role: 'GURU',
-          schoolId,
+          schoolId: effectiveSchoolId,
           phone,
           nip: nip || null,
           nik: nik || null,
@@ -210,7 +244,7 @@ export async function POST(request: Request) {
         include: { school: true, class: true },
       });
 
-      return NextResponse.json({ user, message: `Guru ${name} berhasil ditambahkan. Login: ${loginId}` });
+      return NextResponse.json({ user: sanitizeUser(user), message: `Guru ${name} berhasil ditambahkan. Login: ${loginId}` });
     }
 
     // ── SISWA: require NISN, auto-create ORANG_TUA ──
@@ -221,6 +255,8 @@ export async function POST(request: Request) {
       if (!data.password) {
         return NextResponse.json({ error: 'Password wajib diisi untuk siswa' }, { status: 400 });
       }
+      const pwdError = validatePasswordPolicy(String(data.password));
+      if (pwdError) return NextResponse.json({ error: pwdError }, { status: 400 });
 
       const existingNisn = await db.user.findUnique({ where: { nisn: nisn.trim() } });
       if (existingNisn) return NextResponse.json({ error: 'NISN sudah terdaftar' }, { status: 409 });
@@ -230,7 +266,7 @@ export async function POST(request: Request) {
       if (namaOrtu && namaOrtu.trim()) {
         const ortuResult = await autoCreateOrtuForSiswa({
           namaOrtu: namaOrtu.trim(),
-          schoolId: schoolId!,
+          schoolId: effectiveSchoolId!,
           siswaId: '',
           siswaName: name,
         });
@@ -248,7 +284,7 @@ export async function POST(request: Request) {
           password: await hashPassword(data.password),
           name,
           role: 'SISWA',
-          schoolId,
+          schoolId: effectiveSchoolId,
           classId,
           phone,
           nisn: nisn.trim(),
@@ -260,7 +296,7 @@ export async function POST(request: Request) {
       });
 
       return NextResponse.json({
-        user,
+        user: sanitizeUser(user),
         message: `Siswa ${name} berhasil ditambahkan. Login: ${nisn.trim()}${ortuMessage}`,
       });
     }
@@ -273,6 +309,8 @@ export async function POST(request: Request) {
     if (!data.password) {
       return NextResponse.json({ error: 'Password wajib diisi' }, { status: 400 });
     }
+    const pwdError = validatePasswordPolicy(String(data.password));
+    if (pwdError) return NextResponse.json({ error: pwdError }, { status: 400 });
 
     const existing = await db.user.findUnique({ where: { email: email.toLowerCase() } });
     if (existing) return NextResponse.json({ error: 'Email sudah terdaftar' }, { status: 409 });
@@ -283,14 +321,14 @@ export async function POST(request: Request) {
         password: await hashPassword(data.password),
         name,
         role: userRole,
-        schoolId,
+        schoolId: effectiveSchoolId,
         classId,
         phone,
       },
       include: { school: true, class: true },
     });
 
-    return NextResponse.json({ user, message: `Pengguna ${name} berhasil ditambahkan` });
+    return NextResponse.json({ user: sanitizeUser(user), message: `Pengguna ${name} berhasil ditambahkan` });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -328,10 +366,14 @@ export async function PATCH(request: Request) {
     if (body.classId !== undefined) data.classId = body.classId;
     if (body.jk !== undefined) data.jk = body.jk;
     if (body.namaOrtu !== undefined) data.namaOrtu = body.namaOrtu;
-    if (body.password) data.password = await hashPassword(body.password);
+    if (body.password) {
+      const pwdError = validatePasswordPolicy(String(body.password));
+      if (pwdError) return NextResponse.json({ error: pwdError }, { status: 400 });
+      data.password = await hashPassword(body.password);
+    }
 
     const user = await db.user.update({ where: { id }, data });
-    return NextResponse.json(user);
+    return NextResponse.json(sanitizeUser(user));
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
@@ -368,7 +410,7 @@ export async function PUT(request: Request) {
     if (phone !== undefined) data.phone = phone;
 
     const user = await db.user.update({ where: { id }, data });
-    return NextResponse.json(user);
+    return NextResponse.json(sanitizeUser(user));
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });

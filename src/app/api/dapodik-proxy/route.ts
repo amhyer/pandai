@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireRole, AuthError } from '@/lib/auth';
 
 /**
  * Dapodik Lokal Proxy API
@@ -20,6 +21,9 @@ import { NextRequest, NextResponse } from 'next/server';
  * Usage: GET /api/dapodik-proxy?endpoint=Sekolah&server=http://localhost:5774&sekolah_id={UUID}&token={TOKEN}
  */
 
+const ALLOWED_PROXY_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+const ALLOWED_PROXY_PORTS = new Set(['5774', '8881']);
+
 const ALLOWED_ENDPOINTS = [
   'Sekolah',
   'Ptk',
@@ -35,6 +39,7 @@ const ALLOWED_ENDPOINTS = [
 
 export async function GET(request: NextRequest) {
   try {
+    await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
     const searchParams = request.nextUrl.searchParams;
     const endpoint = searchParams.get('endpoint');
     const server = searchParams.get('server') || 'http://localhost:5774';
@@ -78,9 +83,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(parsedServer.hostname)) {
+    if (!ALLOWED_PROXY_HOSTS.has(parsedServer.hostname)) {
       return NextResponse.json(
         { success: false, error: 'Server hanya boleh localhost atau 127.0.0.1 (karena keamanan)' },
+        { status: 400 }
+      );
+    }
+    if (!ALLOWED_PROXY_PORTS.has(parsedServer.port)) {
+      return NextResponse.json(
+        { success: false, error: 'Port server harus 5774 atau 8881' },
         { status: 400 }
       );
     }
@@ -147,6 +158,9 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error: unknown) {
+    if (error instanceof AuthError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
     const err = error as Error;
 
     if (err.message?.includes('ECONNREFUSED') || err.message?.includes('fetch failed')) {

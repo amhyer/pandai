@@ -1,20 +1,24 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { getServerSessionUser } from '@/lib/server-auth';
+import { PrefetchedRouteShell } from '@/components/app/prefetched-route-shell';
+import type { User as StoreUser } from '@/store/use-store';
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+export const dynamic = 'force-dynamic';
 
-// Stub lama — dialihkan ke dashboard utama.
-// Super admin dapat memakai menu "Akun Global" di sidebar.
-export default function AccountsPage() {
-  const router = useRouter();
+export default async function AccountsPage() {
+  const user = await getServerSessionUser(['SUPER_ADMIN']);
+  if (!user) redirect('/');
 
-  useEffect(() => {
-    router.replace('/');
-  }, [router]);
+  const storeUser: StoreUser = {
+    ...user,
+    role: user.role as StoreUser['role'],
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#f8f9fc]">
-      <p className="text-sm font-medium text-muted-foreground">Mengalihkan ke dashboard...</p>
-    </div>
+    <PrefetchedRouteShell
+      initialUser={storeUser}
+      initialView="dashboard"
+      loadingLabel="Membuka Beranda Super Admin..."
+    />
   );
 }

@@ -12,8 +12,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email, password, dan nama wajib diisi' }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password minimal 6 karakter' }, { status: 400 });
+    if (password.length < 8) {
+      return NextResponse.json({ error: 'Password minimal 8 karakter' }, { status: 400 });
+    }
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      return NextResponse.json({ error: 'Password harus mengandung huruf dan angka' }, { status: 400 });
     }
 
     if (!schoolData || !schoolData.npsn || !schoolData.name) {
@@ -46,7 +49,9 @@ export async function POST(request: Request) {
     // mengembalikan bentuk_pendidikan), supaya opsi tingkat kelas langsung benar.
     const schoolType = (schoolData.schoolType ?? '').trim() || inferSchoolLevelFromName(schoolData.name);
 
-    // Create School with Dapodik fields
+    // Create School with Dapodik fields.
+    // Self-registered schools start as pending; a SUPER_ADMIN must approve them
+    // before the admin account can log in. This prevents NPSN/school squatting.
     const school = await db.school.create({
       data: {
         name: schoolData.name,
@@ -62,6 +67,7 @@ export async function POST(request: Request) {
         accreditation: schoolData.accreditation || null,
         schoolType: schoolType || null,
         curriculum: schoolData.curriculum || null,
+        status: 'pending',
       },
     });
 
@@ -76,7 +82,8 @@ export async function POST(request: Request) {
       },
     });
 
-    // Create Admin User linked to the school
+    // Create Admin User linked to the school.
+    // The account is inactive until a SUPER_ADMIN approves the school.
     const user = await db.user.create({
       data: {
         email: email.toLowerCase(),
@@ -84,6 +91,8 @@ export async function POST(request: Request) {
         name,
         role: 'ADMIN_SCHOOL',
         schoolId: school.id,
+        isActive: false,
+        mustChangePassword: true,
       },
       include: { school: true },
     });
@@ -96,6 +105,8 @@ export async function POST(request: Request) {
       schoolId: user.schoolId,
       schoolName: user.school?.name,
       isActive: user.isActive,
+      pendingApproval: true,
+      schoolStatus: 'pending',
     });
   } catch (error: unknown) {
     logError({ error, route: '/api/auth/register-school', method: 'POST' });

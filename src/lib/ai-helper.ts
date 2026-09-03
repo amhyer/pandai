@@ -1,5 +1,6 @@
 import ZAI from 'z-ai-web-dev-sdk';
 import { db } from '@/lib/db';
+import { checkRateLimitAsync, RATE_AI } from '@/lib/rate-limit';
 
 // ═══════════════════════════════════════════════════════════════
 // LAZY SINGLETON for ZAI SDK
@@ -39,6 +40,20 @@ export async function checkRateLimit(
   schoolId: string,
   actionType: string
 ): Promise<{ allowed: boolean; message?: string }> {
+  // Burst protection (short window, per user + action). Uses Redis when
+  // available so the limit is shared across serverless instances.
+  const burst = await checkRateLimitAsync(
+    `ai:${userId}:${actionType}`,
+    RATE_AI.max,
+    RATE_AI.windowMs
+  );
+  if (!burst.allowed) {
+    return {
+      allowed: false,
+      message: `Terlalu banyak permintaan. Coba lagi dalam ${Math.ceil((burst.retryAfterMs || 0) / 1000)} detik.`,
+    };
+  }
+
   // Get AI config for school
   const config = await db.aiConfig.findUnique({ where: { schoolId } });
   if (!config) {

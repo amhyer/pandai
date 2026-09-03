@@ -11,12 +11,16 @@ const JWT_EXPIRY_HOURS = 24;
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
-  if (!secret || secret === 'CHANGE_ME_IN_PRODUCTION') {
+  const placeholder = secret === 'CHANGE_ME_IN_PRODUCTION' || secret.startsWith('replace_with_') || secret.startsWith('dev_jwt_secret');
+  if (!secret || placeholder) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('[SECURITY] JWT_SECRET is not configured');
     }
     // Dev fallback — still better than nothing
     return new TextEncoder().encode('dev_jwt_secret_do_not_use_in_prod');
+  }
+  if (secret.length < 32) {
+    throw new Error('[SECURITY] JWT_SECRET must be at least 32 characters');
   }
   return new TextEncoder().encode(secret);
 }
@@ -230,6 +234,15 @@ export class AuthError extends Error {
     this.status = status;
     this.name = 'AuthError';
   }
+}
+
+// ─── Sensitive user sanitizer for admin/user routes ────────────
+
+/** Remove secrets that must never be sent to the browser even for authorized admin views. */
+export function sanitizeUser(user: any): any {
+  if (!user) return user;
+  const { password, sessionToken, ...safe } = user;
+  return safe;
 }
 
 // ─── Cookie helpers for login/logout ─────────────────────────
