@@ -2,12 +2,12 @@
 
 import { RouteShell } from '@/components/app/route-shell';
 
-export default function AccountsPage() {
+export default function OrtuPage() {
   return (
     <RouteShell
       initialView="dashboard"
-      allowedRoles={['SUPER_ADMIN']}
-      loadingLabel="Membuka Beranda Super Admin..."
+      allowedRoles={['ORANG_TUA']}
+      loadingLabel="Membuka Beranda Orang Tua..."
     />
   );
 }

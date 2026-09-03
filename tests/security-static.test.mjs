@@ -256,15 +256,31 @@ for (const segment of featureSegments) {
 // ─── 10. Route-per-feature migration invariants ──────────────────────────
 const routeMap = read(join(SRC, 'lib', 'route-map.ts'));
 assert(
-  /export function getRoleRoute|export function getAdminSchoolView/.test(routeMap) &&
-    /admin-school\//.test(routeMap),
-  'route-map.ts does not expose admin-school feature routes'
+  /export function getRoleRoute|export function getAdminSchoolView|export function getSuperAdminView/.test(routeMap) &&
+    /admin-school\//.test(routeMap) &&
+    /accounts\//.test(routeMap),
+  'route-map.ts does not expose admin-school/super-admin feature routes'
 );
 
 const appLayout = read(join(SRC, 'components', 'layout', 'app-layout.tsx'));
 assert(
   /getRoleRoute/.test(appLayout) && /router\.push/.test(appLayout),
   'AppLayout does not navigate migrated features through the App Router'
+);
+
+const superAdminRoot = read(join(SRC, 'app', 'accounts', 'page.tsx'));
+assert(
+  /RouteShell/.test(superAdminRoot) && /initialView="dashboard"/.test(superAdminRoot),
+  'accounts root page is not the RouteShell super-admin dashboard'
+);
+
+const superAdminFeature = read(join(SRC, 'app', 'accounts', '[feature]', 'page.tsx'));
+assert(
+  /useParams/.test(superAdminFeature) &&
+    /getSuperAdminView/.test(superAdminFeature) &&
+    /RouteShell/.test(superAdminFeature) &&
+    /AppRouteNotFound/.test(superAdminFeature),
+  'accounts dynamic feature page does not map segments to views'
 );
 
 const adminSchoolRoot = read(join(SRC, 'app', 'admin-school', 'page.tsx'));
@@ -281,6 +297,40 @@ assert(
     /AppRouteNotFound/.test(adminSchoolFeature),
   'admin-school dynamic feature page does not map segments to views'
 );
+
+const roleFeaturePages = [
+  ['src/app/guru/[feature]/page.tsx', 'getGuruView', 'GURU'],
+  ['src/app/siswa/[feature]/page.tsx', 'getSiswaView', 'SISWA'],
+  ['src/app/ortu/[feature]/page.tsx', 'getOrtuView', 'ORANG_TUA'],
+  ['src/app/kepala-sekolah/[feature]/page.tsx', 'getKepalaSekolahView', 'KEPALA_SEKOLAH'],
+];
+for (const [rel, viewFn, role] of roleFeaturePages) {
+  const page = read(join(ROOT, rel));
+  assert(
+    /useParams/.test(page) &&
+      new RegExp(viewFn).test(page) &&
+      /RouteShell/.test(page) &&
+      /AppRouteNotFound/.test(page) &&
+      new RegExp(`['"]${role}['"]`).test(page),
+    `${rel} is not a role feature route`
+  );
+}
+
+const roleRootPages = [
+  ['src/app/guru/page.tsx', 'GURU'],
+  ['src/app/siswa/page.tsx', 'SISWA'],
+  ['src/app/ortu/page.tsx', 'ORANG_TUA'],
+  ['src/app/kepala-sekolah/page.tsx', 'KEPALA_SEKOLAH'],
+];
+for (const [rel, role] of roleRootPages) {
+  const page = read(join(ROOT, rel));
+  assert(
+    /RouteShell/.test(page) &&
+      new RegExp(`['"]${role}['"]`).test(page) &&
+      /initialView="dashboard/.test(page),
+    `${rel} is not the Dashboard RouteShell page for ${role}`
+  );
+}
 
 const viewRouter = read(join(SRC, 'components', 'app', 'view-router.tsx'));
 assert(
@@ -326,7 +376,7 @@ const routePages = [
   ['src/app/kepala-sekolah/accounts/page.tsx', 'dashboard-kepsek', 'KEPALA_SEKOLAH'],
   ['src/app/siswa/accounts/page.tsx', 'dashboard-siswa', 'SISWA'],
   ['src/app/ortu/accounts/page.tsx', 'dashboard-ortu', 'ORANG_TUA'],
-  ['src/app/accounts/page.tsx', 'users-global', 'SUPER_ADMIN'],
+  ['src/app/accounts/page.tsx', 'dashboard', 'SUPER_ADMIN'],
 ];
 for (const [rel, initialView, role] of routePages) {
   const page = read(join(ROOT, rel));
