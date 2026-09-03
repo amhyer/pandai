@@ -371,6 +371,14 @@ const serverPages = [
   ['src/app/admin-school/profile/page.tsx', 'ADMIN_SCHOOL', 'profile'],
   ['src/app/accounts/notifications/page.tsx', 'SUPER_ADMIN', 'notifications'],
   ['src/app/admin-school/notifications/page.tsx', 'ADMIN_SCHOOL', 'notifications'],
+  ['src/app/guru/profile/page.tsx', 'GURU', 'profile'],
+  ['src/app/guru/notifications/page.tsx', 'GURU', 'notifications'],
+  ['src/app/siswa/profile/page.tsx', 'SISWA', 'profile'],
+  ['src/app/siswa/notifications/page.tsx', 'SISWA', 'notifications'],
+  ['src/app/ortu/profile/page.tsx', 'ORANG_TUA', 'profile'],
+  ['src/app/ortu/notifications/page.tsx', 'ORANG_TUA', 'notifications'],
+  ['src/app/kepala-sekolah/profile/page.tsx', 'KEPALA_SEKOLAH', 'profile'],
+  ['src/app/kepala-sekolah/notifications/page.tsx', 'KEPALA_SEKOLAH', 'notifications'],
 ];
 for (const [rel, role, initialView] of serverPages) {
   const page = read(join(ROOT, rel));

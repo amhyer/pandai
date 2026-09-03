@@ -933,6 +933,7 @@ Berikut perbaikan yang sudah diimplementasikan pada branch kerja `arena/01a064ff
 - ✅ `ViewRouter` kini URL-first: `viewFromPathname()` di `src/lib/route-map.ts` memetakan pathname dewasa ini ke `currentView`; store hanya dipakai sebagai fallback untuk transisi lama di `/`.
 - ✅ Server Component migration dimulai pada `/accounts/profile`: `src/lib/server-auth.ts` (baca cookie + `verifySession` + DB + `toPublicUser`), `src/components/app/prefetched-route-shell.tsx` (seed store tanpa panggilan `/api/auth/me` kedua), dan `src/app/accounts/profile/page.tsx` (server page SUPER_ADMIN).
 - ✅ Server Component route tambahan menggunakan pola yang sama: `/admin-school/profile` (ADMIN_SCHOOL), `/accounts/notifications` (SUPER_ADMIN), `/admin-school/notifications` (ADMIN_SCHOOL), semuanya `force-dynamic` + role guard server-side + `PrefetchedRouteShell`.
+- ✅ Semua role kini punya Server Component page untuk `profile` dan `notifications`: super admin, admin sekolah, guru, siswa, orang tua, kepala sekolah — semuanya pre-load session dari DB (`getServerSessionUser`) tanpa panggilan `/api/auth/me` kedua.
 - 🔲 Refactor penuh: memindahkan lebih banyak fitur `currentView` ke Server Components per-feature (data fetching + loading/error per fitur) masih perlu sprint terpisah, karena membutuhkan build/test yang bisa dijalankan untuk memverifikasi perilaku session & layout.
 
 ### C.10 Belum dikerjakan (bisa dijadikan sprint berikutnya)
