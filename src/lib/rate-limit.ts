@@ -72,7 +72,8 @@ export async function checkRateLimitAsync(
 
   try {
     // Use a pipeline: INCR then attach expiry only if no expiry exists (NX).
-    const response = await fetch(UPSTASH_URL, {
+    // Upstash REST expects pipelines on the /pipeline endpoint, not the base URL.
+    const response = await fetch(`${UPSTASH_URL}/pipeline`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${UPSTASH_TOKEN}`,
@@ -89,8 +90,24 @@ export async function checkRateLimitAsync(
       return checkRateLimit(key, maxRequests, windowMs);
     }
 
-    const result = await response.json();
-    const count = Number(Array.isArray(result) ? result[0] : result);
+    const data: unknown = await response.json();
+    if (!data || typeof data !== 'object') {
+      return checkRateLimit(key, maxRequests, windowMs);
+    }
+
+    // Whole-pipeline error, e.g. {"error":"..."}.
+    if ('error' in data && typeof data.error === 'string') {
+      console.warn(`[rate-limit] Upstash error; falling back to memory: ${data.error}`);
+      return checkRateLimit(key, maxRequests, windowMs);
+    }
+
+    // Pipeline responses are arrays of { result } objects; take the INCR result (first).
+    const first: unknown = Array.isArray(data) ? data[0] : data;
+    const rawResult =
+      first && typeof first === 'object' && 'result' in first
+        ? (first as { result: unknown }).result
+        : first;
+    const count = Number(rawResult);
     if (Number.isNaN(count)) {
       return checkRateLimit(key, maxRequests, windowMs);
     }
