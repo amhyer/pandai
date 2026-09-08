@@ -44,6 +44,8 @@ model School {
   competencyAssessments CompetencyAssessment[]
   gradeComponents     GradeComponent[]
   studentGrades       StudentGrade[]
+  googleSheetsConfigs GoogleSheetsConfig[]
+  guruCatatan         GuruCatatan[]
 }
 
 // ===== SUBSCRIPTION =====
@@ -104,6 +106,8 @@ model User {
   competencyAssessments CompetencyAssessment[] @relation("AssessedStudent")
   createdGradeComponents GradeComponent[] @relation("GradeComponentCreator")
   studentGrades      StudentGrade[] @relation("GradedStudent")
+  guruCatatanReceived GuruCatatan[] @relation("GuruCatatanStudent")
+  guruCatatanWritten  GuruCatatan[] @relation("GuruCatatanTeacher")
 
   @@index([schoolId])
   @@index([role])
@@ -128,6 +132,7 @@ model Class {
   timetables Timetable[]
   competencyAssessments CompetencyAssessment[]
   gradeComponents     GradeComponent[] @relation("GradeComponentClass")
+  guruCatatan         GuruCatatan[]    @relation("GuruCatatanClass")
 }
 
 // ===== SUBJECT (MATA UJI) =====
@@ -144,6 +149,7 @@ model Subject {
   questions Question[]
   timetables Timetable[]
   gradeComponents GradeComponent[]
+  guruCatatan GuruCatatan[]
 }
 
 // ===== TOPIC / SUBTOPIK =====
@@ -175,6 +181,7 @@ model Question {
   explanation   String?  // pembahasan
   cognitiveLevel String @default("C3") // C1-C6
   difficulty    String   @default("sedang") // mudah, sedang, sulit
+  imageUrl      String? // URL gambar penunjang soal (opsional)
   status        String   @default("draft") // draft, published, archived
   source        String   @default("manual") // manual, ai
   reviewedBy    String?
@@ -779,4 +786,58 @@ model CompetencyAssessment {
   @@index([assessedBy])
   @@index([term])
   @@index([dimension])
+}
+
+// ===== GOOGLE SHEETS CONFIG (INTEGRASI SHEETS) =====
+// Satu konfigurasi per sekolah. Token OAuth2 disimpan TERENKRIPSI (AES-256-GCM
+// via src/lib/encryption.ts) — lihat docs/GOOGLE_SHEETS_SYNC_SETUP.md.
+model GoogleSheetsConfig {
+  id                   String    @id @default(cuid())
+  schoolId             String
+  spreadsheetId        String? // diisi setelah admin menyimpan ID sheet
+  sheetName            String    @default("NILAI") // sheet target, mis. "SISWA" | "NILAI"
+  mode                 String    @default("all") // "all" | "per_class"
+  status               String    @default("pending") // "pending" | "connected" | "error" | "disconnected"
+  lastSyncAt           DateTime?
+  lastSyncRows         Int?
+  lastError            String?   @db.Text
+  encryptedAccessToken String?   @db.Text
+  encryptedRefreshToken String?  @db.Text
+  accessTokenExpiresAt DateTime?
+  scheduleFrequency    String    @default("none") // "none" | "hourly" | "daily"
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, spreadsheetId])
+  @@index([schoolId])
+  @@index([status])
+}
+
+// ===== GURU CATATAN (CATATAN PEMBINAAN GURU) =====
+model GuruCatatan {
+  id        String   @id @default(cuid())
+  studentId String
+  schoolId  String
+  classId   String?
+  teacherId String
+  subjectId String?
+  term      String   // e.g. "2025/2026-Ganjil"
+  date      String   // YYYY-MM-DD
+  category  String   @default("umum") // umum | apresiasi | perbaikan | perhatian
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  student User    @relation("GuruCatatanStudent", fields: [studentId], references: [id])
+  teacher User    @relation("GuruCatatanTeacher", fields: [teacherId], references: [id])
+  class   Class?  @relation("GuruCatatanClass", fields: [classId], references: [id])
+  subject Subject? @relation(fields: [subjectId], references: [id])
+  school  School  @relation(fields: [schoolId], references: [id])
+
+  @@index([studentId])
+  @@index([teacherId])
+  @@index([schoolId])
+  @@index([classId, term])
 }
