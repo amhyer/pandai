@@ -2,6 +2,12 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "buildCommand": "npm run build:vercel",
+  "crons": [
+    {
+      "path": "/api/sheets/sync",
+      "schedule": "0 * * * *"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",

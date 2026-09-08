@@ -68,27 +68,36 @@ Salin **Spreadsheet ID** dari URL: `https://sheets.google.com/spreadsheets/`**`1
 
 ## 5. Sinkronisasi Terjadwal (Cron)
 
-Endpoint: `POST /api/sheets/sync?cron=1` dengan header `x-cron-secret: $SHEETS_SYNC_CRON_SECRET`.
+Endpoint cron:
+- `GET /api/sheets/sync` — dipakai **Vercel Cron** (GET + header `Authorization: Bearer $CRON_SECRET`)
+- `POST /api/sheets/sync?cron=1` dengan header `x-cron-secret: $SHEETS_SYNC_CRON_SECRET` — cron eksternal
+
 Cron hanya menjalankan sekolah yang `scheduleFrequency != none` **dan sudah jatuh tempo**
 (hourly ≥ 1 jam, daily ≥ 24 jam sejak `lastSyncAt`).
 
 ### Vercel Cron
 
-Tambahkan di `vercel.json`:
+Sudah terdaftar di `vercel.json`:
 
 ```json
 {
   "crons": [
-    {
-      "path": "/api/sheets/sync?cron=1",
-      "schedule": "0 * * * *"
-    }
+    { "path": "/api/sheets/sync", "schedule": "0 * * * *" }
   ]
 }
 ```
 
-lalu set header cron via Vercel Dashboard (Cron Jobs → edit → custom headers) atau
-pakai secret di query string: `?cron=1&secret=...` (kurang aman — prefer header).
+⚠️ Cara kerja Vercel Cron: request selalu **GET** dan tidak bisa dikirim custom
+header. Sebagai gantinya Vercel otomatis menambahkan `Authorization: Bearer $CRON_SECRET`
+**jika** project men-set env `CRON_SECRET`. Maka di Vercel set **keduanya**:
+
+```
+SHEETS_SYNC_CRON_SECRET=<openssl rand -hex 32>
+CRON_SECRET=<nilai yang sama dengan di atas>
+```
+
+Catatan plan Vercel: schedule per jam (`0 * * * *`) membutuhkan plan **Pro**;
+di plan **Hobby** cron dibatasi sekali sehari (mis. gunakan `"0 3 * * *"`).
 
 ### Alternatif (GitHub Actions / cron eksternal)
 

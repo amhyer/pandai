@@ -8,10 +8,14 @@ import { runSync, SheetsNotConfiguredError } from '@/lib/google-sheets/sync';
  * Sync manual (admin) dan/atau terjadwal (cron).
  *
  * Manual:  POST /api/sheets/sync                { type?: 'SISWA'|'NILAI'|'all' }
- * Cron:    POST /api/sheets/sync?cron=1  + header x-cron-secret (SHEETS_SYNC_CRON_SECRET)
+ * Cron:    GET  /api/sheets/sync                (Vercel Cron — header Authorization: Bearer $CRON_SECRET)
+ *          POST /api/sheets/sync?cron=1         + header x-cron-secret (cron eksternal)
  *          → hanya eksekusi sekolah yang scheduleFrequency != none dan sudah jatuh tempo.
  *
- * Vercel Cron: setup di vercel.json / dashboard (lihat docs/GOOGLE_SHEETS_SYNC_SETUP.md).
+ * Vercel Cron terdaftar di vercel.json. Vercel Cron selalu mengirim GET dan tidak
+ * bisa menyertakan custom header; ia otomatis menambahkan `Authorization: Bearer
+ * $CRON_SECRET` bila project men-set env CRON_SECRET — jadi set CRON_SECRET sama
+ * dengan SHEETS_SYNC_CRON_SECRET (lihat docs/GOOGLE_SHEETS_SYNC_SETUP.md).
  */
 
 function isScheduleDue(frequency: string, lastSyncAt: Date | null): boolean {
@@ -21,6 +25,88 @@ function isScheduleDue(frequency: string, lastSyncAt: Date | null): boolean {
   return frequency === 'hourly' ? hours >= 1 : hours >= 24;
 }
 
+/**
+ * Verifikasi shared secret cron. Sumber yang diterima:
+ *  - header `x-cron-secret` (cron eksternal)
+ *  - header `Authorization: Bearer <secret>` (otomatis dari Vercel Cron)
+ *  - query `?secret=` (fallback, kurang aman)
+ * Return null jika valid, atau NextResponse error siap-kirim.
+ */
+function checkCronAuth(request: Request, url: URL): NextResponse | null {
+  const secret = process.env.SHEETS_SYNC_CRON_SECRET;
+  if (!secret) {
+    return NextResponse.json({ error: 'SHEETS_SYNC_CRON_SECRET belum dikonfigurasi' }, { status: 501 });
+  }
+  const authHeader = request.headers.get('authorization') || '';
+  const bearer = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  const provided = request.headers.get('x-cron-secret') || bearer || url.searchParams.get('secret');
+  if (provided !== secret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  return null;
+}
+
+/** Jalankan sync terjadwal untuk semua sekolah yang connected & sudah jatuh tempo. */
+async function runScheduledSync(): Promise<NextResponse> {
+  const configs = await db.googleSheetsConfig.findMany({
+    where: { status: 'connected', scheduleFrequency: { not: 'none' } },
+    select: { schoolId: true },
+  });
+  const schoolIds = Array.from(new Set(configs.map((c) => c.schoolId)));
+
+  const results: Record<string, unknown> = {};
+  let anyOk = false;
+  let anyExecuted = false;
+
+  for (const sid of schoolIds) {
+    const config = await db.googleSheetsConfig.findFirst({
+      where: { schoolId: sid },
+      orderBy: { updatedAt: 'desc' },
+    });
+    if (!config || config.status !== 'connected' || !config.spreadsheetId) {
+      results[sid] = { ok: false, error: 'Belum terhubung' };
+      continue;
+    }
+    if (!isScheduleDue(config.scheduleFrequency, config.lastSyncAt)) {
+      results[sid] = { ok: true, skipped: true, reason: 'Jadwal belum jatuh tempo' };
+      continue;
+    }
+
+    anyExecuted = true;
+    const perSheet: Record<string, unknown> = {};
+    for (const s of ['SISWA', 'NILAI'] as const) {
+      const res = await runSync(sid, s);
+      perSheet[s] = res;
+      if (res.ok) anyOk = true;
+    }
+    results[sid] = {
+      ok: Object.values(perSheet).some((r) => (r as { ok: boolean }).ok),
+      sheets: perSheet,
+    };
+  }
+
+  return NextResponse.json({ success: anyOk, executed: anyExecuted, results });
+}
+
+// ===== GET /api/sheets/sync =====
+// Dipanggil Vercel Cron (GET + Authorization: Bearer $CRON_SECRET).
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  try {
+    const denied = checkCronAuth(request, url);
+    if (denied) return denied;
+    return await runScheduledSync();
+  } catch (error) {
+    if (error instanceof SheetsNotConfiguredError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    logError({ error, route: '/api/sheets/sync', method: 'GET' });
+    return NextResponse.json({ error: 'Gagal menjalankan sinkronisasi terjadwal' }, { status: 500 });
+  }
+}
+
+// ===== POST /api/sheets/sync =====
+// Manual (sesi user) atau cron eksternal (?cron=1 + x-cron-secret).
 export async function POST(request: Request) {
   const url = new URL(request.url);
   const isCron = url.searchParams.get('cron') === '1';
@@ -29,20 +115,17 @@ export async function POST(request: Request) {
     // ── Autentikasi ──
     let auth: { schoolId: string | null; role: string } | null = null;
     if (isCron) {
-      const secret = process.env.SHEETS_SYNC_CRON_SECRET;
-      if (!secret) {
-        return NextResponse.json({ error: 'SHEETS_SYNC_CRON_SECRET belum dikonfigurasi' }, { status: 501 });
-      }
-      const provided = request.headers.get('x-cron-secret') || url.searchParams.get('secret');
-      if (provided !== secret) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+      const denied = checkCronAuth(request, url);
+      if (denied) return denied;
     } else {
       const user = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
       auth = user;
     }
 
-    // ── Tentukan target sekolah ──
+    // ── Cron: semua sekolah yang jadwalnya jatuh tempo ──
+    if (isCron) return await runScheduledSync();
+
+    // ── Manual: tentukan target sekolah ──
     const body = (await request.json().catch(() => ({}))) as { schoolId?: string; type?: string };
     let schoolIds: string[] = [];
 
@@ -53,12 +136,6 @@ export async function POST(request: Request) {
       schoolIds = [body.schoolId];
     } else if (auth?.schoolId) {
       schoolIds = [auth.schoolId];
-    } else if (isCron) {
-      const configs = await db.googleSheetsConfig.findMany({
-        where: { status: 'connected', scheduleFrequency: { not: 'none' } },
-        select: { schoolId: true },
-      });
-      schoolIds = Array.from(new Set(configs.map((c) => c.schoolId)));
     } else {
       return NextResponse.json({ error: 'Tidak ada sekolah untuk disinkronkan' }, { status: 400 });
     }
@@ -69,7 +146,6 @@ export async function POST(request: Request) {
     // ── Eksekusi ──
     const results: Record<string, unknown> = {};
     let anyOk = false;
-    let anyExecuted = false;
 
     for (const sid of schoolIds) {
       const config = await db.googleSheetsConfig.findFirst({
@@ -80,12 +156,7 @@ export async function POST(request: Request) {
         results[sid] = { ok: false, error: 'Belum terhubung' };
         continue;
       }
-      if (isCron && !isScheduleDue(config.scheduleFrequency, config.lastSyncAt)) {
-        results[sid] = { ok: true, skipped: true, reason: 'Jadwal belum jatuh tempo' };
-        continue;
-      }
 
-      anyExecuted = true;
       const perSheet: Record<string, unknown> = {};
       for (const s of sheets) {
         const res = await runSync(sid, s);
@@ -98,7 +169,7 @@ export async function POST(request: Request) {
       };
     }
 
-    return NextResponse.json({ success: anyOk, executed: anyExecuted, results });
+    return NextResponse.json({ success: anyOk, results });
   } catch (error) {
     if (error instanceof AuthError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
