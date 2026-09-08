@@ -2,6 +2,9 @@
   "name": "nextjs_tailwind_shadcn_ts",
   "version": "0.2.1",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "NODE_OPTIONS='--max-old-space-size=640' next dev -p 3000 >> dev.log 2>&1",

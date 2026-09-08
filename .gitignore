@@ -77,3 +77,10 @@ tool-results/
 
 # Build output (EXE)
 dist/
+
+# Large Windows tools — distribute manually (scp/rsync) or via Git LFS,
+# jangan di-track git (pull-dapodik.exe ~98 MB)
+public/*.exe
+
+# Snapshot build statis lama — artifact, bukan source
+static-serve/

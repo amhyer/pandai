@@ -1,5 +1,8 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native" untuk dev lokal; dua target lain untuk server cPanel
+  // (Debian/Ubuntu -> debian-openssl-3.0.x, CentOS/AlmaLinux -> rhel-openssl-3.0.x)
+  binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
 datasource db {
