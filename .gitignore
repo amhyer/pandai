@@ -78,6 +78,11 @@ tool-results/
 # Local archive backups (e.g. panda.zip full-project snapshot) — never commit
 *.zip
 
+# Deploy archives (large files)
+deploy/*.tar.gz
+deploy/*.tar.gz.sha256
+deploy/*.zip
+
 # Build output (EXE)
 dist/
 
