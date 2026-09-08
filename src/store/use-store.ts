@@ -44,6 +44,7 @@ export type ViewType =
 
   // ── GURU ──
   | 'guru-materi'
+  | 'guru-catatan'
   | 'guru-bank-soal'
   | 'guru-soal'
   | 'guru-tugas'

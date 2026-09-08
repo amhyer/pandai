@@ -53,6 +53,7 @@ const ADMIN_SCHOOL_ROUTES: Partial<Record<ViewType, string>> = {
 const GURU_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/guru',
   'guru-materi': '/guru/materi',
+  'guru-catatan': '/guru/catatan',
   'guru-bank-soal': '/guru/bank-soal',
   'guru-tugas': '/guru/tugas',
   'guru-tryout': '/guru/tryout',
@@ -172,6 +173,7 @@ export const ADMIN_SCHOOL_FEATURES: Record<string, ViewType> = {
 
 export const GURU_FEATURES: Record<string, ViewType> = {
   materi: 'guru-materi',
+  catatan: 'guru-catatan',
   'bank-soal': 'guru-bank-soal',
   tugas: 'guru-tugas',
   tryout: 'guru-tryout',

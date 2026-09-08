@@ -74,6 +74,7 @@ import {
   Calculator,
   FileBarChart,
   Map,
+  NotebookPen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
@@ -225,6 +226,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         items: [
           { label: 'Rekap Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
           { label: 'Analisis Kebiasaan Kelas', view: 'guru-rekap-karakter', icon: Award },
+          { label: 'Catatan Siswa', view: 'guru-catatan' as ViewType, icon: NotebookPen },
         ],
       },
       {
@@ -501,6 +503,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // GURU
   'guru-materi': 'Materi Pelajaran',
+  'guru-catatan': 'Catatan Siswa',
   'guru-bank-soal': 'Bank Soal',
   'guru-soal': 'Bank Soal',
   'guru-tugas': 'Tugas Terstruktur',
@@ -590,6 +593,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'backup-restore': [{ label: VIEW_LABELS['backup-restore'] }],
     'activity-log': [{ label: VIEW_LABELS['activity-log'] }],
     'guru-materi': [{ label: VIEW_LABELS['guru-materi'] }],
+    'guru-catatan': [{ label: VIEW_LABELS['guru-catatan'] }],
     'guru-tugas': [{ label: VIEW_LABELS['guru-tugas'] }],
     'guru-kehadiran': [{ label: VIEW_LABELS['guru-kehadiran'] }],
     'guru-rekap-kehadiran': [{ label: VIEW_LABELS['guru-rekap-kehadiran'] }],
