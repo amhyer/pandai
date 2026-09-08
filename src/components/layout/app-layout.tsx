@@ -74,6 +74,7 @@ import {
   Calculator,
   FileBarChart,
   Map,
+  NotebookPen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ErrorBoundary } from '@/components/ui/error-boundary';
@@ -177,9 +178,15 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         ],
       },
       {
+        section: 'Analisis',
+        items: [
+          { label: 'Banding Nilai', view: 'dashboard-banding' as ViewType, icon: BarChart3 },
+        ],
+      },
+      {
         section: 'Sistem',
         items: [
-          { label: 'Pengaturan Aplikasi', view: 'settings', icon: Settings },
+          { label: 'Pengaturan Aplikasi', view: 'admin-settings', icon: Settings },
           { label: 'Cadangkan & Pulihkan', view: 'backup-restore', icon: HardDrive },
           { label: 'Log Aktivitas', view: 'activity-log', icon: Activity },
         ],
@@ -225,6 +232,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         items: [
           { label: 'Rekap Laporan 7 Kebiasaan', view: 'guru-karakter', icon: Star },
           { label: 'Analisis Kebiasaan Kelas', view: 'guru-rekap-karakter', icon: Award },
+          { label: 'Catatan Siswa', view: 'guru-catatan' as ViewType, icon: NotebookPen },
         ],
       },
       {
@@ -313,6 +321,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       {
         section: 'Hasil',
         items: [
+          { label: 'Dashboard TKA', view: 'siswa-tka-dashboard' as ViewType, icon: BrainCircuit },
           { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
           { label: 'Nilai Akhir', view: 'siswa-nilai-akhir' as ViewType, icon: BarChart3 },
           { label: 'Rapor Saya', view: 'siswa-rapor' as ViewType, icon: FileBarChart },
@@ -479,6 +488,8 @@ const VIEW_LABELS: Record<ViewType, string> = {
   settings: 'Pengaturan',
 
   // ADMIN_SCHOOL
+  'admin-settings': 'Pengaturan Aplikasi',
+  'dashboard-banding': 'Banding Nilai',
   classes: 'Kelas',
   subjects: 'Mata Pelajaran',
   accounts: 'Kelola Akun',
@@ -499,6 +510,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // GURU
   'guru-materi': 'Materi Pelajaran',
+  'guru-catatan': 'Catatan Siswa',
   'guru-bank-soal': 'Bank Soal',
   'guru-soal': 'Bank Soal',
   'guru-tugas': 'Tugas Terstruktur',
@@ -518,6 +530,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-rapor': 'Laporan & Rapor',
 
   // SISWA
+  'siswa-tka-dashboard': 'Dashboard TKA',
   'siswa-materi': 'Materi Pelajaran',
   'siswa-tugas': 'Tugas Terstruktur',
   'siswa-tryout': 'Tryout TKA',
@@ -587,6 +600,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'backup-restore': [{ label: VIEW_LABELS['backup-restore'] }],
     'activity-log': [{ label: VIEW_LABELS['activity-log'] }],
     'guru-materi': [{ label: VIEW_LABELS['guru-materi'] }],
+    'guru-catatan': [{ label: VIEW_LABELS['guru-catatan'] }],
     'guru-tugas': [{ label: VIEW_LABELS['guru-tugas'] }],
     'guru-kehadiran': [{ label: VIEW_LABELS['guru-kehadiran'] }],
     'guru-rekap-kehadiran': [{ label: VIEW_LABELS['guru-rekap-kehadiran'] }],
@@ -602,6 +616,8 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-profil-lulusan': [{ label: VIEW_LABELS['guru-profil-lulusan'] }],
     'guru-komponen-nilai': [{ label: VIEW_LABELS['guru-komponen-nilai'] }],
     'guru-rapor': [{ label: VIEW_LABELS['guru-rapor'] }],
+    'dashboard-banding': [{ label: VIEW_LABELS['dashboard-banding'] }],
+    'siswa-tka-dashboard': [{ label: VIEW_LABELS['siswa-tka-dashboard'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
     'siswa-tryout': [{ label: VIEW_LABELS['siswa-tryout'] }],

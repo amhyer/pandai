@@ -43,7 +43,9 @@ import {
   FilterX,
   Globe,
   Building2,
+  Image as ImageIcon,
 } from 'lucide-react';
+import { ImageModal } from '@/components/shared/image-modal';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
@@ -93,6 +95,7 @@ interface QuestionItem {
   difficulty: string;
   status: string;
   schoolId: string | null;
+  imageUrl?: string | null;
   subject?: { name: string; code: string };
   creator?: { id: string; name: string };
 }
@@ -182,6 +185,17 @@ export function QuestionBank() {
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<QuestionItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Image modal (pratinjau gambar soal — render di semua view)
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [currentImageTitle, setCurrentImageTitle] = useState('');
+
+  const openImageModal = (url: string | null | undefined, title: string) => {
+    setCurrentImageUrl(url ?? null);
+    setCurrentImageTitle(title);
+    setImageModalOpen(true);
+  };
 
   // Build query params
   const buildParams = useCallback(() => {
@@ -423,9 +437,21 @@ export function QuestionBank() {
                             {!q.schoolId && (
                               <Globe className="h-3.5 w-3.5 text-navy mt-0.5 shrink-0" aria-label="Soal global" />
                             )}
-                            <p className="text-sm line-clamp-2 leading-relaxed">
-                              {q.content}
-                            </p>
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm line-clamp-2 leading-relaxed">
+                                {q.content}
+                              </p>
+                              {q.imageUrl && (
+                                <button
+                                  type="button"
+                                  className="mt-1 inline-flex items-center gap-1 text-xs text-[#1F3864] hover:underline font-medium"
+                                  onClick={() => openImageModal(q.imageUrl, `Gambar - ${q.content.slice(0, 40)}...`)}
+                                  title="Lihat gambar soal"
+                                >
+                                  <ImageIcon className="h-3.5 w-3.5" /> Gambar tersedia
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="text-sm">
@@ -582,6 +608,14 @@ export function QuestionBank() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ImageModal selalu dirender agar bisa dibuka dari mana pun */}
+      <ImageModal
+        imageUrl={currentImageUrl}
+        open={imageModalOpen}
+        onOpenChange={setImageModalOpen}
+        title={currentImageTitle || 'Pratinjau Gambar Soal'}
+      />
     </div>
   );
 }

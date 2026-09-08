@@ -26,8 +26,13 @@ import {
   X,
   CheckCircle2,
   Loader2,
+  Image as ImageIcon,
+  ImagePlus,
+  Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ImageModal } from '@/components/shared/image-modal';
+import { QuestionImageModal } from '@/components/question/question-image-modal';
 
 // ====== CONSTANTS ======
 
@@ -138,6 +143,11 @@ export function QuestionEditor() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('edit');
 
+  // Gambar soal (opsional)
+  const [imageUrl, setImageUrl] = useState<string | null>(null);
+  const [manageImageOpen, setManageImageOpen] = useState(false);
+  const [previewImageOpen, setPreviewImageOpen] = useState(false);
+
   const isMultipleChoice = type === 'pg' || type === 'pg_kompleks';
 
   // Add option
@@ -222,6 +232,10 @@ export function QuestionEditor() {
 
       if (type === 'isian') {
         body.answer = answer.trim();
+      }
+
+      if (imageUrl) {
+        body.imageUrl = imageUrl;
       }
 
       const res = await fetch('/api/questions', {
@@ -397,6 +411,44 @@ export function QuestionEditor() {
                     <p className="text-xs text-muted-foreground">
                       {content.length} karakter
                     </p>
+                  </div>
+
+                  {/* Gambar Soal (opsional) */}
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">
+                        Gambar Soal <span className="text-xs text-muted-foreground">(opsional)</span>
+                      </Label>
+                      <div className="flex items-center gap-2">
+                        {imageUrl && (
+                          <>
+                            <Button type="button" variant="outline" size="sm" onClick={() => setPreviewImageOpen(true)}>
+                              <Eye className="h-4 w-4 mr-1.5" />
+                              Lihat
+                            </Button>
+                            <Button type="button" variant="ghost" size="sm" className="text-red-500 hover:text-red-600" onClick={() => setImageUrl(null)}>
+                              <Trash2 className="h-4 w-4 mr-1.5" />
+                              Hapus
+                            </Button>
+                          </>
+                        )}
+                        <Button type="button" variant={imageUrl ? 'outline' : 'default'} size="sm" className={imageUrl ? '' : 'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white'} onClick={() => setManageImageOpen(true)}>
+                          <ImagePlus className="h-4 w-4 mr-1.5" />
+                          {imageUrl ? 'Ubah Gambar' : 'Tambah Gambar'}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {imageUrl ? (
+                      <div className="mt-2 relative rounded-lg border overflow-hidden bg-slate-50 inline-block">
+                        <img src={imageUrl} alt="Gambar soal" className="max-h-48 w-auto max-w-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="mt-2 flex items-center gap-2 rounded-lg border border-dashed p-3 text-muted-foreground">
+                        <ImageIcon className="h-4 w-4" />
+                        <p className="text-xs">Belum ada gambar. Tambahkan URL gambar untuk soal ber-gambar (diagram, grafik, dsb).</p>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -779,6 +831,20 @@ export function QuestionEditor() {
           </Card>
         </div>
       </div>
+
+      {/* Modals gambar soal — dirender di semua tab agar selalu tersedia */}
+      <QuestionImageModal
+        open={manageImageOpen}
+        onOpenChange={setManageImageOpen}
+        currentUrl={imageUrl}
+        onSave={(url) => setImageUrl(url)}
+      />
+      <ImageModal
+        imageUrl={imageUrl}
+        open={previewImageOpen}
+        onOpenChange={setPreviewImageOpen}
+        title="Pratinjau Gambar Soal"
+      />
     </div>
   );
 }

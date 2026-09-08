@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PANDAI — Alat Ekstraksi Data Dapodik</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1F3864;
+    --navy-light: #2d5289;
+    --navy-dark: #152A4A;
+    --amber: #F59E0B;
+    --amber-dark: #D97706;
+    --amber-light: #FDE68A;
+    --white: #ffffff;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --green-50: #f0fdf4; --green-100: #dcfce7; --green-600: #16a34a; --green-700: #15803d;
+    --red-50: #fef2f2; --red-100: #fee2e2; --red-500: #ef4444; --red-600: #dc2626;
+    --yellow-50: #fffbeb; --yellow-100: #fef3c7; --yellow-600: #ca8a04;
+    --blue-50: #eff6ff; --blue-100: #dbeafe; --blue-600: #2563eb;
+    --purple-50: #faf5ff; --purple-100: #f3e8ff; --purple-600: #9333ea;
+    --emerald-50: #ecfdf5; --emerald-100: #d1fae5; --emerald-600: #059669;
+    --radius: 12px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--gray-50);
+    color: var(--gray-800);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+    padding: 24px 32px;
+    color: var(--white);
+  }
+  .header-inner {
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-icon {
+    width: 48px; height: 48px;
+    background: rgba(255,255,255,0.15);
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    backdrop-filter: blur(8px);
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; }
+  .header p { font-size: 14px; color: rgba(255,255,255,0.75); margin-top: 2px; }
+
+  /* Container */
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* Step Indicator */
+  .step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 32px;
+    flex-wrap: wrap;
+  }
+  .step-dot {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700;
+    border: 2px solid var(--gray-300);
+    color: var(--gray-400);
+    background: var(--white);
+    transition: all 0.3s;
+  }
+  .step-dot.active {
+    background: var(--navy);
+    border-color: var(--navy);
+    color: var(--white);
+    box-shadow: 0 0 0 4px rgba(31,56,100,0.15);
+  }
+  .step-dot.done {
+    background: var(--amber);
+    border-color: var(--amber);
+    color: var(--white);
+  }
+  .step-line {
+    width: 32px; height: 2px;
+    background: var(--gray-200);
+    transition: background 0.3s;
+  }
+  .step-line.done { background: var(--amber); }
+
+  /* Cards */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+  .card-header {
+    padding: 20px 24px 12px;
+  }
+  .card-header h2 { font-size: 18px; font-weight: 700; color: var(--navy); }
+  .card-header p { font-size: 13px; color: var(--gray-500); margin-top: 4px; }
+  .card-body { padding: 0 24px 24px; }
+
+  /* Selection Cards (Step 1) */
+  .select-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .select-card {
+    border: 2px solid var(--gray-200);
+    border-radius: var(--radius);
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+  }
+  .select-card:hover { border-color: var(--navy-light); background: var(--blue-50); }
+  .select-card.selected {
+    border-color: var(--amber);
+    background: var(--yellow-50);
+    box-shadow: 0 0 0 3px rgba(245,158,11,0.2);
+  }
+  .select-card .icon-circle {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 24px;
+  }
+  .select-card .label { font-size: 14px; font-weight: 600; color: var(--gray-700); }
+  .select-card .desc { font-size: 11px; color: var(--gray-400); margin-top: 4px; }
+  .select-card .check {
+    position: absolute; top: 8px; right: 8px;
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--amber);
+    color: white;
+    display: none;
+    align-items: center; justify-content: center;
+    font-size: 13px;
+  }
+  .select-card.selected .check { display: flex; }
+  .select-card { position: relative; }
+
+  /* Upload Zone (Step 2) */
+  .upload-zone {
+    border: 2px dashed var(--gray-300);
+    border-radius: var(--radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 16px;
+  }
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--amber);
+    background: var(--yellow-50);
+  }
+  .upload-zone .upload-icon {
+    font-size: 48px; margin-bottom: 12px;
+  }
+  .upload-zone .upload-title { font-size: 15px; font-weight: 600; color: var(--gray-700); }
+  .upload-zone .upload-desc { font-size: 12px; color: var(--gray-400); margin-top: 4px; }
+  .upload-zone .file-info {
+    margin-top: 12px;
+    padding: 8px 16px;
+    background: var(--green-50);
+    border: 1px solid var(--green-100);
+    border-radius: 8px;
+    display: inline-block;
+    font-size: 13px;
+    color: var(--green-700);
+    font-weight: 500;
+  }
+
+  /* Mapping (Step 3) */
+  .mapping-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .mapping-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .mapping-row label {
+    width: 140px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-600);
+    flex-shrink: 0;
+  }
+  .mapping-row select, .mapping-row input {
+    flex: 1;
+    min-width: 200px;
+    padding: 8px 12px;
+    border: 1px solid var(--gray-300);
+    border-radius: 8px;
+    font-size: 13px;
+    color: var(--gray-700);
+    background: var(--white);
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .mapping-row select:focus, .mapping-row input:focus {
+    border-color: var(--navy);
+    box-shadow: 0 0 0 3px rgba(31,56,100,0.1);
+  }
+  .mapping-row .auto-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    font-weight: 600;
+  }
+  .auto-badge.ok { background: var(--green-100); color: var(--green-700); }
+  .auto-badge.manual { background: var(--yellow-100); color: var(--yellow-600); }
+  .auto-badge.missing { background: var(--red-100); color: var(--red-600); }
+
+  /* Preview Table (Step 4) */
+  .preview-tabs {
+    display: flex;
+    gap: 4px;
+    margin-top: 16px;
+    border-bottom: 2px solid var(--gray-100);
+    padding-bottom: 0;
+    flex-wrap: wrap;
+  }
+  .preview-tab {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--gray-500);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+    background: none;
+    border-top: none; border-left: none; border-right: none;
+  }
+  .preview-tab:hover { color: var(--gray-700); }
+  .preview-tab.active {
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+  }
+  .preview-tab .count {
+    margin-left: 6px;
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 99px;
+    background: var(--gray-100);
+    color: var(--gray-500);
+  }
+  .preview-tab.active .count {
+    background: rgba(31,56,100,0.1);
+    color: var(--navy);
+  }
+
+  .table-wrapper {
+    margin-top: 16px;
+    max-height: 400px;
+    overflow: auto;
+    border: 1px solid var(--gray-200);
+    border-radius: 8px;
+  }
+  .table-wrapper table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .table-wrapper th {
+    position: sticky;
+    top: 0;
+    background: var(--gray-50);
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--gray-600);
+    border-bottom: 1px solid var(--gray-200);
+    white-space: nowrap;
+  }
+  .table-wrapper td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--gray-100);
+    color: var(--gray-700);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .table-wrapper tr:hover td { background: var(--gray-50); }
+  .table-wrapper td.status-ok { background: var(--green-50); color: var(--green-700); }
+  .table-wrapper td.status-warn { background: var(--yellow-50); color: var(--yellow-600); }
+  .table-wrapper td.status-error { background: var(--red-50); color: var(--red-600); }
+
+  .validation-summary {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+  .validation-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .validation-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .validation-dot.ok { background: var(--green-600); }
+  .validation-dot.warn { background: var(--amber); }
+  .validation-dot.error { background: var(--red-500); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 10px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--navy), var(--navy-light));
+    color: var(--white);
+    box-shadow: var(--shadow-md);
+  }
+  .btn-primary:hover:not(:disabled) { box-shadow: var(--shadow-lg); }
+  .btn-amber {
+    background: linear-gradient(135deg, var(--amber), var(--amber-dark));
+    color: var(--white);
+    box-shadow: var(--shadow-md);
+  }
+  .btn-amber:hover:not(:disabled) { box-shadow: var(--shadow-lg); }
+  .btn-outline {
+    background: var(--white);
+    color: var(--gray-600);
+    border: 1px solid var(--gray-300);
+  }
+  .btn-outline:hover:not(:disabled) { background: var(--gray-50); border-color: var(--gray-400); }
+
+  .actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 32px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* Export (Step 5) */
+  .export-card {
+    text-align: center;
+    padding: 48px 24px;
+  }
+  .export-card .icon-big {
+    font-size: 64px;
+    margin-bottom: 16px;
+  }
+  .export-card h3 { font-size: 20px; font-weight: 700; color: var(--navy); }
+  .export-card p { font-size: 14px; color: var(--gray-500); margin-top: 8px; }
+  .export-stats {
+    display: flex;
+    justify-content: center;
+    gap: 24px;
+    margin: 24px 0;
+    flex-wrap: wrap;
+  }
+  .export-stat {
+    text-align: center;
+  }
+  .export-stat .num { font-size: 28px; font-weight: 800; color: var(--navy); }
+  .export-stat .lbl { font-size: 12px; color: var(--gray-400); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .header { padding: 16px; }
+    .header h1 { font-size: 18px; }
+    .container { padding: 20px 16px; }
+    .select-grid { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .mapping-row { flex-direction: column; align-items: stretch; }
+    .mapping-row label { width: auto; }
+    .actions { flex-direction: column-reverse; }
+    .actions .btn { width: 100%; }
+  }
+
+  /* Scrollbar */
+  .table-wrapper::-webkit-scrollbar { width: 6px; height: 6px; }
+  .table-wrapper::-webkit-scrollbar-track { background: var(--gray-100); }
+  .table-wrapper::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 3px; }
+  .table-wrapper::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
+
+  /* Section label for mapping */
+  .section-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--navy);
+    margin-top: 20px;
+    margin-bottom: 4px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--gray-200);
+  }
+  .section-label:first-child { margin-top: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- HEADER                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="header">
+  <div class="header-inner">
+    <div class="header-icon">📊</div>
+    <div>
+      <h1>PANDAI — Alat Ekstraksi Dapodik</h1>
+      <p>Konversi data ekspor Dapodik (Excel/CSV) → JSON untuk diimpor ke PANDAI</p>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STEP INDICATOR                                      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div class="step-indicator" id="stepIndicator"></div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STEP 1: SELECT DATA TYPES                           -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="step1" class="step-panel">
+    <div class="card">
+      <div class="card-header">
+        <h2>Pilih Jenis Data</h2>
+        <p>Pilih data mana saja yang ingin Anda ekstrak dari file Excel/CSV.</p>
+      </div>
+      <div class="card-body">
+        <div class="select-grid" id="typeSelectGrid">
+          <div class="select-card selected" data-type="pesertaDidik" onclick="toggleType(this)">
+            <div class="check">✓</div>
+            <div class="icon-circle" style="background:var(--blue-100);color:var(--blue-600)">👤</div>
+            <div class="label">Peserta Didik</div>
+            <div class="desc">Data siswa (NISN, nama, JK, dll)</div>
+          </div>
+          <div class="select-card selected" data-type="guru" onclick="toggleType(this)">
+            <div class="check">✓</div>
+            <div class="icon-circle" style="background:var(--emerald-100);color:var(--emerald-600)">👨‍🏫</div>
+            <div class="label">Guru / PTK</div>
+            <div class="desc">Data guru & tenaga kependidikan</div>
+          </div>
+          <div class="select-card selected" data-type="rombel" onclick="toggleType(this)">
+            <div class="check">✓</div>
+            <div class="icon-circle" style="background:var(--purple-100);color:var(--purple-600)">🏫</div>
+            <div class="label">Rombongan Belajar</div>
+            <div class="desc">Data kelas / rombel</div>
+          </div>
+          <div class="select-card selected" data-type="mataPelajaran" onclick="toggleType(this)">
+            <div class="check">✓</div>
+            <div class="icon-circle" style="background:var(--yellow-100);color:var(--amber-dark)">📚</div>
+            <div class="label">Mata Pelajaran</div>
+            <div class="desc">Daftar mata pelajaran</div>
+          </div>
+        </div>
+        <div class="actions">
+          <span></span>
+          <button class="btn btn-primary" onclick="goToStep(2)">Lanjut →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STEP 2: UPLOAD FILE                                  -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="step2" class="step-panel" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <h2>Unggah File Excel / CSV</h2>
+        <p>Seret file ekspor Dapodik Anda ke area di bawah, atau klik untuk memilih.</p>
+      </div>
+      <div class="card-body">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+          <div class="upload-icon">📁</div>
+          <div class="upload-title">Seret & lepas file di sini</div>
+          <div class="upload-desc">atau klik untuk memilih • Format: .xlsx, .xls, .csv</div>
+          <div id="fileInfo" style="display:none" class="file-info"></div>
+        </div>
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])">
+        <div id="sheetSelector" style="display:none; margin-top:16px;">
+          <label style="font-size:13px;font-weight:600;color:var(--gray-600)">Pilih Sheet:</label>
+          <select id="sheetSelect" style="margin-left:8px;padding:6px 12px;border:1px solid var(--gray-300);border-radius:8px;font-size:13px;"></select>
+        </div>
+        <div class="actions">
+          <button class="btn btn-outline" onclick="goToStep(1)">← Kembali</button>
+          <button class="btn btn-primary" id="btnToStep3" onclick="goToStep(3)" disabled>Lanjut →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STEP 3: COLUMN MAPPING                               -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="step3" class="step-panel" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <h2>Pemetaan Kolom</h2>
+        <p>Sistem mendeteksi kolom secara otomatis. Anda bisa mengubahnya jika diperlukan.</p>
+      </div>
+      <div class="card-body">
+        <div id="mappingContainer"></div>
+        <div class="actions">
+          <button class="btn btn-outline" onclick="goToStep(2)">← Kembali</button>
+          <button class="btn btn-primary" onclick="goToStep(4)">Lanjut →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STEP 4: PREVIEW & VALIDATE                           -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="step4" class="step-panel" style="display:none">
+    <div class="card">
+      <div class="card-header">
+        <h2>Pratinjau & Validasi</h2>
+        <p>Periksa data sebelum mengekspor. Warna menunjukkan status validasi.</p>
+      </div>
+      <div class="card-body">
+        <div class="validation-summary" id="validationSummary"></div>
+        <div class="preview-tabs" id="previewTabs"></div>
+        <div id="previewTable"></div>
+        <div class="actions">
+          <button class="btn btn-outline" onclick="goToStep(3)">← Kembali</button>
+          <button class="btn btn-primary" onclick="goToStep(5)">Lanjut →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!-- STEP 5: EXPORT                                      -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <div id="step5" class="step-panel" style="display:none">
+    <div class="card">
+      <div class="card-body">
+        <div class="export-card">
+          <div class="icon-big">✅</div>
+          <h3>Data Siap Diekspor!</h3>
+          <p>File JSON telah disiapkan. Klik tombol di bawah untuk mengunduh.</p>
+          <div class="export-stats" id="exportStats"></div>
+          <button class="btn btn-amber" style="padding:14px 36px;font-size:16px" onclick="downloadJSON()">
+            ⬇️ Unduh File JSON
+          </button>
+          <p style="font-size:12px;color:var(--gray-400);margin-top:12px">
+            Setelah mengunduh, buka PANDAI → Tarik Data Dapodik → Impor Data → unggah file ini.
+          </p>
+        </div>
+        <div class="actions">
+          <button class="btn btn-outline" onclick="goToStep(4)">← Kembali</button>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- FOOTER                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div style="text-align:center;padding:24px;font-size:12px;color:var(--gray-400)">
+  PANDAI — Alat Ekstraksi Dapodik v1.0 • Data diproses sepenuhnya di browser Anda (tidak dikirim ke server)
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════════════
+
+let currentStep = 1;
+const MAX_STEPS = 5;
+
+let selectedTypes = new Set(['pesertaDidik', 'guru', 'rombel', 'mataPelajaran']);
+let rawWorkbook = null;
+let rawColumns = [];
+let rawRows = [];
+let currentSheetData = [];
+let columnMappings = {};  // { pesertaDidik: { nisn: 'NISN', nama: '...', ... }, ... }
+let parsedData = {};     // { pesertaDidik: [...], guru: [...], rombel: [...], mataPelajaran: [...] }
+let activePreviewTab = 'pesertaDidik';
+
+// ═══════════════════════════════════════════════════════════════════════
+// COLUMN DEFINITIONS & AUTO-DETECTION PATTERNS
+// ═══════════════════════════════════════════════════════════════════════
+
+const COLUMN_DEFS = {
+  pesertaDidik: [
+    { key: 'nisn',        label: 'NISN',               patterns: [/^nisn$/i] },
+    { key: 'nama',        label: 'Nama',               patterns: [/^(nama_peserta_didik|nama_pd|nama$|nama_siswa|nama_lengkap)$/i] },
+    { key: 'jenis_kelamin', label: 'Jenis Kelamin',    patterns: [/^(jenis_kelamin|jk|kode_jenis_kelamin|kelamin)$/i] },
+    { key: 'no_hp',       label: 'No. HP',             patterns: [/^(no_hp|nomor_hp|no_telepon|nomor_telepon|telpon|telepon|hp|no_telp)$/i] },
+    { key: 'rombel',      label: 'Rombel',             patterns: [/^(rombel|rombongan_belajar|nama_rombel|kelas)$/i] },
+    { key: 'tempat_lahir', label: 'Tempat Lahir',      patterns: [/^(tempat_lahir|tmpt_lahir)$/i] },
+    { key: 'tanggal_lahir', label: 'Tanggal Lahir',    patterns: [/^(tanggal_lahir|tgl_lahir|tanggal$/i] },
+    { key: 'alamat',      label: 'Alamat',             patterns: [/^(alamat|jalan|alamat_jalan)$/i] },
+  ],
+  guru: [
+    { key: 'nip',         label: 'NIP',                patterns: [/^nip$/i] },
+    { key: 'nama',        label: 'Nama',               patterns: [/^(nama_pegawai|nama_guru|nama_ptk|nama$|nama_lengkap)$/i] },
+    { key: 'no_hp',       label: 'No. HP',             patterns: [/^(no_hp|nomor_hp|no_telepon|nomor_telepon|telpon|telepon|hp|no_telp)$/i] },
+    { key: 'jenis_kelamin', label: 'Jenis Kelamin',    patterns: [/^(jenis_kelamin|jk|kode_jenis_kelamin|kelamin)$/i] },
+    { key: 'nik',         label: 'NIK',                patterns: [/^(nik|no_ktp|nomor_induk_kependudukan)$/i] },
+    { key: 'jabatan',     label: 'Jabatan',            patterns: [/^(jabatan|jenis_ptk|tugas_tambahan)$/i] },
+    { key: 'tempat_lahir', label: 'Tempat Lahir',      patterns: [/^(tempat_lahir|tmpt_lahir)$/i] },
+    { key: 'tanggal_lahir', label: 'Tanggal Lahir',    patterns: [/^(tanggal_lahir|tgl_lahir)$/i] },
+  ],
+  rombel: [
+    { key: 'nama',        label: 'Nama Rombel',        patterns: [/^(nama_rombel|nama$|rombel|rombongan_belajar|kelas)$/i] },
+    { key: 'tingkat',     label: 'Tingkat',            patterns: [/^(tingkat_pendidikan|tingkat|kelas|grade|level)$/i] },
+    { key: 'tahun_pelajaran', label: 'Tahun Pelajaran', patterns: [/^(tahun_pelajaran|tahun_ajaran|semester_id|tapel)$/i] },
+    { key: 'wali_kelas',  label: 'Wali Kelas',         patterns: [/^(wali_kelas|nama_wali_kelas|guru_wali)$/i] },
+    { key: 'kurikulum',   label: 'Kurikulum',          patterns: [/^(kurikulum|id_kurikulum_sp)$/i] },
+  ],
+  mataPelajaran: [
+    { key: 'kode_mapel',  label: 'Kode Mapel',         patterns: [/^(kode_mapel|kode_mata_pelajaran|kode$|id_mapel|mata_pelajaran_id)$/i] },
+    { key: 'nama',        label: 'Nama Mapel',         patterns: [/^(nama_mata_pelajaran|nama_mapel|mata_pelajaran|nama$|mapel)$/i] },
+    { key: 'jenis',       label: 'Jenis',              patterns: [/^(jenis|kelompok|muatan|tipe|jenis_mapel)$/i] },
+    { key: 'kkm',         label: 'KKM',                patterns: [/^(kkm|kriteria_ketuntasan)$/i] },
+    { key: 'jam_minggu',  label: 'Jam/Minggu',         patterns: [/^(jam_minggu|jam_per_minggu|alokasi_waktu)$/i] },
+  ],
+};
+
+const TYPE_LABELS = {
+  pesertaDidik: 'Peserta Didik',
+  guru: 'Guru',
+  rombel: 'Rombongan Belajar',
+  mataPelajaran: 'Mata Pelajaran',
+};
+
+// ═══════════════════════════════════════════════════════════════════════
+// STEP NAVIGATION
+// ═══════════════════════════════════════════════════════════════════════
+
+function goToStep(step) {
+  // Validation before leaving step
+  if (step === 3 && currentStep === 2) {
+    if (rawRows.length === 0) { alert('Silakan unggah file terlebih dahulu.'); return; }
+    buildMappings();
+  }
+  if (step === 4 && currentStep === 3) {
+    parseAllData();
+    buildPreview();
+  }
+  if (step === 5 && currentStep === 4) {
+    buildExportSummary();
+  }
+
+  document.querySelectorAll('.step-panel').forEach(el => el.style.display = 'none');
+  document.getElementById('step' + step).style.display = 'block';
+  currentStep = step;
+  renderStepIndicator();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderStepIndicator() {
+  const container = document.getElementById('stepIndicator');
+  let html = '';
+  for (let i = 1; i <= MAX_STEPS; i++) {
+    const cls = i < currentStep ? 'done' : i === currentStep ? 'active' : '';
+    html += `<div class="step-dot ${cls}">${i < currentStep ? '✓' : i}</div>`;
+    if (i < MAX_STEPS) {
+      html += `<div class="step-line ${i < currentStep ? 'done' : ''}"></div>`;
+    }
+  }
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STEP 1: TYPE SELECTION
+// ═══════════════════════════════════════════════════════════════════════
+
+function toggleType(el) {
+  const type = el.dataset.type;
+  if (selectedTypes.has(type)) {
+    if (selectedTypes.size <= 1) { alert('Pilih setidaknya satu jenis data.'); return; }
+    selectedTypes.delete(type);
+    el.classList.remove('selected');
+  } else {
+    selectedTypes.add(type);
+    el.classList.add('selected');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STEP 2: FILE UPLOAD
+// ═══════════════════════════════════════════════════════════════════════
+
+const uploadZone = document.getElementById('uploadZone');
+
+uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('drag-over'); });
+uploadZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
+});
+
+function handleFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx', 'xls', 'csv'].includes(ext)) {
+    alert('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target.result);
+      rawWorkbook = XLSX.read(data, { type: 'array' });
+
+      const sheets = rawWorkbook.SheetNames;
+      const sheetSelect = document.getElementById('sheetSelect');
+      const sheetSelector = document.getElementById('sheetSelector');
+
+      if (sheets.length > 1) {
+        sheetSelector.style.display = 'block';
+        sheetSelect.innerHTML = sheets.map((s, i) => `<option value="${i}">${s}</option>`).join('');
+        sheetSelect.onchange = () => loadSheet(parseInt(sheetSelect.value));
+      } else {
+        sheetSelector.style.display = 'none';
+      }
+
+      loadSheet(0);
+
+      document.getElementById('fileInfo').style.display = 'inline-block';
+      document.getElementById('fileInfo').textContent = '✓ ' + file.name + ' (' + (file.size / 1024).toFixed(1) + ' KB)';
+      document.getElementById('btnToStep3').disabled = false;
+    } catch (err) {
+      alert('Gagal membaca file: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function loadSheet(index) {
+  const sheet = rawWorkbook.Sheets[rawWorkbook.SheetNames[index]];
+  const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  currentSheetData = json;
+
+  if (json.length > 0) {
+    rawColumns = Object.keys(json[0]);
+  } else {
+    rawColumns = [];
+  }
+  rawRows = json;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STEP 3: COLUMN MAPPING
+// ═══════════════════════════════════════════════════════════════════════
+
+function autoDetectColumn(colDefs, colName) {
+  for (const def of colDefs) {
+    for (const pattern of def.patterns) {
+      if (pattern.test(colName)) return def.key;
+    }
+  }
+  return null;
+}
+
+function buildMappings() {
+  columnMappings = {};
+  const container = document.getElementById('mappingContainer');
+  let html = '';
+
+  for (const type of selectedTypes) {
+    const defs = COLUMN_DEFS[type];
+    const mapping = {};
+    let autoCount = 0;
+    let manualCount = 0;
+    let missingCount = 0;
+
+    html += `<div class="section-label">${TYPE_LABELS[type]}</div>`;
+    html += '<div class="mapping-grid">';
+
+    for (const def of defs) {
+      const detected = autoDetectColumn(defs, rawColumns.find(c => autoDetectColumn(defs, c) === def.key) || '');
+      let selectedCol = '';
+      let badgeClass = 'missing';
+      let badgeText = 'Kosong';
+
+      if (detected) {
+        selectedCol = rawColumns.find(c => autoDetectColumn(defs, c) === def.key) || '';
+        badgeClass = 'ok';
+        badgeText = 'Otomatis';
+        autoCount++;
+      }
+
+      mapping[def.key] = selectedCol;
+
+      const options = rawColumns
+        .map(c => `<option value="${escapeHtml(c)}" ${c === selectedCol ? 'selected' : ''}>${escapeHtml(c)}</option>`)
+        .join('');
+
+      html += `
+        <div class="mapping-row">
+          <label>${def.label}</label>
+          <select onchange="updateMapping('${type}','${def.key}',this.value)">
+            <option value="">-- Pilih Kolom --</option>
+            ${options}
+          </select>
+          <span class="auto-badge ${badgeClass}" id="badge-${type}-${def.key}">${badgeText}</span>
+        </div>
+      `;
+    }
+
+    html += '</div>';
+    columnMappings[type] = mapping;
+  }
+
+  container.innerHTML = html;
+}
+
+function updateMapping(type, key, value) {
+  if (!columnMappings[type]) columnMappings[type] = {};
+  columnMappings[type][key] = value;
+
+  const badge = document.getElementById(`badge-${type}-${key}`);
+  if (value) {
+    badge.className = 'auto-badge manual';
+    badge.textContent = 'Manual';
+  } else {
+    badge.className = 'auto-badge missing';
+    badge.textContent = 'Kosong';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STEP 4: PARSE & PREVIEW
+// ═══════════════════════════════════════════════════════════════════════
+
+function parseAllData() {
+  parsedData = {};
+
+  for (const type of selectedTypes) {
+    const mapping = columnMappings[type] || {};
+    const defs = COLUMN_DEFS[type];
+    const rows = [];
+
+    for (const rawRow of rawRows) {
+      const row = {};
+      let hasData = false;
+      for (const def of defs) {
+        const col = mapping[def.key];
+        if (col && rawRow[col] !== undefined && rawRow[col] !== '') {
+          row[def.key] = String(rawRow[col]).trim();
+          hasData = true;
+        }
+      }
+      if (hasData) rows.push(row);
+    }
+
+    parsedData[type] = rows;
+  }
+}
+
+function validateRow(type, row) {
+  const errors = [];
+  const warnings = [];
+
+  if (type === 'pesertaDidik') {
+    if (!row.nisn || row.nisn.length !== 10) {
+      errors.push('NISN tidak valid (harus 10 digit)');
+    }
+    if (!row.nama) warnings.push('Nama kosong');
+  } else if (type === 'guru') {
+    if (!row.nip || row.nip.length < 8) {
+      errors.push('NIP tidak valid (terlalu pendek)');
+    }
+    if (!row.nama) warnings.push('Nama kosong');
+  } else if (type === 'rombel') {
+    if (!row.nama) errors.push('Nama rombel kosong');
+    if (!row.tingkat) warnings.push('Tingkat kelas kosong');
+  } else if (type === 'mataPelajaran') {
+    if (!row.kode_mapel) errors.push('Kode mapel kosong');
+    if (!row.nama) warnings.push('Nama mapel kosong');
+  }
+
+  return { errors, warnings };
+}
+
+function buildPreview() {
+  // Count validation
+  let totalOk = 0, totalWarn = 0, totalError = 0;
+  for (const type of Object.keys(parsedData)) {
+    for (const row of parsedData[type]) {
+      const v = validateRow(type, row);
+      if (v.errors.length > 0) totalError++;
+      else if (v.warnings.length > 0) totalWarn++;
+      else totalOk++;
+    }
+  }
+
+  document.getElementById('validationSummary').innerHTML = `
+    <div class="validation-item"><div class="validation-dot ok"></div> ${totalOk} Valid</div>
+    <div class="validation-item"><div class="validation-dot warn"></div> ${totalWarn} Peringatan</div>
+    <div class="validation-item"><div class="validation-dot error"></div> ${totalError} Kesalahan</div>
+  `;
+
+  // Tabs
+  const tabs = document.getElementById('previewTabs');
+  const types = Object.keys(parsedData);
+  activePreviewTab = types[0] || 'pesertaDidik';
+
+  tabs.innerHTML = types.map(t => `
+    <button class="preview-tab ${t === activePreviewTab ? 'active' : ''}" onclick="switchPreviewTab('${t}')">
+      ${TYPE_LABELS[t]}<span class="count">${parsedData[t].length}</span>
+    </button>
+  `).join('');
+
+  renderPreviewTable(activePreviewTab);
+}
+
+function switchPreviewTab(type) {
+  activePreviewTab = type;
+  document.querySelectorAll('.preview-tab').forEach(el => el.classList.remove('active'));
+  event.target.closest('.preview-tab').classList.add('active');
+  renderPreviewTable(type);
+}
+
+function renderPreviewTable(type) {
+  const rows = parsedData[type] || [];
+  const defs = COLUMN_DEFS[type] || [];
+  const container = document.getElementById('previewTable');
+
+  if (rows.length === 0) {
+    container.innerHTML = '<p style="text-align:center;padding:32px;color:var(--gray-400)">Tidak ada data untuk jenis ini.</p>';
+    return;
+  }
+
+  let html = '<div class="table-wrapper"><table><thead><tr>';
+  html += '<th>#</th>';
+  for (const def of defs) {
+    html += `<th>${def.label}</th>`;
+  }
+  html += '<th>Status</th>';
+  html += '</tr></thead><tbody>';
+
+  const displayRows = rows.slice(0, 100);
+  for (let i = 0; i < displayRows.length; i++) {
+    const row = displayRows[i];
+    const v = validateRow(type, row);
+    const statusClass = v.errors.length > 0 ? 'status-error' : v.warnings.length > 0 ? 'status-warn' : 'status-ok';
+    const statusText = v.errors.length > 0 ? '❌ Error' : v.warnings.length > 0 ? '⚠️ Peringatan' : '✓ Valid';
+
+    html += '<tr>';
+    html += `<td>${i + 1}</td>`;
+    for (const def of defs) {
+      html += `<td>${escapeHtml(row[def.key] || '-')}</td>`;
+    }
+    html += `<td class="${statusClass}">${statusText}</td>`;
+    html += '</tr>';
+  }
+
+  html += '</tbody></table></div>';
+  if (rows.length > 100) {
+    html += `<p style="text-align:center;font-size:12px;color:var(--gray-400);margin-top:8px">Menampilkan 100 dari ${rows.length} record</p>`;
+  }
+  container.innerHTML = html;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STEP 5: EXPORT
+// ═══════════════════════════════════════════════════════════════════════
+
+function buildExportSummary() {
+  const stats = document.getElementById('exportStats');
+  let totalAll = 0;
+  let html = '';
+  for (const type of Object.keys(parsedData)) {
+    const count = parsedData[type].length;
+    totalAll += count;
+    html += `<div class="export-stat"><div class="num">${count}</div><div class="lbl">${TYPE_LABELS[type]}</div></div>`;
+  }
+  html += `<div class="export-stat"><div class="num" style="color:var(--amber-dark)">${totalAll}</div><div class="lbl">Total</div></div>`;
+  stats.innerHTML = html;
+}
+
+function downloadJSON() {
+  const output = {
+    version: '1.0',
+    exportedAt: new Date().toISOString().replace('T', ' ').slice(0, 19),
+    tool: 'PANDAI-Dapodik-Extractor',
+    sourceTypes: Array.from(selectedTypes),
+    totalRecords: 0,
+    data: {},
+  };
+
+  for (const type of Object.keys(parsedData)) {
+    output.data[type] = parsedData[type];
+    output.totalRecords += parsedData[type].length;
+  }
+
+  const json = JSON.stringify(output, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `dapodik-ekstrak-${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════════════════
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════════════
+
+renderStepIndicator();
+</script>
+</body>
+</html>

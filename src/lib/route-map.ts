@@ -26,6 +26,8 @@ const SUPER_ADMIN_ROUTES: Partial<Record<ViewType, string>> = {
 
 const ADMIN_SCHOOL_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/admin-school',
+  'admin-settings': '/admin-school/settings',
+  'dashboard-banding': '/admin-school/dashboard-banding',
   accounts: '/admin-school/accounts',
   classes: '/admin-school/classes',
   subjects: '/admin-school/subjects',
@@ -52,6 +54,7 @@ const ADMIN_SCHOOL_ROUTES: Partial<Record<ViewType, string>> = {
 const GURU_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/guru',
   'guru-materi': '/guru/materi',
+  'guru-catatan': '/guru/catatan',
   'guru-bank-soal': '/guru/bank-soal',
   'guru-tugas': '/guru/tugas',
   'guru-tryout': '/guru/tryout',
@@ -76,6 +79,7 @@ const GURU_ROUTES: Partial<Record<ViewType, string>> = {
 
 const SISWA_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/siswa',
+  'siswa-tka-dashboard': '/siswa/tka-dashboard',
   'siswa-materi': '/siswa/materi',
   'siswa-tugas': '/siswa/tugas',
   'siswa-tryout': '/siswa/tryout',
@@ -153,7 +157,8 @@ export const ADMIN_SCHOOL_FEATURES: Record<string, ViewType> = {
   'wali-kelas': 'wali-kelas',
   'import-csv': 'import-csv',
   'dapodik-sync': 'dapodik-sync',
-  settings: 'settings',
+  settings: 'admin-settings',
+  'dashboard-banding': 'dashboard-banding',
   'backup-restore': 'backup-restore',
   'activity-log': 'activity-log',
   questions: 'questions',
@@ -170,6 +175,7 @@ export const ADMIN_SCHOOL_FEATURES: Record<string, ViewType> = {
 
 export const GURU_FEATURES: Record<string, ViewType> = {
   materi: 'guru-materi',
+  catatan: 'guru-catatan',
   'bank-soal': 'guru-bank-soal',
   tugas: 'guru-tugas',
   tryout: 'guru-tryout',
@@ -193,6 +199,7 @@ export const GURU_FEATURES: Record<string, ViewType> = {
 };
 
 export const SISWA_FEATURES: Record<string, ViewType> = {
+  'tka-dashboard': 'siswa-tka-dashboard',
   materi: 'siswa-materi',
   tugas: 'siswa-tugas',
   tryout: 'siswa-tryout',

@@ -46,8 +46,10 @@ random_hex() {
 # Validate that we have 32+ random hex bytes (64 hex chars).
 JWT_SECRET="$(random_hex 32)"
 PASSWORD_SALT="$(random_hex 32)"
+AES_SECRET="$(random_hex 32)"
+SHEETS_SYNC_CRON_SECRET="$(random_hex 32)"
 
-if [[ ${#JWT_SECRET} -ne 64 || ${#PASSWORD_SALT} -ne 64 ]]; then
+if [[ ${#JWT_SECRET} -ne 64 || ${#PASSWORD_SALT} -ne 64 || ${#AES_SECRET} -ne 64 || ${#SHEETS_SYNC_CRON_SECRET} -ne 64 ]]; then
   echo "ERROR: Failed to generate secure random values." >&2
   exit 1
 fi
@@ -72,6 +74,17 @@ cat > "${REPO_ROOT}/.env.local" <<EOF
 # DO NOT COMMIT THIS FILE.
 JWT_SECRET=${JWT_SECRET}
 PASSWORD_SALT=${PASSWORD_SALT}
+
+# --- Google Sheets Sync (lihat docs/GOOGLE_SHEETS_SYNC_SETUP.md) ---
+# Kunci AES-256-GCM untuk enkripsi token OAuth2 di database.
+AES_SECRET=${AES_SECRET}
+# Client ID/Secret dari Google Cloud Console (OAuth consent screen).
+GOOGLE_SHEETS_CLIENT_ID=
+GOOGLE_SHEETS_CLIENT_SECRET=
+# Redirect URI HARUS persis sama dengan yang didaftarkan di Google Cloud.
+GOOGLE_SHEETS_REDIRECT_URI=http://localhost:3000/api/sheets/oauth/callback
+# Secret untuk cron sinkronisasi otomatis (Vercel Cron -> POST /api/sheets/sync?cron=1).
+SHEETS_SYNC_CRON_SECRET=${SHEETS_SYNC_CRON_SECRET}
 EOF
 
 chmod 600 "${REPO_ROOT}/.env.local"
@@ -96,5 +109,7 @@ if [[ ${SHOW} -eq 1 ]]; then
   echo "=== .env.local (for manual copy only) ==="
   echo "JWT_SECRET=${JWT_SECRET}"
   echo "PASSWORD_SALT=${PASSWORD_SALT}"
+  echo "AES_SECRET=${AES_SECRET}"
+  echo "SHEETS_SYNC_CRON_SECRET=${SHEETS_SYNC_CRON_SECRET}"
   echo "========================================="
 fi

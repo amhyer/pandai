@@ -10,7 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Target, ChevronLeft, Clock, CheckCircle2, AlertCircle, Eye, Loader2, Save, Send, FileText, BookOpen, ClipboardList } from 'lucide-react';
+import { Target, ChevronLeft, Clock, CheckCircle2, AlertCircle, Eye, Loader2, Save, Send, FileText, BookOpen, ClipboardList, Image as ImageIcon } from 'lucide-react';
+import { ImageModal } from '@/components/shared/image-modal';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -39,6 +40,7 @@ interface AssignmentQuestionItem {
     type: QuestionType;
     options: string | null;
     answer: string | null;
+    imageUrl?: string | null;
   };
 }
 
@@ -100,6 +102,7 @@ interface SubmissionAnswer {
       content: string;
       type: QuestionType;
       options: string | null;
+      imageUrl?: string | null;
     };
   };
 }
@@ -251,6 +254,17 @@ export function SiswaAssignmentView() {
 
   // ── Dialog ──
   const [confirmSubmitOpen, setConfirmSubmitOpen] = useState(false);
+
+  // ── Image modal (pratinjau gambar soal — render di semua view) ──
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [currentImageTitle, setCurrentImageTitle] = useState('');
+
+  const openImageModal = (url: string | null | undefined, title: string) => {
+    setCurrentImageUrl(url ?? null);
+    setCurrentImageTitle(title);
+    setImageModalOpen(true);
+  };
 
   // ═══════════════════════════════════════════════════════════════════
   // DATA FETCHING
@@ -692,6 +706,14 @@ export function SiswaAssignmentView() {
             })}
           </div>
         )}
+
+      {/* ImageModal — selalu tersedia di view list */}
+      <ImageModal
+        imageUrl={currentImageUrl}
+        open={imageModalOpen}
+        onOpenChange={setImageModalOpen}
+        title={currentImageTitle || 'Pratinjau Gambar Soal'}
+      />
       </div>
     );
   }
@@ -866,6 +888,16 @@ export function SiswaAssignmentView() {
                             <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
                               {q.content}
                             </p>
+                            {q.imageUrl && (
+                              <button
+                                type="button"
+                                className="mt-1.5 inline-flex items-center gap-1 text-xs text-[#1F3864] hover:underline font-medium"
+                                onClick={() => openImageModal(q.imageUrl, `Gambar - ${q.content.slice(0, 40)}...`)}
+                                title="Lihat gambar soal"
+                              >
+                                <ImageIcon className="h-3.5 w-3.5" /> Lihat gambar soal
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -1016,6 +1048,14 @@ export function SiswaAssignmentView() {
             </Dialog>
           </>
         )}
+
+      {/* ImageModal — selalu tersedia di view work */}
+      <ImageModal
+        imageUrl={currentImageUrl}
+        open={imageModalOpen}
+        onOpenChange={setImageModalOpen}
+        title={currentImageTitle || 'Pratinjau Gambar Soal'}
+      />
       </div>
     );
   }
@@ -1195,6 +1235,16 @@ export function SiswaAssignmentView() {
                             <p className="text-sm text-slate-800 leading-relaxed whitespace-pre-wrap">
                               {q.content}
                             </p>
+                            {q.imageUrl && (
+                              <button
+                                type="button"
+                                className="mt-1.5 inline-flex items-center gap-1 text-xs text-[#1F3864] hover:underline font-medium"
+                                onClick={() => openImageModal(q.imageUrl, `Gambar - ${q.content.slice(0, 40)}...`)}
+                                title="Lihat gambar soal"
+                              >
+                                <ImageIcon className="h-3.5 w-3.5" /> Lihat gambar soal
+                              </button>
+                            )}
                           </div>
                         </div>
 
@@ -1326,6 +1376,14 @@ export function SiswaAssignmentView() {
             </div>
           </>
         )}
+
+      {/* ImageModal — selalu tersedia di view result */}
+      <ImageModal
+        imageUrl={currentImageUrl}
+        open={imageModalOpen}
+        onOpenChange={setImageModalOpen}
+        title={currentImageTitle || 'Pratinjau Gambar Soal'}
+      />
       </div>
     );
   }

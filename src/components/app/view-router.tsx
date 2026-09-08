@@ -50,8 +50,11 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'wali-kelas': React.lazy(() => import('@/components/views/admin-school-timetable').then(m => ({ default: m.WaliKelasView }))),
   'import-csv': React.lazy(() => import('@/components/views/admin-school-import').then(m => ({ default: m.ImportCsvView }))),
   'dapodik-sync': React.lazy(() => import('@/components/views/admin-school-dapodik').then(m => ({ default: m.DapodikSyncView }))),
+  'admin-settings': React.lazy(() => import('@/components/views/admin-school-settings').then(m => ({ default: m.AdminSettingsView }))),
+  'dashboard-banding': React.lazy(() => import('@/components/views/grades/dashboard-banding-view').then(m => ({ default: m.DashboardBandingView }))),
 
   'guru-materi': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruMateriView }))),
+  'guru-catatan': React.lazy(() => import('@/components/views/guru/guru-catatan-view').then(m => ({ default: m.GuruCatatanView }))),
   'guru-nilai': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruNilaiView }))),
   'guru-analisis': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruAnalisisView }))),
   'guru-laporan': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruLaporanView }))),
@@ -70,6 +73,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-komponen-nilai': React.lazy(() => import('@/components/views/grades/komponen-nilai-view').then(m => ({ default: m.KomponenNilaiView }))),
   'guru-rapor': React.lazy(() => import('@/components/views/reports/rapor-view').then(m => ({ default: m.RaporView }))),
 
+  'siswa-tka-dashboard': React.lazy(() => import('@/components/views/siswa/tka-dashboard-view').then(m => ({ default: m.TkaDashboardView }))),
   'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
   'siswa-tugas': React.lazy(() => import('@/components/views/assignment/siswa-assignment-view').then(m => ({ default: m.SiswaAssignmentView }))),
   'siswa-tryout': React.lazy(() => import('@/components/views/exam/siswa-exam-views').then(m => ({ default: m.SiswaTryoutView }))),

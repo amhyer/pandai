@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/store/use-store';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,7 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { Target, Plus, Eye, Pencil, Trash2, ClipboardList, Clock, Users, CheckCircle2, AlertCircle, ChevronLeft, Save, FileText, BookOpen, Loader2, Star, RotateCcw } from 'lucide-react';
+import {
+  Target, Plus, Eye, Pencil, Trash2, ClipboardList, Clock, Users,
+  CheckCircle2, AlertCircle, ChevronLeft, Save, FileText, BookOpen,
+  Loader2, Star, RotateCcw, Image as ImageIcon
+} from 'lucide-react';
+import { ImageModal } from '@/components/shared/image-modal';
 
 // ═══════════════════════════════════════════════════════════════════
 // TYPES
@@ -21,7 +27,6 @@ import { Target, Plus, Eye, Pencil, Trash2, ClipboardList, Clock, Users, CheckCi
 type SubmissionType = 'pg_only' | 'essay_only' | 'mixed';
 type AssignmentStatus = 'DRAFT' | 'PUBLISHED' | 'CLOSED';
 type InternalView = 'list' | 'form' | 'detail';
-
 type SubStatus = 'belum_dikerjakan' | 'dikerjakan' | 'submitted' | 'dinilai';
 
 interface AssignmentSummary {
@@ -47,14 +52,14 @@ interface AssignmentDetail extends Omit<AssignmentSummary, '_count'> {
 
 interface QuestionItem {
   id: string;
-  question: { id: string; content: string };
+  question: { id: string; content: string; imageUrl?: string | null };
   type: 'PG' | 'ESSAY';
   options?: { id: string; label: string; content: string; isCorrect: boolean }[];
 }
 
 interface QuestionBank {
   id: string;
-  question: { id: string; content: string };
+  question: { id: string; content: string; imageUrl?: string | null };
   type: 'PG' | 'ESSAY';
   options?: { id: string; label: string; content: string; isCorrect: boolean }[];
 }
@@ -90,15 +95,8 @@ interface SubmissionDetail {
   }[];
 }
 
-interface SubjectItem {
-  id: string;
-  name: string;
-}
-
-interface ClassItem {
-  id: string;
-  name: string;
-}
+interface SubjectItem { id: string; name: string; }
+interface ClassItem { id: string; name: string; }
 
 interface FormData {
   title: string;
@@ -115,7 +113,7 @@ interface FormData {
 }
 
 // ═══════════════════════════════════════════════════════════════════
-// CONSTANTS
+// CONSTANTS & HELPERS
 // ═══════════════════════════════════════════════════════════════════
 
 const TYPE_LABELS: Record<SubmissionType, string> = {
@@ -177,16 +175,10 @@ const STATUS_FILTERS: { label: string; value: string }[] = [
   { label: 'Closed', value: 'CLOSED' },
 ];
 
-// ═══════════════════════════════════════════════════════════════════
-// HELPER
-// ═══════════════════════════════════════════════════════════════════
-
 function formatDate(d: string) {
   if (!d) return '-';
   const date = new Date(d);
-  return date.toLocaleDateString('id-ID', {
-    day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
-  });
+  return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 function toLocalDatetime(d: string) {
@@ -207,27 +199,26 @@ export function GuruAssignmentView() {
   const schoolId = user?.schoolId || '';
   const teacherId = user?.id || '';
 
-  // ── View state ──
   const [view, setView] = useState<InternalView>('list');
 
-  // ── List view state ──
+  // ── List ──
   const [assignments, setAssignments] = useState<AssignmentSummary[]>([]);
   const [listLoading, setListLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
 
-  // ── Form state ──
+  // ── Form ──
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<FormData>(EMPTY_FORM);
   const [formSaving, setFormSaving] = useState(false);
 
-  // ── Detail view state ──
+  // ── Detail ──
   const [detailId, setDetailId] = useState<string | null>(null);
   const [detail, setDetail] = useState<AssignmentDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(true);
   const [students, setStudents] = useState<StudentRow[]>([]);
   const [studentsLoading, setStudentsLoading] = useState(false);
 
-  // ── Grading state ──
+  // ── Grading ──
   const [gradingStudentId, setGradingStudentId] = useState<string | null>(null);
   const [gradingStudentName, setGradingStudentName] = useState('');
   const [submissionDetail, setSubmissionDetail] = useState<SubmissionDetail | null>(null);
@@ -236,11 +227,16 @@ export function GuruAssignmentView() {
   const [essayPoints, setEssayPoints] = useState<Record<string, number>>({});
   const [gradingFeedback, setGradingFeedback] = useState('');
 
-  // ── Delete confirm ──
+  // ── Image modal ──
+  const [imageModalOpen, setImageModalOpen] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(null);
+  const [currentImageTitle, setCurrentImageTitle] = useState<string>('');
+
+  // ── Delete ──
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // ── Question picker dialog ──
+  // ── Question picker ──
   const [questionPickerOpen, setQuestionPickerOpen] = useState(false);
   const [bankQuestions, setBankQuestions] = useState<QuestionBank[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
@@ -250,10 +246,7 @@ export function GuruAssignmentView() {
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [classes, setClasses] = useState<ClassItem[]>([]);
 
-  // ═══════════════════════════════════════════════════════════════════
-  // FETCH HELPERS
-  // ═══════════════════════════════════════════════════════════════════
-
+  // ═══════════════════════════════════════════ FETCH HELPERS
   const fetchAssignments = useCallback(async () => {
     setListLoading(true);
     try {
@@ -274,9 +267,7 @@ export function GuruAssignmentView() {
       if (!res.ok) return;
       const data = await res.json();
       setSubjects(Array.isArray(data) ? data : data.data ?? data.subjects ?? []);
-    } catch {
-      /* silent */
-    }
+    } catch { /* silent */ }
   }, []);
 
   const fetchClasses = useCallback(async () => {
@@ -286,14 +277,8 @@ export function GuruAssignmentView() {
       if (!res.ok) return;
       const data = await res.json();
       setClasses(Array.isArray(data) ? data : data.data ?? data.classes ?? []);
-    } catch {
-      /* silent */
-    }
+    } catch { /* silent */ }
   }, [schoolId]);
-
-  // ═══════════════════════════════════════════════════════════════════
-  // INIT
-  // ═══════════════════════════════════════════════════════════════════
 
   useEffect(() => {
     if (!schoolId || !teacherId) return;
@@ -302,15 +287,8 @@ export function GuruAssignmentView() {
     fetchClasses();
   }, [schoolId, teacherId, fetchAssignments, fetchSubjects, fetchClasses]);
 
-  // ═══════════════════════════════════════════════════════════════════
-  // LIST VIEW
-  // ═══════════════════════════════════════════════════════════════════
-
-  const filteredAssignments = assignments.filter((a) => {
-    if (statusFilter === 'all') return true;
-    return a.status === statusFilter;
-  });
-
+  // ═══════════════════════════════════════════ LIST
+  const filteredAssignments = assignments.filter((a) => statusFilter === 'all' || a.status === statusFilter);
   const totalAssignments = assignments.length;
   const publishedCount = assignments.filter((a) => a.status === 'PUBLISHED').length;
   const draftCount = assignments.filter((a) => a.status === 'DRAFT').length;
@@ -357,10 +335,7 @@ export function GuruAssignmentView() {
     setView('detail');
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  // FORM VIEW
-  // ═══════════════════════════════════════════════════════════════════
-
+  // ═══════════════════════════════════════════ FORM
   const updateForm = (patch: Partial<FormData>) => setForm((f) => ({ ...f, ...patch }));
 
   const handleFormSubmit = async () => {
@@ -421,7 +396,6 @@ export function GuruAssignmentView() {
   };
 
   // ── Question picker ──
-
   const fetchBankQuestions = useCallback(async (subjectId: string) => {
     setBankLoading(true);
     try {
@@ -461,13 +435,9 @@ export function GuruAssignmentView() {
     setForm((f) => ({ ...f, questionIds: f.questionIds.filter((id) => id !== qId) }));
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  // DETAIL VIEW
-  // ═══════════════════════════════════════════════════════════════════
-
+  // ═══════════════════════════════════════════ DETAIL (useEffect)
   useEffect(() => {
     if (view !== 'detail' || !detailId) return;
-
     let cancelled = false;
 
     const load = async () => {
@@ -488,7 +458,6 @@ export function GuruAssignmentView() {
           const subData = await subRes.json();
           const subs = Array.isArray(subData) ? subData : subData.data ?? subData.submissions ?? [];
           if (!cancelled) {
-            // fetch students in the class
             const classId = d.classId || d.classInfo?.id;
             if (classId) {
               const stuRes = await fetch(`/api/users?schoolId=${schoolId}&classId=${classId}&role=SISWA`);
@@ -496,9 +465,7 @@ export function GuruAssignmentView() {
                 const stuData = await stuRes.json();
                 const stuList = Array.isArray(stuData) ? stuData : stuData.data ?? stuData.users ?? [];
                 const rows: StudentRow[] = stuList.map((s: { id: string; name: string }) => {
-                  // Find non-remedial submission for this student
                   const sub = subs.find((sub: { studentId: string; isRemedial: boolean }) => sub.studentId === s.id && !sub.isRemedial);
-                  // Find remedial submission if exists
                   const remedial = subs.find((sub: { studentId: string; isRemedial: boolean }) => sub.studentId === s.id && sub.isRemedial);
                   let status: SubStatus = 'belum_dikerjakan';
                   if (sub) {
@@ -530,10 +497,7 @@ export function GuruAssignmentView() {
     return () => { cancelled = true; };
   }, [view, detailId, schoolId]);
 
-  // ═══════════════════════════════════════════════════════════════════
-  // GRADING
-  // ═══════════════════════════════════════════════════════════════════
-
+  // ═══════════════════════════════════════════ GRADING
   const openGrading = async (student: StudentRow) => {
     if (!detailId) return;
     setGradingStudentId(student.id);
@@ -547,7 +511,6 @@ export function GuruAssignmentView() {
       const data = await res.json();
       const sub = data.data ?? data.submission ?? data;
       setSubmissionDetail(sub);
-      // Pre-fill essay points
       const ep: Record<string, number> = {};
       if (sub?.essayScores) {
         sub.essayScores.forEach((es: { questionId: string; pointsEarned: number }) => { ep[es.questionId] = es.pointsEarned; });
@@ -567,7 +530,6 @@ export function GuruAssignmentView() {
     let total = 0;
     for (const ans of submissionDetail.answers) {
       if (ans.isCorrect) {
-        // PG correct: auto-score
         total += ans.pointsEarned ?? 1;
       } else if (detail.questions.find((q) => q.id === ans.questionId)?.type === 'ESSAY') {
         total += essayPoints[ans.questionId] || 0;
@@ -595,7 +557,6 @@ export function GuruAssignmentView() {
       toast.success('Nilai berhasil disimpan');
       setGradingStudentId(null);
       setSubmissionDetail(null);
-      // Refresh detail
       setDetailId(detailId);
       setDetail(null);
       setStudents([]);
@@ -628,154 +589,104 @@ export function GuruAssignmentView() {
     }
   };
 
-  // ═══════════════════════════════════════════════════════════════════
-  // RENDER — LIST VIEW
-  // ═══════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════ OPEN IMAGE MODAL
+  const openImageModal = (url: string | null, title: string) => {
+    setCurrentImageUrl(url);
+    setCurrentImageTitle(title);
+    setImageModalOpen(true);
+  };
+
+  // ═══════════════════════════════════════════ RENDER — LIST VIEW
+  let viewContent: React.ReactNode;
 
   if (view === 'list') {
-    return (
+    viewContent = (
       <div className="space-y-6">
-        {/* Header */}
+        {/* ... [LIST VIEW CONTENT - same as before] ... */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-[#1F3864] flex items-center gap-2">
-              <ClipboardList className="h-6 w-6" />
-              Tugas Terstruktur
+              <ClipboardList className="h-6 w-6" /> Tugas Terstruktur
             </h1>
             <p className="text-sm text-muted-foreground mt-1">Kelola tugas, kuis, dan ujian untuk siswa</p>
           </div>
-          <Button
-            onClick={() => { setEditingId(null); setForm(EMPTY_FORM); setView('form'); }}
-            className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            Buat Tugas Baru
+          <Button onClick={() => { setEditingId(null); setForm(EMPTY_FORM); setView('form'); }}
+            className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white">
+            <Plus className="h-4 w-4 mr-2" /> Buat Tugas Baru
           </Button>
         </div>
 
-        {/* Stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card className="border-none shadow-sm bg-white">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-lg bg-[#1F3864]/10 p-2.5"><FileText className="h-5 w-5 text-[#1F3864]" /></div>
-              <div>
-                <p className="text-2xl font-bold text-[#1F3864]">{totalAssignments}</p>
-                <p className="text-xs text-muted-foreground">Total Tugas</p>
-              </div>
+              <div><p className="text-2xl font-bold text-[#1F3864]">{totalAssignments}</p><p className="text-xs text-muted-foreground">Total Tugas</p></div>
             </CardContent>
           </Card>
           <Card className="border-none shadow-sm bg-white">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-lg bg-emerald-50 p-2.5"><CheckCircle2 className="h-5 w-5 text-emerald-600" /></div>
-              <div>
-                <p className="text-2xl font-bold text-emerald-600">{publishedCount}</p>
-                <p className="text-xs text-muted-foreground">Published</p>
-              </div>
+              <div><p className="text-2xl font-bold text-emerald-600">{publishedCount}</p><p className="text-xs text-muted-foreground">Published</p></div>
             </CardContent>
           </Card>
           <Card className="border-none shadow-sm bg-white">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-lg bg-amber-50 p-2.5"><AlertCircle className="h-5 w-5 text-amber-600" /></div>
-              <div>
-                <p className="text-2xl font-bold text-amber-600">{draftCount}</p>
-                <p className="text-xs text-muted-foreground">Draft</p>
-              </div>
+              <div><p className="text-2xl font-bold text-amber-600">{draftCount}</p><p className="text-xs text-muted-foreground">Draft</p></div>
             </CardContent>
           </Card>
           <Card className="border-none shadow-sm bg-white">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="rounded-lg bg-slate-100 p-2.5"><BookOpen className="h-5 w-5 text-slate-500" /></div>
-              <div>
-                <p className="text-2xl font-bold text-slate-500">{closedCount}</p>
-                <p className="text-xs text-muted-foreground">Closed</p>
-              </div>
+              <div><p className="text-2xl font-bold text-slate-500">{closedCount}</p><p className="text-xs text-muted-foreground">Closed</p></div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filter */}
         <div className="flex flex-wrap gap-2">
           {STATUS_FILTERS.map((f) => (
-            <Button
-              key={f.value}
-              variant={statusFilter === f.value ? 'default' : 'outline'}
-              size="sm"
+            <Button key={f.value} variant={statusFilter === f.value ? 'default' : 'outline'} size="sm"
               onClick={() => setStatusFilter(f.value)}
-              className={cn(
-                statusFilter === f.value && 'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white'
-              )}
-            >
+              className={cn(statusFilter === f.value && 'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white')}>
               {f.label}
             </Button>
           ))}
         </div>
 
-        {/* Loading */}
-        {listLoading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" />
-          </div>
-        )}
-
-        {/* Empty state */}
+        {listLoading && <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" /></div>}
         {!listLoading && filteredAssignments.length === 0 && (
           <Card className="border-none shadow-sm bg-white">
             <CardContent className="py-16 flex flex-col items-center gap-3">
-              <div className="rounded-full bg-[#1F3864]/10 p-4">
-                <ClipboardList className="h-10 w-10 text-[#1F3864]" />
-              </div>
+              <div className="rounded-full bg-[#1F3864]/10 p-4"><ClipboardList className="h-10 w-10 text-[#1F3864]" /></div>
               <p className="text-lg font-semibold text-slate-700">Belum ada tugas</p>
               <p className="text-sm text-muted-foreground">Klik "Buat Tugas Baru" untuk membuat tugas pertama Anda</p>
             </CardContent>
           </Card>
         )}
 
-        {/* Assignment cards */}
         {!listLoading && filteredAssignments.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredAssignments.map((a) => (
-              <Card
-                key={a.id}
-                className="border-none shadow-sm bg-white hover:shadow-md transition-shadow cursor-pointer group"
-                onClick={() => openDetail(a.id)}
-              >
+              <Card key={a.id} className="border-none shadow-sm bg-white hover:shadow-md transition-shadow cursor-pointer group" onClick={() => openDetail(a.id)}>
                 <CardContent className="p-5 space-y-3">
                   <div className="flex items-start justify-between gap-2">
                     <h3 className="font-semibold text-sm text-slate-800 line-clamp-2 leading-snug flex-1">{a.title}</h3>
                     <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={(e) => { e.stopPropagation(); openEdit(a); }}
-                      >
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); openEdit(a); }}>
                         <Pencil className="h-3.5 w-3.5 text-slate-500" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={(e) => { e.stopPropagation(); setDeleteId(a.id); }}
-                      >
+                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setDeleteId(a.id); }}>
                         <Trash2 className="h-3.5 w-3.5 text-red-500" />
                       </Button>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <Badge variant="outline" className={cn('text-[10px] px-2 py-0', TYPE_BADGE[a.submissionType])}>
-                      {TYPE_LABELS[a.submissionType]}
-                    </Badge>
-                    <Badge variant="outline" className={cn('text-[10px] px-2 py-0', STATUS_BADGE[a.status])}>
-                      {STATUS_LABEL[a.status]}
-                    </Badge>
+                    <Badge variant="outline" className={cn('text-[10px] px-2 py-0', TYPE_BADGE[a.submissionType])}>{TYPE_LABELS[a.submissionType]}</Badge>
+                    <Badge variant="outline" className={cn('text-[10px] px-2 py-0', STATUS_BADGE[a.status])}>{STATUS_LABEL[a.status]}</Badge>
                   </div>
-                  {a.learningObjective && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{a.learningObjective}</p>
-                  )}
+                  {a.learningObjective && <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{a.learningObjective}</p>}
                   <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-slate-100">
-                    <div className="flex items-center gap-3">
-                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(a.deadline)}</span>
-                    </div>
+                    <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(a.deadline)}</span>
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1"><FileText className="h-3 w-3" />{a._count.questions}</span>
                       <span className="flex items-center gap-1"><Users className="h-3 w-3" />{a._count.submissions}</span>
@@ -787,7 +698,6 @@ export function GuruAssignmentView() {
           </div>
         )}
 
-        {/* Delete confirm dialog */}
         <Dialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
           <DialogContent>
             <DialogHeader>
@@ -797,8 +707,7 @@ export function GuruAssignmentView() {
             <DialogFooter className="gap-2">
               <Button variant="outline" onClick={() => setDeleteId(null)} disabled={deleteLoading}>Batal</Button>
               <Button variant="destructive" onClick={handleDelete} disabled={deleteLoading}>
-                {deleteLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Hapus
+                {deleteLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />} Hapus
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -807,192 +716,115 @@ export function GuruAssignmentView() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // RENDER — FORM VIEW
-  // ═══════════════════════════════════════════════════════════════════
-
+  // ═══════════════════════════════════════════ RENDER — FORM VIEW
   if (view === 'form') {
     const hasQuestions = form.questionIds.length > 0;
     const showQuestions = form.submissionType === 'pg_only' || form.submissionType === 'mixed';
     const canPublish = !showQuestions || hasQuestions;
 
-    return (
+    viewContent = (
       <div className="space-y-6 max-w-3xl">
-        {/* Back + Title */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setView('list')}>
             <ChevronLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold text-[#1F3864]">
-            {editingId ? 'Edit Tugas' : 'Buat Tugas Baru'}
-          </h1>
+          <h1 className="text-xl font-bold text-[#1F3864]">{editingId ? 'Edit Tugas' : 'Buat Tugas Baru'}</h1>
         </div>
 
         <Card className="border-none shadow-sm bg-white">
           <CardContent className="p-6 space-y-5">
-            {/* Judul */}
             <div className="space-y-2">
               <Label>Judul <span className="text-red-500">*</span></Label>
-              <Input
-                placeholder="Masukkan judul tugas..."
-                value={form.title}
-                onChange={(e) => updateForm({ title: e.target.value })}
-                className="rounded-lg"
-              />
+              <Input placeholder="Masukkan judul tugas..." value={form.title} onChange={(e) => updateForm({ title: e.target.value })} className="rounded-lg" />
             </div>
-
-            {/* Deskripsi */}
             <div className="space-y-2">
               <Label>Deskripsi</Label>
-              <Input
-                placeholder="Deskripsi singkat tugas (opsional)"
-                value={form.description}
-                onChange={(e) => updateForm({ description: e.target.value })}
-                className="rounded-lg"
-              />
+              <Input placeholder="Deskripsi singkat tugas (opsional)" value={form.description} onChange={(e) => updateForm({ description: e.target.value })} className="rounded-lg" />
             </div>
-
-            {/* Instruksi */}
             <div className="space-y-2">
               <Label>Instruksi</Label>
-              <Textarea
-                placeholder="Tulis instruksi pengerjaan tugas..."
-                rows={4}
-                value={form.instructions}
-                onChange={(e) => updateForm({ instructions: e.target.value })}
-                className="rounded-lg resize-none"
-              />
+              <Textarea placeholder="Tulis instruksi pengerjaan tugas..." rows={4} value={form.instructions} onChange={(e) => updateForm({ instructions: e.target.value })} className="rounded-lg resize-none" />
             </div>
-
-            {/* Mata Pelajaran & Kelas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Mata Pelajaran <span className="text-red-500">*</span></Label>
                 <Select value={form.subjectId} onValueChange={(v) => updateForm({ subjectId: v, questionIds: [] })}>
                   <SelectTrigger className="rounded-lg"><SelectValue placeholder="Pilih mapel" /></SelectTrigger>
-                  <SelectContent>
-                    {subjects.map((s) => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent>{subjects.map((s) => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Kelas <span className="text-red-500">*</span></Label>
                 <Select value={form.classId} onValueChange={(v) => updateForm({ classId: v })}>
                   <SelectTrigger className="rounded-lg"><SelectValue placeholder="Pilih kelas" /></SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
+                  <SelectContent>{classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
             </div>
-
-            {/* Deadline */}
             <div className="space-y-2">
               <Label>Deadline <span className="text-red-500">*</span></Label>
-              <Input
-                type="datetime-local"
-                value={form.deadline}
-                onChange={(e) => updateForm({ deadline: e.target.value })}
-                className="rounded-lg"
-              />
+              <Input type="datetime-local" value={form.deadline} onChange={(e) => updateForm({ deadline: e.target.value })} className="rounded-lg" />
             </div>
-
-            {/* Tujuan Pembelajaran */}
             <div className="space-y-2">
               <Label className="text-sm font-medium flex items-center gap-2">
-                <Target className="h-4 w-4 text-[#1F3864]" />
-                Tujuan Pembelajaran
-                <span className="text-xs text-muted-foreground font-normal">(opsional)</span>
+                <Target className="h-4 w-4 text-[#1F3864]" /> Tujuan Pembelajaran <span className="text-xs text-muted-foreground font-normal">(opsional)</span>
               </Label>
-              <textarea
-                className="flex min-h-[60px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F3864]/30 focus-visible:ring-offset-2 resize-none"
-                placeholder="Contoh: Siswa mampu menganalisis struktur teks eksplanasi..."
-                maxLength={500}
-                value={form.learningObjective}
-                onChange={(e) => updateForm({ learningObjective: e.target.value })}
-              />
+              <textarea className="flex min-h-[60px] w-full rounded-lg border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F3864]/30 focus-visible:ring-offset-2 resize-none"
+                placeholder="Contoh: Siswa mampu menganalisis struktur teks eksplanasi..." maxLength={500} value={form.learningObjective} onChange={(e) => updateForm({ learningObjective: e.target.value })} />
               <p className="text-[11px] text-muted-foreground text-right">{form.learningObjective.length}/500</p>
             </div>
-
-            {/* Tipe Submission */}
             <div className="space-y-2">
               <Label>Tipe Submission</Label>
               <div className="flex flex-wrap gap-2">
                 {(['pg_only', 'essay_only', 'mixed'] as SubmissionType[]).map((t) => (
-                  <Button
-                    key={t}
-                    type="button"
-                    variant={form.submissionType === t ? 'default' : 'outline'}
-                    size="sm"
-                    className={cn(
-                      'rounded-lg',
-                      form.submissionType === t && 'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white'
-                    )}
-                    onClick={() => updateForm({ submissionType: t, questionIds: [] })}
-                  >
+                  <Button key={t} type="button" variant={form.submissionType === t ? 'default' : 'outline'} size="sm"
+                    className={cn('rounded-lg', form.submissionType === t && 'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white')}
+                    onClick={() => updateForm({ submissionType: t, questionIds: [] })}>
                     {TYPE_LABELS[t]}
                   </Button>
                 ))}
               </div>
             </div>
-
-            {/* Skor Maks */}
             <div className="space-y-2">
               <Label>Skor Maks</Label>
-              <Input
-                type="number"
-                min={1}
-                value={form.maxScore}
-                onChange={(e) => updateForm({ maxScore: parseInt(e.target.value) || 100 })}
-                className="rounded-lg w-full sm:w-32"
-              />
+              <Input type="number" min={1} value={form.maxScore} onChange={(e) => updateForm({ maxScore: parseInt(e.target.value) || 100 })} className="rounded-lg w-full sm:w-32" />
             </div>
 
-            {/* Soal section (PG only or Mixed) */}
+            {/* Soal section */}
             {showQuestions && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm font-medium">Soal ({form.questionIds.length} dipilih)</Label>
                   <Button type="button" variant="outline" size="sm" onClick={openQuestionPicker}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Ambil Soal
+                    <Plus className="h-4 w-4 mr-1" /> Ambil Soal
                   </Button>
                 </div>
-
                 {form.questionIds.length === 0 && (
-                  <p className="text-sm text-muted-foreground bg-slate-50 rounded-lg p-4 text-center">
-                    Belum ada soal dipilih. Klik "Ambil Soal" untuk menambahkan.
-                  </p>
+                  <p className="text-sm text-muted-foreground bg-slate-50 rounded-lg p-4 text-center">Belum ada soal dipilih. Klik "Ambil Soal" untuk menambahkan.</p>
                 )}
-
-                {/* Selected questions list */}
                 {form.questionIds.length > 0 && (
                   <div className="space-y-2 max-h-64 overflow-y-auto">
                     {form.questionIds.map((qId, idx) => {
                       const q = bankQuestions.find((bq) => bq.id === qId);
+                      const hasImage = q?.question?.imageUrl;
                       return (
-                        <div
-                          key={qId}
-                          className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100"
-                        >
+                        <div key={qId} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
                           <span className="text-xs font-semibold text-[#1F3864] mt-0.5 shrink-0 w-5">{idx + 1}.</span>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm text-slate-700 line-clamp-2">{q?.question?.content || 'Soal...'}</p>
+                            {hasImage && (
+                              <button type="button"
+                                className="mt-1 inline-flex items-center gap-1 text-xs text-[#1F3864] hover:underline font-medium"
+                                onClick={() => openImageModal(q.question.imageUrl || null, `Gambar - ${q.question.content.slice(0, 40)}...`)}
+                                title="Lihat gambar">
+                                <ImageIcon className="h-3.5 w-3.5" /> Gambar tersedia
+                              </button>
+                            )}
                             <Badge variant="outline" className={cn('text-[10px] mt-1', q?.type === 'PG' ? 'bg-pink-50 text-pink-600' : 'bg-blue-50 text-blue-600')}>
                               {q?.type || 'PG'}
                             </Badge>
                           </div>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 shrink-0"
-                            onClick={() => removeQuestion(qId)}
-                          >
+                          <Button type="button" variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={() => removeQuestion(qId)}>
                             <Trash2 className="h-3.5 w-3.5 text-red-500" />
                           </Button>
                         </div>
@@ -1007,50 +839,23 @@ export function GuruAssignmentView() {
             <div className="space-y-2">
               <Label>Status</Label>
               <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={form.status === 'DRAFT' ? 'default' : 'outline'}
-                  size="sm"
+                <Button type="button" variant={form.status === 'DRAFT' ? 'default' : 'outline'} size="sm"
                   className={cn('rounded-lg', form.status === 'DRAFT' && 'bg-amber-500 hover:bg-amber-600 text-white')}
-                  onClick={() => updateForm({ status: 'DRAFT' })}
-                >
-                  Draft
-                </Button>
-                <Button
-                  type="button"
-                  variant={form.status === 'PUBLISHED' ? 'default' : 'outline'}
-                  size="sm"
+                  onClick={() => updateForm({ status: 'DRAFT' })}>Draft</Button>
+                <Button type="button" variant={form.status === 'PUBLISHED' ? 'default' : 'outline'} size="sm"
                   className={cn('rounded-lg', form.status === 'PUBLISHED' && 'bg-emerald-600 hover:bg-emerald-700 text-white')}
                   onClick={() => {
-                    if (!canPublish) {
-                      toast.error('Tambahkan soal terlebih dahulu sebelum mempublish');
-                      return;
-                    }
+                    if (!canPublish) { toast.error('Tambahkan soal terlebih dahulu sebelum mempublish'); return; }
                     updateForm({ status: 'PUBLISHED' });
-                  }}
-                >
-                  Published
-                </Button>
+                  }}>Published</Button>
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-3 pt-4 border-t border-slate-100">
-              <Button
-                variant="outline"
-                onClick={() => setView('list')}
-                className="rounded-lg"
-              >
-                Batal
-              </Button>
-              <Button
-                onClick={handleFormSubmit}
-                disabled={formSaving}
-                className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white rounded-lg"
-              >
+              <Button variant="outline" onClick={() => setView('list')} className="rounded-lg">Batal</Button>
+              <Button onClick={handleFormSubmit} disabled={formSaving} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white rounded-lg">
                 {formSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                <Save className="h-4 w-4 mr-2" />
-                {editingId ? 'Perbarui Tugas' : 'Simpan Tugas'}
+                <Save className="h-4 w-4 mr-2" /> {editingId ? 'Perbarui Tugas' : 'Simpan Tugas'}
               </Button>
             </div>
           </CardContent>
@@ -1063,36 +868,18 @@ export function GuruAssignmentView() {
               <DialogTitle>Pilih Soal dari Bank Soal</DialogTitle>
               <DialogDescription>Pilih soal yang ingin ditambahkan ke tugas ini</DialogDescription>
             </DialogHeader>
-            <Input
-              placeholder="Cari soal..."
-              value={bankSearch}
-              onChange={(e) => setBankSearch(e.target.value)}
-              className="rounded-lg my-2"
-            />
+            <Input placeholder="Cari soal..." value={bankSearch} onChange={(e) => setBankSearch(e.target.value)} className="rounded-lg my-2" />
             <div className="flex-1 overflow-y-auto space-y-2 min-h-0 max-h-96">
-              {bankLoading && (
-                <div className="flex items-center justify-center py-10">
-                  <Loader2 className="h-6 w-6 animate-spin text-[#1F3864]" />
-                </div>
-              )}
-              {!bankLoading && filteredBank.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-10">Tidak ada soal ditemukan</p>
-              )}
+              {bankLoading && <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-[#1F3864]" /></div>}
+              {!bankLoading && filteredBank.length === 0 && <p className="text-sm text-muted-foreground text-center py-10">Tidak ada soal ditemukan</p>}
               {!bankLoading && filteredBank.map((q) => {
                 const selected = form.questionIds.includes(q.id);
                 return (
-                  <div
-                    key={q.id}
-                    onClick={() => toggleBankQuestion(q.id)}
-                    className={cn(
-                      'flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
-                      selected ? 'bg-[#1F3864]/5 border-[#1F3864]/30' : 'bg-white border-slate-200 hover:border-slate-300'
-                    )}
-                  >
-                    <div className={cn(
-                      'mt-0.5 h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
-                      selected ? 'bg-[#1F3864] border-[#1F3864]' : 'border-slate-300'
-                    )}>
+                  <div key={q.id} onClick={() => toggleBankQuestion(q.id)}
+                    className={cn('flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors',
+                      selected ? 'bg-[#1F3864]/5 border-[#1F3864]/30' : 'bg-white border-slate-200 hover:border-slate-300')}>
+                    <div className={cn('mt-0.5 h-5 w-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors',
+                      selected ? 'bg-[#1F3864] border-[#1F3864]' : 'border-slate-300')}>
                       {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1115,18 +902,14 @@ export function GuruAssignmentView() {
     );
   }
 
-  // ═══════════════════════════════════════════════════════════════════
-  // RENDER — DETAIL VIEW
-  // ═══════════════════════════════════════════════════════════════════
-
+  // ═══════════════════════════════════════════ RENDER — DETAIL VIEW
   if (view === 'detail') {
     const submittedCount = students.filter((s) => s.submissionStatus === 'submitted' || s.submissionStatus === 'dinilai').length;
     const gradedCount = students.filter((s) => s.submissionStatus === 'dinilai').length;
     const avgScore = students.filter((s) => s.score !== null).reduce((acc, s) => acc + (s.score || 0), 0) / (gradedCount || 1);
 
-    return (
+    viewContent = (
       <div className="space-y-6">
-        {/* Back + Title */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setView('list'); setDetailId(null); setDetail(null); }}>
             <ChevronLeft className="h-5 w-5" />
@@ -1134,11 +917,7 @@ export function GuruAssignmentView() {
           <h1 className="text-xl font-bold text-[#1F3864]">Detail Tugas</h1>
         </div>
 
-        {detailLoading && (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" />
-          </div>
-        )}
+        {detailLoading && <div className="flex items-center justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-[#1F3864]" /></div>}
 
         {!detailLoading && detail && (
           <>
@@ -1151,22 +930,16 @@ export function GuruAssignmentView() {
                     {detail.description && <p className="text-sm text-muted-foreground">{detail.description}</p>}
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant="outline" className={cn('text-xs', TYPE_BADGE[detail.submissionType])}>
-                      {TYPE_LABELS[detail.submissionType]}
-                    </Badge>
-                    <Badge variant="outline" className={cn('text-xs', STATUS_BADGE[detail.status])}>
-                      {STATUS_LABEL[detail.status]}
-                    </Badge>
+                    <Badge variant="outline" className={cn('text-xs', TYPE_BADGE[detail.submissionType])}>{TYPE_LABELS[detail.submissionType]}</Badge>
+                    <Badge variant="outline" className={cn('text-xs', STATUS_BADGE[detail.status])}>{STATUS_LABEL[detail.status]}</Badge>
                   </div>
                 </div>
-
                 {detail.instructions && (
                   <div className="bg-slate-50 rounded-lg p-4">
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1">Instruksi</p>
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{detail.instructions}</p>
                   </div>
                 )}
-
                 {detail.learningObjective && (
                   <div className="flex items-start gap-2 bg-[#1F3864]/5 rounded-lg px-3 py-2.5">
                     <Target className="h-4 w-4 text-[#1F3864] mt-0.5 shrink-0" />
@@ -1176,7 +949,6 @@ export function GuruAssignmentView() {
                     </div>
                   </div>
                 )}
-
                 <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5"><Clock className="h-4 w-4" /> {formatDate(detail.deadline)}</span>
                   <span className="flex items-center gap-1.5"><FileText className="h-4 w-4" /> {detail.questions?.length || 0} soal</span>
@@ -1191,37 +963,25 @@ export function GuruAssignmentView() {
               <Card className="border-none shadow-sm bg-white">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="rounded-lg bg-[#1F3864]/10 p-2.5"><Users className="h-5 w-5 text-[#1F3864]" /></div>
-                  <div>
-                    <p className="text-2xl font-bold text-[#1F3864]">{students.length}</p>
-                    <p className="text-xs text-muted-foreground">Total Siswa</p>
-                  </div>
+                  <div><p className="text-2xl font-bold text-[#1F3864]">{students.length}</p><p className="text-xs text-muted-foreground">Total Siswa</p></div>
                 </CardContent>
               </Card>
               <Card className="border-none shadow-sm bg-white">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="rounded-lg bg-blue-50 p-2.5"><FileText className="h-5 w-5 text-blue-600" /></div>
-                  <div>
-                    <p className="text-2xl font-bold text-blue-600">{submittedCount}</p>
-                    <p className="text-xs text-muted-foreground">Terkirim</p>
-                  </div>
+                  <div><p className="text-2xl font-bold text-blue-600">{submittedCount}</p><p className="text-xs text-muted-foreground">Terkirim</p></div>
                 </CardContent>
               </Card>
               <Card className="border-none shadow-sm bg-white">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="rounded-lg bg-emerald-50 p-2.5"><CheckCircle2 className="h-5 w-5 text-emerald-600" /></div>
-                  <div>
-                    <p className="text-2xl font-bold text-emerald-600">{gradedCount}</p>
-                    <p className="text-xs text-muted-foreground">Dinilai</p>
-                  </div>
+                  <div><p className="text-2xl font-bold text-emerald-600">{gradedCount}</p><p className="text-xs text-muted-foreground">Dinilai</p></div>
                 </CardContent>
               </Card>
               <Card className="border-none shadow-sm bg-white">
                 <CardContent className="p-4 flex items-center gap-3">
                   <div className="rounded-lg bg-amber-50 p-2.5"><Star className="h-5 w-5 text-amber-600" /></div>
-                  <div>
-                    <p className="text-2xl font-bold text-amber-600">{gradedCount > 0 ? Math.round(avgScore) : '-'}</p>
-                    <p className="text-xs text-muted-foreground">Rata-rata</p>
-                  </div>
+                  <div><p className="text-2xl font-bold text-amber-600">{gradedCount > 0 ? Math.round(avgScore) : '-'}</p><p className="text-xs text-muted-foreground">Rata-rata</p></div>
                 </CardContent>
               </Card>
             </div>
@@ -1230,20 +990,10 @@ export function GuruAssignmentView() {
             <Card className="border-none shadow-sm bg-white">
               <CardContent className="p-6">
                 <h3 className="font-semibold text-sm text-slate-800 mb-4 flex items-center gap-2">
-                  <Users className="h-4 w-4 text-[#1F3864]" />
-                  Progres Siswa
+                  <Users className="h-4 w-4 text-[#1F3864]" /> Progres Siswa
                 </h3>
-
-                {studentsLoading && (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="h-6 w-6 animate-spin text-[#1F3864]" />
-                  </div>
-                )}
-
-                {!studentsLoading && students.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-8">Tidak ada data siswa</p>
-                )}
-
+                {studentsLoading && <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-[#1F3864]" /></div>}
+                {!studentsLoading && students.length === 0 && <p className="text-sm text-muted-foreground text-center py-8">Tidak ada data siswa</p>}
                 {!studentsLoading && students.length > 0 && (
                   <div className="overflow-x-auto">
                     <Table>
@@ -1266,41 +1016,25 @@ export function GuruAssignmentView() {
                                 {SUB_STATUS_LABEL[s.submissionStatus]}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-center text-sm font-medium">
-                              {s.score !== null ? s.score : '-'}
-                            </TableCell>
+                            <TableCell className="text-center text-sm font-medium">{s.score !== null ? s.score : '-'}</TableCell>
                             <TableCell className="text-center">
                               {(s.submissionStatus === 'submitted' || s.submissionStatus === 'dinilai') && (
-                                <Button
-                                  size="sm"
-                                  variant={s.submissionStatus === 'dinilai' ? 'outline' : 'default'}
-                                  className={cn(
-                                    'text-xs rounded-lg h-7',
-                                    s.submissionStatus === 'submitted' && 'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white'
-                                  )}
-                                  onClick={() => openGrading(s)}
-                                >
-                                  <Pencil className="h-3 w-3 mr-1" />
-                                  Nilai
+                                <Button size="sm" variant={s.submissionStatus === 'dinilai' ? 'outline' : 'default'}
+                                  className={cn('text-xs rounded-lg h-7', s.submissionStatus === 'submitted' && 'bg-[#1F3864] hover:bg-[#1F3864]/90 text-white')}
+                                  onClick={() => openGrading(s)}>
+                                  <Pencil className="h-3 w-3 mr-1" /> Nilai
                                 </Button>
                               )}
                               {s.submissionStatus === 'dinilai' && s.score !== null && s.score < (detail?.maxScore ?? 100) * 0.8 && !s.hasRemedial && (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="text-[10px] rounded-lg h-7 ml-1 border-amber-300 text-amber-700 hover:bg-amber-50"
-                                  onClick={() => handleActivateRemedial(s.id)}
-                                >
-                                  <RotateCcw className="h-3 w-3 mr-1" />
-                                  Remedial
+                                <Button size="sm" variant="outline" className="text-[10px] rounded-lg h-7 ml-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                                  onClick={() => handleActivateRemedial(s.id)}>
+                                  <RotateCcw className="h-3 w-3 mr-1" /> Remedial
                                 </Button>
                               )}
                               {s.hasRemedial && s.remedialStatus && (
                                 <Badge variant="outline" className="text-[10px] ml-1 border-blue-200 text-blue-600">
                                   Remedial {s.remedialStatus === 'dinilai' || s.remedialStatus === 'submitted' ? '✓' : '⏳'}
-                                  {s.activeScore !== undefined && s.activeScore !== s.score && (
-                                    <span className="ml-1 text-emerald-600">{s.activeScore}</span>
-                                  )}
+                                  {s.activeScore !== undefined && s.activeScore !== s.score && <span className="ml-1 text-emerald-600">{s.activeScore}</span>}
                                 </Badge>
                               )}
                             </TableCell>
@@ -1320,8 +1054,7 @@ export function GuruAssignmentView() {
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-[#1F3864] flex items-center gap-2">
-                        <Pencil className="h-4 w-4" />
-                        Penilaian
+                        <Pencil className="h-4 w-4" /> Penilaian
                       </h3>
                       <p className="text-sm text-muted-foreground mt-0.5">{gradingStudentName} — {detail.title}</p>
                     </div>
@@ -1329,25 +1062,30 @@ export function GuruAssignmentView() {
                       <span className="text-lg leading-none">&times;</span>
                     </Button>
                   </div>
-
-                  {gradingLoading && (
-                    <div className="flex items-center justify-center py-10">
-                      <Loader2 className="h-6 w-6 animate-spin text-[#1F3864]" />
-                    </div>
-                  )}
-
+                  {gradingLoading && <div className="flex items-center justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-[#1F3864]" /></div>}
                   {!gradingLoading && submissionDetail && (
                     <div className="space-y-4">
                       {submissionDetail.answers.map((ans, idx) => {
                         const question = detail.questions.find((q) => q.id === ans.questionId);
                         const isEssay = question?.type === 'ESSAY';
-
                         return (
                           <div key={ans.id || idx} className="space-y-2 p-4 bg-slate-50 rounded-lg">
                             <div className="flex items-start gap-2">
                               <span className="text-xs font-bold text-[#1F3864] mt-0.5 shrink-0">{idx + 1}.</span>
                               <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-slate-800">{ans.question?.content || question?.question?.content || 'Soal...'}</p>
+                                <div className="flex items-start gap-3">
+                                  <p className="text-sm font-medium text-slate-800 flex-1">{ans.question?.content || question?.question?.content || 'Soal...'}</p>
+                                  {question?.question?.imageUrl && (
+                                    <div className="ml-2 shrink-0">
+                                      <button type="button"
+                                        className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-muted/50 hover:bg-muted text-xs text-muted-foreground border border-dashed transition-colors"
+                                        onClick={() => openImageModal(question.question.imageUrl || null, `Gambar - ${question.question.content.slice(0, 40)}...`)}
+                                        title="Lihat gambar">
+                                        <ImageIcon className="h-3.5 w-3.5" /> Gambar
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                                 {isEssay ? (
                                   <>
                                     <div className="mt-2 p-3 bg-white rounded border border-slate-200">
@@ -1356,34 +1094,21 @@ export function GuruAssignmentView() {
                                     </div>
                                     <div className="mt-2 flex items-center gap-2">
                                       <Label className="text-xs shrink-0">Poin:</Label>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        max={detail.maxScore}
+                                      <Input type="number" min={0} max={detail.maxScore}
                                         value={essayPoints[ans.questionId] ?? 0}
                                         onChange={(e) => setEssayPoints((p) => ({ ...p, [ans.questionId]: parseInt(e.target.value) || 0 }))}
-                                        className="h-8 w-24 text-sm rounded-lg"
-                                      />
+                                        className="h-8 w-24 text-sm rounded-lg" />
                                     </div>
                                   </>
                                 ) : (
-                                  <>
-                                    {/* PG: show correct/wrong */}
-                                    <div className="mt-2 flex items-center gap-2">
-                                      {ans.isCorrect ? (
-                                        <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
-                                          <CheckCircle2 className="h-3 w-3 mr-1" /> Benar
-                                        </Badge>
-                                      ) : (
-                                        <Badge className="bg-red-100 text-red-600 border-red-200 text-xs">
-                                          <AlertCircle className="h-3 w-3 mr-1" /> Salah
-                                        </Badge>
-                                      )}
-                                      <span className="text-xs text-muted-foreground">
-                                        Jawaban: {ans.answer || '-'}
-                                      </span>
-                                    </div>
-                                  </>
+                                  <div className="mt-2 flex items-center gap-2">
+                                    {ans.isCorrect ? (
+                                      <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" /> Benar</Badge>
+                                    ) : (
+                                      <Badge className="bg-red-100 text-red-600 border-red-200 text-xs"><AlertCircle className="h-3 w-3 mr-1" /> Salah</Badge>
+                                    )}
+                                    <span className="text-xs text-muted-foreground">Jawaban: {ans.answer || '-'}</span>
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -1395,13 +1120,7 @@ export function GuruAssignmentView() {
                       <div className="flex flex-col sm:flex-row sm:items-end gap-4 pt-4 border-t border-slate-200">
                         <div className="flex-1 space-y-2">
                           <Label>Feedback</Label>
-                          <Textarea
-                            placeholder="Berikan feedback kepada siswa..."
-                            rows={3}
-                            value={gradingFeedback}
-                            onChange={(e) => setGradingFeedback(e.target.value)}
-                            className="rounded-lg resize-none"
-                          />
+                          <Textarea placeholder="Berikan feedback kepada siswa..." rows={3} value={gradingFeedback} onChange={(e) => setGradingFeedback(e.target.value)} className="rounded-lg resize-none" />
                         </div>
                         <div className="shrink-0 text-center space-y-2">
                           <p className="text-xs text-muted-foreground">Total Skor</p>
@@ -1409,23 +1128,11 @@ export function GuruAssignmentView() {
                           <p className="text-xs text-muted-foreground">dari {detail.maxScore}</p>
                         </div>
                       </div>
-
                       <div className="flex justify-end gap-2 pt-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => { setGradingStudentId(null); setSubmissionDetail(null); }}
-                          className="rounded-lg"
-                        >
-                          Batal
-                        </Button>
-                        <Button
-                          onClick={saveGrade}
-                          disabled={gradingSaving}
-                          className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white rounded-lg"
-                        >
+                        <Button variant="outline" onClick={() => { setGradingStudentId(null); setSubmissionDetail(null); }} className="rounded-lg">Batal</Button>
+                        <Button onClick={saveGrade} disabled={gradingSaving} className="bg-[#1F3864] hover:bg-[#1F3864]/90 text-white rounded-lg">
                           {gradingSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                          <Save className="h-4 w-4 mr-2" />
-                          Simpan Nilai
+                          <Save className="h-4 w-4 mr-2" /> Simpan Nilai
                         </Button>
                       </div>
                     </div>
@@ -1439,6 +1146,16 @@ export function GuruAssignmentView() {
     );
   }
 
-  // Fallback
-  return null;
+  // Component always renders viewContent + ImageModal (so modal works from any view)
+  return (
+    <>
+      {viewContent}
+      <ImageModal
+        imageUrl={currentImageUrl}
+        open={imageModalOpen}
+        onOpenChange={setImageModalOpen}
+        title={currentImageTitle}
+      />
+    </>
+  );
 }

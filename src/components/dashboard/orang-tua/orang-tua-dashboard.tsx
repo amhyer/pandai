@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { OrtuDashboardEnhancement } from '@/components/views/ortu/ortu-dashboard-enhancement';
 import {
   Target,
   ClipboardList,
@@ -546,6 +547,9 @@ export function OrangTuaDashboard() {
           </div>
         </button>
       </div>
+
+      {/* ── Enhancement: Kesiapan TKA Anak + Catatan Guru ── */}
+      <OrtuDashboardEnhancement />
 
       {/* ── Encouragement Banner ── */}
       <div className="rounded-xl bg-gradient-to-r from-[#1F3864]/5 to-amber-50/50 border border-[#1F3864]/10 p-4 flex items-start gap-3">

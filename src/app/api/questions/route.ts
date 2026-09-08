@@ -4,6 +4,22 @@ import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
 import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
+/** Validasi URL gambar soal: harus http(s), panjang wajar, tanpa kredensial. */
+function sanitizeImageUrl(url: unknown): string | null {
+  if (typeof url !== 'string') return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+  if (trimmed.length > 2048) return null;
+  try {
+    const u = new URL(trimmed);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    if (u.username || u.password) return null; // hindari URL dengan kredensial
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(request: Request) {
   try {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU', 'KEPALA_SEKOLAH', 'SISWA']);
@@ -86,7 +102,7 @@ export async function POST(request: Request) {
   try {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const data = await request.json();
-    const { subjectId, topicId, schoolId, type, content, options, answer, explanation, cognitiveLevel, difficulty, createdBy } = data;
+    const { subjectId, topicId, schoolId, type, content, options, answer, explanation, cognitiveLevel, difficulty, createdBy, imageUrl } = data;
 
     // Enforce school scope for school-specific questions
     const effectiveSchoolId = schoolId || null;
@@ -104,6 +120,7 @@ export async function POST(request: Request) {
         explanation: explanation || null,
         cognitiveLevel: cognitiveLevel || 'C3',
         difficulty: difficulty || 'sedang',
+        imageUrl: sanitizeImageUrl(imageUrl),
         createdBy: createdBy || auth.userId,
         status: 'published',
       },
@@ -122,7 +139,7 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   try {
     const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
-    const { id, ...data } = await request.json();
+    const { id, imageUrl, ...data } = await request.json();
     if (!id) return NextResponse.json({ error: 'ID diperlukan' }, { status: 400 });
 
     // Verify school scope
@@ -132,6 +149,9 @@ export async function PATCH(request: Request) {
     }
 
     if (data.options) data.options = JSON.stringify(data.options);
+    if (imageUrl === null || typeof imageUrl !== 'undefined') {
+      data.imageUrl = sanitizeImageUrl(imageUrl);
+    }
     const question = await db.question.update({ where: { id }, data });
     return NextResponse.json(question);
   } catch (error) {

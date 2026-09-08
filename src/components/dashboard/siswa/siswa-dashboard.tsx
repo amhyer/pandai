@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SiswaDashboardEnhancement } from '@/components/views/siswa/siswa-dashboard-enhancement';
 import {
   BarChart3,
   Target,
@@ -577,6 +578,9 @@ export function SiswaDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      {/* ── Enhancement: Kesiapan TKA + Diagnostik + Catatan Guru + Kuis ── */}
+      <SiswaDashboardEnhancement />
 
       {/* ── Study Tip ── */}
       <StudyTipCard />

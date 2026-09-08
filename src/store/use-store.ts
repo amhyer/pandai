@@ -38,12 +38,14 @@ export type ViewType =
   | 'import-csv'
   | 'dapodik-sync'
   | 'settings'
+  | 'admin-settings'
+  | 'dashboard-banding'
   | 'backup-restore'
   | 'activity-log'
-  | 'google-sheets-setup'
 
   // ── GURU ──
   | 'guru-materi'
+  | 'guru-catatan'
   | 'guru-bank-soal'
   | 'guru-soal'
   | 'guru-tugas'
@@ -64,6 +66,7 @@ export type ViewType =
 
   // ── SISWA ──
   | 'siswa-materi'
+  | 'siswa-tka-dashboard'
   | 'siswa-tugas'
   | 'siswa-tryout'
   | 'siswa-riwayat'
