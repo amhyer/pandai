@@ -5,7 +5,7 @@ import type { User as StoreUser } from '@/store/use-store';
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminSchoolPage() {
+export default function BobotKetuntasanPage() {
   const user = await getServerSessionUser(['ADMIN_SCHOOL', 'SUPER_ADMIN']);
   if (!user) redirect('/');
 
@@ -17,8 +17,8 @@ export default function AdminSchoolPage() {
   return (
     <PrefetchedRouteShell
       initialUser={storeUser}
-      initialView="dashboard"
-      loadingLabel="Membuka Beranda Admin Sekolah..."
+      initialView="bobot-ketuntasan"
+      loadingLabel="Membuka Bobot & Ketuntasan..."
     />
   );
 }

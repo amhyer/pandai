@@ -871,6 +871,21 @@ model Announcement {
   @@index([createdById])
 }
 
+// ===== GOOGLE SHEETS CONFIG (INTEGRASI SHEETS) =====
+model GoogleSheetsConfig {
+  id          String   @id @default(cuid())
+  schoolId    String?  // null = global sekolah, diisi jika mode per-sekolah
+  spreadsheetId String? // ID Sheet Google
+  mode        String   @default("global") // "global" | "per_class"
+  status      String   @default("pending") // "pending" | "connected" | "error" | "disconnected"
+  lastSync    DateTime? // waktu sync terakhir
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([schoolId])
+  @@index([status])
+}
+
 // ===== APP SETTING (PENGATURAN APLIKASI) =====
 model AppSetting {
   key       String   @id

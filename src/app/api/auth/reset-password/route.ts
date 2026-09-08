@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
 import { logError } from '@/lib/error-log';
+import { requireAuth } from '@/lib/auth';
 
 // POST /api/auth/reset-password — Reset password with token
 export async function POST(request: Request) {
   try {
+    await requireAuth(request);
     const { token, newPassword } = await request.json();
 
     if (!token || !newPassword) {

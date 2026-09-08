@@ -40,6 +40,7 @@ export type ViewType =
   | 'settings'
   | 'backup-restore'
   | 'activity-log'
+  | 'google-sheets-setup'
 
   // ── GURU ──
   | 'guru-materi'

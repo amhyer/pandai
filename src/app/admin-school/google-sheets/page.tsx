@@ -5,8 +5,8 @@ import type { User as StoreUser } from '@/store/use-store';
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminSchoolPage() {
-  const user = await getServerSessionUser(['ADMIN_SCHOOL', 'SUPER_ADMIN']);
+export default async function GoogleSheetsSetupPage() {
+  const user = await getServerSessionUser(['SUPER_ADMIN', 'ADMIN_SCHOOL']);
   if (!user) redirect('/');
 
   const storeUser: StoreUser = {
@@ -17,8 +17,8 @@ export default function AdminSchoolPage() {
   return (
     <PrefetchedRouteShell
       initialUser={storeUser}
-      initialView="dashboard"
-      loadingLabel="Membuka Beranda Admin Sekolah..."
+      initialView="google-sheets-setup"
+      loadingLabel="Mengatur Google Sheets..."
     />
   );
 }
