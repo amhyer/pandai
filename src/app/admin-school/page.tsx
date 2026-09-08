@@ -5,7 +5,7 @@ import type { User as StoreUser } from '@/store/use-store';
 
 export const dynamic = 'force-dynamic';
 
-export default function AdminSchoolPage() {
+export default async function AdminSchoolPage() {
   const user = await getServerSessionUser(['ADMIN_SCHOOL', 'SUPER_ADMIN']);
   if (!user) redirect('/');
 
