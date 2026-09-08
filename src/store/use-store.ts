@@ -39,6 +39,7 @@ export type ViewType =
   | 'dapodik-sync'
   | 'settings'
   | 'admin-settings'
+  | 'dashboard-banding'
   | 'backup-restore'
   | 'activity-log'
 

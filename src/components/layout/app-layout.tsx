@@ -178,6 +178,12 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
         ],
       },
       {
+        section: 'Analisis',
+        items: [
+          { label: 'Banding Nilai', view: 'dashboard-banding' as ViewType, icon: BarChart3 },
+        ],
+      },
+      {
         section: 'Sistem',
         items: [
           { label: 'Pengaturan Aplikasi', view: 'admin-settings', icon: Settings },
@@ -483,6 +489,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // ADMIN_SCHOOL
   'admin-settings': 'Pengaturan Aplikasi',
+  'dashboard-banding': 'Banding Nilai',
   classes: 'Kelas',
   subjects: 'Mata Pelajaran',
   accounts: 'Kelola Akun',
@@ -609,6 +616,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-profil-lulusan': [{ label: VIEW_LABELS['guru-profil-lulusan'] }],
     'guru-komponen-nilai': [{ label: VIEW_LABELS['guru-komponen-nilai'] }],
     'guru-rapor': [{ label: VIEW_LABELS['guru-rapor'] }],
+    'dashboard-banding': [{ label: VIEW_LABELS['dashboard-banding'] }],
     'siswa-tka-dashboard': [{ label: VIEW_LABELS['siswa-tka-dashboard'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],

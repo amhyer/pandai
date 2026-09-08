@@ -51,6 +51,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'import-csv': React.lazy(() => import('@/components/views/admin-school-import').then(m => ({ default: m.ImportCsvView }))),
   'dapodik-sync': React.lazy(() => import('@/components/views/admin-school-dapodik').then(m => ({ default: m.DapodikSyncView }))),
   'admin-settings': React.lazy(() => import('@/components/views/admin-school-settings').then(m => ({ default: m.AdminSettingsView }))),
+  'dashboard-banding': React.lazy(() => import('@/components/views/grades/dashboard-banding-view').then(m => ({ default: m.DashboardBandingView }))),
 
   'guru-materi': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruMateriView }))),
   'guru-catatan': React.lazy(() => import('@/components/views/guru/guru-catatan-view').then(m => ({ default: m.GuruCatatanView }))),
