@@ -179,7 +179,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       {
         section: 'Sistem',
         items: [
-          { label: 'Pengaturan Aplikasi', view: 'settings', icon: Settings },
+          { label: 'Pengaturan Aplikasi', view: 'admin-settings', icon: Settings },
           { label: 'Cadangkan & Pulihkan', view: 'backup-restore', icon: HardDrive },
           { label: 'Log Aktivitas', view: 'activity-log', icon: Activity },
         ],
@@ -479,6 +479,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   settings: 'Pengaturan',
 
   // ADMIN_SCHOOL
+  'admin-settings': 'Pengaturan Aplikasi',
   classes: 'Kelas',
   subjects: 'Mata Pelajaran',
   accounts: 'Kelola Akun',

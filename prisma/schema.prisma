@@ -45,6 +45,7 @@ model School {
   gradeComponents     GradeComponent[]
   studentGrades       StudentGrade[]
   raporNotes          RaporNote[]
+  googleSheetsConfigs GoogleSheetsConfig[]
 }
 
 // ===== SUBSCRIPTION =====
@@ -873,16 +874,28 @@ model Announcement {
 }
 
 // ===== GOOGLE SHEETS CONFIG (INTEGRASI SHEETS) =====
+// Satu konfigurasi per sekolah. Token OAuth2 disimpan TERENKRIPSI (AES-256-GCM
+// via src/lib/encryption.ts) — lihat docs/GOOGLE_SHEETS_SYNC_SETUP.md.
 model GoogleSheetsConfig {
-  id          String   @id @default(cuid())
-  schoolId    String?  // null = global sekolah, diisi jika mode per-sekolah
-  spreadsheetId String? // ID Sheet Google
-  mode        String   @default("global") // "global" | "per_class"
-  status      String   @default("pending") // "pending" | "connected" | "error" | "disconnected"
-  lastSync    DateTime? // waktu sync terakhir
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  schoolId             String
+  spreadsheetId        String? // diisi setelah admin menyimpan ID sheet
+  sheetName            String    @default("NILAI") // sheet target, mis. "SISWA" | "NILAI"
+  mode                 String    @default("all") // "all" | "per_class"
+  status               String    @default("pending") // "pending" | "connected" | "error" | "disconnected"
+  lastSyncAt           DateTime?
+  lastSyncRows         Int?
+  lastError            String?   @db.Text
+  encryptedAccessToken String?   @db.Text
+  encryptedRefreshToken String?  @db.Text
+  accessTokenExpiresAt DateTime?
+  scheduleFrequency    String    @default("none") // "none" | "hourly" | "daily"
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
+  school School @relation(fields: [schoolId], references: [id])
+
+  @@unique([schoolId, spreadsheetId])
   @@index([schoolId])
   @@index([status])
 }

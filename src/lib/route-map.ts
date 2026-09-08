@@ -26,6 +26,7 @@ const SUPER_ADMIN_ROUTES: Partial<Record<ViewType, string>> = {
 
 const ADMIN_SCHOOL_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/admin-school',
+  'admin-settings': '/admin-school/settings',
   accounts: '/admin-school/accounts',
   classes: '/admin-school/classes',
   subjects: '/admin-school/subjects',
@@ -153,7 +154,7 @@ export const ADMIN_SCHOOL_FEATURES: Record<string, ViewType> = {
   'wali-kelas': 'wali-kelas',
   'import-csv': 'import-csv',
   'dapodik-sync': 'dapodik-sync',
-  settings: 'settings',
+  settings: 'admin-settings',
   'backup-restore': 'backup-restore',
   'activity-log': 'activity-log',
   questions: 'questions',

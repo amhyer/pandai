@@ -38,9 +38,9 @@ export type ViewType =
   | 'import-csv'
   | 'dapodik-sync'
   | 'settings'
+  | 'admin-settings'
   | 'backup-restore'
   | 'activity-log'
-  | 'google-sheets-setup'
 
   // ── GURU ──
   | 'guru-materi'
