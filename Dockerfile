@@ -7,7 +7,7 @@ RUN corepack enable bun && bun install --frozen-lockfile --production=false
 # ─── Stage 2: Prisma Generate + Build ───
 FROM deps AS builder
 COPY . .
-RUN cp prisma/schema.production.prisma prisma/schema.prisma
+# Schema tunggal: prisma/schema.prisma sudah PostgreSQL (varian lama dihapus)
 RUN npx prisma generate
 ENV BUILD_STANDALONE=1
 RUN corepack enable bun && bun run build
@@ -29,4 +29,4 @@ COPY --from=builder /app/prisma ./prisma
 EXPOSE 3000
 
 # Entrypoint runs migrations then starts the server
-CMD ["sh", "-c", "npx prisma migrate deploy --schema prisma/schema.production.prisma && node server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema prisma/schema.prisma && node server.js"]

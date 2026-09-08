@@ -176,13 +176,12 @@ rg "\|\| \"[a-z_]+\"" src/lib/auth.ts src/lib/constants.ts
 
 ### 4.1 Gunakan Schema PostgreSQL
 
-```bash
-# Backup schema SQLite
-cp prisma/schema.prisma prisma/schema.sqlite.prisma
-
-# Copy PostgreSQL schema
-cp prisma/schema.postgresql.prisma prisma/schema.prisma
-```
+`prisma/schema.prisma` sudah menggunakan provider PostgreSQL — tidak perlu
+menyalin varian apa pun (varian `schema.postgresql.prisma` /
+`schema.production.prisma` yang lama sudah dihapus agar tidak drift).
+Varian satu-satunya yang tersisa adalah `schema.sqlite.prisma` (regenerasi
+dari schema utama, tanpa `@db.Text`) untuk audit lokal di
+`scripts/staging/full-audit.sh`.
 
 ### 4.2 Generate Prisma Client
 
@@ -513,8 +512,8 @@ PORT=3001 npm run start
 
 | File | Keterangan |
 |------|------------|
-| `prisma/schema.postgresql.prisma` | Schema PostgreSQL (dengan @db.Text annotations) |
-| `prisma/schema.prisma` | Schema aktif (ganti ke versi PostgreSQL saat staging) |
+| `prisma/schema.prisma` | Schema aktif & tunggal (PostgreSQL, dengan @db.Text annotations) |
+| `prisma/schema.sqlite.prisma` | Varian untuk audit lokal SQLite (regenerasi dari schema utama) |
 | `prisma/seed.postgresql.ts` | Seed idempotent (upsert-based, aman dijalankan berulang) |
 | `prisma/migrations/postgresql_init/migration.sql` | Manual SQL migration untuk review sebelum deploy |
 | `scripts/staging/load-test.yml` | Artillery load test config |
