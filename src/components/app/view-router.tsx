@@ -71,6 +71,7 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'guru-komponen-nilai': React.lazy(() => import('@/components/views/grades/komponen-nilai-view').then(m => ({ default: m.KomponenNilaiView }))),
   'guru-rapor': React.lazy(() => import('@/components/views/reports/rapor-view').then(m => ({ default: m.RaporView }))),
 
+  'siswa-tka-dashboard': React.lazy(() => import('@/components/views/siswa/tka-dashboard-view').then(m => ({ default: m.TkaDashboardView }))),
   'siswa-materi': React.lazy(() => import('@/components/views/siswa-new-views').then(m => ({ default: m.SiswaMateriView }))),
   'siswa-tugas': React.lazy(() => import('@/components/views/assignment/siswa-assignment-view').then(m => ({ default: m.SiswaAssignmentView }))),
   'siswa-tryout': React.lazy(() => import('@/components/views/exam/siswa-exam-views').then(m => ({ default: m.SiswaTryoutView }))),

@@ -313,6 +313,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       {
         section: 'Hasil',
         items: [
+          { label: 'Dashboard TKA', view: 'siswa-tka-dashboard' as ViewType, icon: BrainCircuit },
           { label: 'Nilai Saya', view: 'siswa-nilai', icon: Trophy },
           { label: 'Nilai Akhir', view: 'siswa-nilai-akhir' as ViewType, icon: BarChart3 },
           { label: 'Rapor Saya', view: 'siswa-rapor' as ViewType, icon: FileBarChart },
@@ -519,6 +520,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'guru-rapor': 'Laporan & Rapor',
 
   // SISWA
+  'siswa-tka-dashboard': 'Dashboard TKA',
   'siswa-materi': 'Materi Pelajaran',
   'siswa-tugas': 'Tugas Terstruktur',
   'siswa-tryout': 'Tryout TKA',
@@ -603,6 +605,7 @@ function buildBreadcrumbs(view: ViewType): { label: string; view?: ViewType }[] 
     'guru-profil-lulusan': [{ label: VIEW_LABELS['guru-profil-lulusan'] }],
     'guru-komponen-nilai': [{ label: VIEW_LABELS['guru-komponen-nilai'] }],
     'guru-rapor': [{ label: VIEW_LABELS['guru-rapor'] }],
+    'siswa-tka-dashboard': [{ label: VIEW_LABELS['siswa-tka-dashboard'] }],
     'siswa-materi': [{ label: VIEW_LABELS['siswa-materi'] }],
     'siswa-tugas': [{ label: VIEW_LABELS['siswa-tugas'] }],
     'siswa-tryout': [{ label: VIEW_LABELS['siswa-tryout'] }],

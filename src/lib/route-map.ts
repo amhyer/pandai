@@ -77,6 +77,7 @@ const GURU_ROUTES: Partial<Record<ViewType, string>> = {
 
 const SISWA_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/siswa',
+  'siswa-tka-dashboard': '/siswa/tka-dashboard',
   'siswa-materi': '/siswa/materi',
   'siswa-tugas': '/siswa/tugas',
   'siswa-tryout': '/siswa/tryout',
@@ -194,6 +195,7 @@ export const GURU_FEATURES: Record<string, ViewType> = {
 };
 
 export const SISWA_FEATURES: Record<string, ViewType> = {
+  'tka-dashboard': 'siswa-tka-dashboard',
   materi: 'siswa-materi',
   tugas: 'siswa-tugas',
   tryout: 'siswa-tryout',
