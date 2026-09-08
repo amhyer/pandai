@@ -180,6 +180,7 @@ model Question {
   explanation   String?  @db.Text       // pembahasan
   cognitiveLevel String @default("C3") // C1-C6
   difficulty    String   @default("sedang") // mudah, sedang, sulit
+  imageUrl      String? // URL gambar penunjang soal (opsional)
   status        String   @default("draft") // draft, published, archived
   source        String   @default("manual") // manual, ai
   reviewedBy    String?
