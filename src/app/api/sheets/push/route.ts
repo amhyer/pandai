@@ -4,7 +4,7 @@ import { logError } from '@/lib/error-log';
 import { requireRole, AuthError } from '@/lib/auth';
 import { decryptText } from '@/lib/encryption';
 import { createSheetsClient } from '@/lib/google-sheets/client';
-import { buildScoreRows, buildStudentRows, SheetsNotConfiguredError } from '@/lib/google-sheets/sync';
+import { buildScoreRows, buildStudentRows, safeDecrypt, SheetsNotConfiguredError } from '@/lib/google-sheets/sync';
 
 /**
  * Push dataset tertentu ke sheet (tambah baris, tanpa menghapus data lama).
@@ -81,10 +81,3 @@ export async function POST(request: Request) {
   }
 }
 
-function safeDecrypt(payload: string): string | null {
-  try {
-    return decryptText(payload);
-  } catch {
-    return null;
-  }
-}

@@ -66,7 +66,7 @@ async function resolveConfig(schoolId: string): Promise<ResolvedConfig> {
   };
 }
 
-function safeDecrypt(payload: string): string | null {
+export function safeDecrypt(payload: string): string | null {
   try {
     return decryptText(payload);
   } catch {
