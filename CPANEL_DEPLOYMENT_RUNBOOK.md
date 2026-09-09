@@ -102,8 +102,8 @@ File `.exe` dan `static-serve/` sudah dikeluarkan dari git — jika masih perlu
 Salin template checklist yang sudah disiapkan repo:
 
 ```bash
-cp .env.production .env.production.local  # opsional: arsip template kosong
-nano .env.production                      # isi nilainya
+cp .env.production.example .env.production   # template ter-commit di git
+nano .env.production                         # isi nilainya
 ```
 
 **Wajib terisi sebelum lanjut (centang `[x]` di komentar saat selesai):**
@@ -132,15 +132,23 @@ Buat sekarang jika fitur AI dipakai (lihat bagian 7 di `.env.production`).
 ```bash
 cd ~/pandai
 npm install --omit=dev
+npm install --no-save typescript@5 @types/react@^19 @types/node@^22 tailwindcss@^4 @tailwindcss/postcss@^4 tw-animate-css@^1 tsx@^4
 ```
 
-- `--omit=dev` **wajib**: men-skip `better-sqlite3` (butuh native compile yang
-  sering gagal di shared hosting) dan tool dev lain.
-- `postinstall` otomatis menjalankan `prisma generate` — dengan `binaryTargets`
-  yang sudah di-set (`native` + `debian-openssl-3.0.x` + `rhel-openssl-3.0.x`),
-  binary untuk OS server ikut terunduh.
+- Perintah pertama (`--omit=dev`) **wajib**: men-skip `better-sqlite3` (butuh native
+  compile yang sering gagal di shared hosting) dan tool dev lain. `postinstall`
+  otomatis menjalankan `prisma generate` — dengan `binaryTargets` yang sudah
+  di-set di `prisma/schema.prisma` (`native` + `debian-openssl-3.0.x` +
+  `rhel-openssl-3.0.x`), binary untuk OS server ikut terunduh.
+- Perintah kedua (`--no-save`) **juga wajib**: build-time dependencies
+  (`typescript`, `@types/*`, `tailwindcss`, `@tailwindcss/postcss`,
+  `tw-animate-css`, `tsx`) berada di `devDependencies`, sehingga `--omit=dev`
+  melewatinya — padahal `next build` butuh semuanya (kompilasi TS, plugin
+  PostCSS/Tailwind v4, `@import "tw-animate-css"` di globals.css) dan Langkah 8
+  butuh `tsx`. Flag `--no-save` meng-install ke `node_modules` tanpa mengubah
+  `package.json`/lockfile.
 
-Jika muncul warning `engine mismatch`, cek `node -v` — pastikan >= 20 dan sama
+Jika muncul warning `engine mismatch`, cek `node -v` — pastikan >= 20.9 dan sama
 dengan versi yang dipilih di Node.js App Manager.
 
 ---
@@ -311,9 +319,10 @@ mkdir -p tmp && touch tmp/restart.txt
 [ ] PostgreSQL DB + user dibuat, ALL PRIVILEGES
 [ ] JWT_SECRET & PASSWORD_SALT ter-generate (64 hex)
 [ ] Repo ter-clone, commit terbaru
-[ ] .env.production terisi 4 wajib (DATABASE_URL, JWT_SECRET, PASSWORD_SALT, NEXT_PUBLIC_APP_URL)
+[ ] .env.production dibuat dari .env.production.example, 4 wajib terisi (DATABASE_URL, JWT_SECRET, PASSWORD_SALT, NEXT_PUBLIC_APP_URL)
 [ ] (.z-ai-config dibuat, jika pakai fitur AI)
 [ ] npm install --omit=dev sukses
+[ ] npm install --no-save typescript@5 @types/react@^19 @types/node@^22 tailwindcss@^4 @tailwindcss/postcss@^4 tw-animate-css@^1 tsx@^4 (Langkah 5b)
 [ ] npm run build:plain sukses (.next/BUILD_ID ada)
 [ ] npx prisma db push sukses
 [ ] Super admin dibuat, password dicatat
