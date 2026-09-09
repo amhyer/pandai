@@ -77,3 +77,16 @@ tool-results/
 
 # Build output (EXE)
 dist/
+
+# Local archive backups (e.g. panda.zip full-project snapshot) — never commit
+*.zip
+
+# Large Windows tools — distribute manually (scp/rsync) or via Git LFS,
+# jangan di-track git (pull-dapodik.exe ~98 MB)
+public/*.exe
+
+# Snapshot build statis lama — artifact, bukan source
+static-serve/
+
+# Template environment BOLEH di-commit (tidak ada rahasia di dalamnya)
+!.env.production.example
