@@ -279,9 +279,12 @@ function TableSkeleton() {
 function RaporDisplay({
   data,
   studentLabel,
+  noteSection,
 }: {
   data: RaporData;
   studentLabel?: string;
+  /** Slot untuk kartu "Catatan Guru" — hanya diisi oleh view yang punya state-nya (guru/admin). */
+  noteSection?: React.ReactNode;
 }) {
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [openingPdf, setOpeningPdf] = useState(false);
@@ -610,39 +613,8 @@ function RaporDisplay({
         </CardContent>
       </Card>
 
-      {/* Catatan Guru */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Catatan Guru / Wali Kelas</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="space-y-3">
-            <Textarea
-              placeholder="Tulis catatan naratif untuk siswa ini di sini..."
-              className="min-h-[100px]"
-              value={raporNote}
-              onChange={(e) => setRaporNote(e.target.value)}
-              disabled={!canEditNote}
-            />
-            {canEditNote && (
-              <div className="flex justify-end">
-                <Button
-                  size="sm"
-                  onClick={handleSaveNote}
-                  disabled={savingNote || raporNote === originalRaporNote}
-                >
-                  {savingNote ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="mr-2 h-4 w-4" />
-                  )}
-                  Simpan Catatan
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Catatan Guru — dirender hanya jika view pemilik state-nya menyediakannya */}
+      {noteSection}
 
       {/* Signature area */}
       <Card>
@@ -933,7 +905,7 @@ function RaporSiswaTab({
   schoolId,
 }: {
   classes: ClassItem[];
-  schoolId?: string;
+  schoolId?: string | null;
 }) {
   const user = useAppStore((s) => s.user);
   const [selectedClassId, setSelectedClassId] = useState<string>('');
@@ -1167,7 +1139,45 @@ function RaporSiswaTab({
       </div>
 
       {/* Content */}
-      {loading ? <RaporSkeleton /> : raporData ? <RaporDisplay data={raporData} /> : (
+      {loading ? <RaporSkeleton /> : raporData ? (
+        <RaporDisplay
+          data={raporData}
+          noteSection={
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base">Catatan Guru / Wali Kelas</CardTitle>
+              </CardHeader>
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <Textarea
+                    placeholder="Tulis catatan naratif untuk siswa ini di sini..."
+                    className="min-h-[100px]"
+                    value={raporNote}
+                    onChange={(e) => setRaporNote(e.target.value)}
+                    disabled={!canEditNote}
+                  />
+                  {canEditNote && (
+                    <div className="flex justify-end">
+                      <Button
+                        size="sm"
+                        onClick={handleSaveNote}
+                        disabled={savingNote || raporNote === originalRaporNote}
+                      >
+                        {savingNote ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-4 w-4" />
+                        )}
+                        Simpan Catatan
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          }
+        />
+      ) : (
         <Card>
           <CardContent className="p-8 text-center">
             <FileText className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />

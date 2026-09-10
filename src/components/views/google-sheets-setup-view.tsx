@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import {
@@ -23,15 +24,29 @@ import {
   Save,
   Copy,
   RefreshCw,
+  Database,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { detectExternalProvider, PROVIDER_ICONS, isValidUrl } from '@/lib/external-quiz';
 import { apiClient } from '@/lib/api-client';
 
+type SyncStatus = 'pending' | 'connected' | 'error' | 'disconnected' | 'syncing' | 'synced';
+
+type GoogleSheetsConfig = {
+  id?: string;
+  schoolId?: string | null;
+  spreadsheetId?: string | null;
+  mode?: 'global' | 'per_class';
+  status?: SyncStatus;
+  lastSync?: string | null;
+};
+
 function StatusBadge({ status }: { status: string }) {
   switch (status) {
     case 'connected':
-      return <Badge variant="success" className="text-xs">Terkoneksi</Badge>;
+      return <Badge className="bg-green-100 text-green-700 text-xs">Terkoneksi</Badge>;
+    case 'synced':
+      return <Badge className="bg-green-100 text-green-700 text-xs">Tersinkron</Badge>;
     case 'syncing':
       return <Badge variant="default" className="text-xs">Synchronizing</Badge>;
     case 'error':
@@ -62,11 +77,11 @@ function ModeBadge({ mode }: { mode: string }) {
 
 export function GoogleSheetsSetupView() {
   const user = useAppStore((s) => s.user);
-  const [config, setConfig] = useState(null);
+  const [config, setConfig] = useState<GoogleSheetsConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<'global' | 'per_class'>('global');
   const [spreadsheetId, setSpreadsheetId] = useState('');
-  const [status, setStatus] = useState<'pending' | 'connected' | 'error' | 'disconnected' | 'syncing'>('pending');
+  const [status, setStatus] = useState<SyncStatus>('pending');
   const [lastSync, setLastSync] = useState<string | null>(null);
   const [syncHistory, setSyncHistory] = useState<Array<{ id: string; type: string; timestamp: string; status: string }>>([]);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -203,7 +218,7 @@ export function GoogleSheetsSetupView() {
           {config && config.spreadsheetId && (
             <div className="mt-3 p-3 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2">
-                <Copy className="h-4 w-4 text-muted-foreground cursor-pointer" onClick={() => navigator.clipboard.writeText(config.spreadsheetId)} />
+                <Copy className="h-4 w-4 text-muted-foreground cursor-pointer" onClick={() => navigator.clipboard.writeText(config.spreadsheetId ?? '')} />
                 <span className="text-sm font-medium truncate" title="Spreadsheet ID">
                   {config.spreadsheetId.substring(0, 20)}...
                 </span>
@@ -247,7 +262,12 @@ export function GoogleSheetsSetupView() {
 
             <div className="space-y-3">
               <Label htmlFor="mode">Mode Integrasi *</Label>
-              <Select value={mode} onValueChange={setMode}>
+              <Select
+                value={mode}
+                onValueChange={(value) => {
+                  if (value === 'global' || value === 'per_class') setMode(value);
+                }}
+              >
                 <SelectTrigger className="rounded-lg focus-visible:ring-primary/30">
                   <SelectValue placeholder="Pilih mode" />
                 </SelectTrigger>

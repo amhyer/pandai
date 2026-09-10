@@ -87,8 +87,9 @@ export interface SuperAdminDashboardServerData {
   activities: {
     id: string;
     action: string;
-    detail: string;
-    module: string;
+    // Kolom ini nullable di skema (ActivityLog.detail / .module).
+    detail: string | null;
+    module: string | null;
     createdAt: Date;
   }[];
 }

@@ -44,7 +44,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Update each answer
     let totalPoints = 0;
-    const updatedAnswers = [];
+    const updatedAnswers: { id: string }[] = [];
 
     for (const score of scores) {
       const { answerId, pointsEarned, isCorrect, note } = score;
@@ -54,10 +54,10 @@ export async function POST(request: Request, { params }: RouteParams) {
       // Verify answer belongs to this attempt
       const answer = await db.studentAnswer.findUnique({
         where: { id: answerId },
-        select: { id: true, attemptId: true, questionId: true },
+        select: { id: true, studentAttemptId: true, questionId: true },
       });
 
-      if (!answer || answer.attemptId !== id) continue;
+      if (!answer || answer.studentAttemptId !== id) continue;
 
       const maxPoints = maxPointsMap.get(answer.questionId) || 1;
       const clampedPoints = Math.min(Math.max(0, pointsEarned || 0), maxPoints);
@@ -79,7 +79,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Recalculate attempt totals
     const allAnswers = await db.studentAnswer.findMany({
-      where: { attemptId: id },
+      where: { studentAttemptId: id },
     });
 
     const totalCorrect = allAnswers.filter(a => a.isCorrect).length;

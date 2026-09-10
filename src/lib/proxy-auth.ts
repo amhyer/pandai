@@ -18,11 +18,13 @@ export interface ProxySession {
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
+  // `!secret` must come first: the other branches call .startsWith() on it.
   const placeholder =
+    !secret ||
     secret === 'CHANGE_ME_IN_PRODUCTION' ||
     secret.startsWith('replace_with_') ||
     secret.startsWith('dev_jwt_secret');
-  if (!secret || placeholder) {
+  if (placeholder) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('[SECURITY] JWT_SECRET is not configured');
     }
