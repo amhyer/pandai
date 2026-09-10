@@ -1,3 +1,4 @@
+import { getTeacherClassIds, studentListSelect } from '@/lib/teacher-scope';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { hashPassword } from '@/lib/constants';
@@ -108,6 +109,26 @@ export async function GET(request: Request) {
         orderBy: { createdAt: 'desc' },
       });
       return NextResponse.json(children);
+    }
+
+    // Teacher-facing selectors only expose students in assigned classes and
+    // never return password hashes, sessions, parent credentials, or other roles.
+    if (auth.role === 'GURU') {
+      const role = searchParams.get('role');
+      const schoolId = searchParams.get('schoolId');
+      const classId = searchParams.get('classId');
+      if ((role && role !== 'SISWA') || (schoolId && schoolId !== auth.schoolId)) {
+        throw new AuthError('Akses ditolak', 403);
+      }
+      const classIds = await getTeacherClassIds(auth);
+      if (classId && !classIds.includes(classId)) throw new AuthError('Bukan kelas Anda', 403);
+      const students = await db.user.findMany({
+        where: { role: 'SISWA', isActive: true, schoolId: auth.schoolId,
+          classId: classId || { in: classIds } },
+        select: studentListSelect,
+        orderBy: { name: 'asc' },
+      });
+      return NextResponse.json(students.map((student) => ({ ...student, className: student.class?.name })));
     }
 
     // Non-ortu: require ADMIN role

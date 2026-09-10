@@ -230,6 +230,8 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       {
         section: 'Administrasi',
         items: [
+          { label: 'Data Siswa', view: 'guru-siswa', icon: Users },
+          { label: 'Catatan Siswa', view: 'guru-catatan', icon: MessageSquare },
           { label: 'Jurnal Mengajar', view: 'guru-jurnal', icon: ScrollText },
         ],
       },
@@ -373,6 +375,7 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
       {
         section: 'Pantau Anak',
         items: [
+          { label: 'Catatan Guru', view: 'ortu-catatan', icon: MessageSquare },
           { label: 'Nilai & Progres', view: 'ortu-nilai', icon: Target },
           { label: 'Materi Pelajaran', view: 'ortu-materi', icon: BookOpen },
           { label: 'Kehadiran', view: 'ortu-kehadiran', icon: UserCheck },
@@ -414,6 +417,8 @@ function buildNavConfig(role: UserRole, schoolType?: string | null): NavSection[
           { label: 'Peta Kelas', view: 'kepsek-peta-kelas' as ViewType, icon: Map },
           { label: 'Rekap Per Kelas', view: 'kepsek-rekap-kelas', icon: GraduationCap },
           { label: 'Rekap Per Guru', view: 'kepsek-rekap-guru', icon: Users },
+          { label: 'Pantau Aktivitas', view: 'kepsek-aktivitas', icon: History },
+          { label: 'Catatan Siswa', view: 'kepsek-catatan', icon: MessageSquare },
           { label: 'Rekap 7 Kebiasaan', view: 'kepsek-rekap-karakter', icon: Star },
         ],
       },
@@ -477,6 +482,7 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'reports-global': 'Laporan Global',
   'analytics-global': 'Analitik Platform',
   settings: 'Pengaturan',
+  'google-sheets-setup': 'Google Sheets',
 
   // ADMIN_SCHOOL
   classes: 'Kelas',
@@ -498,6 +504,11 @@ const VIEW_LABELS: Record<ViewType, string> = {
   'activity-log': 'Log Aktivitas',
 
   // GURU
+  'guru-siswa': 'Data Siswa',
+  'guru-catatan': 'Catatan Siswa',
+  'ortu-catatan': 'Catatan Guru',
+  'kepsek-catatan': 'Catatan Siswa',
+  'kepsek-aktivitas': 'Pantau Aktivitas',
   'guru-materi': 'Materi Pelajaran',
   'guru-bank-soal': 'Bank Soal',
   'guru-soal': 'Bank Soal',

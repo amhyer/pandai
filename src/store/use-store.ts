@@ -43,6 +43,8 @@ export type ViewType =
   | 'google-sheets-setup'
 
   // ── GURU ──
+  | 'guru-siswa'
+  | 'guru-catatan'
   | 'guru-materi'
   | 'guru-bank-soal'
   | 'guru-soal'
@@ -78,6 +80,7 @@ export type ViewType =
   | 'leaderboard'
 
   // ── ORANG_TUA ──
+  | 'ortu-catatan'
   | 'ortu-karakter'
   | 'ortu-rekap-karakter'
   | 'ortu-nilai'
@@ -91,6 +94,8 @@ export type ViewType =
   | 'ortu-rapor'
 
   // ── KEPALA_SEKOLAH ──
+  | 'kepsek-aktivitas'
+  | 'kepsek-catatan'
   | 'dashboard-kepsek'
   | 'kepsek-peta-kelas' // Peta Kelas (P1-2)
   | 'kepsek-rekap-kelas'

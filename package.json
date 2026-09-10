@@ -3,14 +3,15 @@
   "version": "0.2.1",
   "private": true,
   "engines": {
-    "node": ">=20.0.0"
+    "node": "22.x"
   },
   "scripts": {
     "postinstall": "prisma generate",
     "dev": "NODE_OPTIONS='--max-old-space-size=640' next dev -p 3000 >> dev.log 2>&1",
     "build": "node scripts/build.mjs",
     "build:plain": "prisma generate && next build",
-    "build:vercel": "prisma generate && prisma db push --accept-data-loss && npx tsx scripts/create-super-admin.ts && next build",
+    "build:vercel": "prisma generate && next build",
+    "db:deploy-schema": "prisma db push",
     "build:standalone": "next build && mkdir -p .next/standalone/.next && cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/",
     "start": "NODE_ENV=production next start -p 3000 2>&1 | tee server.log",
     "start:standalone": "NODE_ENV=production node .next/standalone/server.js -p 3000 2>&1 | tee server.log",
@@ -23,6 +24,7 @@
     "db:super-admin": "bun run scripts/create-super-admin.ts",
     "seed": "bun run prisma/seed.ts",
     "test:security": "node tests/security-static.test.mjs",
+    "test:school-features": "node --import tsx --test tests/import-file.test.ts tests/class-student-import.test.ts tests/class-student-import-ui.test.tsx tests/missing-role-features.test.ts tests/missing-role-features-ui.test.tsx tests/school-grades.test.ts",
     "backup": "bun scripts/backup.mjs",
     "backup:list": "bun scripts/restore.mjs --list",
     "backup:restore": "bun scripts/restore.mjs",
