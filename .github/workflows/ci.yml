@@ -8,7 +8,7 @@ on:
 
 jobs:
   # npm/package-lock.json is the deployment source of truth (also in vercel.json).
-  # ── Job 1: Lint ──
+  # ── Job 1: Lint + Typecheck ──
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
@@ -19,8 +19,13 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci --include=dev
+      - run: npx prisma generate
+      # Blocking: lint dan tsc sudah bersih (0 error), jadi tidak ada alasan
+      # untuk melewatinya lagi. next.config.ts masih menyetel
+      # typescript.ignoreBuildErrors, sehingga `npm run build` TIDAK menangkap
+      # error tipe — langkah typecheck inilah gerbangnya.
       - run: npm run lint
-        continue-on-error: true  # Non-blocking: pre-existing warnings
+      - run: npm run typecheck
 
   # ── Job 2: Build ──
   build:

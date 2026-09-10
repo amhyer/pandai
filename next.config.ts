@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
   // tetap non-standalone, sesuai kebutuhan deployment Vercel.
   ...(process.env.BUILD_STANDALONE === '1' ? { output: 'standalone' as const } : {}),
   typescript: {
-    ignoreBuildErrors: true,
+    // tsc --noEmit sudah 0 error dan dijaga oleh job "Code Quality" di CI,
+    // jadi build tidak perlu lagi melewatkan pemeriksaan tipe.
+    ignoreBuildErrors: false,
   },
   reactStrictMode: false,
   poweredByHeader: false,
