@@ -1195,10 +1195,7 @@ export function GuruTryoutView() {
           className="bg-[#1F3864] transition-all duration-200 hover:bg-[#152850] hover:shadow-sm active:scale-[0.98]"
           onClick={() => {
             // Navigate to create tryout view
-            const store = useAppStore.getState();
-            if (store.navigate) {
-              store.navigate('guru-tryout');
-            }
+            useAppStore.getState().navigateTo('guru-tryout');
           }}
         >
           <Plus className="mr-2 h-4 w-4" />
@@ -1400,7 +1397,12 @@ export function GuruNilaiView() {
       }
       
       // Use bulk API for better performance
-      const bulkEntries = [];
+      const bulkEntries: {
+        studentId: string;
+        examPackageId: string;
+        score: number;
+        classId: string | null;
+      }[] = [];
       for (const [attemptId, nilaiStr] of entries) {
         const nilai = parseFloat(nilaiStr);
         if (isNaN(nilai)) continue;

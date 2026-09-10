@@ -15,6 +15,10 @@ import {
   Upload, Database, FileSpreadsheet, AlertCircle, Download, ArrowLeft, ChevronRight, Check
 } from 'lucide-react';
 
+// Pendaftaran mandiri lewat form ini hanya untuk Admin Sekolah (lihat
+// `isSchoolAdmin` di dalam komponen). Jalur SISWA/ORANG_TUA yang disediakan
+// POST /api/auth/register belum punya UI, jadi 'SISWA' tidak lagi dipakai
+// sebagai nilai awal — kalau dipakai, tidak ada kartu role yang terpilih.
 type RegisterRole = 'ADMIN_SCHOOL';
 
 interface DapodikSchool {
@@ -46,7 +50,7 @@ export function RegisterForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [role, setRole] = useState<RegisterRole>('SISWA');
+  const [role, setRole] = useState<RegisterRole>('ADMIN_SCHOOL');
   const [schoolCode, setSchoolCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -71,6 +75,9 @@ export function RegisterForm() {
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Form ini saat ini hanya melayani pendaftaran Admin Sekolah, sehingga semua
+  // cabang `!isSchoolAdmin` (mis. input Kode Sekolah) belum aktif. Ubah ke nilai
+  // dinamis bila pendaftaran SISWA/ORANG_TUA (POST /api/auth/register) dibuka.
   const isSchoolAdmin = true; // Always admin school
 
   // Auto-fill nama kepala sekolah & email sekolah when Dapodik data is verified

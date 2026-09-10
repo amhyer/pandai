@@ -10,7 +10,13 @@ export type ViewType =
   | 'register'
 
   // ── Dashboard (per role) ──
+  // 'dashboard' di-resolve ViewRouter ke salah satu kunci per-role di bawah.
   | 'dashboard'
+  | 'dashboard-super'
+  | 'dashboard-admin'
+  | 'dashboard-guru'
+  | 'dashboard-siswa'
+  | 'dashboard-ortu'
 
   // ── SUPER_ADMIN ──
   | 'schools'
@@ -112,24 +118,27 @@ export type ViewType =
 
 export interface User {
   id: string;
-  username?: string;
-  email?: string;
+  // Field profil berasal dari server session (Prisma) yang memakai `null`,
+  // bukan `undefined` — jadi keduanya harus diterima.
+  username?: string | null;
+  email?: string | null;
   name: string;
   role: UserRole;
-  avatar?: string;
-  phone?: string;
-  nisn?: string;
-  nip?: string;
-  nik?: string;
-  namaOrtu?: string;
-  jk?: string;
-  parentId?: string;
-  schoolId?: string;
-  schoolName?: string;
+  avatar?: string | null;
+  phone?: string | null;
+  nisn?: string | null;
+  nip?: string | null;
+  nik?: string | null;
+  namaOrtu?: string | null;
+  jk?: string | null;
+  parentId?: string | null;
+  schoolId?: string | null;
+  schoolName?: string | null;
   schoolType?: string | null;
-  classId?: string;
-  className?: string;
+  classId?: string | null;
+  className?: string | null;
   isActive: boolean;
+  mustChangePassword?: boolean;
 }
 
 interface AppState {

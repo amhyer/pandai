@@ -7,6 +7,11 @@ import { logError } from '@/lib/error-log';
  * Roles allowed for self-service registration (no login required).
  * GURU, ADMIN_SCHOOL, KEPALA_SEKOLAH, SUPER_ADMIN must be created via
  * the protected POST /api/users endpoint (requires SUPER_ADMIN or ADMIN_SCHOOL).
+ *
+ * Catatan: saat ini belum ada UI yang memanggil endpoint ini —
+ * `src/components/auth/register-form.tsx` hanya melayani pendaftaran Admin
+ * Sekolah lewat POST /api/auth/register-school. Endpoint ini tetap dipertahankan
+ * sebagai jalur pendaftaran mandiri SISWA/ORANG_TUA bila nanti dibuka.
  */
 const ALLOWED_SELF_REGISTER_ROLES = ['SISWA', 'ORANG_TUA'];
 

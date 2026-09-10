@@ -92,8 +92,13 @@ export const STATUS_LABELS: Record<string, string> = {
 // which uses bcrypt.
 function getSalt(): string {
   const salt = process.env.PASSWORD_SALT;
-  const placeholder = salt === 'CHANGE_ME_IN_PRODUCTION' || salt.startsWith('replace_with_') || salt.startsWith('pandai_dev_salt');
-  if (!salt || placeholder) {
+  // `!salt` must come first: the other branches call .startsWith() on it.
+  const placeholder =
+    !salt ||
+    salt === 'CHANGE_ME_IN_PRODUCTION' ||
+    salt.startsWith('replace_with_') ||
+    salt.startsWith('pandai_dev_salt');
+  if (placeholder) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('[SECURITY] PASSWORD_SALT env var is not set in production!');
     }

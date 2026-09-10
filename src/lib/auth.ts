@@ -11,8 +11,13 @@ const JWT_EXPIRY_HOURS = 24;
 
 function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
-  const placeholder = secret === 'CHANGE_ME_IN_PRODUCTION' || secret.startsWith('replace_with_') || secret.startsWith('dev_jwt_secret');
-  if (!secret || placeholder) {
+  // `!secret` must come first: the other branches call .startsWith() on it.
+  const placeholder =
+    !secret ||
+    secret === 'CHANGE_ME_IN_PRODUCTION' ||
+    secret.startsWith('replace_with_') ||
+    secret.startsWith('dev_jwt_secret');
+  if (placeholder) {
     if (process.env.NODE_ENV === 'production') {
       throw new Error('[SECURITY] JWT_SECRET is not configured');
     }

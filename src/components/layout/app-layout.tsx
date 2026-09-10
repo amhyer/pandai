@@ -473,6 +473,11 @@ const VIEW_LABELS: Record<ViewType, string> = {
 
   // Dashboard
   dashboard: 'Beranda',
+  'dashboard-super': 'Dashboard Super Admin',
+  'dashboard-admin': 'Dashboard Admin Sekolah',
+  'dashboard-guru': 'Dashboard Guru',
+  'dashboard-siswa': 'Dashboard Siswa',
+  'dashboard-ortu': 'Dashboard Orang Tua',
 
   // SUPER_ADMIN
   schools: 'Kelola Sekolah',
