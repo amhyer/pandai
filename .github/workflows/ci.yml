@@ -7,17 +7,19 @@ on:
     branches: [main]
 
 jobs:
-  # ── Job 1: Lint & Type Check ──
+  # npm/package-lock.json is the deployment source of truth (also in vercel.json).
+  # ── Job 1: Lint ──
   quality:
     name: Code Quality
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun run lint
+          node-version: 22
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npm run lint
         continue-on-error: true  # Non-blocking: pre-existing warnings
 
   # ── Job 2: Build ──
@@ -27,12 +29,17 @@ jobs:
     needs: quality
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun run prisma generate
-      - run: NODE_OPTIONS='--max-old-space-size=4096' bun run build
+          node-version: 22
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npx prisma generate
+      - run: NODE_OPTIONS='--max-old-space-size=4096' npm run build
+      - name: Deployment configuration regression tests
+        run: node --test tests/deployment-config.test.mjs
+      - name: School feature regression tests
+        run: npm run test:school-features
       - name: Verify build output
         run: |
           if [ -d .next/standalone ]; then
@@ -49,11 +56,12 @@ jobs:
     needs: quality
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
         with:
-          bun-version: latest
-      - run: bun install --frozen-lockfile
-      - run: bun audit || true
+          node-version: 22
+          cache: npm
+      - run: npm ci --include=dev
+      - run: npm audit || true
       - name: Automated security/static-integration tests
         run: node tests/security-static.test.mjs
       - name: Check for hardcoded secrets

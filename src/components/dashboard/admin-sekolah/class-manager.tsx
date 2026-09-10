@@ -2,6 +2,7 @@
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAppStore } from '@/store/use-store';
+import { ImportTab } from '@/components/views/admin-school-import';
 import {
   Card,
   CardContent,
@@ -19,6 +20,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -45,6 +47,7 @@ import {
   Hash,
   Pencil,
   Trash2,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -192,6 +195,8 @@ export function ClassManager() {
   const [deleteTarget, setDeleteTarget] = useState<ClassInfo | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [importTarget, setImportTarget] = useState<ClassInfo | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!user?.schoolId) return;
@@ -307,7 +312,7 @@ export function ClassManager() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Manajemen Kelas</h1>
-          <p className="text-muted-foreground">Lihat dan kelola kelas di sekolah Anda.</p>
+          <p className="text-muted-foreground">Kelola kelas dan import data siswa langsung ke kelas tujuan.</p>
         </div>
         <Button
           className="bg-[#1F3864] hover:bg-[#152850]"
@@ -421,6 +426,15 @@ export function ClassManager() {
                       </Badge>
                     )}
                   </div>
+                  <Button
+                    variant="outline"
+                    className="mt-4 w-full text-[#1F3864]"
+                    onClick={() => setImportTarget(cls)}
+                    aria-label={`Import siswa ke kelas ${cls.name}`}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Import Siswa
+                  </Button>
                 </CardContent>
               </Card>
             );
@@ -431,11 +445,38 @@ export function ClassManager() {
           <CardContent className="flex h-48 items-center justify-center text-muted-foreground">
             <div className="text-center">
               <GraduationCap className="mx-auto h-10 w-10 text-muted-foreground/40" />
-              <p className="mt-2 text-sm">Belum ada kelas. Tambah kelas dan assign siswa.</p>
+              <p className="mt-2 text-sm">Belum ada kelas. Tambah kelas terlebih dahulu, lalu import data siswa.</p>
             </div>
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={!!importTarget} onOpenChange={(open) => {
+        if (!open && !importBusy) setImportTarget(null);
+      }}>
+        <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto" showCloseButton={!importBusy}>
+          <DialogHeader>
+            <DialogTitle>Import Siswa ke Kelas {importTarget?.name}</DialogTitle>
+            <DialogDescription>
+              Unduh template, unggah file CSV/Excel, lalu periksa kolom sebelum import.
+            </DialogDescription>
+          </DialogHeader>
+          {importTarget && (
+            <ImportTab
+              key={importTarget.id}
+              type="siswa"
+              targetClass={importTarget}
+              onImported={fetchData}
+              onBusyChange={setImportBusy}
+            />
+          )}
+          <div className="flex justify-end">
+            <Button variant="outline" disabled={importBusy} onClick={() => setImportTarget(null)}>
+              {importBusy ? 'Memproses...' : 'Tutup'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Class Form Dialog */}
       <ClassFormDialog

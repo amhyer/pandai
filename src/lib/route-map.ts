@@ -51,6 +51,8 @@ const ADMIN_SCHOOL_ROUTES: Partial<Record<ViewType, string>> = {
 
 const GURU_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/guru',
+  'guru-siswa': '/guru/siswa',
+  'guru-catatan': '/guru/catatan',
   'guru-materi': '/guru/materi',
   'guru-bank-soal': '/guru/bank-soal',
   'guru-tugas': '/guru/tugas',
@@ -97,6 +99,7 @@ const SISWA_ROUTES: Partial<Record<ViewType, string>> = {
 
 const ORANG_TUA_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/ortu',
+  'ortu-catatan': '/ortu/catatan',
   'ortu-karakter': '/ortu/karakter',
   'ortu-rekap-karakter': '/ortu/rekap-karakter',
   'ortu-nilai': '/ortu/nilai',
@@ -117,6 +120,8 @@ const ORANG_TUA_ROUTES: Partial<Record<ViewType, string>> = {
 const KEPALA_SEKOLAH_ROUTES: Partial<Record<ViewType, string>> = {
   dashboard: '/kepala-sekolah',
   'dashboard-kepsek': '/kepala-sekolah/dashboard',
+  'kepsek-aktivitas': '/kepala-sekolah/aktivitas',
+  'kepsek-catatan': '/kepala-sekolah/catatan',
   'kepsek-peta-kelas': '/kepala-sekolah/peta-kelas',
   'kepsek-rekap-kelas': '/kepala-sekolah/rekap-kelas',
   'kepsek-rekap-guru': '/kepala-sekolah/rekap-guru',
@@ -169,6 +174,8 @@ export const ADMIN_SCHOOL_FEATURES: Record<string, ViewType> = {
 };
 
 export const GURU_FEATURES: Record<string, ViewType> = {
+  siswa: 'guru-siswa',
+  catatan: 'guru-catatan',
   materi: 'guru-materi',
   'bank-soal': 'guru-bank-soal',
   tugas: 'guru-tugas',
@@ -213,6 +220,7 @@ export const SISWA_FEATURES: Record<string, ViewType> = {
 };
 
 export const ORANG_TUA_FEATURES: Record<string, ViewType> = {
+  catatan: 'ortu-catatan',
   karakter: 'ortu-karakter',
   'rekap-karakter': 'ortu-rekap-karakter',
   nilai: 'ortu-nilai',
@@ -231,6 +239,8 @@ export const ORANG_TUA_FEATURES: Record<string, ViewType> = {
 };
 
 export const KEPALA_SEKOLAH_FEATURES: Record<string, ViewType> = {
+  aktivitas: 'kepsek-aktivitas',
+  catatan: 'kepsek-catatan',
   dashboard: 'dashboard-kepsek',
   'peta-kelas': 'kepsek-peta-kelas',
   'rekap-kelas': 'kepsek-rekap-kelas',

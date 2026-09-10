@@ -47,6 +47,7 @@ model School {
   competencyAssessments CompetencyAssessment[]
   gradeComponents     GradeComponent[]
   studentGrades       StudentGrade[]
+  studentNotes        StudentNote[]
   raporNotes          RaporNote[]
 }
 
@@ -112,6 +113,8 @@ model User {
   studentGrades      StudentGrade[] @relation("GradedStudent")
   announcements      Announcement[] @relation("AnnouncementCreator")
   raporNotes         RaporNote[]    @relation("RaporNoteStudent")
+  studentNotes       StudentNote[]  @relation("StudentNotes")
+  authoredStudentNotes StudentNote[] @relation("StudentNoteAuthor")
 
   @@index([schoolId])
   @@index([role])
@@ -133,6 +136,7 @@ model Class {
   users     User[]
   examAssignments ExamAssignment[]
   WaliKelas User?          @relation("WaliKelasClass", fields: [waliKelasId], references: [id])
+  studentNotes StudentNote[]
   timetables Timetable[]
   competencyAssessments CompetencyAssessment[]
   gradeComponents     GradeComponent[] @relation("GradeComponentClass")
@@ -901,4 +905,27 @@ model SystemSetting {
   key       String   @id
   value     String
   updatedAt DateTime @updatedAt
+}
+
+// Categorized teacher observations, separate from term-based rapor narratives.
+model StudentNote {
+  id        String   @id @default(cuid())
+  schoolId  String
+  classId   String?
+  studentId String
+  authorId  String
+  category  String   // apresiasi, perhatian, umum
+  content   String   @db.Text
+  date      String   // YYYY-MM-DD
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  school  School @relation(fields: [schoolId], references: [id])
+  class   Class? @relation(fields: [classId], references: [id], onDelete: SetNull)
+  student User   @relation("StudentNotes", fields: [studentId], references: [id])
+  author  User   @relation("StudentNoteAuthor", fields: [authorId], references: [id])
+
+  @@index([schoolId, classId, date])
+  @@index([studentId, date])
+  @@index([authorId])
 }

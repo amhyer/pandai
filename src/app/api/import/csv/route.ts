@@ -1,40 +1,14 @@
+import { requireTeacherClass } from '@/lib/teacher-scope';
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { Prisma } from '@prisma/client';
+import { parseImportFile, type ImportData } from '@/lib/import-file';
 import { hashPassword } from '@/lib/constants';
 import { requireRole, AuthError } from '@/lib/auth';
 import { getSchoolFilter, requireSchoolScope } from '@/lib/scope';
 
-function parseCsv(text: string): { headers: string[]; rows: string[][] } {
-  const lines = text.split(/\r?\n/).filter((line) => line.trim() !== '');
-  if (lines.length === 0) return { headers: [], rows: [] };
-  function parseLine(line: string): string[] {
-    const result: string[] = []; let current = ''; let inQuotes = false;
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (inQuotes) { if (ch === '"') { if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i++; } else { inQuotes = false; } } else { current += ch; } }
-      else { if (ch === '"') { inQuotes = true; } else if (ch === ',' || ch === ';') { result.push(current.trim()); current = ''; } else { current += ch; } }
-    }
-    result.push(current.trim()); return result;
-  }
-  
-  // Deteksi format Dapodik (header di baris ke-5, data mulai baris ke-7)
-  const firstLine = lines[0]?.toLowerCase() || '';
-  const isDapodik = firstLine.includes('daftar') || firstLine.includes('peserta didik');
-  
-  let headerIdx = 0;
-  let dataStartIdx = 1;
-  
-  if (isDapodik && lines.length > 6) {
-    headerIdx = 4; // Row 5 (0-indexed = 4)
-    dataStartIdx = 6; // Row 7 (0-indexed = 6)
-  }
-  
-  const headers = parseLine(lines[headerIdx]);
-  const rows = lines.slice(dataStartIdx)
-    .filter((line) => line.trim() !== '')
-    .map(parseLine);
-  return { headers, rows };
-}
+// Large imports hash one password per row; allow enough time on Vercel.
+export const maxDuration = 300;
 
 // Auto-create class if not exists
 async function ensureClassExists(className: string, schoolId: string): Promise<string | null> {
@@ -82,14 +56,15 @@ async function ensureClassExists(className: string, schoolId: string): Promise<s
 
 export async function POST(request: Request) {
   try {
-    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL']);
+    const auth = await requireRole(request, ['SUPER_ADMIN', 'ADMIN_SCHOOL', 'GURU']);
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
     const type = formData.get('type') as string | null;
     let schoolId = formData.get('schoolId') as string | null;
-    const fieldMappingStr = formData.get('fieldMapping') as string | null;
+    const fieldMappingStr = formData.get('fieldMapping');
+    const targetClassId = formData.get('classId');
     
-    if (!file || !type || !schoolId) {
+    if (!(file instanceof File) || typeof type !== 'string' || typeof schoolId !== 'string' || !schoolId.trim()) {
       return NextResponse.json({ success: false, message: 'File, tipe, dan schoolId diperlukan' }, { status: 400 });
     }
 
@@ -97,7 +72,13 @@ export async function POST(request: Request) {
     let fieldMapping: Record<string, string> = {};
     if (fieldMappingStr) {
       try {
-        fieldMapping = JSON.parse(fieldMappingStr);
+        if (typeof fieldMappingStr !== 'string') throw new Error('Invalid mapping');
+        const parsed: unknown = JSON.parse(fieldMappingStr);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed) ||
+            Object.values(parsed).some((value) => typeof value !== 'string')) {
+          throw new Error('Invalid mapping');
+        }
+        fieldMapping = parsed as Record<string, string>;
       } catch {
         return NextResponse.json({ success: false, message: 'Field mapping tidak valid' }, { status: 400 });
       }
@@ -112,10 +93,42 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: false, message: 'Tipe harus "siswa" atau "guru"' }, { status: 400 });
     }
 
-    const text = await file.text();
-    const { headers, rows } = parseCsv(text);
-    if (rows.length === 0) {
-      return NextResponse.json({ success: false, message: 'File CSV tidak memiliki data' }, { status: 400 });
+    if (auth.role === 'GURU') {
+      if (type !== 'siswa' || typeof targetClassId !== 'string' || !targetClassId) {
+        throw new AuthError('Guru hanya dapat mengimpor siswa ke kelas yang ditugaskan', 403);
+      }
+      await requireTeacherClass(auth, targetClassId);
+    }
+
+    // A class ID supplied by the browser must belong to the effective school.
+    // Never fall back to auto-creating a class for an invalid target.
+    if (targetClassId !== null) {
+      if (type !== 'siswa' || typeof targetClassId !== 'string' || !targetClassId.trim()) {
+        return NextResponse.json({ success: false, message: 'Kelas tujuan hanya berlaku untuk import siswa dan wajib valid' }, { status: 400 });
+      }
+      const targetClass = await db.class.findFirst({
+        where: { id: targetClassId, schoolId },
+        select: { id: true },
+      });
+      if (!targetClass) {
+        return NextResponse.json({ success: false, message: 'Kelas tujuan tidak ditemukan di sekolah Anda' }, { status: 404 });
+      }
+    }
+
+    let parsed: ImportData;
+    try {
+      parsed = await parseImportFile(file);
+    } catch (error) {
+      return NextResponse.json({ success: false, message: error instanceof Error ? error.message : 'File tidak dapat dibaca' }, { status: 400 });
+    }
+    const { headers, rows } = parsed;
+    const mappedHeaders = Object.entries(fieldMapping)
+      .filter(([key, value]) => value && value !== '__skip__' && !(targetClassId && key === 'kelas'))
+      .map(([, value]) => value.toLowerCase().trim());
+    const normalizedHeaders = headers.map((header) => header.toLowerCase().trim());
+    if (new Set(mappedHeaders).size !== mappedHeaders.length ||
+        mappedHeaders.some((header) => normalizedHeaders.filter((value) => value === header).length !== 1)) {
+      return NextResponse.json({ success: false, message: 'Mapping kolom tidak valid atau ambigu. Gunakan judul kolom yang unik.' }, { status: 400 });
     }
 
     const errors: string[] = [];
@@ -154,7 +167,7 @@ export async function POST(request: Request) {
         const name = (row[namaIdx] || '').trim();
         
         if (!nisn || !name) {
-          errors.push(`Baris ${i + 2}: NISN dan Nama wajib diisi`);
+          errors.push(`Data ke-${i + 1}: NISN dan Nama wajib diisi`);
           failed++;
           continue;
         }
@@ -162,14 +175,14 @@ export async function POST(request: Request) {
         // Cek duplikat
         const existing = await db.user.findUnique({ where: { nisn } });
         if (existing) {
-          errors.push(`Baris ${i + 2}: NISN ${nisn} sudah terdaftar (${existing.name})`);
+          errors.push(`Data ke-${i + 1}: NISN ${nisn} sudah terdaftar; dilewati tanpa mengubah data atau kelas siswa.`);
           failed++;
           continue;
         }
 
         // Handle kelas (auto-create jika belum ada)
-        let classId: string | undefined;
-        if (kelasIdx !== -1 && row[kelasIdx]?.trim()) {
+        let classId: string | undefined = typeof targetClassId === 'string' ? targetClassId : undefined;
+        if (!classId && kelasIdx !== -1 && row[kelasIdx]?.trim()) {
           const className = row[kelasIdx].trim();
           const newClassId = await ensureClassExists(className, schoolId);
           if (newClassId) {
@@ -190,24 +203,35 @@ export async function POST(request: Request) {
         const namaOrtu = namaOrtuIdx !== -1 ? row[namaOrtuIdx]?.trim() : undefined;
         const email = emailIdx !== -1 ? row[emailIdx]?.trim() : undefined;
 
-        // Buat user
-        await db.user.create({
-          data: {
-            username: nisn,
-            password: await hashPassword(nisn),
-            name,
-            role: 'SISWA',
-            schoolId,
-            classId,
-            nisn,
-            jk: jk === 'L' || jk === 'P' ? jk : undefined,
-            phone: phone || undefined,
-            namaOrtu: namaOrtu || undefined,
-            email: email || undefined,
-            isActive: true,
-          },
-        });
-        imported++;
+        // Report unique conflicts per row, including username/email collisions and
+        // concurrent imports, instead of hiding earlier successful rows with a 500.
+        try {
+          await db.user.create({
+            data: {
+              username: nisn,
+              password: await hashPassword(nisn),
+              name,
+              role: 'SISWA',
+              schoolId,
+              classId,
+              nisn,
+              jk: jk === 'L' || jk === 'P' ? jk : undefined,
+              phone: phone || undefined,
+              namaOrtu: namaOrtu || undefined,
+              email: email || undefined,
+              isActive: true,
+              mustChangePassword: true,
+            },
+          });
+          imported++;
+        } catch (error) {
+          if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            errors.push(`Data ke-${i + 1}: NISN, username, atau email sudah terdaftar; data dilewati.`);
+            failed++;
+            continue;
+          }
+          throw error;
+        }
       }
     } else {
       // Import Guru
@@ -234,7 +258,7 @@ export async function POST(request: Request) {
         const name = (row[namaIdx] || '').trim();
         
         if (!nip || !name) {
-          errors.push(`Baris ${i + 2}: NIP dan Nama wajib diisi`);
+          errors.push(`Data ke-${i + 1}: NIP dan Nama wajib diisi`);
           failed++;
           continue;
         }
@@ -242,7 +266,7 @@ export async function POST(request: Request) {
         // Cek duplikat
         const existing = await db.user.findUnique({ where: { nip } });
         if (existing) {
-          errors.push(`Baris ${i + 2}: NIP ${nip} sudah terdaftar (${existing.name})`);
+          errors.push(`Data ke-${i + 1}: NIP ${nip} sudah terdaftar`);
           failed++;
           continue;
         }
@@ -281,6 +305,14 @@ export async function POST(request: Request) {
         }
         imported++;
       }
+    }
+
+    if (imported > 0) {
+      // Logging must not turn an already completed import into a failed request.
+      await db.activityLog.create({ data: {
+        schoolId, userId: auth.userId, module: 'Pengguna', action: 'Import data',
+        detail: `${imported} ${type} diimpor${targetClassId ? ` ke kelas ${targetClassId}` : ''}; ${failed} dilewati/gagal.`,
+      } }).catch(() => {});
     }
 
     // Buat pesan sukses

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getTeacherClassIds } from '@/lib/teacher-scope';
 import { db } from '@/lib/db';
 import { logError } from '@/lib/error-log';
 import { requireAuth, requireRole, AuthError } from '@/lib/auth';
@@ -20,6 +21,7 @@ export async function GET(request: Request) {
     } else if (schoolId) {
       where.schoolId = schoolId;
     }
+    if (auth.role === 'GURU') where.id = { in: await getTeacherClassIds(auth) };
     if (grade) where.grade = parseInt(grade);
 
     const classes = await db.class.findMany({

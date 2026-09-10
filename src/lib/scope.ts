@@ -1,13 +1,13 @@
 import { db } from '@/lib/db';
 import { AuthUser, AuthError } from '@/lib/auth';
+import { getTeacherClassIds, requireTeacherClass } from '@/lib/teacher-scope';
 
 /**
  * Validate that the authenticated user can access the requested student's data.
  * Throws AuthError(403) if access is denied.
  * - SISWA: requestedStudentId MUST equal auth.userId
  * - ORANG_TUA: requestedStudentId MUST be a child (parentId = auth.userId)
- * GURU: requestedStudentId MUST be a student in the same school (school-level isolation)
- *   NOTE: This could be tightened to class-level if a reliable guru-class mapping table existed.
+ * GURU: student must belong to an explicitly assigned class in the same school.
  * - ADMIN_SCHOOL/KEPALA_SEKOLAH: requestedStudentId MUST be in auth.schoolId
  * - SUPER_ADMIN: always allowed
  */
@@ -23,7 +23,7 @@ export async function requireStudentScope(auth: AuthUser, requestedStudentId: st
 
   if (auth.role === 'ORANG_TUA') {
     const child = await db.user.findFirst({
-      where: { id: requestedStudentId, parentId: auth.userId },
+      where: { id: requestedStudentId, parentId: auth.userId, schoolId: auth.schoolId, role: 'SISWA' },
       select: { id: true },
     });
     if (!child) {
@@ -32,16 +32,20 @@ export async function requireStudentScope(auth: AuthUser, requestedStudentId: st
     return;
   }
 
-  // GURU, ADMIN_SCHOOL, KEPALA_SEKOLAH: school-level isolation
+  // School scope for staff; teachers also require an explicit class assignment.
   const student = await db.user.findUnique({
     where: { id: requestedStudentId },
-    select: { id: true, schoolId: true },
+    select: { id: true, schoolId: true, classId: true, role: true },
   });
-  if (!student) {
+  if (!student || student.role !== 'SISWA') {
     throw new AuthError('Siswa tidak ditemukan', 404);
   }
-  if (student.schoolId !== auth.schoolId) {
+  if (!auth.schoolId || student.schoolId !== auth.schoolId) {
     throw new AuthError('Tidak diizinkan mengakses data siswa dari sekolah lain', 403);
+  }
+  if (auth.role === 'GURU') {
+    if (!student.classId) throw new AuthError('Siswa belum berada di kelas Anda', 403);
+    await requireTeacherClass(auth, student.classId);
   }
 }
 
@@ -49,7 +53,7 @@ export async function requireStudentScope(auth: AuthUser, requestedStudentId: st
  * Get the list of student IDs the authenticated user is allowed to access.
  * - SISWA: [auth.userId]
  * - ORANG_TUA: all children (WHERE parentId = auth.userId)
- * - GURU/ADMIN_SCHOOL/KEPALA_SEKOLAH: all students in auth.schoolId
+ * - GURU: students in assigned classes; ADMIN/KEPSEK: students in their school
  * - SUPER_ADMIN: all students (no filter)
  */
 export async function getAccessibleStudentIds(auth: AuthUser): Promise<string[]> {
@@ -73,10 +77,12 @@ export async function getAccessibleStudentIds(auth: AuthUser): Promise<string[]>
     return children.map(c => c.id);
   }
 
-  // GURU, ADMIN_SCHOOL, KEPALA_SEKOLAH: all students in the same school
+  // School-level readers; teachers are narrowed to their assigned classes.
   if (!auth.schoolId) return [];
   const students = await db.user.findMany({
-    where: { role: 'SISWA', schoolId: auth.schoolId },
+    where: { role: 'SISWA', schoolId: auth.schoolId,
+      ...(auth.role === 'GURU' ? { classId: { in: await getTeacherClassIds(auth) } } : {}),
+    },
     select: { id: true },
   });
   return students.map(s => s.id);

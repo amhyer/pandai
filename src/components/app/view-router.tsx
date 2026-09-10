@@ -51,6 +51,12 @@ const views: Record<string, React.LazyExoticComponent<React.ComponentType>> = {
   'import-csv': React.lazy(() => import('@/components/views/admin-school-import').then(m => ({ default: m.ImportCsvView }))),
   'dapodik-sync': React.lazy(() => import('@/components/views/admin-school-dapodik').then(m => ({ default: m.DapodikSyncView }))),
 
+  'guru-siswa': React.lazy(() => import('@/components/views/guru-students-view').then(m => ({ default: m.GuruStudentsView }))),
+  'guru-catatan': React.lazy(() => import('@/components/views/student-notes-view').then(m => ({ default: m.StudentNotesView }))),
+  'ortu-catatan': React.lazy(() => import('@/components/views/student-notes-view').then(m => ({ default: m.StudentNotesView }))),
+  'kepsek-catatan': React.lazy(() => import('@/components/views/student-notes-view').then(m => ({ default: m.StudentNotesView }))),
+  'kepsek-aktivitas': React.lazy(() => import('@/components/views/kepsek/activity-monitor-view').then(m => ({ default: m.ActivityMonitorView }))),
+
   'guru-materi': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruMateriView }))),
   'guru-nilai': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruNilaiView }))),
   'guru-analisis': React.lazy(() => import('@/components/views/guru-views').then(m => ({ default: m.GuruAnalisisView }))),

@@ -1,5 +1,5 @@
 // Build wrapper — menjalankan `next build` dengan output standalone.
-// Dipakai oleh CI (bun run build) dan Dockerfile. Deploy Vercel TIDAK
+// Dipakai oleh CI (npm run build) dan Dockerfile. Deploy Vercel TIDAK
 // memakai script ini (vercel.json -> npm run build:vercel), jadi build
 // Vercel tetap non-standalone sesuai komentar di next.config.ts.
 import { spawnSync } from 'node:child_process';
